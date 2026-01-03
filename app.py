@@ -53,4 +53,3 @@ try:
 
 except Exception as e:
     st.warning("Carregando dados... Clique em atualizar no navegador se demorar.")
-
