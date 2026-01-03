@@ -1,37 +1,36 @@
 import streamlit as st
 import yfinance as yf
+import pandas as pd
 
-st.set_page_config(page_title="Terminal", layout="wide")
-st.title("🏦 TERMINAL PROFISSIONAL")
-
-# Bloco do Dólar (O que já funciona)
-try:
-    dolar_data = yf.download("USDBRL=X", period="1d", interval="1m", progress=False)
-    spot = dolar_data['Close'].iloc[-1]
-    c1, c2, c3 = st.columns(3)
-    c1.metric("DÓLAR SPOT", f"{spot:.4f}")
-    c2.metric("DÓLAR JUSTO", f"{spot * 1.0003:.4f}")
-    c3.metric("PTAX EST.", f"{spot * 1.0001:.4f}")
-except:
-    st.write("Carregando Dólar...")
-
-st.markdown("---")
-
-# Bloco das Variações (O que estava travado)
-st.write("### Variações do Mercado")
-col1, col2, col3 = st.columns(3)
-
-def buscar_v(label, ticker, coluna):
+# Função robusta que tenta buscar dados de duas formas
+def busca_segura(ticker):
     try:
-        # Busca 5 dias para garantir dados de fechamento no fim de semana
+        # Tenta a busca padrão
         df = yf.download(ticker, period="5d", interval="1d", progress=False)
-        atual = df['Close'].iloc[-1]
-        anterior = df['Close'].iloc[-2]
-        var = ((atual - anterior) / anterior) * 100
-        coluna.metric(label, f"{atual:.2f}", f"{var:+.2f}%")
+        if not df.empty:
+            return df
     except:
-        coluna.write(f"Erro em {label}")
+        try:
+            # Tenta uma busca via Ticker object (servidor secundário)
+            t = yf.Ticker(ticker)
+            df = t.history(period="5d")
+            return df
+        except:
+            return None
 
-buscar_v("EWZ (Bolsa BR)", "EWZ", col1)
-buscar_v("DXY (Dólar Global)", "DX-Y.NYB", col2)
-buscar_v("S&P 500", "^GSPC", col3)
+st.write("### Painel de Variações (Multifonte)")
+c1, c2, c3 = st.columns(3)
+
+# Lista para processar
+ativos = [("EWZ", "EWZ"), ("DXY", "DX-Y.NYB"), ("S&P 500", "^GSPC")]
+cols = [c1, c2, c3]
+
+for i, (nome, simbolo) in enumerate(ativos):
+    dados = busca_segura(simbolo)
+    if dados is not None and len(dados) >= 2:
+        atual = dados['Close'].iloc[-1]
+        anterior = dados['Close'].iloc[-2]
+        var = ((atual - anterior) / anterior) * 100
+        cols[i].metric(nome, f"{atual:.2f}", f"{var:+.2f}%")
+    else:
+        cols[i].error(f"{nome} indisponível")
