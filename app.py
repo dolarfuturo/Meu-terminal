@@ -1,55 +1,27 @@
-import streamlit as st
-import yfinance as yf
-import pandas as pd
-from datetime import datetime
+st.write("### Variações do Mercado")
 
-st.set_page_config(page_title="Mesa de Câmbio Pro", layout="wide")
+# Função para buscar cada ativo individualmente (evita travar a tabela toda)
+def buscar_variacao(ticker_name, ticker_symbol):
+    try:
+        # Busca dados de 2 dias para calcular a variação
+        data = yf.download(ticker_symbol, period="2d", interval="1d", progress=False)
+        if not data.empty and len(data) >= 2:
+            atual = data['Close'].iloc[-1]
+            anterior = data['Close'].iloc[-2]
+            var = ((atual - anterior) / anterior) * 100
+            return f"{atual:.2f}", f"{var:+.2f}%"
+        return "---", "0.00%"
+    except:
+        return "Erro", "0.00%"
 
-st.title("🏦 TERMINAL PROFISSIONAL")
+# Montando a visualização em colunas para ser mais leve que a tabela
+col_ewz, col_dxy, col_di = st.columns(3)
 
-# Lista correta de ativos
-tickers = {
-    "DÓLAR SPOT": "USDBRL=X",
-    "EWZ (BOLSA BR)": "EWZ",
-    "DXY INDEX": "DX-Y.NYB",
-    "DI 2027": "DI1F27.SA",
-    "DI 2031": "DI1F31.SA"
-}
+val_ewz, var_ewz = buscar_variacao("EWZ", "EWZ")
+col_ewz.metric("EWZ (Bolsa BR)", val_ewz, var_ewz)
 
-try:
-    # Busca dados de 5 dias para ter a variação de fechamento
-    df = yf.download(list(tickers.values()), period="1d", interval="1d", progress=False)['Close']
-    
-    # Cálculos de topo
-    spot = df["USDBRL=X"].iloc[-1]
-    justo = spot * ((1 + 0.1175)**(1/252) / (1 + 0.045)**(1/252))
-    ptax = spot * 1.0002
-    
-    # Exibição das Métricas
-    c1, c2, c3 = st.columns(3)
-    c1.metric("DÓLAR SPOT", f"{spot:.4f}")
-    c2.metric("DÓLAR JUSTO", f"{justo:.4f}")
-    c3.metric("PTAX EST.", f"{ptax:.4f}")
+val_dxy, var_dxy = buscar_variacao("DXY", "DX-Y.NYB")
+col_dxy.metric("DXY (Dólar Global)", val_dxy, var_dxy)
 
-    st.write("### Variações do Mercado")
-    
-    # Montagem da Tabela Colorida
-    lista_final = []
-    for nome, tk in tickers.items():
-        serie = df[tk].dropna()
-        atual = serie.iloc[-1]
-        anterior = serie.iloc[-2]
-        var = ((atual - anterior) / anterior) * 100
-        
-        lista_final.append({
-            "ATIVO": nome,
-            "ÚLTIMO": f"{atual:.4f}" if "DÓLAR" in nome else f"{atual:.22f}" if "DI" in nome else f"{atual:.2f}",
-            "VAR %": f"{var:+.2f}%",
-            "FECH. ANT.": f"{anterior:.4f}" if "DÓLAR" in nome else f"{anterior:.2f}"
-        })
-
-    st.table(pd.DataFrame(lista_final))
-    st.caption(f"Última atualização: {datetime.now().strftime('%H:%M:%S')}")
-
-except Exception as e:
-    st.warning("Carregando dados... Clique em atualizar no navegador se demorar.")
+val_di, var_di = buscar_variacao("DI 2027", "DI1F27.SA")
+col_di.metric("DI 2027", val_di, var_di)
