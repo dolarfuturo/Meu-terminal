@@ -18,7 +18,7 @@ tickers = {
 
 try:
     # Busca dados de 5 dias para ter a variação de fechamento
-    df = yf.download(list(tickers.values()), period="5d", interval="1d", progress=False)['Close']
+    df = yf.download(list(tickers.values()), period="1d", interval="1d", progress=False)['Close']
     
     # Cálculos de topo
     spot = df["USDBRL=X"].iloc[-1]
