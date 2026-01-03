@@ -1,77 +1,83 @@
 import streamlit as st
 import yfinance as yf
 
-# 1. Configuração de Estilo Profissional
+# 1. Configuração de Estilo e Layout Profissional
 st.set_page_config(page_title="Terminal Pro", layout="wide")
 
 st.markdown("""
     <style>
     .main { background-color: #0e1117; color: white; }
-    div[data-testid="stMetricValue"] { font-size: 28px; color: #ffffff; }
-    div[data-testid="stMetricDelta"] { font-size: 18px; }
-    .stDivider { border-bottom: 1px solid #30363d; }
+    div[data-testid="stMetricValue"] { font-size: 32px; font-weight: bold; color: #ffffff; }
+    div[data-testid="stMetricDelta"] { font-size: 20px; }
+    [data-testid="metric-container"] {
+        background-color: #161b22;
+        border: 1px solid #30363d;
+        padding: 15px;
+        border-radius: 10px;
+    }
     </style>
     """, unsafe_allow_html=True)
 
-# Barra Lateral para Ajustes
+# Painel de Controle Lateral
 with st.sidebar:
-    st.title("⚙️ Painel de Controle")
+    st.header("⚙️ Ajustes")
     frp_ajuste = st.number_input("Ajuste FRP", value=0.0150, format="%.4f", step=0.0001)
-    st.info("O FRP é somado ao Dólar Spot para calcular o Futuro.")
+    st.info("FRP somado ao Spot para o cálculo do Futuro.")
 
-st.title("🏦 TERMINAL DE MERCADO")
+st.title("🏦 TERMINAL PROFISSIONAL")
 
-# 2. BLOCO DE CÂMBIO (SPOT E FUTURO)
-try:
-    dolar_raw = yf.download("USDBRL=X", period="5d", interval="1m", progress=False)
-    if not dolar_raw.empty:
-        spot = float(dolar_raw['Close'].iloc[-1])
-        futuro = spot + frp_ajuste
-        
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            st.metric("DÓLAR SPOT", f"R$ {spot:.4f}")
-        with c2:
-            st.metric("FRP ATUAL", f"{frp_ajuste:.4f}")
-        with c3:
-            st.metric("DÓLAR FUTURO", f"R$ {futuro:.4f}")
-except:
-    st.error("Erro ao carregar dados de câmbio.")
+# 2. FUNÇÃO MESTRE PARA BUSCAR DADOS (Garante variação mesmo no fim de semana)
+def buscar_resumo(ticker, period="7d"):
+    try:
+        df = yf.download(ticker, period=period, interval="1d", progress=False)
+        if not df.empty and len(df) >= 2:
+            atual = float(df['Close'].iloc[-1])
+            anterior = float(df['Close'].iloc[-2])
+            variacao = ((atual - anterior) / anterior) * 100
+            return atual, variacao
+        return None, None
+    except:
+        return None, None
+
+# 3. BLOCO SUPERIOR: CÂMBIO E BITCOIN
+st.subheader("💹 Câmbio & Cripto")
+col_spot, col_fut, col_btc = st.columns(3)
+
+# Dólar Spot e Futuro
+spot_val, spot_var = buscar_resumo("USDBRL=X")
+if spot_val:
+    col_spot.metric("DÓLAR SPOT", f"R$ {spot_val:.4f}", f"{spot_var:+.2f}%")
+    col_fut.metric("DÓLAR FUTURO", f"R$ {spot_val + frp_ajuste:.4f}", help="Spot + FRP")
+else:
+    col_spot.error("Dólar: Offline")
+
+# Bitcoin (Sempre ativo)
+btc_val, btc_var = buscar_resumo("BTC-USD")
+if btc_val:
+    # Convertendo aproximado para Real (multiplicado pelo spot)
+    btc_brl = btc_val * (spot_val if spot_val else 5.42)
+    col_btc.metric("BITCOIN (BRL)", f"R$ {btc_brl:,.0f}", f"{btc_var:+.2f}%")
 
 st.divider()
 
-# 3. FUNÇÃO DE VARIAÇÃO ROBUSTA
-def card_ativo(coluna, titulo, ticker, is_percent=False):
-    try:
-        # Puxamos 7 dias para garantir dados de sexta/quinta no fim de semana
-        df = yf.download(ticker, period="7d", interval="1d", progress=False)
-        if len(df) >= 2:
-            atual = df['Close'].iloc[-1]
-            anterior = df['Close'].iloc[-2]
-            variacao = ((atual - anterior) / anterior) * 100
-            
-            simbolo = "%" if is_percent else ""
-            coluna.metric(titulo, f"{atual:.2f}{simbolo}", f"{variacao:+.2f}%")
-        else:
-            coluna.info(f"{titulo}: Sem sinal")
-    except:
-        coluna.error(f"{titulo}: Offline")
+# 4. BLOCO INFERIOR: JUROS E ÍNDICES
+st.subheader("📊 Juros (DI) e Ativos Globais")
+c1, c2, c3, c4 = st.columns(4)
 
-st.subheader("📊 Ativos Globais e Juros")
-col_ewz, col_dxy, col_spx = st.columns(3)
-col_di27, col_di29, col_di31 = st.columns(3)
+# Lista de ativos para busca automática
+ativos = [
+    ("DI 2027", "DI1F27.SA", c1, "%"),
+    ("DI 2029", "DI1F29.SA", c2, "%"),
+    ("EWZ (Bolsa BR)", "EWZ", c3, ""),
+    ("DXY (Dólar Global)", "DX-Y.NYB", c4, "")
+]
 
-# Linha 1: Mercado Global
-card_ativo(col_ewz, "EWZ (Bolsa BR)", "EWZ")
-card_ativo(col_dxy, "DXY (Dólar Global)", "DX-Y.NYB")
-card_ativo(col_spx, "S&P 500", "^GSPC")
+for nome, ticker, col, suf in ativos:
+    val, var = buscar_resumo(ticker)
+    if val:
+        col.metric(nome, f"{val:.2f}{suf}", f"{var:+.2f}%")
+    else:
+        col.info(f"{nome}: Aguardando...")
 
-st.write("") # Espaçamento
-
-# Linha 2: Juros (DIs)
-card_ativo(col_di27, "DI 2027", "DI1F27.SA", is_percent=True)
-card_ativo(col_di29, "DI 2029", "DI1F29.SA", is_percent=True)
-card_ativo(col_di31, "DI 2031", "DI1F31.SA", is_percent=True)
-
-st.caption("⚠️ Dados de variação baseados no último fechamento disponível.")
+st.caption("🚀 Terminal atualizado. BTC opera 24h. Outros ativos mostram o último fechamento de sexta-feira.")
 
