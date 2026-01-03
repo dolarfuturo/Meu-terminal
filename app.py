@@ -4,16 +4,13 @@ import yfinance as yf
 st.set_page_config(page_title="Terminal Trading", layout="wide")
 st.title("🏦 MONITOR DE MERCADO")
 
-# 1. BUSCA DE DADOS (Dólar e Futuro)
+# 1. CÂMBIO (SPOT E FUTURO)
 try:
-    # Busca o dólar spot
+    # Busca dólar com histórico de 1 dia para garantir que venha algo
     df_dolar = yf.download("USDBRL=X", period="1d", interval="1m", progress=False)
     
-    # Verifica se o dado chegou corretamente
     if not df_dolar.empty:
         spot = float(df_dolar['Close'].iloc[-1])
-        
-        # Cálculo Dólar Futuro (ajuste manual de FRP para teste)
         frp = 0.0150 
         futuro = spot + frp
 
@@ -21,38 +18,36 @@ try:
         c1.metric("DÓLAR SPOT", f"{spot:.4f}")
         c2.metric("FRP (AJUSTE)", f"{frp:.4f}")
         c3.metric("DÓLAR FUTURO", f"{futuro:.4f}")
-    else:
-        st.warning("Aguardando cotação do dólar...")
 except:
-    st.error("Erro na conexão com o câmbio.")
+    st.error("Erro na conexão de câmbio")
 
-st.divider()
+st.markdown("---")
 
-# 2. JUROS (DIs) E VARIAÇÕES
+# 2. JUROS E VARIÇÕES (Ajustado para Sábado)
 st.subheader("📊 Juros e Mercado")
 
-def buscar_ativo(label, ticker, sufixo=""):
+def buscar_estavel(label, ticker, sufixo=""):
     try:
-        dados = yf.download(ticker, period="5d", progress=False)
-        if not dados.empty:
-            atual = dados['Close'].iloc[-1]
-            anterior = dados['Close'].iloc[-2]
+        # Aumentamos para 7 dias para garantir o fechamento de sexta
+        df = yf.download(ticker, period="7d", interval="1d", progress=False)
+        if not df.empty and len(df) >= 2:
+            atual = df['Close'].iloc[-1]
+            anterior = df['Close'].iloc[-2]
             variacao = ((atual - anterior) / anterior) * 100
             st.metric(label, f"{atual:.2f}{sufixo}", f"{variacao:+.2f}%")
         else:
-            st.write(f"Buscando {label}...")
+            st.write(f"OFFLINE: {label}")
     except:
-        st.write(f"Indisponível: {label}")
+        st.write(f"Erro: {label}")
 
-# Colunas para DIs e Varições
 col1, col2, col3 = st.columns(3)
 with col1:
-    buscar_ativo("DI 2027", "DI1F27.SA", "%")
-    buscar_ativo("EWZ (Bolsa)", "EWZ")
+    buscar_estavel("DI 2027", "DI1F27.SA", "%")
+    buscar_estavel("EWZ (Bolsa)", "EWZ")
 with col2:
-    buscar_ativo("DI 2029", "DI1F29.SA", "%")
-    buscar_ativo("DXY (Dólar Global)", "DX-Y.NYB")
+    buscar_estavel("DI 2029", "DI1F29.SA", "%")
+    buscar_estavel("DXY (Dólar)", "DX-Y.NYB")
 with col3:
-    buscar_ativo("DI 2031", "DI1F31.SA", "%")
-    buscar_ativo("S&P 500", "^GSPC")
+    buscar_estavel("DI 2031", "DI1F31.SA", "%")
+    buscar_estavel("S&P 500", "^GSPC")
 
