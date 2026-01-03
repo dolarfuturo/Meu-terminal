@@ -1,27 +1,52 @@
+import streamlit as st
+import yfinance as yf
+import pandas as pd
+
+# Configuração da página
+st.set_page_config(page_title="Terminal Pro", layout="wide")
+
+st.title("🏦 TERMINAL PROFISSIONAL")
+
+# 1. BLOCO SUPERIOR: DÓLAR E PTAX
+try:
+    # Busca o dólar atual
+    ticker_usd = yf.Ticker("USDBRL=X")
+    dados_usd = ticker_usd.history(period="1d")
+    spot = dados_usd['Close'].iloc[-1]
+    
+    # Cálculos automáticos
+    justo = spot * 1.0003
+    ptax = spot * 1.0001
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("DÓLAR SPOT", f"{spot:.4f}")
+    c2.metric("DÓLAR JUSTO", f"{justo:.4f}")
+    c3.metric("PTAX EST.", f"{ptax:.4f}")
+except:
+    st.error("Erro ao carregar dados do Dólar")
+
+st.markdown("---")
+
+# 2. BLOCO DE VARIAÇÕES (CARTÕES RÁPIDOS)
 st.write("### Variações do Mercado")
 
-# Função para buscar cada ativo individualmente (evita travar a tabela toda)
-def buscar_variacao(ticker_name, ticker_symbol):
+def mostrar_card(label, ticker_simbolo):
     try:
-        # Busca dados de 2 dias para calcular a variação
-        data = yf.download(ticker_symbol, period="2d", interval="1d", progress=False)
-        if not data.empty and len(data) >= 2:
-            atual = data['Close'].iloc[-1]
-            anterior = data['Close'].iloc[-2]
-            var = ((atual - anterior) / anterior) * 100
-            return f"{atual:.2f}", f"{var:+.2f}%"
-        return "---", "0.00%"
+        data = yf.download(ticker_simbolo, period="2d", interval="1d", progress=False)
+        atual = data['Close'].iloc[-1]
+        anterior = data['Close'].iloc[-2]
+        variacao = ((atual - anterior) / anterior) * 100
+        st.metric(label, f"{atual:.2f}", f"{variacao:+.2f}%")
     except:
-        return "Erro", "0.00%"
+        st.write(f"Aguardando {label}...")
 
-# Montando a visualização em colunas para ser mais leve que a tabela
-col_ewz, col_dxy, col_di = st.columns(3)
+col1, col2, col3 = st.columns(3)
 
-val_ewz, var_ewz = buscar_variacao("EWZ", "EWZ")
-col_ewz.metric("EWZ (Bolsa BR)", val_ewz, var_ewz)
+with col1:
+    mostrar_card("EWZ (Bolsa BR)", "EWZ")
+with col2:
+    mostrar_card("DXY (Dólar Global)", "DX-Y.NYB")
+with col3:
+    mostrar_card("S&P 500", "^GSPC")
 
-val_dxy, var_dxy = buscar_variacao("DXY", "DX-Y.NYB")
-col_dxy.metric("DXY (Dólar Global)", val_dxy, var_dxy)
-
-val_di, var_di = buscar_variacao("DI 2027", "DI1F27.SA")
-col_di.metric("DI 2027", val_di, var_di)
+st.caption("Dados atualizados via Yahoo Finance")
