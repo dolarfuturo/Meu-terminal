@@ -2,7 +2,7 @@ import streamlit as st
 import yfinance as yf
 from streamlit_autorefresh import st_autorefresh
 
-# 1. Configuração de Tela Cheia e Estilo Bloomberg
+# 1. Configurações de Layout e Estética de Terminal (Preto Absoluto)
 st.set_page_config(page_title="Terminal Pro", layout="wide")
 st_autorefresh(interval=5000, key="datarefresh") 
 
@@ -13,84 +13,93 @@ st.markdown("""
     .main { background-color: #000000; color: #FFFFFF; font-family: 'Roboto Mono', monospace; }
     [data-testid="stHeader"] { background-color: #000000; }
     
-    /* Customização dos Cards */
+    /* Ticker LED Estilo Bloomberg */
+    .ticker-wrap {
+        width: 100%; overflow: hidden; background-color: #000; 
+        border-top: 1px solid #333; padding: 10px 0;
+        position: fixed; bottom: 0; left: 0; z-index: 999;
+    }
+    .ticker {
+        display: inline-block; white-space: nowrap; animation: ticker 30s linear infinite;
+        font-family: 'Roboto Mono', monospace; font-size: 18px; color: #FF9900;
+    }
+    @keyframes ticker {
+        0% { transform: translateX(100%); }
+        100% { transform: translateX(-100%); }
+    }
+    .ticker-item { display: inline-block; margin-right: 50px; }
+
+    /* Estilo dos Cards Centrais */
     [data-testid="metric-container"] {
-        background-color: #111111;
-        border: 1px solid #333333;
-        padding: 8px 12px;
-        border-radius: 4px;
+        background-color: #000000;
+        border: 1px solid #222222;
+        padding: 15px;
         text-align: center;
     }
-    
-    div[data-testid="stMetricValue"] { font-size: 28px !important; font-weight: 700; color: #FFFFFF; }
-    div[data-testid="stMetricLabel"] { font-size: 14px !important; color: #BBBBBB; text-transform: uppercase; }
-    
-    /* Cores de Variação Bloomberg */
-    div[data-testid="stMetricDelta"] > div { font-size: 18px !important; }
+    div[data-testid="stMetricValue"] { font-size: 34px !important; color: #FFFFFF !important; }
+    div[data-testid="stMetricLabel"] { font-size: 14px !important; color: #888888 !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# 2. Cabeçalho Compacto (FRP Oculto)
-with st.expander("⌨️ TERMINAL CONFIG"):
-    c_config1, c_config2 = st.columns(2)
-    frp_manual = c_config1.number_input("FRP", value=0.0150, format="%.4f", step=0.0001)
-    st.caption("Ajuste o FRP para recalcular o Dólar Futuro instantaneamente.")
+# 2. Configurações (Escondidas)
+with st.expander("⌨️ CONFIGS"):
+    frp_manual = st.number_input("FRP", value=0.0150, format="%.4f")
 
-# 3. Função de Dados com Lógica TradingView
-def get_market_data(ticker):
+def get_data(ticker):
     try:
-        # Puxamos dados de 7 dias com intervalo de 1 dia para pegar o fechamento anterior real
         df = yf.download(ticker, period="7d", interval="1d", progress=False)
         if not df.empty and len(df) >= 2:
             price = float(df['Close'].iloc[-1])
-            prev_close = float(df['Close'].iloc[-2])
-            change = ((price - prev_close) / prev_close) * 100
-            return price, change
-    except:
-        return None, None
+            prev = float(df['Close'].iloc[-2])
+            var = ((price - prev) / prev) * 100
+            return price, var
+    except: return None, None
     return None, None
 
-# --- SEÇÃO 1: CÂMBIO ---
-st.markdown("### 🏦 CÂMBIO")
-row1_1, row1_2, row1_3, row1_4 = st.columns(4)
+# --- CENTRO DA TELA: MOEDAS E ATIVOS ---
+st.markdown("<h2 style='text-align: center; color: #444;'>🏦 CÂMBIO & ATIVOS</h2>", unsafe_allow_html=True)
 
-spot, spot_v = get_market_data("USDBRL=X")
-usdt, usdt_v = get_market_data("USDT-BRL")
+# Centralizando os blocos
+_, col_center, _ = st.columns([0.1, 0.8, 0.1])
 
-if spot:
-    row1_1.metric("DÓLAR SPOT", f"{spot:.4f}", f"{spot_v:+.2f}%")
-    row1_2.metric("DÓLAR FUTURO", f"{spot + frp_manual:.4f}", f"FRP {frp_manual:.4f}", delta_color="off")
-    # USDT Variação corrigida (Close vs Prev Close)
+with col_center:
+    # Linha 1: Moedas
+    c1, c2, c3 = st.columns(3)
+    spot, spot_v = get_data("USDBRL=X")
+    usdt, usdt_v = get_data("USDT-BRL")
+    dxy, dxy_v = get_data("DX-Y.NYB")
+
+    if spot:
+        c1.metric("DÓLAR SPOT", f"{spot:.4f}", f"{spot_v:+.2f}%")
+        c2.metric("DÓLAR FUTURO", f"{spot + frp_manual:.4f}", f"FRP {frp_manual:.4f}", delta_color="off")
     if usdt:
-        row1_3.metric("USDT / BRL", f"{usdt:.3f}", f"{usdt_v:+.2f}%")
-    else:
-        row1_3.metric("USDT / BRL", f"{spot * 1.001:.3f}", "BUSCANDO", delta_color="off")
-    row1_4.metric("DXY INDEX", f"{get_market_data('DX-Y.NYB')[0]:.2f}", f"{get_market_data('DX-Y.NYB')[1]:+.2f}%")
+        c3.metric("USDT / BRL", f"{usdt:.3f}", f"{usdt_v:+.2f}%")
 
-st.markdown("---")
+    st.markdown("<br>", unsafe_allow_html=True)
 
-# --- SEÇÃO 2: TAXAS DE JUROS (Compacto para Tablet) ---
-st.markdown("### 📉 TAXAS DE JUROS (DI)")
-row2_1, row2_2, row2_3 = st.columns(3)
+    # Linha 2: Ativos
+    c4, c5, c6 = st.columns(3)
+    ewz, ewz_v = get_data("EWZ")
+    spx, spx_v = get_data("^GSPC")
+    
+    if dxy: c4.metric("DXY INDEX", f"{dxy:.2f}", f"{dxy_v:+.2f}%")
+    if ewz: c5.metric("EWZ (IBOV USD)", f"{ewz:.2f}", f"{ewz_v:+.2f}%")
+    if spx: c6.metric("S&P 500", f"{int(spx)}", f"{spx_v:+.2f}%")
 
-def di_card(col, label, ticker):
-    val, var = get_market_data(ticker)
-    if val:
-        col.metric(label, f"{val:.2f}%", f"{var:+.2f}%")
-    else:
-        col.write(f"OFFLINE {label}")
+# --- RODAPÉ: LED PASSANDO (JUROS DIs) ---
+di27, di27_v = get_data("DI1F27.SA")
+di29, di29_v = get_data("DI1F29.SA")
+di31, di31_v = get_data("DI1F31.SA")
 
-di_card(row2_1, "DI 2027", "DI1F27.SA")
-di_card(row2_2, "DI 2029", "DI1F29.SA")
-di_card(row2_3, "DI 2031", "DI1F31.SA")
-
-# --- SEÇÃO 3: B3 / BRASIL ---
-st.markdown("---")
-st.markdown("### 🇧🇷 BRASIL")
-row3_1, row3_2 = st.columns(2)
-
-ewz, ewz_v = get_market_data("EWZ")
-if ewz:
-    row3_1.metric("EWZ (IBOV USD)", f"{ewz:.2f}", f"{ewz_v:+.2f}%")
-row3_2.write("⏱️ FEED: 5s | ESTILO TERMINAL BLOOMBERG")
+led_html = f"""
+    <div class="ticker-wrap">
+        <div class="ticker">
+            <span class="ticker-item">● DI 2027: {di27:.2f}% ({di27_v:+.2f}%)</span>
+            <span class="ticker-item">● DI 2029: {di29:.2f}% ({di29_v:+.2f}%)</span>
+            <span class="ticker-item">● DI 2031: {di31:.2f}% ({di31_v:+.2f}%)</span>
+            <span class="ticker-item">● MERCADO OPERANDO EM TEMPO REAL ●</span>
+        </div>
+    </div>
+"""
+st.markdown(led_html, unsafe_allow_html=True)
 
