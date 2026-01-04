@@ -2,7 +2,8 @@ import streamlit as st
 import yfinance as yf
 from streamlit_autorefresh import st_autorefresh
 
-st.set_page_config(page_title="Terminal Slim", layout="centered")
+# 1. Configuração de Tela Ultra-Slim
+st.set_page_config(page_title="Terminal Side Pro", layout="centered")
 st_autorefresh(interval=5000, key="datarefresh") 
 
 st.markdown("""
@@ -18,23 +19,25 @@ st.markdown("""
         justify-content: space-between;
         align-items: baseline;
         border-bottom: 1px solid #1a1a1a;
-        padding: 2px 0;
+        padding: 4px 0;
         margin-bottom: 2px;
     }
     .label {
         font-family: 'JetBrains Mono', monospace;
-        font-size: 10px;
+        font-size: 13px; /* Aumentado */
         color: #ff9900;
         text-transform: uppercase;
+        font-weight: bold;
     }
     .value {
         font-family: 'Share Tech Mono', monospace;
-        font-size: 19px;
+        font-size: 21px; /* Aumentado */
         color: #ffffff;
     }
     .delta {
-        font-size: 10px;
-        margin-left: 5px;
+        font-size: 12px; /* Aumentado */
+        margin-left: 6px;
+        font-weight: bold;
     }
     
     /* Cores Específicas */
@@ -45,19 +48,24 @@ st.markdown("""
     .neg { color: #FF0033; }
 
     .header-box {
-        font-family: 'JetBrains Mono', monospace; color: #FFFFFF; font-size: 12px;
-        text-align: center; border-bottom: 1px solid #333; padding: 2px 0; margin-bottom: 10px;
+        font-family: 'JetBrains Mono', monospace; color: #FFFFFF; font-size: 13px;
+        text-align: center; border-bottom: 1px solid #333; padding: 4px 0; margin-bottom: 10px;
     }
 
+    /* Rodapé Branco e Rápido */
     .ticker-wrap {
-        width: 100%; overflow: hidden; background-color: #000; border-top: 2px solid #ff9900;
-        position: fixed; bottom: 0; left: 0; padding: 10px 0; height: 50px; z-index: 999;
+        width: 100%; overflow: hidden; background-color: #000; 
+        border-top: 2px solid #FFFFFF; /* Troca para Branco */
+        position: fixed; bottom: 0; left: 0; padding: 10px 0; height: 55px; z-index: 999;
     }
     .ticker {
-        display: inline-block; white-space: nowrap; animation: ticker 25s linear infinite;
-        font-family: 'Share Tech Mono', monospace; font-size: 14px; color: #ffb400; font-weight: bold;
+        display: inline-block; white-space: nowrap; 
+        animation: ticker 15s linear infinite; /* Acelerado para 15s */
+        font-family: 'Share Tech Mono', monospace; font-size: 15px; color: #FFFFFF; font-weight: bold;
     }
     @keyframes ticker { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+    
+    #MainMenu, footer, header {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
 
@@ -75,7 +83,7 @@ def get_data(ticker):
     except: return 0.0, 0.0, 0.0, 0.0
     return 0.0, 0.0, 0.0, 0.0
 
-# --- DADOS ---
+# --- COLETA ---
 s, sv, sh, sl = get_data("USDBRL=X")
 u, uv, _, _ = get_data("USDT-BRL")
 dx, dxv, _, _ = get_data("DX-Y.NYB")
@@ -90,7 +98,6 @@ with st.expander("SET"):
     frp = st.number_input("FRP", value=0.0150, format="%.4f")
     aju = st.number_input("AJU", value=5.4500, format="%.4f")
 
-# Função para desenhar a linha sem sumir com o nome
 def draw_row(label, value, delta=None, class_val=""):
     d_html = ""
     if delta is not None:
@@ -104,26 +111,26 @@ def draw_row(label, value, delta=None, class_val=""):
         </div>
     """, unsafe_allow_html=True)
 
-# Layout 2 Colunas
+# Layout Lado a Lado
 c1, c2 = st.columns([1, 1])
 
 with c1:
     draw_row("SPOT", f"{s:.4f}", sv)
-    draw_row("FUTURO", f"{s + frp:.4f}", sv, "futuro")
-    draw_row("AJUSTE", f"{aju:.4f}")
+    draw_row("FUT", f"{s + frp:.4f}", sv, "futuro")
+    draw_row("AJU", f"{aju:.4f}")
     draw_row("USDT", f"{u:.3f}", uv)
 
 with c2:
-    draw_row("MÁXIMA", f"{sh + frp:.4f}", class_val="max")
-    draw_row("MÍNIMA", f"{sl + frp:.4f}", class_val="min")
+    draw_row("MÁX", f"{sh + frp:.4f}", class_val="max")
+    draw_row("MÍN", f"{sl + frp:.4f}", class_val="min")
     draw_row("DXY", f"{dx:.2f}", dxv)
     draw_row("EWZ", f"{ew:.2f}", ewv)
 
-# Rodapé
+# Rodapé DI Branco e Rápido
 def fdi(v, vr): return f"{v:.2f}%({vr:+.2f}%)" if v > 0 else "---"
 led = f"""
     <div class="ticker-wrap"><div class="ticker">
-        DI27: {fdi(d27, d27v)} | DI29: {fdi(d29, d29v)} | DI31: {fdi(d31, d31v)} ● MONITOR OPERACIONAL
+        DI 27: {fdi(d27, d27v)} &nbsp; | &nbsp; DI 29: {fdi(d29, d29v)} &nbsp; | &nbsp; DI 31: {fdi(d31, d31v)} &nbsp; ● &nbsp; MONITOR OPERACIONAL ATIVO
     </div></div>
 """
 st.markdown(led, unsafe_allow_html=True)
