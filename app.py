@@ -77,16 +77,17 @@ def get_data(ticker):
 st.markdown("<div class='header-box'>🏛️ CÂMBIO</div>", unsafe_allow_html=True)
 
 with st.expander("SET"):
-    f_val = st.number_input("FRP", value=0.0150, step=0.0001, format="%.4f")
+    # Ajustado para 3 casas decimais
+    f_val = st.number_input("FRP", value=0.015, step=0.001, format="%.3f")
     a_val = st.number_input("AJU", value=5.4500, step=0.0001, format="%.4f")
 
-# Monitor FRP
-st.markdown(f"<div class='frp-monitor'>FRP: {f_val:.4f} ({int(f_val*10000)} pts)</div>", unsafe_allow_html=True)
+# Monitor FRP com uma casa a menos
+st.markdown(f"<div class='frp-monitor'>FRP: {f_val:.3f} ({int(f_val*1000)} pts)</div>", unsafe_allow_html=True)
 
-# Dados
+# Dados atualizados para USDT e DXY
 s, sv, sh, sl = get_data("USDBRL=X")
-u, uv, _, _ = get_data("USDT-BRL")
-dx, dxv, _, _ = get_data("DX-Y.NYB")
+u, uv, _, _ = get_data("USDT-BRL") # USDT atualizado
+dx, dxv, _, _ = get_data("DX-Y.NYB") # DXY atualizado
 ew, ewv, _, _ = get_data("EWZ")
 d27, d27v, _, _ = get_data("DI1F27.SA")
 d29, d29v, _, _ = get_data("DI1F29.SA")
