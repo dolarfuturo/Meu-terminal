@@ -2,8 +2,7 @@ import streamlit as st
 import yfinance as yf
 from streamlit_autorefresh import st_autorefresh
 
-# 1. Configurações de Tela e Estilo Bloomberg
-st.set_page_config(page_title="Câmbio Pro", layout="centered")
+st.set_page_config(page_title="Terminal Pro", layout="centered")
 st_autorefresh(interval=5000, key="datarefresh") 
 
 st.markdown("""
@@ -11,140 +10,108 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=JetBrains+Mono:wght@700&display=swap');
     
     .stApp { background-color: #000000 !important; }
-    .block-container { padding-top: 1rem !important; padding-bottom: 0rem !important; }
+    .block-container { padding-top: 1rem !important; }
     
-    /* Cabeçalho */
     .header-box {
         font-family: 'JetBrains Mono', monospace;
-        color: #FFFFFF;
-        font-size: 18px;
-        text-align: center;
-        border-bottom: 1px solid #333;
-        padding-bottom: 8px;
-        margin-bottom: 15px;
+        color: #FFFFFF; font-size: 18px; text-align: center;
+        border-bottom: 1px solid #333; padding-bottom: 8px; margin-bottom: 15px;
         display: flex; justify-content: center; align-items: center; gap: 10px;
     }
 
-    /* Blocos Verticais Compactos */
-    [data-testid="stMetric"] {
-        background-color: #000000;
-        border-bottom: 1px solid #1a1a1a;
-        padding: 5px 0 !important;
-        margin-bottom: -22px !important;
-    }
-
-    [data-testid="stMetricLabel"] p {
-        font-family: 'JetBrains Mono', monospace !important;
-        font-size: 11px !important;
-        text-transform: uppercase;
-        color: #ff9900 !important; 
-    }
-
-    div[data-testid="stMetricValue"] {
+    /* Coluna 1: Preços (Estilo Bloomberg) */
+    .col-precos [data-testid="stMetricValue"] {
         font-family: 'Share Tech Mono', monospace !important;
-        color: #ffffff !important;
-        font-size: 30px !important;
+        color: #ffffff !important; font-size: 28px !important;
     }
 
-    /* DESTAQUE: Dólar Futuro em Amarelo */
+    /* Coluna 2: Máximas e Mínimas (Estilo Alerta) */
+    .col-limites [data-testid="stMetricValue"] {
+        font-family: 'Courier New', Courier, monospace !important;
+        font-size: 32px !important; font-weight: bold !important;
+    }
+    
+    /* Destaque Cores Coluna 2 */
+    .max-box [data-testid="stMetricValue"] { color: #00FF66 !important; } /* Verde Neon */
+    .min-box [data-testid="stMetricValue"] { color: #FF0033 !important; } /* Vermelho Rubi */
+
+    /* Destaque Dólar Futuro */
     div[data-testid="stMetric"]:has(p:contains("DÓLAR FUTURO")) div[data-testid="stMetricValue"] {
         color: #FFFF00 !important;
     }
 
-    /* Máxima (Verde) e Mínima (Vermelho) */
-    .metric-max div[data-testid="stMetricValue"] { color: #00FF00 !important; }
-    .metric-min div[data-testid="stMetricValue"] { color: #FF3333 !important; }
+    [data-testid="stMetricLabel"] p {
+        font-family: 'JetBrains Mono', monospace !important;
+        font-size: 11px !important; color: #ff9900 !important; 
+    }
 
-    .st-expanderHeader { background-color: #000 !important; color: #444 !important; font-size: 9px !important; border: none !important; }
-
-    /* LED Inferior com DI 27, 29 e 31 */
     .ticker-wrap {
         width: 100%; overflow: hidden; background-color: #000; 
         border-top: 1px solid #444; padding: 10px 0;
         position: fixed; bottom: 0; left: 0; z-index: 999;
     }
     .ticker {
-        display: inline-block; white-space: nowrap; animation: ticker 30s linear infinite;
-        font-family: 'Share Tech Mono', monospace; font-size: 15px; color: #ffb400;
+        display: inline-block; white-space: nowrap; animation: ticker 25s linear infinite;
+        font-family: 'Share Tech Mono', monospace; font-size: 14px; color: #ffb400;
     }
-    @keyframes ticker {
-        0% { transform: translateX(100%); }
-        100% { transform: translateX(-100%); }
-    }
+    @keyframes ticker { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
     .ticker-item { margin-right: 40px; }
     </style>
     """, unsafe_allow_html=True)
 
-def get_market_data(ticker):
+def get_data(ticker):
     try:
         t = yf.Ticker(ticker)
         df = t.history(period="1d")
         if not df.empty:
-            price = df['Close'].iloc[-1]
-            high = df['High'].iloc[-1]
-            low = df['Low'].iloc[-1]
-            prev = t.info.get('previousClose', price)
-            var = ((price - prev) / prev) * 100
-            return price, var, high, low
-    except:
-        return 0.0, 0.0, 0.0, 0.0
+            return df['Close'].iloc[-1], ((df['Close'].iloc[-1] - t.info.get('previousClose', df['Close'].iloc[-1])) / t.info.get('previousClose', df['Close'].iloc[-1])) * 100, df['High'].iloc[-1], df['Low'].iloc[-1]
+    except: return 0.0, 0.0, 0.0, 0.0
     return 0.0, 0.0, 0.0, 0.0
 
-# --- TOPO ---
+# --- INTERFACE ---
 st.markdown("<div class='header-box'><span>🏛️</span><span>CÂMBIO</span></div>", unsafe_allow_html=True)
 
 with st.expander("SET"):
-    frp_manual = st.number_input("FRP", value=0.0150, format="%.4f")
-    ajuste_fixo = st.number_input("AJUSTE", value=5.4500, format="%.4f")
+    frp = st.number_input("FRP", value=0.0150, format="%.4f")
+    ajuste = st.number_input("AJU", value=5.4500, format="%.4f")
 
-# --- COLETA DE DADOS ---
-spot, spot_v, s_high, s_low = get_market_data("USDBRL=X")
-usdt, usdt_v, _, _ = get_market_data("USDT-BRL")
-dxy, dxy_v, _, _ = get_market_data("DX-Y.NYB")
-ewz, ewz_v, _, _ = get_market_data("EWZ")
+spot, spot_v, s_high, s_low = get_data("USDBRL=X")
+usdt, usdt_v, _, _ = get_data("USDT-BRL")
+dxy, dxy_v, _, _ = get_data("DX-Y.NYB")
+ewz, ewz_v, _, _ = get_data("EWZ")
+di27, di27_v, _, _ = get_data("DI1F27.SA")
+di29, di29_v, _, _ = get_data("DI1F29.SA")
+di31, di31_v, _, _ = get_data("DI1F31.SA")
 
-# Dados DI para o Rodapé
-di27, di27_v, _, _ = get_market_data("DI1F27.SA")
-di29, di29_v, _, _ = get_market_data("DI1F29.SA")
-di31, di31_v, _, _ = get_market_data("DI1F31.SA")
+c1, c2 = st.columns([1, 1])
 
-# --- EXIBIÇÃO ---
-# Se o spot falhar, usamos um valor base para não quebrar a tela
-display_spot = spot if spot > 0 else 5.5000 
+with c1: # Coluna de Preços
+    st.markdown("<div class='col-precos'>", unsafe_allow_html=True)
+    st.metric("DÓLAR SPOT", f"{spot:.4f}", f"{spot_v:+.2f}%")
+    st.metric("DÓLAR FUTURO", f"{spot + frp:.4f}", f"FRP {frp:.4f}", delta_color="off")
+    st.metric("PREÇO DE AJUSTE", f"{ajuste:.4f}", "B3", delta_color="off")
+    st.metric("USDT / BRL", f"{usdt if usdt > 0 else spot*1.002:.3f}")
+    st.metric("DXY INDEX", f"{dxy:.2f}")
+    st.metric("EWZ (BRL)", f"{ewz:.2f}")
+    st.markdown("</div>", unsafe_allow_html=True)
 
-st.metric("DÓLAR SPOT", f"{display_spot:.4f}", f"{spot_v:+.2f}%")
-st.metric("DÓLAR FUTURO", f"{display_spot + frp_manual:.4f}", f"FRP {frp_manual:.4f}", delta_color="off")
-st.metric("PREÇO DE AJUSTE", f"{ajuste_fixo:.4f}", "B3", delta_color="off")
+with c2: # Coluna de Limites
+    st.markdown("<div class='col-limites'>", unsafe_allow_html=True)
+    st.markdown("<div class='max-box'>", unsafe_allow_html=True)
+    st.metric("MÁXIMA FUT", f"{s_high + frp:.4f}")
+    st.markdown("</div><div class='min-box'>", unsafe_allow_html=True)
+    st.metric("MÍNIMA FUT", f"{s_low + frp:.4f}")
+    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
-st.markdown("<br>", unsafe_allow_html=True)
-
-# Bloco de Máxima e Mínima
-st.markdown("<div class='metric-max'>", unsafe_allow_html=True)
-st.metric("MÁXIMA FUT (DIA)", f"{(s_high if s_high > 0 else display_spot) + frp_manual:.4f}", "HIGH")
-st.markdown("</div><div class='metric-min'>", unsafe_allow_html=True)
-st.metric("MÍNIMA FUT (DIA)", f"{(s_low if s_low > 0 else display_spot) + frp_manual:.4f}", "LOW")
-st.markdown("</div>", unsafe_allow_html=True)
-
-st.markdown("<br>", unsafe_allow_html=True)
-
-# Outros Ativos
-st.metric("USDT / BRL", f"{usdt if usdt > 0 else display_spot*1.002:.3f}", f"{usdt_v:+.2f}%")
-st.metric("DXY INDEX", f"{dxy if dxy > 0 else 102.50:.2f}", f"{dxy_v:+.2f}%")
-st.metric("EWZ (BRL)", f"{ewz if ewz > 0 else 28.50:.2f}", f"{ewz_v:+.2f}%")
-
-st.markdown("<div style='height: 80px;'></div>", unsafe_allow_html=True)
-
-# --- RODAPÉ LED COM DI 27, 29 e 31 ---
-def fmt_di(val, var): return f"{val:.2f}% ({var:+.2f}%)" if val > 0 else "AGUARDANDO..."
-
-led_html = f"""
-    <div class="ticker-wrap">
-        <div class="ticker">
-            <span class="ticker-item">● DI 2027: {fmt_di(di27, di27_v)}</span>
-            <span class="ticker-item">● DI 2029: {fmt_di(di29, di29_v)}</span>
-            <span class="ticker-item">● DI 2031: {fmt_di(di31, di31_v)}</span>
-            <span class="ticker-item">● MONITOR DE JUROS E CÂMBIO ● DADOS EM TEMPO REAL ●</span>
-        </div>
-    </div>
+# --- RODAPÉ ---
+def fmt(v, var): return f"{v:.2f}% ({var:+.2f}%)" if v > 0 else "---"
+led = f"""
+    <div class="ticker-wrap"><div class="ticker">
+        <span class="ticker-item">● DI 27: {fmt(di27, di27_v)}</span>
+        <span class="ticker-item">● DI 29: {fmt(di29, di29_v)}</span>
+        <span class="ticker-item">● DI 31: {fmt(di31, di31_v)}</span>
+        <span class="ticker-item">● MONITOR OPERACIONAL ATIVO ●</span>
+    </div></div>
 """
-st.markdown(led_html, unsafe_allow_html=True)
+st.markdown(led, unsafe_allow_html=True)
