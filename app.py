@@ -3,7 +3,7 @@ import yfinance as yf
 from streamlit_autorefresh import st_autorefresh
 from datetime import datetime
 
-# Configuração de Tela Ultra-Slim
+# 1. Configuração de Tela Ultra-Slim para Split-Screen
 st.set_page_config(page_title="Monitor Side Pro", layout="centered")
 st_autorefresh(interval=5000, key="datarefresh") 
 
@@ -12,6 +12,7 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=JetBrains+Mono:wght@700&display=swap');
     .stApp { background-color: #000000 !important; }
     .block-container { padding: 0.1rem !important; }
+    
     .frp-monitor {
         font-family: 'JetBrains Mono', monospace; background-color: #1a1a1a;
         color: #00FF66; font-size: 11px; text-align: center;
@@ -21,13 +22,16 @@ st.markdown("""
     .c-label { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #ff9900; font-weight: bold; }
     .c-value { font-family: 'Share Tech Mono', monospace; font-size: 21px; color: #ffffff; }
     .c-delta { font-size: 12px; margin-left: 5px; font-weight: bold; }
+    
     .fut { color: #FFFF00 !important; }
     .max { color: #00FF66 !important; }
     .min { color: #FF0033 !important; }
     .pos { color: #00FF66; }
     .neg { color: #FF0033; }
+    
     .header-box { font-family: 'JetBrains Mono', monospace; color: #FFFFFF; font-size: 12px; text-align: center; border-bottom: 1px solid #333; padding: 3px 0; margin-top: 5px;}
-    .ticker-wrap { width: 100%; overflow: hidden; background-color: #000; border-top: 2px solid #FFFFFF; position: fixed; bottom: 0; left: 0; padding: 10px 0; height: 50px; }
+    
+    .ticker-wrap { width: 100%; overflow: hidden; background-color: #000; border-top: 2px solid #FFFFFF; position: fixed; bottom: 0; left: 0; padding: 10px 0; height: 50px; z-index: 999; }
     .ticker { display: inline-block; white-space: nowrap; animation: ticker 15s linear infinite; font-family: 'Share Tech Mono', monospace; font-size: 14px; color: #FFFFFF; font-weight: bold; }
     @keyframes ticker { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
     </style>
@@ -36,12 +40,10 @@ st.markdown("""
 def get_data(ticker, is_spot=False):
     try:
         t = yf.Ticker(ticker)
-        # Tenta pegar 1m para o Spot (IB), senão usa diário simples
+        # Tenta pegar dados de 1m para o Spot (Abertura/IB), senão usa diário
         df = t.history(period="2d", interval="1m" if is_spot else "1d")
         if df.empty:
             df = t.history(period="2d", interval="1d")
-        
-        if df.empty: return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
         
         p = df['Close'].iloc[-1]
         h = df['High'].max()
@@ -58,14 +60,14 @@ def get_data(ticker, is_spot=False):
     except:
         return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 
-# Coleta SPOT
+# Coleta Principal (SPOT)
 s, sv, sh, sl, s_prev, s_open, ib_h, ib_l = get_data("USDBRL=X", is_spot=True)
 
 st.markdown("<div class='header-box'>🏛️ CÂMBIO</div>", unsafe_allow_html=True)
 
 with st.expander("SET"):
     f_val = st.number_input("FRP", value=0.015, step=0.001, format="%.3f")
-    # Correção definitiva do campo AJUSTE
+    # Ajuste automático baseado no fechamento de ontem
     a_val = st.number_input("AJUSTE B3", value=float(s_prev if s_prev > 0 else 5.4223), format="%.4f")
 
 st.markdown(f"<div class='frp-monitor'>FRP: {f_val:.3f} | AJU: {a_val:.4f}</div>", unsafe_allow_html=True)
@@ -93,20 +95,19 @@ with c4:
     draw("IB MÍN", (ib_l + f_val) if ib_l > 0 else 0, cl="min")
 
 st.markdown("<div class='header-box'>🌍 EXTERNO / JURISTA</div>", unsafe_allow_html=True)
-u, uv, _, _, _, _, _, _ = get_data("USDT-BRL")
+# Coleta dos externos (DXY e EWZ apenas)
 dx, dxv, _, _, _, _, _, _ = get_data("DX-Y.NYB")
 ew, ewv, _, _, _, _, _, _ = get_data("EWZ")
-d27, d27v, _, _, _, _, _, _ = get_data("DI1F27.SA")
-d29, d29v, _, _, _, _, _, _ = get_data("DI1F29.SA")
-d31, d31v, _, _, _, _, _, _ = get_data("DI1F31.SA")
 
 c5, c6 = st.columns([1, 1])
 with c5:
     draw("DXY", dx, dxv)
-    draw("USDT", u, uv)
 with c6:
     draw("EWZ", ew, ewv)
 
-def fdi(v, vr): return f"{v:.2f}%({vr:+.2f}%)" if v > 0 else "---"
-led_html = f'<div class="ticker-wrap"><div class="ticker">DI27: {fdi(d27, d27v)} | DI29: {fdi(d29, d29v)} | DI31: {fdi(d31, d31v)} ● MONITOR OPERACIONAL</div></div>'
-st.markdown(led_html, unsafe_allow_html=True)
+# Coleta DIs para o rodapé
+d27, d27v, _, _, _, _, _, _ = get_data("DI1F27.SA")
+d29, d29v, _, _, _, _, _, _ = get_data("DI1F29.SA")
+d31, d31v, _, _, _, _, _, _ = get_data("DI1F31.SA")
+
+def f
