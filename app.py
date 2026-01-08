@@ -1,108 +1,88 @@
 import streamlit as st
 import yfinance as yf
-from streamlit_autorefresh import st_autorefresh
+import pandas as pd
 
-# 1. Configurações Iniciais
-st.set_page_config(page_title="Monitor Side Pro", layout="centered")
-st_autorefresh(interval=5000, key="datarefresh") 
+# Configuração da Página
+st.set_page_config(page_title="Terminal de Câmbio High-Low", layout="wide")
 
+# Customização de CSS para visual de terminal (fundo escuro e fontes claras)
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=JetBrains+Mono:wght@700&display=swap');
-    .stApp { background-color: #000000 !important; }
-    .block-container { padding: 0.1rem !important; }
-    .frp-monitor {
-        font-family: 'JetBrains Mono', monospace; background-color: #1a1a1a;
-        color: #00FF66; font-size: 11px; text-align: center;
-        padding: 4px; border-radius: 4px; border: 1px solid #333; margin-bottom: 5px;
+    .metric-card {
+        background-color: #1e1e1e;
+        padding: 15px;
+        border-radius: 5px;
+        border-left: 5px solid #4CAF50;
     }
-    .custom-row { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #1a1a1a; padding: 4px 0; }
-    .c-label { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #ff9900; font-weight: bold; }
-    .c-value { font-family: 'Share Tech Mono', monospace; font-size: 21px; color: #ffffff; }
-    .c-delta { font-size: 12px; margin-left: 5px; font-weight: bold; }
-    .fut { color: #FFFF00 !important; }
-    .max { color: #00FF66 !important; }
-    .min { color: #FF0033 !important; }
-    .pos { color: #00FF66; }
-    .neg { color: #FF0033; }
-    .header-box { font-family: 'JetBrains Mono', monospace; color: #FFFFFF; font-size: 12px; text-align: center; border-bottom: 1px solid #333; padding: 3px 0; margin-top: 5px;}
-    .ticker-wrap { width: 100%; overflow: hidden; background-color: #000; border-top: 2px solid #FFFFFF; position: fixed; bottom: 0; left: 0; padding: 10px 0; height: 50px; z-index: 999; }
-    .ticker { display: inline-block; white-space: nowrap; animation: ticker 15s linear infinite; font-family: 'Share Tech Mono', monospace; font-size: 14px; color: #FFFFFF; font-weight: bold; }
-    @keyframes ticker { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
     </style>
     """, unsafe_allow_html=True)
 
-# 2. Função de Coleta Robusta
-def get_data(ticker, is_spot=False):
-    try:
-        t = yf.Ticker(ticker)
-        df = t.history(period="2d")
-        if df.empty:
-            return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
-        
-        p = df['Close'].iloc[-1]
-        h = df['High'].max()
-        l = df['Low'].min()
-        prev = df['Close'].iloc[-2] if len(df) > 1 else p
-        v = ((p - prev) / prev) * 100
-        
-        # Abertura e IB (Apenas para o Spot)
-        open_d = df['Open'].iloc[-1] if is_spot else 0.0
-        ib_h = h if is_spot else 0.0
-        ib_l = l if is_spot else 0.0
-        
-        return p, v, h, l, prev, open_d, ib_h, ib_l
-    except Exception:
-        return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+def get_market_data(ticker):
+    t = yf.Ticker(ticker)
+    # Buscamos 2 dias com intervalo de 1h para garantir o dado das 16h/Fechamento
+    df = t.history(period="2d", interval="1h")
+    return df
 
-# 3. Execução
-s, sv, sh, sl, s_prev, s_open, ib_h, ib_l = get_data("USDBRL=X", is_spot=True)
+st.title("📟 Terminal de Monitoramento Macro")
 
-st.markdown("<div class='header-box'>🏛️ CÂMBIO</div>", unsafe_allow_html=True)
+try:
+    # --- Coleta de Dados ---
+    dolar_spot = get_market_data("BRL=X")
+    dxy = get_market_data("DX-Y.NYB")
+    ewz = get_market_data("EWZ")
+    dolar_fut = get_market_data("BZ=F") # Dólar Futuro Contínuo
 
-with st.expander("SET"):
-    f_val = st.number_input("FRP", value=0.015, step=0.001, format="%.3f")
-    # Ajuste Automático aqui
-    a_val = st.number_input("AJUSTE B3", value=float(s_prev) if s_prev > 0 else 5.4200, format="%.4f")
+    # --- Processamento ---
+    def calc_metrics(df):
+        atual = df['Close'].iloc[-1]
+        fechamento = df['Close'].iloc[0] # Referência do início do período (ajuste)
+        variacao = ((atual - fechamento) / fechamento) * 100
+        return atual, fechamento, variacao
 
-st.markdown(f"<div class='frp-monitor'>FRP: {f_val:.3f} | AJU: {a_val:.4f}</div>", unsafe_allow_html=True)
+    # --- LAYOUT DE COLUNAS ---
+    col1, col2, col3, col4 = st.columns(4)
 
-def draw(lab, val, delt=None, cl=""):
-    v_str = f"{val:.4f}" if val > 0 else "---"
-    d_h = f"<span class='c-delta {'pos' if delt >= 0 else 'neg'}'>{delt:+.2f}%</span>" if (delt is not None and val > 0) else ""
-    st.markdown(f'<div class="custom-row"><div class="c-label">{lab}</div><div class="c-value {cl}">{v_str} {d_h}</div></div>', unsafe_allow_html=True)
+    # Dólar Spot
+    val_spot, fech_spot, var_spot = calc_metrics(dolar_spot)
+    with col1:
+        st.subheader("Dólar Spot")
+        st.metric("Atual", f"{val_spot:.4f}", f"{var_spot:.2f}%")
+        st.caption(f"Ref. 16h: {fech_spot:.4f}")
 
-c1, c2 = st.columns(2)
-with c1:
-    draw("SPOT", s, sv)
-    draw("FUT", (s + f_val) if s > 0 else 0, sv, "fut")
-    draw("AJU", a_val)
-with c2:
-    draw("MÁX", (sh + f_val) if sh > 0 else 0, cl="max")
-    draw("MÍN", (sl + f_val) if sl > 0 else 0, cl="min")
-    draw("ABE", (s_open + f_val) if s_open > 0 else 0)
+    # DXY
+    val_dxy, fech_dxy, var_dxy = calc_metrics(dxy)
+    with col2:
+        st.subheader("DXY Index")
+        st.metric("Atual", f"{val_dxy:.2f}", f"{var_dxy:.2f}%")
+        st.caption(f"Ref. 16h: {fech_dxy:.2f}")
 
-st.markdown("<div class='header-box'>⏱️ RANGE 1ª HORA (IB)</div>", unsafe_allow_html=True)
-c3, c4 = st.columns(2)
-with c3:
-    draw("IB MÁX", (ib_h + f_val) if ib_h > 0 else 0, cl="max")
-with c4:
-    draw("IB MÍN", (ib_l + f_val) if ib_l > 0 else 0, cl="min")
+    # EWZ (MSCI Brazil)
+    val_ewz, fech_ewz, var_ewz = calc_metrics(ewz)
+    with col3:
+        st.subheader("EWZ (ETF)")
+        st.metric("Atual", f"US$ {val_ewz:.2f}", f"{var_ewz:.2f}%")
+        st.caption(f"Ant: {fech_ewz:.2f}")
 
-st.markdown("<div class='header-box'>🌍 EXTERNO / JURISTA</div>", unsafe_allow_html=True)
-dx, dxv, _, _, _, _, _, _ = get_data("DX-Y.NYB")
-ew, ewv, _, _, _, _, _, _ = get_data("EWZ")
+    # Dólar Futuro
+    val_fut, fech_fut, var_fut = calc_metrics(dolar_fut)
+    with col4:
+        st.subheader("Dólar Futuro")
+        st.metric("Atual", f"{val_fut:.2f}", f"{var_fut:.2f}%")
+        st.caption(f"Ref: {fech_fut:.2f}")
 
-c5, c6 = st.columns(2)
-with c5:
-    draw("DXY", dx, dxv)
-with c6:
-    draw("EWZ", ew, ewv)
+    st.divider()
 
-# Rodapé DIs
-d27, d27v, _, _, _, _, _, _ = get_data("DI1F27.SA")
-d29, d29v, _, _, _, _, _, _ = get_data("DI1F29.SA")
+    # --- SET DE VARIÁVEIS FIXAS ---
+    st.write("### 📌 Níveis de Referência (Fixos)")
+    v_col1, v_col2, v_col3, v_empty = st.columns([1, 1, 1, 3])
+    
+    v_col1.metric("Variável A", "22")
+    v_col2.metric("Variável B", "31")
+    v_col3.metric("Variável C", "42")
 
-def fdi(v, vr): return f"{v:.2f}%({vr:+.2f}%)" if v > 0 else "---"
-led_html = f'<div class="ticker-wrap"><div class="ticker">DI27: {fdi(d27, d27v)} | DI29: {fdi(d29, d29v)} ● MONITOR OPERACIONAL</div></div>'
-st.markdown(led_html, unsafe_allow_html=True)
+except Exception as e:
+    st.error(f"Erro na atualização: {e}")
+
+st.divider()
+if st.button('🔄 Recarregar Dados'):
+    st.rerun()
