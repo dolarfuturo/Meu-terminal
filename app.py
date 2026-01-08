@@ -2,7 +2,7 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 
-# Configuração da Página - Estilo Terminal Bloomberg
+# Configuração da Página - Bloomberg Total Black
 st.set_page_config(page_title="TERMINAL BLOOMBERG | SPREAD", layout="wide")
 
 # CSS Bloomberg Style
@@ -48,7 +48,6 @@ st.markdown("""
 # --- SIDEBAR: VARIÁVEIS ESCONDIDAS ---
 st.sidebar.title("⌨️ COMANDOS")
 
-# Usando expander para esconder as variáveis
 with st.sidebar.expander("⚙️ AJUSTAR PONTOS FRP", expanded=False):
     v_min = st.number_input("Mínima FRP (Pts)", value=22.0)
     v_justo = st.number_input("Justo FRP (Pts)", value=31.0)
@@ -92,35 +91,4 @@ if not spot_df.empty:
     var_ewz = 0.0
     with c3:
         if not ewz_df.empty:
-            ewz_at = ewz_df['Close'].iloc[-1]
-            ewz_ref = ewz_df['Close'].iloc[0]
-            var_ewz = ((ewz_at - ewz_ref) / ewz_ref) * 100
-            st.metric("EWZ (MSCI BRAZIL)", f"{ewz_at:.2f}", f"{var_ewz:.2f}%")
-
-    # --- LINHA INTERMEDIÁRIA: CÁLCULO DE SPREAD ---
-    spread_v = var_dxy - var_ewz
-    st.markdown(f"""
-        <div class="spread-box">
-            <span style="color:#FFFFFF; font-weight:bold;">SPREAD DE VARIAÇÃO (DXY - EWZ): </span>
-            <span style="color:#FFB900; font-family:monospace; font-size:22px;">{spread_v:.2f}%</span>
-        </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("<hr style='border: 1px solid #333;'>", unsafe_allow_html=True)
-
-    # --- LINHA 2: PROJEÇÕES FRP ---
-    st.markdown("### 🔮 PROJEÇÕES DE FUTURO (FRP)")
-    f_min = spot_at + (v_min / 1000)
-    f_justo = spot_at + (v_justo / 1000)
-    f_max = spot_at + (v_max / 1000)
-
-    p1, p2, p3 = st.columns(3)
-
-    with p1:
-        st.markdown(f'<div class="frp-box"><span style="color:#FF0000; font-weight:bold;">MÍNIMA FRP (+{v_min})</span><p class="price-text" style="color:#FF0000;">{f_min:.4f}</p></div>', unsafe_allow_html=True)
-
-    with p2:
-        st.markdown(f'<div class="frp-box"><span style="color:#0080FF; font-weight:bold;">PREÇO JUSTO FRP (+{v_justo})</span><p class="price-text" style="color:#0080FF;">{f_justo:.4f}</p></div>', unsafe_allow_html=True)
-
-    with p3:
-        st.markdown(f'<div class="frp-box"><span style="color:#00FF00; font-weight:bold;">MÁXIMA FRP (+{v_max})</span><p class="price-text" style="color:#00FF00;">{f_max:.4f}</p></div>', unsafe_allow_html=True)
+            ewz_at
