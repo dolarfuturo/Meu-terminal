@@ -7,13 +7,13 @@ from datetime import datetime
 # 1. Configuração da Página
 st.set_page_config(page_title="BLOOMBERG LIVE | DUAL SPOT", layout="wide")
 
-# 2. Memória da Sessão para Histórico e Trava de Fechamento
+# 2. Memória da Sessão
 if 'history' not in st.session_state: st.session_state.history = []
 if 'spot_ref_locked' not in st.session_state: st.session_state.spot_ref_locked = None
 
 refresh_interval = 2 
 
-# 3. Estilo Visual Bloomberg (CSS)
+# 3. Estilo Visual Bloomberg
 st.markdown("""
     <style>
     .stApp { background-color: #000000; color: #FFFFFF; }
@@ -34,7 +34,7 @@ with st.sidebar.expander("⚙️ AJUSTAR PONTOS FRP", expanded=False):
     v_justo = st.number_input("Justo FRP", value=31.0)
     v_max = st.number_input("Máxima FRP", value=42.0)
 
-# 5. Função de Coleta de Dados
+# 5. Função de Coleta
 def get_live_data(ticker):
     try:
         data = yf.download(ticker, period="1d", interval="1m", progress=False)
@@ -42,7 +42,7 @@ def get_live_data(ticker):
     except:
         return pd.DataFrame()
 
-# 6. Execução Principal
+# 6. Renderização
 placeholder = st.empty()
 
 with placeholder.container():
@@ -51,23 +51,20 @@ with placeholder.container():
     ewz_df = get_live_data("EWZ")
 
     if not full_df.empty:
-        # Preço Atual Spot
         spot_at = float(full_df['Close'].iloc[-1])
         
-        # Lógica de Captura das 15:59 (Lock)
+        # Trava das 15:59
         try:
-            # Busca o preço próximo ao fechamento das 16h (horário de mercado)
             lock_data = full_df.between_time('15:58', '16:05')
             if not lock_data.empty and st.session_state.spot_ref_locked is None:
                 st.session_state.spot_ref_locked = float(lock_data['Close'].iloc[0])
         except:
             pass
         
-        # Definição da Referência (Lock das 16h ou Abertura)
         ref_val = st.session_state.spot_ref_locked if st.session_state.spot_ref_locked else float(full_df['Open'].iloc[0])
         label_ref = "SPOT 15:59 (LOCK)" if st.session_state.spot_ref_locked else "SPOT OPEN (REF)"
 
-        # DASHBOARD DE MÉTRICAS (4 Colunas)
+        # Dashboard 4 Colunas
         c1, c2, c3, c4 = st.columns(4)
         c1.metric(label_ref, f"{ref_val:.4f}")
         
@@ -79,5 +76,18 @@ with placeholder.container():
         if not ewz_df.empty:
             c4.metric("EWZ (BRAZIL)", f"{float(ewz_df['Close'].iloc[-1]):.2f}")
 
-        # SPREAD DXY-EWZ
-        v_dxy = ((float(dxy_df['Close
+        # Spread
+        v_dxy = ((float(dxy_df['Close'].iloc[-1]) - float(dxy_df['Open'].iloc[0])) / float(dxy_df['Open'].iloc[0])) * 100 if not dxy_df.empty else 0
+        v_ewz = ((float(ewz_df['Close'].iloc[-1]) - float(ewz_df['Open'].iloc[0])) / float(ewz_df['Open'].iloc[0])) * 100 if not ewz_df.empty else 0
+        spread_val = v_dxy - v_ewz
+        cor_spread = "#00FF00" if spread_val >= 0 else "#FF0000"
+        
+        st.markdown(f'<div class="spread-box">SPREAD DXY-EWZ: <span style="color:{cor_spread}; font-size:22px; font-weight:bold;">{spread_val:.2f}%</span></div>', unsafe_allow_html=True)
+
+        # Projeções
+        p1, p2, p3 = st.columns(3)
+        p1.markdown(f'<div class="frp-box"><span style="color:#FF0000;">MÍN (+{v_min})</span><div class="price-text" style="color:#FF0000;">{spot_at + (v_min/1000):.4f}</div></div>', unsafe_allow_html=True)
+        p2.markdown(f'<div class="frp-box"><span style="color:#0080FF;">JUSTO (+{v_justo})</span><div class="price-text" style="color:#0080FF;">{spot_at + (v_justo/1000):.4f}</div></div>', unsafe_allow_html=True)
+        p3.markdown(f'<div class="frp-box"><span style="color:#00FF00;">MÁX (+{v_max})</span><div class="price-text" style="color:#00FF00;">{spot_at + (v_max/1000):.4f}</div></div>', unsafe_allow_html=True)
+
+        # Tape
