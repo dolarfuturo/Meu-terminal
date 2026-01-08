@@ -53,41 +53,47 @@ with placeholder.container():
     if not full_df.empty:
         spot_at = float(full_df['Close'].iloc[-1])
         
-        # Trava das 15:59
+        # Lógica de Trava das 16:00
         try:
-            lock_data = full_df.between_time('15:58', '16:05')
+            # Filtra o horário de fechamento (16h Brasília costuma ser 19h/21h UTC no Yahoo)
+            # Buscamos o último registro disponível que se aproxime do fechamento
+            lock_data = full_df.between_time('15:55', '16:05')
             if not lock_data.empty and st.session_state.spot_ref_locked is None:
-                st.session_state.spot_ref_locked = float(lock_data['Close'].iloc[0])
+                st.session_state.spot_ref_locked = float(lock_data['Close'].iloc[-1])
         except:
             pass
         
         ref_val = st.session_state.spot_ref_locked if st.session_state.spot_ref_locked else float(full_df['Open'].iloc[0])
-        label_ref = "SPOT 15:59 (LOCK)" if st.session_state.spot_ref_locked else "SPOT OPEN (REF)"
+        label_ref = "SPOT 16:00 (LOCKED)" if st.session_state.spot_ref_locked else "SPOT OPEN (REF)"
 
         # Dashboard 4 Colunas
         c1, c2, c3, c4 = st.columns(4)
+        
+        # Coluna 1: Trava
         c1.metric(label_ref, f"{ref_val:.4f}")
         
+        # Coluna 2: Atual com Direção
         var_vs_ref = ((spot_at - ref_val) / ref_val) * 100
-        c2.metric("SPOT ATUAL", f"{spot_at:.4f}", f"{var_vs_ref:.2f}%")
+        seta_dir = "▲" if var_vs_ref >= 0 else "▼"
+        c2.metric("SPOT ATUAL", f"{spot_at:.4f}", f"{seta_dir} {var_vs_ref:.2f}%")
         
+        # Coluna 3: DXY com variação
         if not dxy_df.empty:
-            c3.metric("DXY INDEX", f"{float(dxy_df['Close'].iloc[-1]):.2f}")
+            dxy_at = float(dxy_df['Close'].iloc[-1])
+            dxy_var = ((dxy_at - float(dxy_df['Open'].iloc[0])) / float(dxy_df['Open'].iloc[0])) * 100
+            c3.metric("DXY INDEX", f"{dxy_at:.2f}", f"{dxy_var:.2f}%")
+            
+        # Coluna 4: EWZ com variação
         if not ewz_df.empty:
-            c4.metric("EWZ (BRAZIL)", f"{float(ewz_df['Close'].iloc[-1]):.2f}")
+            ewz_at = float(ewz_df['Close'].iloc[-1])
+            ewz_var = ((ewz_at - float(ewz_df['Open'].iloc[0])) / float(ewz_df['Open'].iloc[0])) * 100
+            c4.metric("EWZ (BRAZIL)", f"{ewz_at:.2f}", f"{ewz_var:.2f}%")
 
         # Spread
-        v_dxy = ((float(dxy_df['Close'].iloc[-1]) - float(dxy_df['Open'].iloc[0])) / float(dxy_df['Open'].iloc[0])) * 100 if not dxy_df.empty else 0
-        v_ewz = ((float(ewz_df['Close'].iloc[-1]) - float(ewz_df['Open'].iloc[0])) / float(ewz_df['Open'].iloc[0])) * 100 if not ewz_df.empty else 0
-        spread_val = v_dxy - v_ewz
+        spread_val = (dxy_var if not dxy_df.empty else 0) - (ewz_var if not ewz_df.empty else 0)
         cor_spread = "#00FF00" if spread_val >= 0 else "#FF0000"
-        
         st.markdown(f'<div class="spread-box">SPREAD DXY-EWZ: <span style="color:{cor_spread}; font-size:22px; font-weight:bold;">{spread_val:.2f}%</span></div>', unsafe_allow_html=True)
 
         # Projeções
         p1, p2, p3 = st.columns(3)
-        p1.markdown(f'<div class="frp-box"><span style="color:#FF0000;">MÍN (+{v_min})</span><div class="price-text" style="color:#FF0000;">{spot_at + (v_min/1000):.4f}</div></div>', unsafe_allow_html=True)
-        p2.markdown(f'<div class="frp-box"><span style="color:#0080FF;">JUSTO (+{v_justo})</span><div class="price-text" style="color:#0080FF;">{spot_at + (v_justo/1000):.4f}</div></div>', unsafe_allow_html=True)
-        p3.markdown(f'<div class="frp-box"><span style="color:#00FF00;">MÁX (+{v_max})</span><div class="price-text" style="color:#00FF00;">{spot_at + (v_max/1000):.4f}</div></div>', unsafe_allow_html=True)
-
-        # Tape
+        p1.markdown(f'<div class="frp-box"><span style="color:#FF0000;">MÍN (+{v_min})</span><div class="price-text" style="color:#FF0000;">{spot_at + (v_
