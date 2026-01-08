@@ -3,86 +3,49 @@ import yfinance as yf
 import pandas as pd
 
 # Configuração da Página
-st.set_page_config(page_title="Terminal de Câmbio High-Low", layout="wide")
+st.set_page_config(page_title="Terminal Spot Macro", layout="wide")
 
-# Customização de CSS para visual de terminal (fundo escuro e fontes claras)
-st.markdown("""
-    <style>
-    .metric-card {
-        background-color: #1e1e1e;
-        padding: 15px;
-        border-radius: 5px;
-        border-left: 5px solid #4CAF50;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+st.title("📟 Terminal de Monitoramento: Foco Spot")
 
-def get_market_data(ticker):
-    t = yf.Ticker(ticker)
-    # Buscamos 2 dias com intervalo de 1h para garantir o dado das 16h/Fechamento
-    df = t.history(period="2d", interval="1h")
-    return df
+# --- SIDEBAR: AJUSTE DE VARIÁVEIS ---
+st.sidebar.header("Configurações de Níveis")
+st.sidebar.write("Ajuste as variáveis fixas do Spot:")
 
-st.title("📟 Terminal de Monitoramento Macro")
+# Campos de entrada com os valores padrão 22, 31, 42
+var_a = st.sidebar.number_input("Variável A", value=22)
+var_b = st.sidebar.number_input("Variável B", value=31)
+var_c = st.sidebar.number_input("Variável C", value=42)
 
-try:
-    # --- Coleta de Dados ---
-    dolar_spot = get_market_data("BRL=X")
-    dxy = get_market_data("DX-Y.NYB")
-    ewz = get_market_data("EWZ")
-    dolar_fut = get_market_data("BZ=F") # Dólar Futuro Contínuo
+def get_data(ticker, interval="1m"):
+    try:
+        t = yf.Ticker(ticker)
+        # 2 dias para garantir o fechamento anterior e o preço atual
+        df = t.history(period="2d", interval=interval)
+        return df
+    except:
+        return pd.DataFrame()
 
-    # --- Processamento ---
-    def calc_metrics(df):
-        atual = df['Close'].iloc[-1]
-        fechamento = df['Close'].iloc[0] # Referência do início do período (ajuste)
-        variacao = ((atual - fechamento) / fechamento) * 100
-        return atual, fechamento, variacao
+# --- PROCESSAMENTO DOS DADOS ---
+dolar_spot_df = get_data("BRL=X")
+dxy_df = get_data("DX-Y.NYB")
+ewz_df = get_data("EWZ")
+dolar_fut_df = get_data("BZ=F", interval="1d") # Futuro diário para variação
 
-    # --- LAYOUT DE COLUNAS ---
-    col1, col2, col3, col4 = st.columns(4)
+if not dolar_spot_df.empty:
+    # Lógica Dólar Spot
+    spot_atual = dolar_spot_df['Close'].iloc[-1]
+    # Referência de fechamento (último valor do dia anterior ou primeiro do dia)
+    spot_fech_16h = dolar_spot_df['Close'].iloc[0] 
+    var_spot = ((spot_atual - spot_fech_16h) / spot_fech_16h) * 100
 
-    # Dólar Spot
-    val_spot, fech_spot, var_spot = calc_metrics(dolar_spot)
-    with col1:
-        st.subheader("Dólar Spot")
-        st.metric("Atual", f"{val_spot:.4f}", f"{var_spot:.2f}%")
-        st.caption(f"Ref. 16h: {fech_spot:.4f}")
+    # --- LINHA 1: BLOCO PRINCIPAL (SPOT E VARIÁVEIS) ---
+    col_main, col_vars = st.columns([2, 2])
 
-    # DXY
-    val_dxy, fech_dxy, var_dxy = calc_metrics(dxy)
-    with col2:
-        st.subheader("DXY Index")
-        st.metric("Atual", f"{val_dxy:.2f}", f"{var_dxy:.2f}%")
-        st.caption(f"Ref. 16h: {fech_dxy:.2f}")
+    with col_main:
+        st.subheader("📍 Dólar Spot")
+        c1, c2 = st.columns(2)
+        c1.metric("Preço Atual", f"{spot_atual:.4f}", f"{var_spot:.2f}%")
+        c2.metric("Ref. Fechamento", f"{spot_fech_16h:.4f}")
 
-    # EWZ (MSCI Brazil)
-    val_ewz, fech_ewz, var_ewz = calc_metrics(ewz)
-    with col3:
-        st.subheader("EWZ (ETF)")
-        st.metric("Atual", f"US$ {val_ewz:.2f}", f"{var_ewz:.2f}%")
-        st.caption(f"Ant: {fech_ewz:.2f}")
-
-    # Dólar Futuro
-    val_fut, fech_fut, var_fut = calc_metrics(dolar_fut)
-    with col4:
-        st.subheader("Dólar Futuro")
-        st.metric("Atual", f"{val_fut:.2f}", f"{var_fut:.2f}%")
-        st.caption(f"Ref: {fech_fut:.2f}")
-
-    st.divider()
-
-    # --- SET DE VARIÁVEIS FIXAS ---
-    st.write("### 📌 Níveis de Referência (Fixos)")
-    v_col1, v_col2, v_col3, v_empty = st.columns([1, 1, 1, 3])
-    
-    v_col1.metric("Variável A", "22")
-    v_col2.metric("Variável B", "31")
-    v_col3.metric("Variável C", "42")
-
-except Exception as e:
-    st.error(f"Erro na atualização: {e}")
-
-st.divider()
-if st.button('🔄 Recarregar Dados'):
-    st.rerun()
+    with col_vars:
+        st.subheader("🎯 Níveis de Referência (Editáveis)")
