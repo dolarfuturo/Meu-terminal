@@ -3,33 +3,41 @@ import yfinance as yf
 import pandas as pd
 import time
 
-# 1. CONFIGURAÇÃO - Força a barra lateral a abrir à esquerda
+# 1. CONFIGURAÇÃO - Layout largo e Sidebar recolhida/escondida inicialmente para visual limpo
 st.set_page_config(
     page_title="TERMINAL", 
     layout="wide", 
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed" 
 )
 
 # 2. INICIALIZAÇÃO DE ESTADO
 if 'spot_ref_locked' not in st.session_state: 
     st.session_state.spot_ref_locked = None
 
-# 3. CSS - ESTILO TERMINAL E LIMPEZA
+# 3. CSS - ESTILO TERMINAL PURO (SEM BOTÕES OU ENGENAGENS NO TOPO)
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
+    
     * { font-family: 'Roboto Mono', monospace !important; text-transform: uppercase; }
     .stApp { background-color: #000000; color: #FFFFFF; }
+    
+    /* Esconde cabeçalho, botões nativos e lixo visual */
     header { visibility: hidden; display: none !important; }
+    footer { visibility: hidden; }
+    #MainMenu { visibility: hidden; }
+    [data-testid="stHeader"] { display: none; }
+    
+    /* Ajuste de margens do corpo principal */
     .block-container { padding-top: 1rem !important; max-width: 800px !important; margin-left: 10px; }
     
-    /* ESTILO DA SIDEBAR (SET DE VARIÁVEIS) */
+    /* Barra Lateral de Variáveis (Esquerda) */
     [data-testid="stSidebar"] { 
         background-color: #111111 !important; 
         border-right: 1px solid #333; 
-        min-width: 280px !important;
     }
 
+    /* Estilização das Linhas */
     .terminal-header { font-size: 18px; font-weight: bold; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 5px; }
     .asset-row { display: flex; gap: 20px; margin-bottom: 12px; align-items: center; }
     .name { width: 160px; font-size: 18px; color: #888; }
@@ -39,10 +47,11 @@ st.markdown("""
     .price-paridade { color: #FFB900 !important; }
     .price-ptax { color: #00FFFF !important; }
 
-    /* PONTOS MAX/JUS/MIN - PEQUENOS E SEM NEGRITO */
+    /* Bloco de Pontos (Máxima, Justo, Mínima) - Menor e Sem Negrito */
     .frp-box { margin-left: 180px; margin-top: -5px; margin-bottom: 15px; display: flex; flex-direction: column; gap: 2px; }
     .frp-item { display: flex; gap: 25px; font-size: 13px; font-weight: 400 !important; }
 
+    /* Cores */
     .pos { color: #00FF00 !important; }
     .neg { color: #FF0000 !important; }
     .blu { color: #0080FF !important; }
@@ -50,8 +59,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 4. SET DE VARIÁVEIS (NA SIDEBAR - ESQUERDA)
-# Se não estiver a ver, clique na seta ">" no canto superior esquerdo
+# 4. PAINEL DE VARIÁVEIS NA ESQUERDA (SIDEBAR)
 with st.sidebar:
     st.markdown("### ⚙️ SET DE VARIÁVEIS")
     st.write("---")
@@ -66,12 +74,8 @@ with st.sidebar:
     if st.button("LIMPAR TRAVA 16H"):
         st.session_state.spot_ref_locked = None
 
-# INTERFACE PRINCIPAL
+# Título do Terminal
 st.markdown('<div class="terminal-header">TERMINAL DE CAMBIO</div>', unsafe_allow_html=True)
-
-# Botão de emergência caso a sidebar não apareça em telemóveis
-if st.button("⚙️ ABRIR AJUSTES (SET)"):
-    st.info("O painel de variáveis está na barra lateral esquerda. Se estiver no telemóvel, clique na pequena seta no canto superior esquerdo.")
 
 def fetch_data(ticker):
     try:
@@ -91,7 +95,7 @@ while True:
         if spot_df is not None:
             spot_at = float(spot_df['Close'].iloc[-1])
             
-            # TRAVA 16H
+            # Lógica Trava 16h
             try:
                 lock = spot_df.between_time('15:58', '16:02')
                 if not lock.empty and st.session_state.spot_ref_locked is None:
@@ -99,7 +103,7 @@ while True:
             except: pass
             trava_val = st.session_state.spot_ref_locked if st.session_state.spot_ref_locked else spot_at
 
-            # CÁLCULOS
+            # Cálculos
             d_at = float(dxy_df['Close'].iloc[-1]) if dxy_df is not None else 0
             v_dxy = ((d_at - float(dxy_df['Open'].iloc[0])) / float(dxy_df['Open'].iloc[0]) * 100) if dxy_df is not None else 0
             e_at = float(ewz_df['Close'].iloc[-1]) if ewz_df is not None else 0
@@ -111,22 +115,22 @@ while True:
             v_ptax_var = ((spot_at - val_ptax_manual) / val_ptax_manual * 100)
 
             # RENDERIZAÇÃO
-            # 1. PARIDADE
+            # PARIDADE
             st.markdown(f'<div class="asset-row"><div class="name">PARIDADE</div><div class="price price-paridade">{paridade:.4f}</div><div class="var {"pos" if spread >= 0 else "neg"}">{spread:+.2f}%</div></div>', unsafe_allow_html=True)
             
-            # 2. SPOT + PONTOS
+            # SPOT
             st.markdown(f'<div class="asset-row"><div class="name">USD/BRL SPOT</div><div class="price">{spot_at:.4f}</div><div class="var {"pos" if v_s >= 0 else "neg"}">{v_s:+.2f}%</div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="frp-box"><div class="frp-item"><span>MAXIMA</span><span class="pos">{(spot_at + (v_max/1000)):.4f}</span></div><div class="frp-item"><span>JUSTO </span><span class="blu">{(spot_at + (v_jus/1000)):.4f}</span></div><div class="frp-item"><span>MINIMA </span><span class="neg">{(spot_at + (v_min/1000)):.4f}</span></div></div>', unsafe_allow_html=True)
 
-            # 3. PTAX + PONTOS
+            # PTAX
             st.markdown(f'<div class="asset-row"><div class="name">PTAX</div><div class="price price-ptax">{val_ptax_manual:.4f}</div><div class="var {"pos" if v_ptax_var >= 0 else "neg"}">{v_ptax_var:+.2f}%</div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="frp-box"><div class="frp-item"><span>MAXIMA</span><span class="pos">{(val_ptax_manual + (v_max/1000)):.4f}</span></div><div class="frp-item"><span>JUSTO </span><span class="blu">{(val_ptax_manual + (v_jus/1000)):.4f}</span></div><div class="frp-item"><span>MINIMA </span><span class="neg">{(val_ptax_manual + (v_min/1000)):.4f}</span></div></div>', unsafe_allow_html=True)
 
-            # 4. DXY / EWZ
+            # DXY / EWZ
             st.markdown(f'<div class="asset-row"><div class="name">DXY INDEX</div><div class="price">{d_at:.2f}</div><div class="var {"pos" if v_dxy >= 0 else "neg"}">{v_dxy:+.2f}%</div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="asset-row"><div class="name">EWZ ADR</div><div class="price">{e_at:.2f}</div><div class="var {"pos" if v_ewz >= 0 else "neg"}">{v_ewz:+.2f}%</div></div>', unsafe_allow_html=True)
 
-            # 5. TRAVA LARANJA
+            # TRAVA 16H
             st.markdown(f'<div class="trava-orange">TRAVA 16H: {trava_val:.4f}</div>', unsafe_allow_html=True)
 
     time.sleep(2)
