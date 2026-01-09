@@ -7,7 +7,7 @@ from datetime import datetime
 # 1. CONFIGURAÇÃO DO TERMINAL
 st.set_page_config(page_title="TERMINAL", layout="wide")
 
-# 2. ESTILO CSS (DARK MODE)
+# 2. ESTILO CSS (DARK MODE & TRADINGVIEW STYLE)
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
@@ -21,7 +21,7 @@ st.markdown("""
     .price { width: 130px; font-size: 18px; font-weight: bold; }
     .var { font-size: 18px; font-weight: bold; }
     
-    /* LINHA EXCLUSIVA PRÉ-MERCADO */
+    /* LINHA EXCLUSIVA PRÉ-MERCADO (ESTILO TRADINGVIEW) */
     .pre-row { display: flex; gap: 20px; margin-bottom: 12px; align-items: center; margin-left: 20px; border-left: 2px solid #333; padding-left: 10px; }
     .pre-name { width: 140px; font-size: 12px; color: #FFB900; font-weight: bold; }
     .pre-price { width: 130px; font-size: 14px; color: #BBB; }
@@ -33,7 +33,6 @@ st.markdown("""
     .trava-orange { color: #FF8C00 !important; font-size: 18px; margin-top: 20px; font-weight: bold; border-top: 1px solid #333; padding-top: 10px; }
     .frp-box { margin-left: 180px; margin-top: -5px; margin-bottom: 15px; display: flex; flex-direction: column; gap: 2px; }
     .frp-item { display: flex; gap: 25px; font-size: 13px; }
-    .stPopover button { background-color: #111 !important; color: #666 !important; border: 1px solid #222 !important; font-size: 10px !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -48,36 +47,41 @@ with st.popover("⚙️ PARÂMETROS"):
     v_jus_p = st.number_input("PTS JUS", value=31.0)
     v_min_p = st.number_input("PTS MIN", value=22.0)
 
-def get_data_pre(ticker):
+def get_realtime_data(ticker):
     try:
-        # Puxa o download com prepost=True para capturar o Pré-Market real
+        # Download do dado mais recente incluindo pre-market
         df = yf.download(ticker, period="1d", interval="1m", progress=False, prepost=True)
         t = yf.Ticker(ticker)
         prev = float(t.fast_info.previous_close)
-        last = float(df['Close'].iloc[-1]) if not df.empty else prev
-        return {"last": last, "prev": prev}
+        
+        if not df.empty:
+            last = float(df['Close'].iloc[-1])
+            return {"last": last, "prev": prev}
+        return {"last": prev, "prev": prev}
     except:
-        return {"last": 0.0, "prev": 0.0}
+        return {"last": 0, "prev": 0}
 
 # 4. LOOP DE ATUALIZAÇÃO
 placeholder = st.empty()
 
 while True:
-    # HORÁRIO DE BRASÍLIA: NY Abre às 11:30
-    agora_br = datetime.now()
-    is_pre = agora_br.hour < 11 or (agora_br.hour == 11 and agora_br.minute < 30)
+    # NY abre 11:30 horário de Brasília
+    agora = datetime.now().time()
+    is_pre = agora < datetime.strptime("11:30", "%H:%M").time()
 
     with placeholder.container():
+        # Captura Spot USD/BRL
         s_df = yf.download("BRL=X", period="1d", interval="1m", progress=False)
         
-        if s_df is not None and not s_df.empty:
+        if not s_df.empty:
             s_at = float(s_df['Close'].iloc[-1])
-            d_m = get_data_pre("DX-Y.NYB")
-            e_m = get_data_pre("EWZ")
+            d_m = get_realtime_data("DX-Y.NYB")
+            e_m = get_realtime_data("EWZ")
 
-            # CÁLCULOS
+            # Cálculo de variações
             d_v = ((d_m["last"] - d_m["prev"]) / d_m["prev"] * 100) if d_m["prev"] != 0 else 0
             e_v = ((e_m["last"] - e_m["prev"]) / e_m["prev"] * 100) if e_m["prev"] != 0 else 0
+            
             sprd = d_v - e_v
             pari = v_aj * (1 + (sprd/100))
             v_s = ((s_at - v_aj) / v_aj * 100)
@@ -96,6 +100,16 @@ while True:
             # DXY
             st.markdown(f'<div class="asset-row"><div class="name">DXY INDEX</div><div class="price">{d_m["last"]:.2f}</div><div class="var {"pos" if d_v >= 0 else "neg"}">{d_v:+.2f}%</div></div>', unsafe_allow_html=True)
             
-            # EWZ + PRÉ-MERCADO SEPARADO (ESTILO TRADINGVIEW)
+            # EWZ + LÓGICA DE PRÉ-MERCADO
             if is_pre:
+                # Linha estática (Fechamento anterior)
                 st.markdown(f'<div class="asset-row"><div class="name">EWZ ADR</div><div class="price">{e_m["prev"]:.2f}</div><div class="var" style="color:#444">0.00%</div></div>', unsafe_allow_html=True)
+                # Linha amarela (Variação do Pré-mercado agora)
+                st.markdown(f'<div class="pre-row"><div class="pre-name">∟ PRE-MARKET</div><div class="pre-price">{e_m["last"]:.2f}</div><div class="pre-var {"pos" if e_v >= 0 else "neg"}">{e_v:+.2f}%</div></div>', unsafe_allow_html=True)
+            else:
+                # Mercado aberto
+                st.markdown(f'<div class="asset-row"><div class="name">EWZ ADR</div><div class="price">{e_m["last"]:.2f}</div><div class="var {"pos" if e_v >= 0 else "neg"}">{e_v:+.2f}%</div></div>', unsafe_allow_html=True)
+
+            st.markdown(f'<div class="trava-orange">TRAVA 16H: {s_at:.4f}</div>', unsafe_allow_html=True)
+
+    time.sleep(2)
