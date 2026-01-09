@@ -11,7 +11,7 @@ st.set_page_config(page_title="TERMINAL", layout="wide")
 if 'spot_ref_locked' not in st.session_state: 
     st.session_state.spot_ref_locked = None
 
-# 3. CSS - Letras Quadradas (Mono) e Layout sem Topo
+# 3. CSS - Letras Quadradas (Mono), Título Branco e Limpeza de Topo
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
@@ -26,9 +26,19 @@ st.markdown("""
         color: #FFFFFF; 
     }
 
-    /* Remove padding excessivo do topo do Streamlit */
-    .block-container {
-        padding-top: 1rem !important;
+    /* Esconde o menu padrão do Streamlit para limpar o topo */
+    header {visibility: hidden;}
+    .block-container {padding-top: 1rem !important;}
+
+    /* Cabeçalho Customizado */
+    .terminal-title {
+        font-size: 28px;
+        color: #FFFFFF;
+        font-weight: bold;
+        letter-spacing: 2px;
+        border-bottom: 2px solid #FFFFFF;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
     }
 
     /* Linhas de Ativos */
@@ -81,26 +91,28 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 4. Coleta de Dados
-def get_live_data(ticker):
-    try:
-        data = yf.download(ticker, period="2d", interval="1m", progress=False, prepost=True)
-        return data
-    except: return pd.DataFrame()
-
-# 5. Sidebar
+# 4. Sidebar (Sinalização para acessar SET)
 with st.sidebar:
-    st.header("CONFIG")
+    st.title("⚙️ SETTINGS")
     val_aj_manual = st.number_input("AJUSTE", value=5.3900, format="%.4f")
     v_min = st.number_input("PTS MIN", value=22.0)
     v_jus = st.number_input("PTS JUS", value=31.0)
     v_max = st.number_input("PTS MAX", value=42.0)
     if st.button("RESET 16H"): st.session_state.spot_ref_locked = None
 
-# 6. Loop de Renderização
+def get_live_data(ticker):
+    try:
+        data = yf.download(ticker, period="2d", interval="1m", progress=False, prepost=True)
+        return data
+    except: return pd.DataFrame()
+
+# 5. Renderização
 placeholder = st.empty()
 while True:
     with placeholder.container():
+        # Escreve o Título que faltava
+        st.markdown('<div class="terminal-title">TERMINAL DE CAMBIO</div>', unsafe_allow_html=True)
+
         spot_df = get_live_data("BRL=X")
         dxy_df = get_live_data("DX-Y.NYB")
         ewz_df = get_live_data("EWZ")
@@ -153,13 +165,13 @@ while True:
                 </div>
             """, unsafe_allow_html=True)
 
-            # DXY INDEX
+            # DXY
             st.markdown(f'<div class="ticker-row"><div class="ticker-name">DXY INDEX</div><div class="ticker-price">{d_at:.2f}</div><div class="ticker-var {"positive" if v_dxy >= 0 else "negative"}">{v_dxy:+.2f}%</div><div style="width:350px;"></div></div>', unsafe_allow_html=True)
 
             # EWZ
             st.markdown(f'<div class="ticker-row"><div class="ticker-name">EWZ {"(PRE)" if is_pre else "(REG)"}</div><div class="ticker-price">{e_at:.2f}</div><div class="ticker-var {"positive" if v_ewz >= 0 else "negative"}">{v_ewz:+.2f}%</div><div style="width:350px;"></div></div>', unsafe_allow_html=True)
 
-            # TRAVA 16H
+            # TRAVA
             st.markdown(f'<div class="ticker-row"><div class="ticker-name" style="color:#666;">TRAVA 16H</div><div class="ticker-price" style="color:#444;">{trava_val:.4f}</div><div class="ticker-var" style="color:#444;">LOCKED</div><div style="width:350px;"></div></div>', unsafe_allow_html=True)
 
     time.sleep(2)
