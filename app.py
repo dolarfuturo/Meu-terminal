@@ -22,8 +22,8 @@ st.markdown("""
     .price { width: 130px; font-size: 18px; font-weight: bold; }
     .var { font-size: 18px; font-weight: bold; }
     
-    /* LINHA AMARELA PRE-MARKET */
-    .pre-row { display: flex; gap: 20px; margin-bottom: 12px; align-items: center; margin-left: 20px; border-left: 2px solid #333; padding-left: 10px; }
+    /* LINHA PRE-MARKET SEPARADA (ESTILO TRADINGVIEW) */
+    .pre-row { display: flex; gap: 20px; margin-bottom: 12px; align-items: center; margin-left: 20px; border-left: 2px solid #444; padding-left: 10px; }
     .pre-name { width: 140px; font-size: 12px; color: #FFB900; font-weight: bold; }
     .pre-price { width: 130px; font-size: 14px; color: #BBB; }
     .pre-var { font-size: 14px; font-weight: bold; }
@@ -50,22 +50,22 @@ with st.popover("⚙️ AJUSTAR PARÂMETROS"):
 
 def get_market_data(ticker):
     try:
-        # Puxa com pre-market ativo (prepost=True)
+        # Puxa dados com pre-market (prepost=True)
         df = yf.download(ticker, period="1d", interval="1m", progress=False, prepost=True)
         t = yf.Ticker(ticker)
         prev = float(t.fast_info.previous_close)
-        # Força pegar o último valor como número puro
+        # Extrai apenas o último número para evitar erro de tabela
         last = float(df['Close'].iloc[-1]) if not df.empty else prev
         return {"last": last, "prev": prev}
     except:
         return {"last": 0.0, "prev": 0.0}
 
-# 4. LOOP DE ATUALIZAÇÃO
+# 4. LOOP DE ATUALIZAÇÃO AUTOMÁTICA
 placeholder = st.empty()
 
 while True:
     now = datetime.now()
-    # Mercado abre às 11:30 BR
+    # Mercado abre às 11:30 Brasília
     is_pre = now.hour < 11 or (now.hour == 11 and now.minute < 30)
 
     with placeholder.container():
@@ -77,7 +77,7 @@ while True:
         if not s_df.empty:
             s_at = float(s_df['Close'].iloc[-1])
             
-            # Cálculos (Proteção contra erros de tabela das imagens)
+            # Cálculos de Variação (Blindados com float)
             d_v = ((d_m["last"] - d_m["prev"]) / d_m["prev"] * 100)
             e_v = ((e_m["last"] - e_m["prev"]) / e_m["prev"] * 100)
             
@@ -99,16 +99,17 @@ while True:
             # DXY
             st.markdown(f'<div class="asset-row"><div class="name">DXY INDEX</div><div class="price">{d_m["last"]:.2f}</div><div class="var {"pos" if d_v >= 0 else "neg"}">{d_v:+.2f}%</div></div>', unsafe_allow_html=True)
             
-            # EWZ + PRE-MARKET SEPARADO (ESTILO TRADINGVIEW)
+            # EWZ + PRE-MARKET (LÓGICA TRADINGVIEW)
             if is_pre:
-                # Preço de Fechamento Estático
+                # Linha de Fecho Estática
                 st.markdown(f'<div class="asset-row"><div class="name">EWZ ADR</div><div class="price">{e_m["prev"]:.2f}</div><div class="var" style="color:#444">0.00%</div></div>', unsafe_allow_html=True)
-                # Linha do Pré-Mercado Amarela
+                # Linha Amarela Pre-Market
                 st.markdown(f'<div class="pre-row"><div class="pre-name">∟ PRE-MARKET</div><div class="pre-price">{e_m["last"]:.2f}</div><div class="pre-var {"pos" if e_v >= 0 else "neg"}">{e_v:+.2f}%</div></div>', unsafe_allow_html=True)
             else:
-                # Mercado Aberto (Pre-market some)
+                # Mercado Aberto (Linha única)
                 st.markdown(f'<div class="asset-row"><div class="name">EWZ ADR</div><div class="price">{e_m["last"]:.2f}</div><div class="var {"pos" if e_v >= 0 else "neg"}">{e_v:+.2f}%</div></div>', unsafe_allow_html=True)
 
+            # TRAVA
             st.markdown(f'<div class="trava-orange">TRAVA 16H: {s_at:.4f}</div>', unsafe_allow_html=True)
 
     time.sleep(2)
