@@ -4,14 +4,14 @@ import pandas as pd
 import time
 from datetime import datetime, timedelta
 
-# 1. Configuração da Página
-st.set_page_config(page_title="TERMINAL", layout="wide")
+# 1. Configuração da Página para Mobile/Vertical
+st.set_page_config(page_title="TERMINAL", layout="centered")
 
 # 2. Inicialização da Sessão
 if 'spot_ref_locked' not in st.session_state: 
     st.session_state.spot_ref_locked = None
 
-# 3. CSS - Letras Quadradas e Menu Lateral "Ghost"
+# 3. CSS - Layout Vertical e Botão SET Manual
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
@@ -23,73 +23,64 @@ st.markdown("""
 
     .stApp { background-color: #000000; color: #FFFFFF; }
     header {visibility: hidden;}
-    .block-container {padding-top: 1rem !important;}
+    .block-container {padding-top: 0.5rem !important; padding-left: 1rem; padding-right: 1rem;}
 
-    /* Título */
-    .terminal-title {
-        font-size: 24px;
-        color: #FFFFFF;
-        font-weight: bold;
-        letter-spacing: 2px;
-        border-bottom: 2px solid #FFFFFF;
-        padding-bottom: 10px;
-        margin-bottom: 20px;
-        margin-left: 40px; /* Espaço para a aba lateral */
-    }
-
-    /* Linhas de Dados */
-    .ticker-row {
+    /* Título e Botão SET */
+    .header-nav {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 12px 0px;
+        margin-bottom: 10px;
+    }
+    
+    .terminal-title {
+        font-size: 18px;
+        color: #FFFFFF;
+        font-weight: bold;
+    }
+
+    /* Blocos Verticais */
+    .vertical-block {
         border-bottom: 1px solid #222;
-        margin-left: 40px;
+        padding: 15px 0px;
+        margin-bottom: 5px;
     }
 
-    .ticker-name { font-size: 16px; color: #FFFFFF; width: 180px; font-weight: bold; }
-    .ticker-price { font-size: 26px; color: #FFB900; width: 150px; text-align: right; font-weight: bold; }
-    .ticker-var { font-size: 20px; width: 100px; text-align: right; font-weight: bold; }
+    .label-small { font-size: 12px; color: #666; margin-bottom: 5px; }
+    
+    .main-price { font-size: 40px; color: #FFB900; font-weight: bold; line-height: 1; }
+    
+    .row-flex { display: flex; justify-content: space-between; align-items: baseline; }
+    
+    .var-badge { font-size: 20px; font-weight: bold; }
 
-    /* Alvo */
-    .alvo-box {
-        background-color: #080808;
-        border: 1px solid #333;
-        padding: 20px;
-        margin-bottom: 15px;
-        border-left: 6px solid #FFB900;
-        margin-left: 40px;
+    /* FRP Vertical */
+    .frp-box {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 10px;
+        background: #0A0A0A;
+        padding: 10px;
+        border-radius: 4px;
     }
-    .alvo-price { font-size: 42px; color: #FFB900; font-weight: bold; }
+    .frp-line { display: flex; justify-content: space-between; font-size: 16px; }
 
     .positive { color: #00FF00 !important; }
     .negative { color: #FF0000 !important; }
-
-    /* MENU LATERAL CUSTOMIZADO (SET ESCONDIDO) */
-    .stSidebar {
-        background-color: #111111 !important;
-        transition: 0.3s;
-    }
-    
-    /* Forçar a abertura da sidebar no mobile */
-    [data-testid="stSidebarNav"] {display: none;}
-    
     </style>
     """, unsafe_allow_html=True)
 
-# 4. SET NA SIDEBAR (Ao lado esquerdo)
-# O Streamlit por padrão deixa uma seta ">" no topo esquerdo para abrir.
-with st.sidebar:
-    st.markdown("### ⚙️ VARIÁVEIS (SET)")
+# 4. SET - Variáveis Escondidas no Expander (Substituindo a Sidebar problemática)
+st.markdown('<div class="header-nav"><div class="terminal-title">TERMINAL DE CAMBIO</div></div>', unsafe_allow_html=True)
+
+with st.expander("SET « (AJUSTAR VARIÁVEIS)"):
     val_aj_manual = st.number_input("AJUSTE", value=5.3900, format="%.4f", step=0.0001)
     v_min = st.number_input("PTS MIN", value=22.0, step=0.5)
     v_jus = st.number_input("PTS JUS", value=31.0, step=0.5)
     v_max = st.number_input("PTS MAX", value=42.0, step=0.5)
-    st.divider()
     if st.button("RESET TRAVA 16H"):
         st.session_state.spot_ref_locked = None
-    st.markdown("---")
-    st.caption("CLIQUE NA SETA « PARA FECHAR")
 
 def get_market_data(ticker):
     try:
@@ -97,13 +88,11 @@ def get_market_data(ticker):
         return data
     except: return pd.DataFrame()
 
-# 5. Renderização Principal
+# 5. Loop Principal
 placeholder = st.empty()
 
 while True:
     with placeholder.container():
-        st.markdown('<div class="terminal-title">TERMINAL DE CAMBIO</div>', unsafe_allow_html=True)
-        
         spot_df = get_market_data("BRL=X")
         dxy_df = get_market_data("DX-Y.NYB")
         ewz_df = get_market_data("EWZ")
@@ -127,36 +116,59 @@ while True:
 
             spread = v_dxy - v_ewz
             alvo = val_aj_manual * (1 + (spread/100))
-            spread_class = "positive" if spread >= 0 else "negative"
-
-            # BLOCO ALVO
-            st.markdown(f"""
-                <div class="alvo-box">
-                    <div style="font-size:14px; margin-bottom:5px;">ALVO SPREAD (SINAL: <span class="{spread_class}">{spread:+.2f}%</span>)</div>
-                    <div class="alvo-price">{alvo:.4f}</div>
-                </div>
-            """, unsafe_allow_html=True)
-
-            # USD/BRL SPOT
             v_s = ((spot_at - val_aj_manual) / val_aj_manual * 100)
+
+            # --- BLOCO 1: ALVO (VERTICAL) ---
             st.markdown(f"""
-                <div class="ticker-row">
-                    <div class="ticker-name">USD/BRL SPOT</div>
-                    <div class="ticker-price">{spot_at:.4f}</div>
-                    <div class="ticker-var {'positive' if v_s >= 0 else 'negative'}">{v_s:+.2f}%</div>
-                    <div style="display:flex; gap:15px;">
-                        <div style="text-align:right;"><span style="font-size:10px; color:#666;">MIN</span><br><span class="negative" style="font-size:18px;">{spot_at + (v_min/1000):.4f}</span></div>
-                        <div style="text-align:right;"><span style="font-size:10px; color:#666;">JUS</span><br><span style="font-size:18px; color:#0080FF;">{spot_at + (v_jus/1000):.4f}</span></div>
-                        <div style="text-align:right;"><span style="font-size:10px; color:#666;">MAX</span><br><span class="positive" style="font-size:18px;">{spot_at + (v_max/1000):.4f}</span></div>
+                <div class="vertical-block" style="border-left: 5px solid #FFB900; padding-left:15px; background:#080808;">
+                    <div class="label-small">ALVO SPREAD</div>
+                    <div class="row-flex">
+                        <div class="main-price">{alvo:.4f}</div>
+                        <div class="var-badge {'positive' if spread >= 0 else 'negative'}">{spread:+.2f}%</div>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
 
-            # DXY e EWZ
-            st.markdown(f'<div class="ticker-row"><div class="ticker-name">DXY INDEX</div><div class="ticker-price">{d_at:.2f}</div><div class="ticker-var {"positive" if v_dxy >= 0 else "negative"}">{v_dxy:+.2f}%</div><div style="width:300px;"></div></div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="ticker-row"><div class="ticker-name">EWZ ADR</div><div class="ticker-price">{e_at:.2f}</div><div class="ticker-var {"positive" if v_ewz >= 0 else "negative"}">{v_ewz:+.2f}%</div><div style="width:300px;"></div></div>', unsafe_allow_html=True)
+            # --- BLOCO 2: USD/BRL SPOT ---
+            st.markdown(f"""
+                <div class="vertical-block">
+                    <div class="label-small">USD/BRL SPOT</div>
+                    <div class="row-flex">
+                        <div class="main-price" style="color:#FFF;">{spot_at:.4f}</div>
+                        <div class="var-badge {'positive' if v_s >= 0 else 'negative'}">{v_s:+.2f}%</div>
+                    </div>
+                    <div class="frp-box">
+                        <div class="frp-line"><span>MIN</span><span class="negative">{spot_at + (v_min/1000):.4f}</span></div>
+                        <div class="frp-line"><span>JUS</span><span style="color:#0080FF;">{spot_at + (v_jus/1000):.4f}</span></div>
+                        <div class="frp-line"><span>MAX</span><span class="positive">{spot_at + (v_max/1000):.4f}</span></div>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
 
-            # TRAVA
-            st.markdown(f'<div class="ticker-row"><div class="ticker-name" style="color:#666;">TRAVA 16H</div><div class="ticker-price" style="color:#444;">{trava_val:.4f}</div><div class="ticker-var" style="color:#444;">FIXED</div><div style="width:300px;"></div></div>', unsafe_allow_html=True)
+            # --- BLOCO 3: ÍNDICES ---
+            col_a, col_b = st.columns(2)
+            with col_a:
+                st.markdown(f"""
+                    <div class="vertical-block">
+                        <div class="label-small">DXY</div>
+                        <div style="font-size:22px; font-weight:bold;">{d_at:.2f}</div>
+                        <div class="{'positive' if v_dxy >= 0 else 'negative'}">{v_dxy:+.2f}%</div>
+                    </div>
+                """, unsafe_allow_html=True)
+            with col_b:
+                st.markdown(f"""
+                    <div class="vertical-block">
+                        <div class="label-small">EWZ</div>
+                        <div style="font-size:22px; font-weight:bold;">{e_at:.2f}</div>
+                        <div class="{'positive' if v_ewz >= 0 else 'negative'}">{v_ewz:+.2f}%</div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+            # --- BLOCO 4: TRAVA ---
+            st.markdown(f"""
+                <div style="padding:10px 0; color:#444; font-size:14px; text-align:center; border-top:1px solid #111;">
+                    TRAVA 16H: {trava_val:.4f} • FIXED
+                </div>
+            """, unsafe_allow_html=True)
 
     time.sleep(2)
