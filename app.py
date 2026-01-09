@@ -94,9 +94,43 @@ while True:
         ewz_df = fetch_data("EWZ")
 
         if spot_df is not None:
+            # Garantia de valor escalar para evitar TypeError (visto na imagem 1000023653)
             spot_at = float(spot_df['Close'].iloc[-1])
             
             try:
                 lock = spot_df.between_time('15:58', '16:02')
                 if not lock.empty and st.session_state.spot_ref_locked is None:
-                    st.session_state.spot_
+                    st.session_state.spot_ref_locked = float(lock['Close'].iloc[-1])
+            except: pass
+            trava_val = st.session_state.spot_ref_locked if st.session_state.spot_ref_locked else spot_at
+
+            d_at = float(dxy_df['Close'].iloc[-1]) if dxy_df is not None else 0
+            v_dxy = ((d_at - float(dxy_df['Open'].iloc[0])) / float(dxy_df['Open'].iloc[0]) * 100) if dxy_df is not None else 0
+            e_at = float(ewz_df['Close'].iloc[-1]) if ewz_df is not None else 0
+            v_ewz = ((e_at - float(ewz_df['Open'].iloc[0])) / float(ewz_df['Open'].iloc[0]) * 100) if ewz_df is not None else 0
+
+            spread = v_dxy - v_ewz
+            paridade = val_aj_manual * (1 + (spread/100))
+            v_s = ((spot_at - val_aj_manual) / val_aj_manual * 100)
+            v_ptax_var = ((spot_at - val_ptax_manual) / val_ptax_manual * 100)
+
+            # RENDERIZAÇÃO
+            # 1. PARIDADE
+            st.markdown(f'<div class="asset-row"><div class="name">PARIDADE</div><div class="price price-paridade">{paridade:.4f}</div><div class="var {"pos" if spread >= 0 else "neg"}">{spread:+.2f}%</div></div>', unsafe_allow_html=True)
+            
+            # 2. SPOT + PONTOS VERTICAIS
+            st.markdown(f'<div class="asset-row"><div class="name">USD/BRL SPOT</div><div class="price">{spot_at:.4f}</div><div class="var {"pos" if v_s >= 0 else "neg"}">{v_s:+.2f}%</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="frp-box"><div class="frp-item"><span>MAXIMA</span><span class="pos">{(spot_at + (v_max/1000)):.4f}</span></div><div class="frp-item"><span>JUSTO </span><span class="blu">{(spot_at + (v_jus/1000)):.4f}</span></div><div class="frp-item"><span>MINIMA </span><span class="neg">{(spot_at + (v_min/1000)):.4f}</span></div></div>', unsafe_allow_html=True)
+
+            # 3. PTAX + PONTOS VERTICAIS
+            st.markdown(f'<div class="asset-row"><div class="name">PTAX</div><div class="price price-ptax">{val_ptax_manual:.4f}</div><div class="var {"pos" if v_ptax_var >= 0 else "neg"}">{v_ptax_var:+.2f}%</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="frp-box"><div class="frp-item"><span>MAXIMA</span><span class="pos">{(val_ptax_manual + (v_max/1000)):.4f}</span></div><div class="frp-item"><span>JUSTO </span><span class="blu">{(val_ptax_manual + (v_jus/1000)):.4f}</span></div><div class="frp-item"><span>MINIMA </span><span class="neg">{(val_ptax_manual + (v_min/1000)):.4f}</span></div></div>', unsafe_allow_html=True)
+
+            # 4. DXY / EWZ
+            st.markdown(f'<div class="asset-row"><div class="name">DXY INDEX</div><div class="price">{d_at:.2f}</div><div class="var {"pos" if v_dxy >= 0 else "neg"}">{v_dxy:+.2f}%</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="asset-row"><div class="name">EWZ ADR</div><div class="price">{e_at:.2f}</div><div class="var {"pos" if v_ewz >= 0 else "neg"}">{v_ewz:+.2f}%</div></div>', unsafe_allow_html=True)
+
+            # 5. TRAVA LARANJA
+            st.markdown(f'<div class="trava-orange">TRAVA 16H: {trava_val:.4f}</div>', unsafe_allow_html=True)
+
+    time.sleep(2)
