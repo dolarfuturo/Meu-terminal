@@ -7,7 +7,7 @@ from datetime import datetime
 # 1. CONFIGURAÇÃO
 st.set_page_config(page_title="TERMINAL", layout="wide")
 
-# 2. ESTILO CSS - AJUSTADO PARA FORÇAR VISIBILIDADE
+# 2. ESTILO CSS (FORÇANDO LAYOUT DA LINHA AMARELA)
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
@@ -21,20 +21,19 @@ st.markdown("""
     .price { width: 130px; font-size: 18px; font-weight: bold; }
     .var { font-size: 18px; font-weight: bold; }
     
-    /* AJUSTE DE LAYOUT PARA A LINHA AMARELA APARECER CLARAMENTE */
+    /* LINHA AMARELA DO PRÉ-MERCADO */
     .pre-row { 
         display: flex !important; 
         gap: 20px; 
         margin-top: -2px;
-        margin-bottom: 15px; 
+        margin-bottom: 12px; 
         align-items: center; 
         margin-left: 25px; 
-        padding: 5px 10px;
-        border-left: 2px solid #FFB900; 
-        background: rgba(255, 185, 0, 0.05);
+        padding: 2px 10px;
+        border-left: 2px solid #FFB900;
     }
     .pre-name { width: 135px; font-size: 11px; color: #FFB900; font-weight: bold; }
-    .pre-price { width: 130px; font-size: 14px; color: #DDD; font-weight: bold; }
+    .pre-price { width: 130px; font-size: 14px; color: #BBB; }
     .pre-var { font-size: 14px; font-weight: bold; }
 
     .pos { color: #00FF00 !important; }
@@ -48,8 +47,8 @@ st.markdown("""
 
 st.markdown('<div style="font-size: 20px; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 15px;">TERMINAL DE CÂMBIO</div>', unsafe_allow_html=True)
 
-# 3. PARÂMETROS
-with st.popover("⚙️ AJUSTAR"):
+# 3. INPUTS
+with st.popover("⚙️ PARÂMETROS"):
     v_aj = st.number_input("AJUSTE", value=5.3900, format="%.4f")
     v_ptax_m = st.number_input("PTAX", value=5.3850, format="%.4f")
     st.divider()
@@ -57,69 +56,63 @@ with st.popover("⚙️ AJUSTAR"):
     v_jus_p = st.number_input("PTS JUS", value=31.0)
     v_min_p = st.number_input("PTS MIN", value=22.0)
 
-# FUNÇÃO DE CAPTURA ROBUSTA
-def get_clean_data(ticker):
+# FUNÇÃO DE CAPTURA QUE NÃO TRAVA
+def get_market_data(ticker):
     try:
-        # Puxa o download forçando dados de pré-mercado (prepost=True)
-        data = yf.download(ticker, period="1d", interval="1m", progress=False, prepost=True)
-        info = yf.Ticker(ticker).fast_info
-        prev_close = float(info.previous_close)
+        df = yf.download(ticker, period="1d", interval="1m", progress=False, prepost=True)
+        if df.empty: return {"last": 0.0, "prev": 0.0}
         
-        if not data.empty:
-            # Pega o último preço disponível (seja pré ou regular)
-            last_price = float(data['Close'].iloc[-1])
-            return {"last": last_price, "prev": prev_close}
-        return {"last": prev_close, "prev": prev_close}
+        # Pega o último preço fechado (last) e o fechamento de ontem (prev)
+        last = float(df['Close'].iloc[-1])
+        # Para o DXY e EWZ, precisamos do fechamento anterior real para a variação %
+        t = yf.Ticker(ticker)
+        prev = float(t.fast_info.previous_close)
+        return {"last": last, "prev": prev}
     except:
-        return {"last": 0.0, "prev": 1.0}
+        return {"last": 0.0, "prev": 0.0}
 
-# 4. LOOP
+# 4. LOOP PRINCIPAL
 placeholder = st.empty()
 
 while True:
-    now = datetime.now()
-    # Mercado Regular abre 11:30 BR. Se for antes, mostra PRE-MARKET.
-    is_pre_market = now.hour < 11 or (now.hour == 11 and now.minute < 30)
+    # NY abre 11:30 Brasília. Antes disso é Pre-Market.
+    is_pre = datetime.now().hour < 11 or (datetime.now().hour == 11 and datetime.now().minute < 30)
 
     with placeholder.container():
-        s_df = yf.download("BRL=X", period="1d", interval="1m", progress=False)
-        
-        if not s_df.empty:
-            s_at = float(s_df['Close'].iloc[-1])
-            d_m = get_clean_data("DX-Y.NYB")
-            e_m = get_clean_data("EWZ")
+        # Captura SPOT com proteção contra erro de Series
+        s_raw = yf.download("BRL=X", period="1d", interval="1m", progress=False)
+        if not s_raw.empty:
+            s_at = float(s_raw['Close'].iloc[-1])
+            d_m = get_market_data("DX-Y.NYB")
+            e_m = get_market_data("EWZ")
 
-            # Cálculos de variação
-            d_v = ((d_m["last"] - d_m["prev"]) / d_m["prev"] * 100)
-            e_v = ((e_m["last"] - e_m["prev"]) / e_m["prev"] * 100)
-            
-            sprd = d_v - e_v
+            # Cálculos
+            dv = ((d_m["last"] - d_m["prev"]) / d_m["prev"] * 100) if d_m["prev"] > 0 else 0
+            ev = ((e_m["last"] - e_m["prev"]) / e_m["prev"] * 100) if e_m["prev"] > 0 else 0
+            sprd = dv - ev
             pari = v_aj * (1 + (sprd/100))
             v_s = ((s_at - v_aj) / v_aj * 100)
 
-            # --- PARIDADE ---
+            # PARIDADE E SPOT
             st.markdown(f'<div class="asset-row"><div class="name">PARIDADE</div><div class="price" style="color:#FFB900">{pari:.4f}</div><div class="var {"pos" if sprd >= 0 else "neg"}">{sprd:+.2f}%</div></div>', unsafe_allow_html=True)
-            
-            # --- SPOT ---
             st.markdown(f'<div class="asset-row"><div class="name">USD/BRL SPOT</div><div class="price">{s_at:.4f}</div><div class="var {"pos" if v_s >= 0 else "neg"}">{v_s:+.2f}%</div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="frp-box"><div class="frp-item"><span>MAXIMA</span><span class="pos">{(s_at+(v_max_p/1000)):.4f}</span></div><div class="frp-item"><span>JUSTO </span><span class="blu">{(s_at+(v_jus_p/1000)):.4f}</span></div><div class="frp-item"><span>MINIMA </span><span class="neg">{(s_at+(v_min_p/1000)):.4f}</span></div></div>', unsafe_allow_html=True)
 
-            # --- PTAX ---
+            # PTAX
             st.markdown(f'<div class="asset-row"><div class="name">PTAX</div><div class="price" style="color:#00FFFF">{v_ptax_m:.4f}</div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="frp-box"><div class="frp-item"><span>MAXIMA</span><span class="pos">{(v_ptax_m+(v_max_p/1000)):.4f}</span></div><div class="frp-item"><span>JUSTO </span><span class="blu">{(v_ptax_m+(v_jus_p/1000)):.4f}</span></div><div class="frp-item"><span>MINIMA </span><span class="neg">{(v_ptax_m+(v_min_p/1000)):.4f}</span></div></div>', unsafe_allow_html=True)
 
-            # --- DXY ---
-            st.markdown(f'<div class="asset-row"><div class="name">DXY INDEX</div><div class="price">{d_m["last"]:.2f}</div><div class="var {"pos" if d_v >= 0 else "neg"}">{d_v:+.2f}%</div></div>', unsafe_allow_html=True)
+            # DXY
+            st.markdown(f'<div class="asset-row"><div class="name">DXY INDEX</div><div class="price">{d_m["last"]:.2f}</div><div class="var {"pos" if dv >= 0 else "neg"}">{dv:+.2f}%</div></div>', unsafe_allow_html=True)
             
-            # --- EWZ (LOGICA TRADINGVIEW) ---
-            if is_pre_market:
-                # Linha de Fechamento (Estática)
+            # EWZ + LÓGICA DO PRÉ-MERCADO
+            if is_pre:
+                # Mostra linha principal travada no fechamento
                 st.markdown(f'<div class="asset-row"><div class="name">EWZ ADR</div><div class="price">{e_m["prev"]:.2f}</div><div class="var" style="color:#444">0.00%</div></div>', unsafe_allow_html=True)
-                # Linha Amarela (Oscilando)
-                st.markdown(f'<div class="pre-row"><div class="pre-name">∟ PRE-MARKET</div><div class="pre-price">{e_m["last"]:.2f}</div><div class="pre-var {"pos" if e_v >= 0 else "neg"}">{e_v:+.2f}%</div></div>', unsafe_allow_html=True)
+                # Mostra linha amarela oscilando com o valor do Pre-Market
+                st.markdown(f'<div class="pre-row"><div class="pre-name">∟ PRE-MARKET</div><div class="pre-price">{e_m["last"]:.2f}</div><div class="pre-var {"pos" if ev >= 0 else "neg"}">{ev:+.2f}%</div></div>', unsafe_allow_html=True)
             else:
-                # Mercado Aberto (Uma linha só)
-                st.markdown(f'<div class="asset-row"><div class="name">EWZ ADR</div><div class="price">{e_m["last"]:.2f}</div><div class="var {"pos" if e_v >= 0 else "neg"}">{e_v:+.2f}%</div></div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="asset-row"><div class="name">EWZ ADR</div><div class="price">{e_m["last"]:.2f}</div><div class="var {"pos" if ev >= 0 else "neg"}">{ev:+.2f}%</div></div>', unsafe_allow_html=True)
 
             st.markdown(f'<div class="trava-orange">TRAVA 16H: {s_at:.4f}</div>', unsafe_allow_html=True)
 
