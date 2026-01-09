@@ -3,25 +3,27 @@ import yfinance as yf
 import pandas as pd
 import time
 
-# 1. CONFIGURAÇÃO
-st.set_page_config(page_title="TERMINAL", layout="wide", initial_sidebar_state="collapsed")
+# 1. CONFIGURAÇÃO - Layout largo
+st.set_page_config(page_title="TERMINAL", layout="wide")
 
 if 'spot_ref_locked' not in st.session_state: 
     st.session_state.spot_ref_locked = None
 
-# 2. CSS - ESTILO TERMINAL DARK
+# 2. CSS - ESTILO TERMINAL DARK (TOPO LIMPO E BOTÃO DISCRETO)
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
     * { font-family: 'Roboto Mono', monospace !important; text-transform: uppercase; }
     .stApp { background-color: #000000; color: #FFFFFF; }
     
+    /* Esconde cabeçalho nativo */
     header, [data-testid="stHeader"], [data-testid="stToolbar"] { display: none !important; }
     .block-container { padding-top: 1rem !important; max-width: 800px !important; margin: auto; }
 
-    .main-title { font-size: 20px; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 15px; }
+    /* TÍTULO */
+    .main-title { font-size: 20px; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 10px; }
 
-    /* ESTILO DAS LINHAS */
+    /* ESTILO DAS LINHAS DE ATIVOS */
     .asset-row { display: flex; gap: 20px; margin-bottom: 8px; align-items: center; }
     .name { width: 160px; font-size: 18px; color: #888; }
     .price { width: 110px; font-size: 18px; font-weight: bold; }
@@ -29,31 +31,39 @@ st.markdown("""
     .price-paridade { color: #FFB900 !important; }
     .price-ptax { color: #00FFFF !important; }
 
+    /* PONTOS VERTICAIS */
     .frp-box { margin-left: 180px; margin-top: -5px; margin-bottom: 15px; display: flex; flex-direction: column; gap: 2px; }
     .frp-item { display: flex; gap: 25px; font-size: 13px; font-weight: 400 !important; }
 
     .pos { color: #00FF00 !important; }
     .neg { color: #FF0000 !important; }
     .blu { color: #0080FF !important; }
+    
     .trava-orange { color: #FF8C00 !important; font-size: 18px; margin-top: 20px; font-weight: bold; border-top: 1px solid #333; padding-top: 10px; }
     
-    /* Estilizando o Expander para parecer um botão de terminal */
-    .stExpander { border: none !important; background-color: transparent !important; }
-    .stExpander summary { color: #444 !important; font-size: 12px !important; }
+    /* Estilo do botão de Parâmetros */
+    .stPopover button { 
+        background-color: #111 !important; 
+        color: #555 !important; 
+        border: 1px solid #222 !important;
+        font-size: 10px !important;
+        height: 25px !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
-# 3. INTERFACE DE TOPO E VARIÁVEIS (CLIQUE PARA ABRIR)
+# 3. INTERFACE DE TOPO
 st.markdown('<div class="main-title">TERMINAL DE CÂMBIO</div>', unsafe_allow_html=True)
 
-# Aqui você clica em "EDITAR VARIÁVEIS" e elas aparecem logo abaixo
-with st.expander("⌨️ CLIQUE PARA EDITAR VARIÁVEIS"):
-    c1, c2, c3, c4, c5 = st.columns(5)
-    with c1: val_aj_manual = st.number_input("AJUSTE", value=5.3900, format="%.4f", step=0.0001)
-    with c2: val_ptax_manual = st.number_input("PTAX", value=5.3850, format="%.4f", step=0.0001)
-    with c3: v_max = st.number_input("PTS MAX", value=42.0)
-    with c4: v_jus = st.number_input("PTS JUS", value=31.0)
-    with c5: v_min = st.number_input("PTS MIN", value=22.0)
+# BOTÃO QUE ABRE AS VARIÁVEIS EM UM POPUP FLUTUANTE
+with st.popover("⚙️ AJUSTAR PARÂMETROS"):
+    st.markdown("### CONFIGURAÇÕES")
+    val_aj_manual = st.number_input("AJUSTE MANUAL", value=5.3900, format="%.4f", step=0.0001)
+    val_ptax_manual = st.number_input("VALOR PTAX", value=5.3850, format="%.4f", step=0.0001)
+    st.divider()
+    v_max = st.number_input("PTS MÁXIMA", value=42.0)
+    v_jus = st.number_input("PTS JUSTO", value=31.0)
+    v_min = st.number_input("PTS MÍNIMA", value=22.0)
     if st.button("LIMPAR TRAVA 16H"):
         st.session_state.spot_ref_locked = None
 
@@ -92,17 +102,22 @@ while True:
             var_spot = ((spot_at - val_aj_manual) / val_aj_manual * 100)
 
             # --- EXIBIÇÃO ---
+            # PARIDADE
             st.markdown(f'<div class="asset-row"><div class="name">PARIDADE</div><div class="price price-paridade">{paridade_val:.4f}</div><div class="var {"pos" if spread_calc >= 0 else "neg"}">{spread_calc:+.2f}%</div></div>', unsafe_allow_html=True)
             
+            # SPOT + PONTOS
             st.markdown(f'<div class="asset-row"><div class="name">USD/BRL SPOT</div><div class="price">{spot_at:.4f}</div><div class="var {"pos" if var_spot >= 0 else "neg"}">{var_spot:+.2f}%</div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="frp-box"><div class="frp-item"><span>MAXIMA</span><span class="pos">{(spot_at+(v_max/1000)):.4f}</span></div><div class="frp-item"><span>JUSTO </span><span class="blu">{(spot_at+(v_jus/1000)):.4f}</span></div><div class="frp-item"><span>MINIMA </span><span class="neg">{(spot_at+(v_min/1000)):.4f}</span></div></div>', unsafe_allow_html=True)
 
+            # PTAX + PONTOS (SEM PERCENTUAL)
             st.markdown(f'<div class="asset-row"><div class="name">PTAX</div><div class="price price-ptax">{val_ptax_manual:.4f}</div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="frp-box"><div class="frp-item"><span>MAXIMA</span><span class="pos">{(val_ptax_manual+(v_max/1000)):.4f}</span></div><div class="frp-item"><span>JUSTO </span><span class="blu">{(val_ptax_manual+(v_jus/1000)):.4f}</span></div><div class="frp-item"><span>MINIMA </span><span class="neg">{(val_ptax_manual+(v_min/1000)):.4f}</span></div></div>', unsafe_allow_html=True)
 
+            # DXY / EWZ
             st.markdown(f'<div class="asset-row"><div class="name">DXY INDEX</div><div class="price">{d_at:.2f}</div><div class="var {"pos" if v_dxy >= 0 else "neg"}">{v_dxy:+.2f}%</div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="asset-row"><div class="name">EWZ ADR</div><div class="price">{e_at:.2f}</div><div class="var {"pos" if v_ewz >= 0 else "neg"}">{v_ewz:+.2f}%</div></div>', unsafe_allow_html=True)
 
+            # TRAVA
             st.markdown(f'<div class="trava-orange">TRAVA 16H: {trava_exibir:.4f}</div>', unsafe_allow_html=True)
 
     time.sleep(2)
