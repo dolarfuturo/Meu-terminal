@@ -4,70 +4,72 @@ import pandas as pd
 import time
 from datetime import datetime
 
-# 1. CONFIGURAÇÃO DO TERMINAL
-st.set_page_config(page_title="TERMINAL ARBITRAGEM", layout="wide")
+# 1. CONFIGURAÇÃO
+st.set_page_config(page_title="TERMINAL DOLAR", layout="wide")
 
 if 'ref_base' not in st.session_state:
     st.session_state.ref_base = 0.0
 
-# 2. ESTILO TERMINAL (LETRA PADRÃO TERMINAL E TÍTULOS BRANCOS)
+# 2. ESTILO TERMINAL PREMIUM
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
-    
-    /* FONTE MONOSPACE EM TUDO */
-    * { 
-        font-family: 'Roboto Mono', monospace !important; 
-        text-transform: uppercase; 
-    }
-    
+    * { font-family: 'Roboto Mono', monospace !important; text-transform: uppercase; }
     .stApp { background-color: #000000; color: #FFFFFF; }
     header, [data-testid="stHeader"], [data-testid="stToolbar"] { display: none !important; }
-    .block-container { padding-top: 1rem !important; max-width: 700px !important; margin: auto; }
+    .block-container { padding-top: 0.5rem !important; max-width: 800px !important; margin: auto; }
     
-    /* ALERTA MODERNO */
-    .alerta-container { display: flex; justify-content: center; margin-bottom: 15px; height: 35px; }
-    .tag-modern { font-size: 13px; font-weight: 700; letter-spacing: 2px; padding: 6px 30px; border-radius: 2px; }
-    .tag-caro { color: #00FF80; border: 1px solid #00FF80; border-left: 6px solid #00FF80; background: rgba(0, 255, 128, 0.05); }
-    .tag-barato { color: #FF4B4B; border: 1px solid #FF4B4B; border-left: 6px solid #FF4B4B; background: rgba(255, 75, 75, 0.05); }
-
-    /* TÍTULOS BRANCO PURO */
-    .section-title { 
-        font-size: 12px; 
-        color: #FFFFFF !important; 
-        letter-spacing: 3px; 
-        margin: 25px 0 10px 0; 
+    /* TOPO */
+    .terminal-header { 
         text-align: center; 
-        font-weight: 700; 
-        opacity: 0.9;
+        font-size: 14px; 
+        letter-spacing: 8px; 
+        color: #555; 
+        border-bottom: 1px solid #222; 
+        padding-bottom: 10px; 
+        margin-bottom: 20px;
     }
+    .terminal-title { color: #FFFFFF; font-weight: 700; }
 
-    /* LINHA SUPERIOR LADO A LADO */
-    .dual-container { display: flex; justify-content: space-between; gap: 15px; margin-bottom: 5px; }
-    .info-box { background: #080808; padding: 22px 5px; border-radius: 4px; border: 1px solid #222; text-align: center; width: 100%; }
-    .pari-val { font-size: 38px; font-weight: 700; color: #FFB900; }
-    .equi-val { font-size: 38px; font-weight: 700; color: #00FFFF; }
+    /* ALERTAS */
+    .alerta-wrap { display: flex; justify-content: center; height: 30px; margin-bottom: 15px; }
+    .status-tag { font-size: 12px; font-weight: bold; letter-spacing: 2px; padding: 4px 20px; border: 1px solid #333; }
+    .caro { color: #00FF80; border-color: #00FF80; }
+    .barato { color: #FF4B4B; border-color: #FF4B4B; }
 
-    /* BOXES DE REFERÊNCIA */
-    .box-container { display: flex; justify-content: space-between; gap: 10px; }
-    .box { background: #080808; padding: 20px 5px; border-radius: 4px; width: 33%; text-align: center; border: 1px solid #1A1A1A; }
-    .label { font-size: 10px; color: #777; margin-bottom: 8px; font-weight: 700; }
-    .val { font-size: 24px; font-weight: 700; }
+    /* GRID DE DADOS */
+    .data-row { 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        padding: 15px 0; 
+        border-bottom: 1px solid #111;
+    }
+    .data-label { font-size: 11px; color: #FFFFFF; font-weight: 700; letter-spacing: 2px; width: 30%; }
+    .data-value { font-size: 28px; font-weight: 700; width: 70%; text-align: right; }
     
-    .c-max { color: #00FF80; } /* VENDA / VERDE */
-    .c-min { color: #FF4B4B; } /* COMPRA / VERMELHO */
-    .c-jus { color: #0080FF; } /* NEUTRO / AZUL */
+    /* SUBGRID PARA MIN/MAX */
+    .sub-grid { display: flex; gap: 20px; justify-content: flex-end; width: 70%; }
+    .sub-item { text-align: right; }
+    .sub-label { font-size: 9px; color: #444; display: block; margin-bottom: 2px; }
+    .sub-val { font-size: 20px; font-weight: 700; }
+
+    /* CORES */
+    .c-pari { color: #FFB900; }
+    .c-equi { color: #00FFFF; }
+    .c-max { color: #00FF80; } 
+    .c-min { color: #FF4B4B; } 
+    .c-jus { color: #0080FF; }
 </style>
 """, unsafe_allow_html=True)
 
-# 3. PAINEL DE CONTROLE
-with st.popover("⚙️ CONFIGURAÇÕES"):
-    v_ajuste = st.number_input("AJUSTE ANTERIOR", value=5.4000, format="%.4f")
+# 3. CONTROLES
+with st.popover("⚙️"):
+    v_ajuste = st.number_input("AJUSTE", value=5.4000, format="%.4f")
     st.session_state.ref_base = st.number_input("REFERENCIAL", value=st.session_state.ref_base, format="%.4f")
 
 def get_data():
     try:
-        # Puxando dados com suporte a pré-market (4h BRT)
         d_ticker = yf.Ticker("DX-Y.NYB")
         e_ticker = yf.Ticker("EWZ")
         s_df = yf.download("BRL=X", period="1d", interval="1m", progress=False)
@@ -86,56 +88,51 @@ placeholder = st.empty()
 while True:
     spot, spread = get_data()
     paridade = v_ajuste * (1 + (spread/100))
-    
-    # LÓGICA: REFERENCIAL + 22 PONTOS
     ponto_equilibrio = st.session_state.ref_base + 0.0220
     
-    # CÁLCULOS DAS ZONAS (JUSTO +31)
-    # DINÂMICO (SPOT)
+    # Cálculos Justo (+31)
     f_max, f_jus, f_min = spot + 0.042, spot + 0.031, spot + 0.022
-    # FIXO (INSTITUCIONAL)
     t_max, t_jus, t_min = st.session_state.ref_base + 0.042, st.session_state.ref_base + 0.031, st.session_state.ref_base + 0.022
 
     with placeholder.container():
-        # ALERTA MODERNO
-        st.markdown('<div class="alerta-container">', unsafe_allow_html=True)
+        # TOPO
+        st.markdown('<div class="terminal-header">TERMINAL <span class="terminal-title">DOLAR</span></div>', unsafe_allow_html=True)
+
+        # ALERTA
+        st.markdown('<div class="alerta-wrap">', unsafe_allow_html=True)
         if st.session_state.ref_base > 0:
-            if spot >= t_max: st.markdown('<div class="tag-modern tag-caro">DOLAR CARO</div>', unsafe_allow_html=True)
-            elif spot <= t_min: st.markdown('<div class="tag-modern tag-barato">DOLAR BARATO</div>', unsafe_allow_html=True)
+            if spot >= t_max: st.markdown('<div class="status-tag caro">DOLAR CARO</div>', unsafe_allow_html=True)
+            elif spot <= t_min: st.markdown('<div class="status-tag barato">DOLAR BARATO</div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # PARIDADE E PONTO DE EQUILÍBRIO
-        st.markdown(f"""
-        <div class="dual-container">
-            <div style="width:48%;">
-                <div class="section-title">PARIDADE</div>
-                <div class="info-box"><div class="pari-val">{paridade:.4f}</div></div>
-            </div>
-            <div style="width:48%;">
-                <div class="section-title">PONTO DE EQUILIBRIO</div>
-                <div class="info-box"><div class="equi-val">{ponto_equilibrio:.4f}</div></div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        # PARIDADE
+        st.markdown(f'<div class="data-row"><div class="data-label">PARIDADE</div><div class="data-value c-pari">{paridade:.4f}</div></div>', unsafe_allow_html=True)
+        
+        # PONTO DE EQUILÍBRIO
+        st.markdown(f'<div class="data-row"><div class="data-label">PONTO DE EQUILIBRIO</div><div class="data-value c-equi">{ponto_equilibrio:.4f}</div></div>', unsafe_allow_html=True)
 
         # PREÇO JUSTO
-        st.markdown('<div class="section-title">PREÇO JUSTO</div>', unsafe_allow_html=True)
         st.markdown(f"""
-        <div class="box-container">
-            <div class="box"><div class="label">MINIMA</div><div class="val c-min">{f_min:.4f}</div></div>
-            <div class="box"><div class="label">JUSTO</div><div class="val c-jus">{f_jus:.4f}</div></div>
-            <div class="box"><div class="label">MAXIMA</div><div class="val c-max">{f_max:.4f}</div></div>
+        <div class="data-row">
+            <div class="data-label">PREÇO JUSTO</div>
+            <div class="sub-grid">
+                <div class="sub-item"><span class="sub-label">MINIMA</span><span class="sub-val c-min">{f_min:.4f}</span></div>
+                <div class="sub-item"><span class="sub-label">JUSTO</span><span class="sub-val c-jus">{f_jus:.4f}</span></div>
+                <div class="sub-item"><span class="sub-label">MAXIMA</span><span class="sub-val c-max">{f_max:.4f}</span></div>
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
         # PREFERENCIAL INSTITUCIONAL
         if st.session_state.ref_base > 0:
-            st.markdown('<div class="section-title">PREFERENCIAL INSTITUCIONAL</div>', unsafe_allow_html=True)
             st.markdown(f"""
-            <div class="box-container">
-                <div class="box"><div class="label">MINIMA</div><div class="val c-min">{t_min:.4f}</div></div>
-                <div class="box"><div class="label">JUSTO</div><div class="val c-jus">{t_jus:.4f}</div></div>
-                <div class="box"><div class="label">MAXIMA</div><div class="val c-max">{t_max:.4f}</div></div>
+            <div class="data-row">
+                <div class="data-label">PREFERENCIAL INSTITUCIONAL</div>
+                <div class="sub-grid">
+                    <div class="sub-item"><span class="sub-label">MINIMA</span><span class="sub-val c-min">{t_min:.4f}</span></div>
+                    <div class="sub-item"><span class="sub-label">JUSTO</span><span class="sub-val c-jus">{t_jus:.4f}</span></div>
+                    <div class="sub-item"><span class="sub-label">MAXIMA</span><span class="sub-val c-max">{t_max:.4f}</span></div>
+                </div>
             </div>
             """, unsafe_allow_html=True)
 
