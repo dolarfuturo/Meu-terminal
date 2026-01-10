@@ -10,7 +10,7 @@ st.set_page_config(page_title="TERMINAL ARBITRAGEM", layout="wide")
 if 'ref_institucional' not in st.session_state:
     st.session_state.ref_institucional = 0.0
 
-# 2. ESTILO CSS PREMIUM
+# 2. ESTILO CSS MODERNO
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
@@ -19,33 +19,42 @@ st.markdown("""
     header, [data-testid="stHeader"], [data-testid="stToolbar"] { display: none !important; }
     .block-container { padding-top: 1rem !important; max-width: 600px !important; margin: auto; }
     
-    /* ALERTA DISCRETO */
-    .alerta-container { display: flex; justify-content: center; margin-bottom: 20px; height: 30px; }
-    .tag { font-size: 12px; font-weight: bold; letter-spacing: 3px; padding: 5px 20px; border-radius: 4px; }
-    .tag-caro { color: #FF4B4B; border: 1px solid #FF4B4B; background: rgba(255, 75, 75, 0.1); }
-    .tag-barato { color: #00FF80; border: 1px solid #00FF80; background: rgba(0, 255, 128, 0.1); }
+    /* ALERTA MODERNO */
+    .alerta-container { display: flex; justify-content: center; margin-bottom: 20px; }
+    .tag-modern { 
+        font-size: 11px; 
+        font-weight: bold; 
+        letter-spacing: 2px; 
+        padding: 6px 30px; 
+        border-radius: 2px;
+        background: transparent;
+    }
+    .tag-caro { color: #00FF80; border: 1px solid #00FF80; border-left: 5px solid #00FF80; }
+    .tag-barato { color: #FF4B4B; border: 1px solid #FF4B4B; border-left: 5px solid #FF4B4B; }
 
-    .section-title { font-size: 11px; color: #444; letter-spacing: 3px; margin: 25px 0 10px 0; text-align: center; font-weight: bold; border-bottom: 1px solid #111; padding-bottom: 5px; }
+    .section-title { font-size: 11px; color: #444; letter-spacing: 3px; margin: 30px 0 10px 0; text-align: center; font-weight: bold; }
 
-    /* PARIDADE */
-    .pari-val { font-size: 54px; font-weight: 700; color: #FFB900; text-align: center; margin-bottom: 5px; }
+    /* PARIDADE PADRONIZADA */
+    .pari-box { background: #080808; padding: 20px; border-radius: 4px; border: 1px solid #111; text-align: center; margin-bottom: 10px; }
+    .pari-val { font-size: 42px; font-weight: 700; color: #FFB900; }
 
-    /* CAIXAS */
+    /* CAIXAS DE PREÇO */
     .box-container { display: flex; justify-content: space-between; gap: 10px; }
-    .box { background: #050505; padding: 15px 5px; border-radius: 4px; width: 33%; text-align: center; border: 1px solid #111; }
-    .label { font-size: 9px; color: #555; margin-bottom: 6px; font-weight: bold; }
-    .val { font-size: 21px; font-weight: 700; }
+    .box { background: #080808; padding: 15px 5px; border-radius: 4px; width: 33%; text-align: center; border: 1px solid #111; }
+    .label { font-size: 9px; color: #555; margin-bottom: 6px; }
+    .val { font-size: 20px; font-weight: 700; }
     
-    .c-max { color: #FF4B4B; }
+    /* INVERSÃO DE CORES CONFORME SOLICITADO */
+    .c-max { color: #00FF80; } /* MAX VERDE */
+    .c-min { color: #FF4B4B; } /* MIN VERMELHA */
     .c-jus { color: #0080FF; }
-    .c-min { color: #00FF80; }
 </style>
 """, unsafe_allow_html=True)
 
-# 3. ENTRADAS (OCULTAS NO POP OVER)
+# 3. ENTRADAS
 with st.popover("⚙️"):
     v_ajuste = st.number_input("AJUSTE", value=5.4000, format="%.4f")
-    st.session_state.ref_institucional = st.number_input("VALOR REFERÊNCIA", value=st.session_state.ref_institucional, format="%.4f")
+    st.session_state.ref_institucional = st.number_input("REFERENCIA", value=st.session_state.ref_institucional, format="%.4f")
 
 def get_data():
     try:
@@ -68,37 +77,37 @@ while True:
     spot, spread = get_data()
     paridade = v_ajuste * (1 + (spread/100))
     
-    # Cálculos das Zonas
-    f_max, f_jus, f_min = spot + 0.042, spot + 0.030, spot - 0.022
-    t_max, t_jus, t_min = st.session_state.ref_institucional + 0.042, st.session_state.ref_institucional + 0.030, st.session_state.ref_institucional - 0.022
+    # LÓGICA CORRIGIDA: +22 E +42
+    f_max, f_jus, f_min = spot + 0.042, spot + 0.030, spot + 0.022
+    t_max, t_jus, t_min = st.session_state.ref_institucional + 0.042, st.session_state.ref_institucional + 0.030, st.session_state.ref_institucional + 0.022
 
     with placeholder.container():
-        # TAG DE ALERTA
+        # ALERTA MODERNO
         st.markdown('<div class="alerta-container">', unsafe_allow_html=True)
         if st.session_state.ref_institucional > 0:
-            if spot >= t_max: st.markdown('<div class="tag tag-caro">CARO</div>', unsafe_allow_html=True)
-            elif spot <= t_min: st.markdown('<div class="tag tag-barato">BARATO</div>', unsafe_allow_html=True)
+            if spot >= t_max: st.markdown('<div class="tag-modern tag-caro">DOLAR CARO</div>', unsafe_allow_html=True)
+            elif spot <= t_min: st.markdown('<div class="tag-modern tag-barato">DOLAR BARATO</div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # 1. PARIDADE
+        # 1. PARIDADE PADRÃO
         st.markdown('<div class="section-title">PARIDADE</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="pari-val">{paridade:.4f}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="pari-box"><div class="pari-val">{paridade:.4f}</div></div>', unsafe_allow_html=True)
 
         # 2. PREÇO JUSTO
         st.markdown('<div class="section-title">PREÇO JUSTO</div>', unsafe_allow_html=True)
         st.markdown(f"""<div class="box-container">
-            <div class="box"><div class="label">MÍNIMA</div><div class="val c-min">{f_min:.4f}</div></div>
+            <div class="box"><div class="label">MINIMA</div><div class="val c-min">{f_min:.4f}</div></div>
             <div class="box"><div class="label">JUSTO</div><div class="val c-jus">{f_jus:.4f}</div></div>
-            <div class="box"><div class="label">MÁXIMA</div><div class="val c-max">{f_max:.4f}</div></div>
+            <div class="box"><div class="label">MAXIMA</div><div class="val c-max">{f_max:.4f}</div></div>
         </div>""", unsafe_allow_html=True)
 
         # 3. PREFERENCIAL INSTITUCIONAL
         if st.session_state.ref_institucional > 0:
             st.markdown('<div class="section-title">PREFERENCIAL INSTITUCIONAL</div>', unsafe_allow_html=True)
             st.markdown(f"""<div class="box-container">
-                <div class="box"><div class="label">MÍNIMA</div><div class="val c-min">{t_min:.4f}</div></div>
+                <div class="box"><div class="label">MINIMA</div><div class="val c-min">{t_min:.4f}</div></div>
                 <div class="box"><div class="label">JUSTO</div><div class="val c-jus">{t_jus:.4f}</div></div>
-                <div class="box"><div class="label">MÁXIMA</div><div class="val c-max">{t_max:.4f}</div></div>
+                <div class="box"><div class="label">MAXIMA</div><div class="val c-max">{t_max:.4f}</div></div>
             </div>""", unsafe_allow_html=True)
 
     time.sleep(2)
