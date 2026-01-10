@@ -38,7 +38,7 @@ st.markdown("""
     .data-value { font-size: 32px; font-weight: 700; width: 70%; text-align: right; }
     
     .sub-grid { display: flex; gap: 30px; justify-content: flex-end; width: 70%; }
-    .sub-item { text-align: right; min-width: 100px; }
+    .sub-item { text-align: right; min-width: 110px; }
     .sub-label { font-size: 10px; color: #555; display: block; margin-bottom: 4px; font-weight: 700; }
     .sub-val { font-size: 24px; font-weight: 700; }
 
@@ -50,9 +50,10 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# FUNÇÃO DE ARREDONDAMENTO PARA MEIO PONTO (Ex: 5392.5)
-def round_to_tick(price):
-    return round(price * 2) / 2
+# FUNÇÃO DE ARREDONDAMENTO PARA MEIO PONTO (0.0005 na escala decimal)
+def round_to_half_tick(price):
+    # Multiplica por 2000 para transformar 0.0005 em 1, arredonda e volta
+    return round(price * 2000) / 2000
 
 # 3. CONTROLES
 with st.popover("⚙️"):
@@ -81,14 +82,14 @@ while True:
     paridade = v_ajuste * (1 + (spread/100))
     ponto_equilibrio = st.session_state.ref_base + 0.0220
     
-    # Cálculos Justo (+31) com arredondamento de meio ponto (Tick 0.5)
-    f_max = round_to_tick(spot + 0.042)
-    f_jus = round_to_tick(spot + 0.031)
-    f_min = round_to_tick(spot + 0.022)
+    # Cálculos com arredondamento de meio ponto (Ex: final 25, 50, 75 ou 00)
+    f_max = round_to_half_tick(spot + 0.042)
+    f_jus = round_to_half_tick(spot + 0.031)
+    f_min = round_to_half_tick(spot + 0.022)
     
-    t_max = round_to_tick(st.session_state.ref_base + 0.042)
-    t_jus = round_to_tick(st.session_state.ref_base + 0.031)
-    t_min = round_to_tick(st.session_state.ref_base + 0.022)
+    t_max = round_to_half_tick(st.session_state.ref_base + 0.042)
+    t_jus = round_to_half_tick(st.session_state.ref_base + 0.031)
+    t_min = round_to_half_tick(st.session_state.ref_base + 0.022)
 
     with placeholder.container():
         st.markdown('<div class="terminal-header">TERMINAL <span class="terminal-title">DOLAR</span></div>', unsafe_allow_html=True)
@@ -100,20 +101,20 @@ while True:
             elif spot <= t_min: st.markdown('<div class="status-tag barato">DOLAR BARATO</div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # PARIDADE (Preço Cheio para ver o spread exato)
+        # PARIDADE (Mantida com 4 casas cheias)
         st.markdown(f'<div class="data-row"><div class="data-label">PARIDADE</div><div class="data-value c-pari">{paridade:.4f}</div></div>', unsafe_allow_html=True)
         
-        # PONTO DE EQUILÍBRIO (Arredondado para Meio Ponto)
-        st.markdown(f'<div class="data-row"><div class="data-label">PONTO DE EQUILIBRIO</div><div class="data-value c-equi">{round_to_tick(ponto_equilibrio):.1f}</div></div>', unsafe_allow_html=True)
+        # PONTO DE EQUILÍBRIO (Arredondado 0.5 com 4 casas)
+        st.markdown(f'<div class="data-row"><div class="data-label">PONTO DE EQUILIBRIO</div><div class="data-value c-equi">{round_to_half_tick(ponto_equilibrio):.4f}</div></div>', unsafe_allow_html=True)
 
         # PREÇO JUSTO
         st.markdown(f"""
         <div class="data-row">
             <div class="data-label">PREÇO JUSTO</div>
             <div class="sub-grid">
-                <div class="sub-item"><span class="sub-label">MINIMA</span><span class="sub-val c-min">{f_min:.1f}</span></div>
-                <div class="sub-item"><span class="sub-label">JUSTO</span><span class="sub-val c-jus">{f_jus:.1f}</span></div>
-                <div class="sub-item"><span class="sub-label">MAXIMA</span><span class="sub-val c-max">{f_max:.1f}</span></div>
+                <div class="sub-item"><span class="sub-label">MINIMA</span><span class="sub-val c-min">{f_min:.4f}</span></div>
+                <div class="sub-item"><span class="sub-label">JUSTO</span><span class="sub-val c-jus">{f_jus:.4f}</span></div>
+                <div class="sub-item"><span class="sub-label">MAXIMA</span><span class="sub-val c-max">{f_max:.4f}</span></div>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -124,9 +125,9 @@ while True:
             <div class="data-row">
                 <div class="data-label">PREFERENCIAL INSTITUCIONAL</div>
                 <div class="sub-grid">
-                    <div class="sub-item"><span class="sub-label">MINIMA</span><span class="sub-val c-min">{t_min:.1f}</span></div>
-                    <div class="sub-item"><span class="sub-label">JUSTO</span><span class="sub-val c-jus">{t_jus:.1f}</span></div>
-                    <div class="sub-item"><span class="sub-label">MAXIMA</span><span class="sub-val c-max">{t_max:.1f}</span></div>
+                    <div class="sub-item"><span class="sub-label">MINIMA</span><span class="sub-val c-min">{t_min:.4f}</span></div>
+                    <div class="sub-item"><span class="sub-label">JUSTO</span><span class="sub-val c-jus">{t_jus:.4f}</span></div>
+                    <div class="sub-item"><span class="sub-label">MAXIMA</span><span class="sub-val c-max">{t_max:.4f}</span></div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
