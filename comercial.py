@@ -5,68 +5,89 @@ import time
 from datetime import datetime
 
 # 1. CONFIGURAÇÃO
-st.set_page_config(page_title="TERMINAL DOLAR", layout="wide")
+st.set_page_config(page_title="TERMUX DOLAR", layout="wide")
 
 if 'ref_base' not in st.session_state:
     st.session_state.ref_base = 0.0
 
-# 2. ESTILO CSS PROFISSIONAL
+# 2. ESTILO CSS - FORMATO TERMUX / LINUX CONSOLE
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
-    * { font-family: 'Roboto Mono', monospace !important; text-transform: uppercase; }
-    .stApp { background-color: #000000; color: #FFFFFF; }
-    header, [data-testid="stHeader"], [data-testid="stToolbar"] { display: none !important; }
-    .block-container { padding-top: 0.5rem !important; max-width: 850px !important; margin: auto; padding-bottom: 80px; }
+    @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&display=swap');
     
-    .terminal-header { 
-        text-align: center; font-size: 14px; letter-spacing: 8px; color: #666; 
-        border-bottom: 1px solid #222; padding-bottom: 10px; margin-bottom: 20px;
+    * { 
+        font-family: 'Fira Code', 'Courier New', monospace !important; 
+        text-transform: uppercase; 
     }
-    .terminal-title { color: #FFFFFF; font-weight: 700; }
+    
+    .stApp { 
+        background-color: #0a0a0a; 
+        color: #00FF00; 
+    }
 
+    header, [data-testid="stHeader"], [data-testid="stToolbar"] { display: none !important; }
+    .block-container { padding-top: 1rem !important; max-width: 900px !important; margin: auto; padding-bottom: 80px; }
+    
+    /* CABEÇALHO ESTILO CONSOLE */
+    .terminal-header { 
+        color: #00FF00;
+        font-size: 14px;
+        margin-bottom: 30px;
+        border-left: 5px solid #00FF00;
+        padding-left: 15px;
+        text-align: left;
+    }
+
+    /* LINHAS DE DADOS */
     .data-row { 
         display: flex; justify-content: space-between; align-items: center; 
-        padding: 18px 0; border-bottom: 1px solid #111;
+        padding: 15px 0; border-bottom: 1px solid #1a1a1a;
     }
-    .data-label { font-size: 11px; color: #FFFFFF; font-weight: 700; letter-spacing: 2px; width: 35%; }
-    .data-value { font-size: 32px; font-weight: 700; width: 65%; text-align: right; }
+    .data-label { 
+        font-size: 13px; color: #00FF00; font-weight: 700; 
+    }
+    .data-label::before { content: "$ "; color: #888; } /* Prompt de comando */
+
+    .data-value { 
+        font-size: 34px; font-weight: 700; text-align: right; color: #00FF00;
+        text-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+    }
     
-    .sub-grid { display: flex; gap: 25px; justify-content: flex-end; width: 65%; }
-    .sub-item { text-align: right; min-width: 105px; }
-    .sub-label { font-size: 9px; color: #555; display: block; margin-bottom: 4px; font-weight: 700; }
-    .sub-val { font-size: 24px; font-weight: 700; }
+    /* SUB-GRIDS */
+    .sub-grid { display: flex; gap: 20px; justify-content: flex-end; width: 65%; }
+    .sub-item { text-align: right; min-width: 110px; }
+    .sub-label { font-size: 10px; color: #008800; display: block; margin-bottom: 2px; }
+    .sub-val { font-size: 26px; font-weight: 700; color: #00FF00; }
 
-    .c-pari { color: #FFB900; }
-    .c-equi { color: #00FFFF; }
-    .c-max { color: #00FF80; } 
-    .c-min { color: #FF4B4B; } 
-    .c-jus { color: #0080FF; }
+    /* CORES ESPECÍFICAS (Sutis para não perder o estilo Termux) */
+    .c-pari { color: #00FF00 !important; }
+    .c-equi { color: #00FF00 !important; border-bottom: 1px dashed #00FF00; }
+    .c-max { color: #00FF00 !important; opacity: 0.9; } 
+    .c-min { color: #00FF00 !important; opacity: 0.7; } 
 
-    /* RODAPÉ */
+    /* RODAPÉ TICKER TERMUX */
     .footer-bar {
         position: fixed; bottom: 0; left: 0; width: 100%; height: 40px;
-        background: #080808; border-top: 1px solid #333;
+        background: #000000; border-top: 2px solid #00FF00;
         display: flex; align-items: center; justify-content: space-between;
-        padding: 0 20px; font-size: 11px; z-index: 9999;
+        padding: 0 20px; font-size: 12px; z-index: 9999;
     }
     .ticker-wrap { flex-grow: 1; overflow: hidden; white-space: nowrap; margin: 0 30px; }
-    .ticker { display: inline-block; animation: marquee 30s linear infinite; }
+    .ticker { display: inline-block; animation: marquee 35s linear infinite; color: #00FF00; }
     @keyframes marquee {
         0% { transform: translateX(100%); }
-        100% { transform: translateX(-180%); }
+        100% { transform: translateX(-200%); }
     }
-    .up { color: #00FF80; } .down { color: #FF4B4B; }
-    .pulse { animation: pulse-green 2s infinite; color: #00FF80; font-weight: bold; }
-    @keyframes pulse-green { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+    .pulse { animation: pulse-green 1.5s infinite; color: #00FF00; font-weight: bold; }
+    @keyframes pulse-green { 0% { opacity: 1; } 50% { opacity: 0.2; } 100% { opacity: 1; } }
 </style>
 """, unsafe_allow_html=True)
 
 def round_to_half_tick(price):
     return round(price * 2000) / 2000
 
-# 3. CONTROLES
-with st.popover("⚙️ CONFIG"):
+# 3. CONTROLES (ESTILO POPUP)
+with st.popover("⚙️ [SET_CONFIG]"):
     v_ajuste = st.number_input("AJUSTE ANTERIOR", value=5.4000, format="%.4f")
     st.session_state.ref_base = st.number_input("REFERENCIAL", value=st.session_state.ref_base, format="%.4f")
 
@@ -76,17 +97,13 @@ def get_market_data():
         data = {}
         for t in tkrs_list:
             ticker_obj = yf.Ticker(t)
-            # Tenta pegar o preço atual e o fechamento anterior
             info = ticker_obj.fast_info
             last = info.last_price
             prev = info.previous_close
-            var = ((last - prev) / prev) * 100
-            data[t] = {"p": last, "v": var}
-        
+            data[t] = {"p": last, "v": ((last - prev) / prev) * 100}
         spread = data["DX-Y.NYB"]["v"] - data["EWZ"]["v"]
         return data, spread
-    except:
-        return None, 0.0
+    except: return None, 0.0
 
 placeholder = st.empty()
 
@@ -103,58 +120,52 @@ while True:
         t_max, t_jus, t_min = [round_to_half_tick(ref + x) for x in [0.0420, 0.0310, 0.0220]]
 
         with placeholder.container():
-            st.markdown('<div class="terminal-header">TERMINAL <span class="terminal-title">DOLAR</span></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="terminal-header">~/TERMUX/DOLAR_BOT<br>STATUS: ACTIVE<br>LOCAL_TIME: {datetime.now().strftime("%Y-%m-%d %H:%M")}</div>', unsafe_allow_html=True)
 
-            # 1. PARIDADE
-            st.markdown(f'<div class="data-row"><div class="data-label">PARIDADE GLOBAL</div><div class="data-value c-pari">{paridade:.4f}</div></div>', unsafe_allow_html=True)
+            # PARIDADE
+            st.markdown(f'<div class="data-row"><div class="data-label">PARIDADE_GLOBAL</div><div class="data-value c-pari">{paridade:.4f}</div></div>', unsafe_allow_html=True)
             
-            # 2. EQUILIBRIO
-            st.markdown(f'<div class="data-row"><div class="data-label">EQUILIBRIO (REF)</div><div class="data-value c-equi">{ponto_equi:.4f}</div></div>', unsafe_allow_html=True)
+            # EQUILIBRIO
+            st.markdown(f'<div class="data-row"><div class="data-label">EQUILIBRIO_REF</div><div class="data-value c-equi">{ponto_equi:.4f}</div></div>', unsafe_allow_html=True)
 
-            # 3. PREÇO JUSTO (SPOT)
+            # PREÇO JUSTO
             st.markdown(f"""
             <div class="data-row">
-                <div class="data-label">PREÇO JUSTO (SPOT)</div>
+                <div class="data-label">PRECO_JUSTO_SPOT</div>
                 <div class="sub-grid">
-                    <div class="sub-item"><span class="sub-label">MINIMA</span><span class="sub-val c-min">{f_min:.4f}</span></div>
-                    <div class="sub-item"><span class="sub-label">JUSTO</span><span class="sub-val c-jus">{f_jus:.4f}</span></div>
-                    <div class="sub-item"><span class="sub-label">MAXIMA</span><span class="sub-val c-max">{f_max:.4f}</span></div>
+                    <div class="sub-item"><span class="sub-label">MIN</span><span class="sub-val">{f_min:.4f}</span></div>
+                    <div class="sub-item"><span class="sub-label">MID</span><span class="sub-val">{f_jus:.4f}</span></div>
+                    <div class="sub-item"><span class="sub-label">MAX</span><span class="sub-val">{f_max:.4f}</span></div>
                 </div>
             </div>""", unsafe_allow_html=True)
 
-            # 4. REFERENCIAL INSTITUCIONAL (REF)
+            # INSTITUCIONAL
             if ref > 0:
                 st.markdown(f"""
                 <div class="data-row">
-                    <div class="data-label">REFERENCIAL INSTITUCIONAL</div>
+                    <div class="data-label">REF_INSTITUCIONAL</div>
                     <div class="sub-grid">
-                        <div class="sub-item"><span class="sub-label">MINIMA</span><span class="sub-val c-min">{t_min:.4f}</span></div>
-                        <div class="sub-item"><span class="sub-label">JUSTO</span><span class="sub-val c-jus">{t_jus:.4f}</span></div>
-                        <div class="sub-item"><span class="sub-label">MAXIMA</span><span class="sub-val c-max">{t_max:.4f}</span></div>
+                        <div class="sub-item"><span class="sub-label">MIN</span><span class="sub-val">{t_min:.4f}</span></div>
+                        <div class="sub-item"><span class="sub-label">MID</span><span class="sub-val">{t_jus:.4f}</span></div>
+                        <div class="sub-item"><span class="sub-label">MAX</span><span class="sub-val">{t_max:.4f}</span></div>
                     </div>
                 </div>""", unsafe_allow_html=True)
 
-            # RODAPÉ
-            def tk_fmt(s, n):
-                val = market[s]
-                cor = "up" if val['v'] > 0 else "down"
-                return f"{n}: {val['p']:.2f} <span class='{cor}'>{val['v']:+.2f}%</span>"
-
+            # RODAPÉ ESTILO TERMINAL
             agora = datetime.now().strftime("%H:%M:%S")
             st.markdown(f"""
             <div class="footer-bar">
-                <div style="min-width: 80px;"><span class="pulse">●</span> LIVE</div>
+                <div style="min-width: 90px;"><span class="pulse">●</span> RUNNING</div>
                 <div class="ticker-wrap">
                     <div class="ticker">
-                        {tk_fmt("DX-Y.NYB", "DXY")} &nbsp;&nbsp; | &nbsp;&nbsp; 
-                        {tk_fmt("EWZ", "EWZ")} &nbsp;&nbsp; | &nbsp;&nbsp; 
-                        {tk_fmt("EURUSD=X", "EUR/USD")} &nbsp;&nbsp; | &nbsp;&nbsp; 
-                        {tk_fmt("USDJPY=X", "USD/JPY")} &nbsp;&nbsp; | &nbsp;&nbsp; 
-                        {tk_fmt("GBPUSD=X", "GBP/USD")} &nbsp;&nbsp; | &nbsp;&nbsp; 
+                        DXY: {market['DX-Y.NYB']['p']:.2f} ({market['DX-Y.NYB']['v']:+.2f}%) | 
+                        EWZ: {market['EWZ']['p']:.2f} ({market['EWZ']['v']:+.2f}%) | 
+                        EUR/USD: {market['EURUSD=X']['p']:.4f} | 
+                        JPY/USD: {market['USDJPY=X']['p']:.2f} | 
                         SPREAD: {spread:+.2f}%
                     </div>
                 </div>
-                <div style="min-width: 80px; text-align: right; color: #666;">{agora}</div>
+                <div style="min-width: 90px; text-align: right;">{agora}</div>
             </div>""", unsafe_allow_html=True)
 
     time.sleep(2)
