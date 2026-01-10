@@ -10,7 +10,7 @@ st.set_page_config(page_title="TERMINAL DOLAR", layout="wide")
 if 'ref_base' not in st.session_state:
     st.session_state.ref_base = 0.0
 
-# 2. ESTILO CSS (SINTAXE SIMPLIFICADA PARA EVITAR ERROS)
+# 2. ESTILO CSS (SINTAXE BLINDADA)
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
@@ -26,15 +26,11 @@ st.markdown("""
     .sub-item { text-align: right; min-width: 105px; }
     .sub-label { font-size: 9px; color: #555; display: block; margin-bottom: 4px; font-weight: 700; }
     .sub-val { font-size: 24px; font-weight: 700; }
-    .c-pari { color: #FFB900; }
-    .c-equi { color: #00FFFF; }
-    .c-max { color: #00FF80; } 
-    .c-min { color: #FF4B4B; } 
-    .c-jus { color: #0080FF; }
+    .c-pari { color: #FFB900; } .c-equi { color: #00FFFF; } .c-max { color: #00FF80; } .c-min { color: #FF4B4B; } .c-jus { color: #0080FF; }
     .footer-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: 40px; background: #080808; border-top: 1px solid #333; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; font-size: 11px; z-index: 9999; }
     .ticker-wrap { flex-grow: 1; overflow: hidden; white-space: nowrap; margin: 0 30px; }
     .ticker { display: inline-block; animation: marquee 30s linear infinite; }
-    @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-180%); } }
+    @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-200%); } }
     .up { color: #00FF80; } .down { color: #FF4B4B; }
     .pulse { animation: pulse-green 2s infinite; color: #00FF80; font-weight: bold; }
     @keyframes pulse-green { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
@@ -51,16 +47,21 @@ with st.popover("⚙️ CONFIG"):
 
 def get_market_data():
     try:
-        tkrs = ["BRL=X", "DX-Y.NYB", "EWZ", "EURUSD=X", "USDJPY=X", "GBPUSD=X"]
-        df = yf.download(tkrs, period="2d", interval="1m", progress=False)
-        res = {}
+        # Lista de ativos para o rodapé
+        tkrs = ["BRL=X", "DX-Y.NYB", "EWZ", "EURUSD=X", "USDJPY=X"]
+        data = {}
         for t in tkrs:
-            last = df['Close'][t].iloc[-1]
-            prev = yf.Ticker(t).fast_info.previous_close
-            res[t] = {"p": last, "v": ((last - prev) / prev) * 100}
-        sprd = res["DX-Y.NYB"]["v"] - res["EWZ"]["v"]
-        return res, sprd
-    except: return None, 0.0
+            obj = yf.Ticker(t)
+            # Tenta obter o preço mais recente de forma robusta
+            p_atual = obj.fast_info['last_price']
+            p_prev = obj.fast_info['previous_close']
+            var = ((p_atual - p_prev) / p_prev) * 100
+            data[t] = {"p": p_atual, "v": var}
+        
+        spread = data["DX-Y.NYB"]["v"] - data["EWZ"]["v"]
+        return data, spread
+    except:
+        return None, 0.0
 
 placeholder = st.empty()
 
@@ -71,12 +72,12 @@ while True:
         paridade = v_ajuste * (1 + (spread/100))
         ref = st.session_state.ref_base
         
-        # CORREÇÃO: SOMA DO EQUILÍBRIO (REFERENCIAL + 0.0220)
-        ponto_equi = round_to_half_tick(ref + 0.0220) if ref > 0 else round_to_half_tick(spot + 0.0220)
+        # CÁLCULO PONTO EQUILÍBRIO (REFERENCIAL + 0.0220)
+        ponto_equi = round_to_half_tick(ref + 0.0220)
         
         # PONTOS SPOT
         f_max, f_jus, f_min = [round_to_half_tick(spot + x) for x in [0.0420, 0.0310, 0.0220]]
-        # PONTOS INSTITUCIONAL (SOBRE O REF)
+        # PONTOS REFERENCIAL INSTITUCIONAL
         t_max, t_jus, t_min = [round_to_half_tick(ref + x) for x in [0.0420, 0.0310, 0.0220]]
 
         with placeholder.container():
@@ -85,23 +86,17 @@ while True:
             # PARIDADE GLOBAL
             st.markdown(f'<div class="data-row"><div class="data-label">PARIDADE GLOBAL</div><div class="data-value c-pari">{paridade:.4f}</div></div>', unsafe_allow_html=True)
             
-            # EQUILIBRIO (REF) - AGORA SOMANDO CORRETAMENTE
+            # EQUILIBRIO (REF)
             st.markdown(f'<div class="data-row"><div class="data-label">EQUILIBRIO (REF)</div><div class="data-value c-equi">{ponto_equi:.4f}</div></div>', unsafe_allow_html=True)
 
             # PREÇO JUSTO (SPOT)
             st.markdown(f'<div class="data-row"><div class="data-label">PREÇO JUSTO (SPOT)</div><div class="sub-grid"><div class="sub-item"><span class="sub-label">MINIMA</span><span class="sub-val c-min">{f_min:.4f}</span></div><div class="sub-item"><span class="sub-label">JUSTO</span><span class="sub-val c-jus">{f_jus:.4f}</span></div><div class="sub-item"><span class="sub-label">MAXIMA</span><span class="sub-val c-max">{f_max:.4f}</span></div></div></div>', unsafe_allow_html=True)
 
-            # REFERENCIAL INSTITUCIONAL
-            if ref > 0:
-                st.markdown(f'<div class="data-row"><div class="data-label">REFERENCIAL INSTITUCIONAL</div><div class="sub-grid"><div class="sub-item"><span class="sub-label">MINIMA</span><span class="sub-val c-min">{t_min:.4f}</span></div><div class="sub-item"><span class="sub-label">JUSTO</span><span class="sub-val c-jus">{t_jus:.4f}</span></div><div class="sub-item"><span class="sub-label">MAXIMA</span><span class="sub-val c-max">{t_max:.4f}</span></div></div></div>', unsafe_allow_html=True)
+            # REFERENCIAL INSTITUCIONAL (FIXO)
+            st.markdown(f'<div class="data-row"><div class="data-label">REFERENCIAL INSTITUCIONAL</div><div class="sub-grid"><div class="sub-item"><span class="sub-label">MINIMA</span><span class="sub-val c-min">{t_min:.4f}</span></div><div class="sub-item"><span class="sub-label">JUSTO</span><span class="sub-val c-jus">{t_jus:.4f}</span></div><div class="sub-item"><span class="sub-label">MAXIMA</span><span class="sub-val c-max">{t_max:.4f}</span></div></div></div>', unsafe_allow_html=True)
 
-            # RODAPÉ COM TICKER CORRIGIDO
-            def tk_fmt(s, n):
-                v = market[s]['v']
-                c = "up" if v > 0 else "down"
-                return f"{n}: {market[s]['p']:.2f} <span class='{c}'>{v:+.2f}%</span>"
-
-            agora = datetime.now().strftime("%H:%M:%S")
-            st.markdown(f'<div class="footer-bar"><div style="min-width: 80px;"><span class="pulse">●</span> LIVE</div><div class="ticker-wrap"><div class="ticker">{tk_fmt("DX-Y.NYB", "DXY")} | {tk_fmt("EWZ", "EWZ")} | {tk_fmt("EURUSD=X", "EUR/USD")} | {tk_fmt("USDJPY=X", "USD/JPY")} | SPREAD: {spread:+.2f}%</div></div><div style="min-width: 80px; text-align: right; color: #666;">{agora}</div></div>', unsafe_allow_html=True)
-
-    time.sleep(2)
+            # RODAPÉ - PREÇOS E VARIAÇÕES
+            def fmt_tk(sym, nome):
+                v = market[sym]['v']
+                cor = "up" if v > 0 else "down"
+                return f"{nome}: {market[sym]['p']:.2f} <span class='{cor}'>{v:+.2f
