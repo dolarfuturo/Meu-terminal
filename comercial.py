@@ -4,7 +4,7 @@ import pandas as pd
 import time
 from datetime import datetime
 
-# 1. CONFIGURAÇÃO
+# 1. CONFIGURAÇÃO INICIAL
 st.set_page_config(page_title="TERMINAL ARBITRAGEM", layout="wide")
 
 if 'ref_institucional' not in st.session_state:
@@ -12,15 +12,16 @@ if 'ref_institucional' not in st.session_state:
 if 'ptax_dia' not in st.session_state:
     st.session_state.ptax_dia = 0.0
 
-# 2. ESTILO CSS NÍTIDO
+# 2. ESTILO VISUAL (TÍTULOS EM BRANCO E NITIDEZ MÁXIMA)
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
     * { font-family: 'Roboto Mono', monospace !important; text-transform: uppercase; }
     .stApp { background-color: #000000; color: #FFFFFF; }
     header, [data-testid="stHeader"], [data-testid="stToolbar"] { display: none !important; }
-    .block-container { padding-top: 1rem !important; max-width: 650px !important; margin: auto; }
+    .block-container { padding-top: 1rem !important; max-width: 700px !important; margin: auto; }
     
+    /* ALERTAS */
     .alerta-container { display: flex; justify-content: center; margin-bottom: 15px; height: 35px; }
     .tag-modern { font-size: 12px; font-weight: bold; letter-spacing: 2px; padding: 6px 30px; border-radius: 2px; }
     .tag-caro { color: #00FF80; border: 1px solid #00FF80; border-left: 5px solid #00FF80; background: rgba(0, 255, 128, 0.1); }
@@ -29,27 +30,29 @@ st.markdown("""
     /* TÍTULOS BRANCO PURO */
     .section-title { font-size: 11px; color: #FFFFFF !important; letter-spacing: 3px; margin: 25px 0 10px 0; text-align: center; font-weight: bold; }
 
+    /* LINHA SUPERIOR LADO A LADO */
     .dual-container { display: flex; justify-content: space-between; gap: 15px; margin-bottom: 5px; }
-    .info-box { background: #080808; padding: 20px 5px; border-radius: 4px; border: 1px solid #1A1A1A; text-align: center; width: 100%; }
-    .pari-val { font-size: 34px; font-weight: 700; color: #FFB900; }
-    .equi-val { font-size: 34px; font-weight: 700; color: #00FFFF; }
+    .info-box { background: #080808; padding: 20px 5px; border-radius: 4px; border: 1px solid #222; text-align: center; width: 100%; }
+    .pari-val { font-size: 36px; font-weight: 700; color: #FFB900; }
+    .equi-val { font-size: 36px; font-weight: 700; color: #00FFFF; }
 
+    /* BOXES DE REFERÊNCIA */
     .box-container { display: flex; justify-content: space-between; gap: 10px; }
     .box { background: #080808; padding: 18px 5px; border-radius: 4px; width: 33%; text-align: center; border: 1px solid #1A1A1A; }
     .label { font-size: 10px; color: #777; margin-bottom: 8px; font-weight: bold; }
-    .val { font-size: 21px; font-weight: 700; }
+    .val { font-size: 22px; font-weight: 700; }
     
-    .c-max { color: #00FF80; } 
-    .c-min { color: #FF4B4B; } 
-    .c-jus { color: #0080FF; }
+    .c-max { color: #00FF80; } /* VERDE */
+    .c-min { color: #FF4B4B; } /* VERMELHO */
+    .c-jus { color: #0080FF; } /* AZUL */
 </style>
 """, unsafe_allow_html=True)
 
-# 3. ENTRADAS
+# 3. PAINEL DE CONTROLE (ENGRENAGEM)
 with st.popover("⚙️ CONFIGURAÇÕES"):
-    v_ajuste = st.number_input("AJUSTE", value=5.4000, format="%.4f")
-    st.session_state.ptax_dia = st.number_input("PTAX", value=st.session_state.ptax_dia, format="%.4f")
-    st.session_state.ref_institucional = st.number_input("REFERENCIAL", value=st.session_state.ref_institucional, format="%.4f")
+    v_ajuste = st.number_input("AJUSTE ANTERIOR", value=5.4000, format="%.4f")
+    st.session_state.ptax_dia = st.number_input("DIGITE A PTAX", value=st.session_state.ptax_dia, format="%.4f")
+    st.session_state.ref_institucional = st.number_input("REFERENCIAL 10H", value=st.session_state.ref_institucional, format="%.4f")
 
 def get_data():
     try:
@@ -71,10 +74,13 @@ placeholder = st.empty()
 while True:
     spot, spread = get_data()
     paridade = v_ajuste * (1 + (spread/100))
+    
+    # LÓGICA VARIÁVEL: PTAX + 22 PONTOS
     ponto_equilibrio = st.session_state.ptax_dia + 0.0220
     
-    f_max, f_jus, f_min = spot + 0.042, spot + 0.030, spot + 0.022
-    t_max, t_jus, t_min = st.session_state.ref_institucional + 0.042, st.session_state.ref_institucional + 0.030, st.session_state.ref_institucional + 0.022
+    # CÁLCULOS DAS ZONAS (ATUALIZADO JUSTO PARA +31)
+    f_max, f_jus, f_min = spot + 0.042, spot + 0.031, spot + 0.022
+    t_max, t_jus, t_min = st.session_state.ref_institucional + 0.042, st.session_state.ref_institucional + 0.031, st.session_state.ref_institucional + 0.022
 
     with placeholder.container():
         # ALERTA
@@ -84,7 +90,7 @@ while True:
             elif spot <= t_min: st.markdown('<div class="tag-modern tag-barato">DOLAR BARATO</div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # LINHA 1: PARIDADE E PONTO DE EQUILÍBRIO
+        # PARIDADE E EQUILÍBRIO (LADO A LADO)
         st.markdown(f"""
         <div class="dual-container">
             <div style="width:48%;">
@@ -98,7 +104,7 @@ while True:
         </div>
         """, unsafe_allow_html=True)
 
-        # LINHA 2: PREÇO JUSTO
+        # PREÇO JUSTO
         st.markdown('<div class="section-title">PREÇO JUSTO</div>', unsafe_allow_html=True)
         st.markdown(f"""
         <div class="box-container">
@@ -108,7 +114,7 @@ while True:
         </div>
         """, unsafe_allow_html=True)
 
-        # LINHA 3: PREFERENCIAL INSTITUCIONAL
+        # PREFERENCIAL INSTITUCIONAL
         if st.session_state.ref_institucional > 0:
             st.markdown('<div class="section-title">PREFERENCIAL INSTITUCIONAL</div>', unsafe_allow_html=True)
             st.markdown(f"""
