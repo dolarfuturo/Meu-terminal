@@ -10,14 +10,14 @@ st.set_page_config(page_title="TERMINAL DOLAR", layout="wide")
 if 'ref_base' not in st.session_state:
     st.session_state.ref_base = 0.0
 
-# 2. ESTILO TERMINAL PROFISSIONAL
+# 2. ESTILO TERMINAL COM TICKER DE MOEDAS
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
     * { font-family: 'Roboto Mono', monospace !important; text-transform: uppercase; }
     .stApp { background-color: #000000; color: #FFFFFF; }
     header, [data-testid="stHeader"], [data-testid="stToolbar"] { display: none !important; }
-    .block-container { padding-top: 0.5rem !important; max-width: 850px !important; margin: auto; }
+    .block-container { padding-top: 0.5rem !important; max-width: 850px !important; margin: auto; padding-bottom: 60px; }
     
     .terminal-header { 
         text-align: center; font-size: 14px; letter-spacing: 8px; color: #666; 
@@ -32,14 +32,14 @@ st.markdown("""
 
     .data-row { 
         display: flex; justify-content: space-between; align-items: center; 
-        padding: 20px 0; border-bottom: 1px solid #111;
+        padding: 18px 0; border-bottom: 1px solid #111;
     }
-    .data-label { font-size: 12px; color: #FFFFFF; font-weight: 700; letter-spacing: 2px; width: 30%; }
-    .data-value { font-size: 32px; font-weight: 700; width: 70%; text-align: right; }
+    .data-label { font-size: 11px; color: #FFFFFF; font-weight: 700; letter-spacing: 2px; width: 35%; }
+    .data-value { font-size: 32px; font-weight: 700; width: 65%; text-align: right; }
     
-    .sub-grid { display: flex; gap: 30px; justify-content: flex-end; width: 70%; }
-    .sub-item { text-align: right; min-width: 110px; }
-    .sub-label { font-size: 10px; color: #555; display: block; margin-bottom: 4px; font-weight: 700; }
+    .sub-grid { display: flex; gap: 25px; justify-content: flex-end; width: 65%; }
+    .sub-item { text-align: right; min-width: 100px; }
+    .sub-label { font-size: 9px; color: #555; display: block; margin-bottom: 4px; font-weight: 700; }
     .sub-val { font-size: 24px; font-weight: 700; }
 
     .c-pari { color: #FFB900; }
@@ -47,12 +47,32 @@ st.markdown("""
     .c-max { color: #00FF80; } 
     .c-min { color: #FF4B4B; } 
     .c-jus { color: #0080FF; }
+
+    /* RODAPÉ E TICKER */
+    .footer-bar {
+        position: fixed; bottom: 0; left: 0; width: 100%; height: 35px;
+        background: #080808; border-top: 1px solid #222;
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 0 15px; font-size: 11px; z-index: 1000;
+    }
+    .ticker-wrap { flex-grow: 1; overflow: hidden; white-space: nowrap; margin: 0 20px; }
+    .ticker { display: inline-block; animation: marquee 25s linear infinite; }
+    
+    @keyframes marquee {
+        0% { transform: translateX(100%); }
+        100% { transform: translateX(-150%); }
+    }
+    
+    .status-live { color: #00FF80; font-weight: bold; margin-right: 5px; }
+    .pulse { animation: pulse-green 2s infinite; }
+    @keyframes pulse-green {
+        0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; }
+    }
+    .up { color: #00FF80; } .down { color: #FF4B4B; } .neu { color: #FFB900; }
 </style>
 """, unsafe_allow_html=True)
 
-# FUNÇÃO DE ARREDONDAMENTO PARA MEIO PONTO (0.0005 na escala decimal)
 def round_to_half_tick(price):
-    # Multiplica por 2000 para transformar 0.0005 em 1, arredonda e volta
     return round(price * 2000) / 2000
 
 # 3. CONTROLES
@@ -60,76 +80,46 @@ with st.popover("⚙️"):
     v_ajuste = st.number_input("AJUSTE ANTERIOR", value=5.4000, format="%.4f")
     st.session_state.ref_base = st.number_input("REFERENCIAL", value=st.session_state.ref_base, format="%.4f")
 
-def get_data():
+def get_market_data():
     try:
-        d_ticker = yf.Ticker("DX-Y.NYB")
-        e_ticker = yf.Ticker("EWZ")
-        s_df = yf.download("BRL=X", period="1d", interval="1m", progress=False)
-        s_at = float(s_df['Close'].iloc[-1])
-        d_df = yf.download("DX-Y.NYB", period="2d", interval="1m", progress=False, prepost=True)
-        e_df = yf.download("EWZ", period="2d", interval="1m", progress=False, prepost=True)
-        d_prev = float(d_ticker.fast_info.previous_close)
-        e_prev = float(e_ticker.fast_info.previous_close)
-        d_at = float(d_df['Close'].iloc[-1])
-        e_at = float(e_df['Close'].iloc[-1])
-        return s_at, ((d_at - d_prev) / d_prev * 100) - ((e_at - e_prev) / e_prev * 100)
-    except: return 0.0, 0.0
+        # Baixa tickers em lote para performance
+        tickers = ["BRL=X", "DX-Y.NYB", "EWZ", "EURUSD=X", "USDJPY=X", "GBPUSD=X"]
+        df = yf.download(tickers, period="2d", interval="1m", progress=False)
+        
+        data = {}
+        for t in tickers:
+            last = df['Close'][t].iloc[-1]
+            prev = yf.Ticker(t).fast_info.previous_close
+            var = ((last - prev) / prev) * 100
+            data[t] = {"price": last, "var": var}
+            
+        spread = data["DX-Y.NYB"]["var"] - data["EWZ"]["var"]
+        return data, spread
+    except:
+        return None, 0.0
 
 placeholder = st.empty()
 
 while True:
-    spot, spread = get_data()
-    paridade = v_ajuste * (1 + (spread/100))
-    ponto_equilibrio = st.session_state.ref_base + 0.0220
-    
-    # Cálculos com arredondamento de meio ponto (Ex: final 25, 50, 75 ou 00)
-    f_max = round_to_half_tick(spot + 0.042)
-    f_jus = round_to_half_tick(spot + 0.031)
-    f_min = round_to_half_tick(spot + 0.022)
-    
-    t_max = round_to_half_tick(st.session_state.ref_base + 0.042)
-    t_jus = round_to_half_tick(st.session_state.ref_base + 0.031)
-    t_min = round_to_half_tick(st.session_state.ref_base + 0.022)
-
-    with placeholder.container():
-        st.markdown('<div class="terminal-header">TERMINAL <span class="terminal-title">DOLAR</span></div>', unsafe_allow_html=True)
-
-        # ALERTAS
-        st.markdown('<div class="alerta-wrap">', unsafe_allow_html=True)
-        if st.session_state.ref_base > 0:
-            if spot >= t_max: st.markdown('<div class="status-tag caro">DOLAR CARO</div>', unsafe_allow_html=True)
-            elif spot <= t_min: st.markdown('<div class="status-tag barato">DOLAR BARATO</div>', unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-
-        # PARIDADE (Mantida com 4 casas cheias)
-        st.markdown(f'<div class="data-row"><div class="data-label">PARIDADE</div><div class="data-value c-pari">{paridade:.4f}</div></div>', unsafe_allow_html=True)
+    market, spread = get_market_data()
+    if market:
+        spot = market["BRL=X"]["price"]
+        paridade = v_ajuste * (1 + (spread/100))
         
-        # PONTO DE EQUILÍBRIO (Arredondado 0.5 com 4 casas)
-        st.markdown(f'<div class="data-row"><div class="data-label">PONTO DE EQUILIBRIO</div><div class="data-value c-equi">{round_to_half_tick(ponto_equilibrio):.4f}</div></div>', unsafe_allow_html=True)
+        ponto_equilibrio = round_to_half_tick(st.session_state.ref_base + 0.0220)
+        f_max, f_jus, f_min = [round_to_half_tick(spot + x) for x in [0.0420, 0.0310, 0.0220]]
+        t_max, t_jus, t_min = [round_to_half_tick(st.session_state.ref_base + x) for x in [0.0420, 0.0310, 0.0220]]
 
-        # PREÇO JUSTO
-        st.markdown(f"""
-        <div class="data-row">
-            <div class="data-label">PREÇO JUSTO</div>
-            <div class="sub-grid">
-                <div class="sub-item"><span class="sub-label">MINIMA</span><span class="sub-val c-min">{f_min:.4f}</span></div>
-                <div class="sub-item"><span class="sub-label">JUSTO</span><span class="sub-val c-jus">{f_jus:.4f}</span></div>
-                <div class="sub-item"><span class="sub-label">MAXIMA</span><span class="sub-val c-max">{f_max:.4f}</span></div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        with placeholder.container():
+            st.markdown('<div class="terminal-header">TERMINAL <span class="terminal-title">DOLAR</span></div>', unsafe_allow_html=True)
 
-        # PREFERENCIAL INSTITUCIONAL
-        if st.session_state.ref_base > 0:
-            st.markdown(f"""
-            <div class="data-row">
-                <div class="data-label">PREFERENCIAL INSTITUCIONAL</div>
-                <div class="sub-grid">
-                    <div class="sub-item"><span class="sub-label">MINIMA</span><span class="sub-val c-min">{t_min:.4f}</span></div>
-                    <div class="sub-item"><span class="sub-label">JUSTO</span><span class="sub-val c-jus">{t_jus:.4f}</span></div>
-                    <div class="sub-item"><span class="sub-label">MAXIMA</span><span class="sub-val c-max">{t_max:.4f}</span></div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+            # ALERTAS
+            st.markdown('<div class="alerta-wrap">', unsafe_allow_html=True)
+            if st.session_state.ref_base > 0:
+                if spot >= t_max: st.markdown('<div class="status-tag caro">DOLAR CARO</div>', unsafe_allow_html=True)
+                elif spot <= t_min: st.markdown('<div class="status-tag barato">DOLAR BARATO</div>', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
 
-    time.sleep(2)
+            # DADOS PRINCIPAIS
+            st.markdown(f'<div class="data-row"><div class="data-label">PARIDADE GLOBAL</div><div class="data-value c-pari">{paridade:.4f}</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="data-row"><div class="data-label">EQUILIBRIO (REF)</div><div class="data-value
