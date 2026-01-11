@@ -4,53 +4,45 @@ import pandas as pd
 import time
 from datetime import datetime
 
-# CONFIGURAÇÃO INICIAL
+# 1. SETUP
 st.set_page_config(page_title="TERMINAL DOLAR", layout="wide")
-
-# SENHAS
-SENHA_ADMIN = "admin123"
-SENHA_CLIENTE = "cliente123"
 
 if 'autenticado' not in st.session_state:
     st.session_state.autenticado = False
     st.session_state.perfil = None
-
-if not st.session_state.autenticado:
-    st.markdown("<style>.stApp { background-color: #000; }</style>", unsafe_allow_html=True)
-    col1, col2 = st.columns([1, 1])
-    with col1:
-        senha = st.text_input("CHAVE:", type="password")
-        if st.button("ACESSAR"):
-            if senha == SENHA_ADMIN:
-                st.session_state.autenticado = True
-                st.session_state.perfil = "admin"
-                st.rerun()
-            elif senha == SENHA_CLIENTE:
-                st.session_state.autenticado = True
-                st.session_state.perfil = "cliente"
-                st.rerun()
-    st.stop()
-
 if 'v_ajuste' not in st.session_state: st.session_state.v_ajuste = 5.4000
 if 'ref_base' not in st.session_state: st.session_state.ref_base = 5.4000
 
-# CSS MANTIDO E PROTEGIDO
-st.markdown("""
-<style>
+# 2. LOGIN
+if not st.session_state.autenticado:
+    st.markdown("<style>.stApp { background-color: #000; }</style>", unsafe_allow_html=True)
+    senha = st.text_input("CHAVE:", type="password")
+    if st.button("ACESSAR"):
+        if senha == "admin123":
+            st.session_state.autenticado = True
+            st.session_state.perfil = "admin"
+            st.rerun()
+        elif senha == "cliente123":
+            st.session_state.autenticado = True
+            st.session_state.perfil = "cliente"
+            st.rerun()
+    st.stop()
+
+# 3. CSS (Rótulos brancos e visual limpo)
+st.markdown("""<style>
     @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700;800&display=swap');
     * { font-family: 'Roboto Mono', monospace !important; text-transform: uppercase; }
-    .stApp { background-color: #000000; color: #FFFFFF; }
+    .stApp { background-color: #000; color: #fff; }
     header, [data-testid="stHeader"], [data-testid="stToolbar"] { display: none !important; }
     .block-container { padding-top: 0.5rem !important; max-width: 850px !important; margin: auto; padding-bottom: 80px; }
     [data-testid="stPopover"] { position: fixed; top: 10px; right: 10px; opacity: 0; z-index: 10000; }
     .terminal-header { text-align: center; font-size: 14px; letter-spacing: 8px; color: #333; border-bottom: 1px solid #111; padding-bottom: 10px; margin-bottom: 20px; }
-    .dolar-strong { color: #FFFFFF; font-weight: 800; }
     .data-row { display: flex; justify-content: space-between; align-items: center; padding: 18px 0; border-bottom: 1px solid #111; }
-    .data-label { font-size: 11px; color: #FFFFFF; font-weight: 700; letter-spacing: 2px; width: 35%; }
+    .data-label { font-size: 11px; color: #fff; font-weight: 700; letter-spacing: 2px; width: 35%; }
     .data-value { font-size: 32px; font-weight: 700; width: 65%; text-align: right; }
     .sub-grid { display: flex; gap: 25px; justify-content: flex-end; width: 65%; }
     .sub-item { text-align: right; min-width: 105px; }
-    .sub-label { font-size: 10px; color: #FFFFFF !important; display: block; margin-bottom: 4px; font-weight: 800; letter-spacing: 1px; }
+    .sub-label { font-size: 10px; color: #fff !important; display: block; margin-bottom: 4px; font-weight: 800; }
     .sub-val { font-size: 24px; font-weight: 700; }
     .c-pari { color: #FFB900; } .c-equi { color: #00FFFF; } .c-max { color: #00FF80; } .c-min { color: #FF4B4B; } .c-jus { color: #0080FF; }
     .footer-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: 40px; background: #080808; border-top: 1px solid #222; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; font-size: 11px; z-index: 9999; }
@@ -59,10 +51,9 @@ st.markdown("""
     @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-250%); } }
     .up { color: #00FF80; font-weight: bold; }
     .down { color: #FF4B4B; font-weight: bold; }
-    .pulse { animation: pulse-green 2s infinite; color: #00FF80; font-weight: bold; }
-</style>
-""", unsafe_allow_html=True)
+</style>""", unsafe_allow_html=True)
 
+# 4. ADMIN
 if st.session_state.perfil == "admin":
     with st.popover(" "):
         st.session_state.v_ajuste = st.number_input("AJUSTE", value=st.session_state.v_ajuste, format="%.4f")
@@ -70,29 +61,37 @@ if st.session_state.perfil == "admin":
 
 def get_market_data():
     try:
-        tkrs = ["BRL=X", "DX-Y.NYB", "EWZ", "EURUSD=X", "USDJPY=X"]
-        data = {}
-        for t in tkrs:
-            tk = yf.Ticker(t)
-            inf = tk.fast_info
-            p = inf['last_price']
+        t_list = ["BRL=X", "DX-Y.NYB", "EWZ", "EURUSD=X", "USDJPY=X"]
+        d = {}
+        for t in t_list:
+            tk = yf.Ticker(t); inf = tk.fast_info; p = inf['last_price']
             v = ((p - inf['previous_close']) / inf['previous_close']) * 100
-            data[t] = {"p": p, "v": v}
-        return data, data["DX-Y.NYB"]["v"] - data["EWZ"]["v"]
+            d[t] = {"p": p, "v": v}
+        return d, d["DX-Y.NYB"]["v"] - d["EWZ"]["v"]
     except: return None, 0.0
 
-placeholder = st.empty()
-
+scr = st.empty()
 while True:
-    m, spread = get_market_data()
+    m, spr = get_market_data()
     if m:
-        spot = m["BRL=X"]["p"]
-        paridade = st.session_state.v_ajuste * (1 + (spread/100))
-        ref = st.session_state.ref_base
-        equi = (round((ref + 0.0220) * 2000) / 2000)
-        
-        with placeholder.container():
-            st.markdown(f'<div class="terminal-header">TERMINAL <span class="dolar-strong">DOLAR</span></div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="data-row"><div class="data-label">PARIDADE GLOBAL</div><div class="data-value c-pari">{paridade:.4f}</div></div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="data-row"><div class="data-label">EQUILIBRIO</div><div class="data-value c-equi">{equi:.4f}</div></div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="data-row"><div class="data-label">PREÇO JUSTO</div><div class="sub-grid"><div class="sub-item"><span class="sub-label">MINIMA</span><span class="sub-val c-min">{(round((spot+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">JUSTO</span><span class="sub-val c-jus">{(round((spot+0.0310)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">MAXIMA</span><span class="sub-val c-max">{(
+        s_p = m["BRL=X"]["p"]; r_f = st.session_state.ref_base
+        with scr.container():
+            st.markdown(f'<div class="terminal-header">TERMINAL <span style="color:#fff">DOLAR</span></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="data-row"><div class="data-label">PARIDADE GLOBAL</div><div class="data-value c-pari">{(st.session_state.v_ajuste * (1 + (spr/100))):.4f}</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="data-row"><div class="data-label">EQUILIBRIO</div><div class="data-value c-equi">{(round((r_f+0.0220)*2000)/2000):.4f}</div></div>', unsafe_allow_html=True)
+            
+            # PREÇO JUSTO
+            st.markdown(f'<div class="data-row"><div class="data-label">PREÇO JUSTO</div><div class="sub-grid"><div class="sub-item"><span class="sub-label">MINIMA</span><span class="sub-val c-min">{(round((s_p+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">JUSTO</span><span class="sub-val c-jus">{(round((s_p+0.0310)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">MAXIMA</span><span class="sub-val c-max">{(round((s_p+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
+
+            # REFERENCIAL
+            st.markdown(f'<div class="data-row"><div class="data-label">REF. INST.</div><div class="sub-grid"><div class="sub-item"><span class="sub-label">MINIMA</span><span class="sub-val c-min">{(round((r_f+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">JUSTO</span><span class="sub-val c-jus">{(round((r_f+0.0310)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">MAXIMA</span><span class="sub-val c-max">{(round((r_f+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
+
+            # RODAPÉ COM CORES E SPOT
+            def f_c(t, n, d=2):
+                v = m[t]['v']
+                c = "up" if v >= 0 else "down"
+                return f"{n}: {m[t]['p']:.{d}f} <span class='{c}'>({v:+.2f}%)</span>"
+
+            items = f"{f_c('BRL=X','SPOT',4)} | {f_c('DX-Y.NYB','DXY')} | {f_c('EWZ','EWZ')} | SPREAD: <span class='{'up' if spr >=0 else 'down'}'>{spr:+.2f}%</span>"
+            st.markdown(f'<div class="footer-bar"><div>LIVE</div><div class="ticker-wrap"><div class="ticker">{items}</div></div><div>{datetime.now().strftime("%H:%M:%S")}</div></div>', unsafe_allow_html=True)
+    time.sleep(2)
