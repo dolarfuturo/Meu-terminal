@@ -2,3 +2,7 @@ streamlit
 yfinance
 streamlit-autorefresh
 
+streamlit
+yfinance
+pandas
+st-gsheets-connection
