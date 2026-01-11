@@ -1,33 +1,4 @@
 import streamlit as st
-from streamlit_gsheets import GSheetsConnection
-
-# 1. Conexão com a planilha que servirá de "nuvem"
-conn = st.connection("gsheets", type=GSheetsConnection)
-
-# 2. Função para ler o valor que VOCÊ definiu
-def obter_referencial_mestre():
-    df = conn.read(worksheet="Config", ttl="5s") # Lê a cada 5 segundos
-    return df.iloc[0, 0] # Pega o valor da primeira célula
-
-# 3. AREA DO ADMIN (Só aparece pra você no tablet)
-with st.sidebar:
-    senha = st.text_input("Acesso Mestre", type="password")
-    if senha == "suasenha123":
-        st.subheader("Painel de Controle")
-        novo_valor = st.number_input("Ajustar Referencial Agora", value=obter_referencial_mestre())
-        if st.button("ATUALIZAR TERMINAL"):
-            # Aqui o código grava o novo valor na planilha
-            df_update = pd.DataFrame({"referencial": [novo_valor]})
-            conn.update(worksheet="Config", data=df_update)
-            st.success("Enviado para todos os clientes!")
-
-# 4. AREA DO CLIENTE (O que eles recebem pronto)
-referencial_atual = obter_referencial_mestre()
-
-# O cálculo já aparece mastigado baseado no que você enviou
-st.metric("REFERENCIAL INSTITUCIONAL", referencial_atual)
-# Aqui entram seus cálculos de Preço Justo e Paridade usando o referencial_atual
-import streamlit as st
 import yfinance as yf
 import pandas as pd
 import time
