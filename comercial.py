@@ -1,62 +1,118 @@
 import streamlit as st
+import yfinance as yf
+import pandas as pd
 import time
+from datetime import datetime
 
+# 1. CONFIGURAÇÃO DO TERMINAL
 st.set_page_config(page_title="TERMINAL DOLAR", layout="wide")
 
-# ==========================================
-# 1. EDITE OS VALORES BÁSICOS AQUI
-# ==========================================
-valor_ajuste = 5.4215
-valor_referencial = 5.3705
-vencimento = "FEV/26"  # Exemplo de vencimento
-# ==========================================
+if 'ref_base' not in st.session_state:
+    st.session_state.ref_base = 0.0
 
-# Cálculos Automáticos
-diferencial = valor_ajuste - valor_referencial
-preco_calculado = valor_ajuste + 0.0150 # Exemplo de fórmula, ajuste se necessário
-
-# Estilo Visual (Preto e Amarelo/Ciano)
+# 2. ESTILO CSS (ESTABILIZADO E COM ENGRENAGEM TRANSLÚCIDA)
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700;800&display=swap');
     * { font-family: 'Roboto Mono', monospace !important; text-transform: uppercase; }
     .stApp { background-color: #000000; color: #FFFFFF; }
     header, [data-testid="stHeader"], [data-testid="stToolbar"] { display: none !important; }
+    .block-container { padding-top: 0.5rem !important; max-width: 850px !important; margin: auto; padding-bottom: 80px; }
     
-    .row { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #222; }
-    .label { font-size: 14px; font-weight: 700; color: #888; }
-    .value { font-size: 32px; font-weight: 800; text-align: right; }
+    /* ENGRENAGEM QUASE INVISÍVEL */
+    [data-testid="stPopover"] { position: fixed; top: 10px; right: 10px; opacity: 0.1; transition: opacity 0.3s; z-index: 1000; }
+    [data-testid="stPopover"]:hover { opacity: 0.8; }
+
+    /* CABEÇALHO */
+    .terminal-header { text-align: center; font-size: 14px; letter-spacing: 8px; color: #444; border-bottom: 1px solid #111; padding-bottom: 10px; margin-bottom: 20px; }
+    .dolar-strong { color: #FFFFFF; font-weight: 800; }
+
+    /* LINHAS DE DADOS */
+    .data-row { display: flex; justify-content: space-between; align-items: center; padding: 18px 0; border-bottom: 1px solid #111; }
+    .data-label { font-size: 11px; color: #FFFFFF; font-weight: 700; letter-spacing: 2px; width: 35%; }
+    .data-value { font-size: 32px; font-weight: 700; width: 65%; text-align: right; }
     
-    .c-pari { color: #FFB900; } /* Amarelo */
-    .c-equi { color: #00FFFF; } /* Ciano */
-    .c-white { color: #FFFFFF; }
+    .sub-grid { display: flex; gap: 25px; justify-content: flex-end; width: 65%; }
+    .sub-item { text-align: right; min-width: 105px; }
+    .sub-label { font-size: 9px; color: #444; display: block; margin-bottom: 4px; font-weight: 700; }
+    .sub-val { font-size: 24px; font-weight: 700; }
+
+    /* CORES DINÂMICAS */
+    .c-pari { color: #FFB900; } .c-equi { color: #00FFFF; } .c-max { color: #00FF80; } .c-min { color: #FF4B4B; } .c-jus { color: #0080FF; }
+
+    /* RODAPÉ */
+    .footer-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: 40px; background: #080808; border-top: 1px solid #222; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; font-size: 11px; z-index: 9999; }
+    .ticker-wrap { flex-grow: 1; overflow: hidden; white-space: nowrap; margin: 0 30px; }
+    .ticker { display: inline-block; animation: marquee 35s linear infinite; }
+    @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-250%); } }
+    .up { color: #00FF80; } .down { color: #FF4B4B; }
+    .pulse { animation: pulse-green 2s infinite; color: #00FF80; font-weight: bold; }
+    @keyframes pulse-green { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
 </style>
 """, unsafe_allow_html=True)
 
-# Título
-st.markdown('<div style="text-align:center; padding: 10px; color:#444; letter-spacing:5px; font-size:10px;">TERMINAL DE DADOS COMERCIAL</div>', unsafe_allow_html=True)
+def round_to_half_tick(price):
+    return round(price * 2000) / 2000
 
-# --- EXIBIÇÃO DOS DADOS ---
+# 3. CONTROLES DISCRETOS
+with st.popover("⚙️"):
+    v_ajuste = st.number_input("AJUSTE ANTERIOR", value=5.4000, format="%.4f")
+    st.session_state.ref_base = st.number_input("REFERENCIAL", value=st.session_state.ref_base, format="%.4f")
 
-# 1. Ajuste Mestre
-st.markdown(f'<div class="row"><div class="label">AJUSTE MESTRE</div><div class="value c-pari">{valor_ajuste:.4f}</div></div>', unsafe_allow_html=True)
+def get_market_data():
+    try:
+        tkrs = ["BRL=X", "DX-Y.NYB", "EWZ", "EURUSD=X", "USDJPY=X"]
+        data = {}
+        for t in tkrs:
+            tk = yf.Ticker(t)
+            inf = tk.fast_info
+            p = inf['last_price']
+            # Cálculo de variação manual para evitar erro NAN
+            prev = inf['previous_close']
+            var = ((p - prev) / prev) * 100
+            data[t] = {"p": p, "v": var}
+        spread = data["DX-Y.NYB"]["v"] - data["EWZ"]["v"]
+        return data, spread
+    except: return None, 0.0
 
-# 2. Preço (Ajuste + Cálculo)
-st.markdown(f'<div class="row"><div class="label">PREÇO ESTIMADO</div><div class="value c-white">{preco_calculado:.4f}</div></div>', unsafe_allow_html=True)
+placeholder = st.empty()
 
-# 3. Referencial
-st.markdown(f'<div class="row"><div class="label">REFERENCIAL</div><div class="value c-equi">{valor_referencial:.4f}</div></div>', unsafe_allow_html=True)
+while True:
+    m, spread = get_market_data()
+    if m:
+        spot = m["BRL=X"]["p"]
+        ref = st.session_state.ref_base
+        paridade = v_ajuste * (1 + (spread/100))
+        
+        # CÁLCULOS DOS PONTOS
+        equi = round_to_half_tick(ref + 0.0220)
+        f_max, f_jus, f_min = [round_to_half_tick(spot + x) for x in [0.0420, 0.0310, 0.0220]]
+        t_max, t_jus, t_min = [round_to_half_tick(ref + x) for x in [0.0420, 0.0310, 0.0220]]
 
-# 4. Diferencial
-st.markdown(f'<div class="row"><div class="label">DIFERENCIAL</div><div class="value c-white">{diferencial:.4f}</div></div>', unsafe_allow_html=True)
+        with placeholder.container():
+            # TÍTULO REVISADO
+            st.markdown('<div class="terminal-header">TERMINAL <span class="dolar-strong">DOLAR</span></div>', unsafe_allow_html=True)
 
-# 5. Vencimento
-st.markdown(f'<div class="row"><div class="label">VENCIMENTO</div><div class="value c-pari" style="font-size:24px;">{vencimento}</div></div>', unsafe_allow_html=True)
+            # LINHA PARIDADE
+            st.markdown(f'<div class="data-row"><div class="data-label">PARIDADE GLOBAL</div><div class="data-value c-pari">{paridade:.4f}</div></div>', unsafe_allow_html=True)
+            
+            # LINHA EQUILIBRIO (REF)
+            st.markdown(f'<div class="data-row"><div class="data-label">EQUILIBRIO</div><div class="data-value c-equi">{equi:.4f}</div></div>', unsafe_allow_html=True)
 
-# Botão de atualização manual
-if st.button("🔄 ATUALIZAR"):
-    st.rerun()
+            # BLOCO PREÇO JUSTO
+            st.markdown(f'<div class="data-row"><div class="data-label">PREÇO JUSTO</div><div class="sub-grid"><div class="sub-item"><span class="sub-label">MINIMA</span><span class="sub-val c-min">{f_min:.4f}</span></div><div class="sub-item"><span class="sub-label">JUSTO</span><span class="sub-val c-jus">{f_jus:.4f}</span></div><div class="sub-item"><span class="sub-label">MAXIMA</span><span class="sub-val c-max">{f_max:.4f}</span></div></div></div>', unsafe_allow_html=True)
 
-# Auto-refresh a cada 10 segundos
-time.sleep(10)
-st.rerun()
+            # BLOCO REFERENCIAL INSTITUCIONAL
+            st.markdown(f'<div class="data-row"><div class="data-label">REFERENCIAL INSTITUCIONAL</div><div class="sub-grid"><div class="sub-item"><span class="sub-label">MINIMA</span><span class="sub-val c-min">{t_min:.4f}</span></div><div class="sub-item"><span class="sub-label">JUSTO</span><span class="sub-val c-jus">{t_jus:.4f}</span></div><div class="sub-item"><span class="sub-label">MAXIMA</span><span class="sub-val c-max">{t_max:.4f}</span></div></div></div>', unsafe_allow_html=True)
+
+            # RODAPÉ COM EUR/USD COMPLETO
+            def format_tk(sym, nome, decs=2):
+                val = m[sym]['v']
+                cor = "up" if val > 0 else "down"
+                p_atual = f"{m[sym]['p']:.{decs}f}"
+                return f"{nome}: {p_atual} <span class='{cor}'>{val:+.2f}%</span>"
+
+            agora = datetime.now().strftime("%H:%M:%S")
+            st.markdown(f'<div class="footer-bar"><div style="min-width: 80px;"><span class="pulse">●</span> LIVE</div><div class="ticker-wrap"><div class="ticker">{format_tk("DX-Y.NYB", "DXY")} | {format_tk("EWZ", "EWZ")} | {format_tk("EURUSD=X", "EUR/USD", 4)} | {format_tk("USDJPY=X", "USD/JPY")} | SPREAD: {spread:+.2f}%</div></div><div style="min-width: 80px; text-align: right; color: #444;">{agora}</div></div>', unsafe_allow_html=True)
+
+    time.sleep(2)
