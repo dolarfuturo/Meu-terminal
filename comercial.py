@@ -7,28 +7,32 @@ from datetime import datetime
 # 1. SETUP
 st.set_page_config(page_title="TERMINAL DOLAR", layout="wide")
 
+# CONFIGURAÇÃO DE ACESSO - SENHA ATUALIZADA
+SENHA_ADMIN = "admin123"
+SENHA_CLIENTE = "trader123"
+
 if 'autenticado' not in st.session_state:
     st.session_state.autenticado = False
     st.session_state.perfil = None
 if 'v_ajuste' not in st.session_state: st.session_state.v_ajuste = 5.4000
 if 'ref_base' not in st.session_state: st.session_state.ref_base = 5.4000
 
-# 2. LOGIN
+# 2. TELA DE LOGIN
 if not st.session_state.autenticado:
     st.markdown("<style>.stApp { background-color: #000; }</style>", unsafe_allow_html=True)
-    senha = st.text_input("CHAVE:", type="password")
+    senha = st.text_input("CHAVE DE ACESSO:", type="password")
     if st.button("ACESSAR"):
-        if senha == "admin123":
+        if senha == SENHA_ADMIN:
             st.session_state.autenticado = True
             st.session_state.perfil = "admin"
             st.rerun()
-        elif senha == "cliente123":
+        elif senha == SENHA_CLIENTE:
             st.session_state.autenticado = True
             st.session_state.perfil = "cliente"
             st.rerun()
     st.stop()
 
-# 3. CSS (Rótulos brancos e visual limpo)
+# 3. CSS (VISUAL PROFISSIONAL)
 st.markdown("""<style>
     @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700;800&display=swap');
     * { font-family: 'Roboto Mono', monospace !important; text-transform: uppercase; }
@@ -53,7 +57,7 @@ st.markdown("""<style>
     .down { color: #FF4B4B; font-weight: bold; }
 </style>""", unsafe_allow_html=True)
 
-# 4. ADMIN
+# 4. PAINEL SECRETO (ADMIN)
 if st.session_state.perfil == "admin":
     with st.popover(" "):
         st.session_state.v_ajuste = st.number_input("AJUSTE", value=st.session_state.v_ajuste, format="%.4f")
@@ -65,7 +69,11 @@ def get_market_data():
         d = {}
         for t in t_list:
             tk = yf.Ticker(t); inf = tk.fast_info; p = inf['last_price']
-            v = ((p - inf['previous_close']) / inf['previous_close']) * 100
+            v = ((p - i['previous_close']) / i['previous_close']) * 100 if 'i' in locals() else 0 # Proteção
+            # Recalculo manual da variação para garantir cor correta
+            hist = yf.Ticker(t).history(period="2d")
+            prev = hist['Close'].iloc[-2]
+            v = ((p - prev) / prev) * 100
             d[t] = {"p": p, "v": v}
         return d, d["DX-Y.NYB"]["v"] - d["EWZ"]["v"]
     except: return None, 0.0
@@ -79,14 +87,9 @@ while True:
             st.markdown(f'<div class="terminal-header">TERMINAL <span style="color:#fff">DOLAR</span></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="data-row"><div class="data-label">PARIDADE GLOBAL</div><div class="data-value c-pari">{(st.session_state.v_ajuste * (1 + (spr/100))):.4f}</div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="data-row"><div class="data-label">EQUILIBRIO</div><div class="data-value c-equi">{(round((r_f+0.0220)*2000)/2000):.4f}</div></div>', unsafe_allow_html=True)
-            
-            # PREÇO JUSTO
             st.markdown(f'<div class="data-row"><div class="data-label">PREÇO JUSTO</div><div class="sub-grid"><div class="sub-item"><span class="sub-label">MINIMA</span><span class="sub-val c-min">{(round((s_p+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">JUSTO</span><span class="sub-val c-jus">{(round((s_p+0.0310)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">MAXIMA</span><span class="sub-val c-max">{(round((s_p+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
-
-            # REFERENCIAL
             st.markdown(f'<div class="data-row"><div class="data-label">REF. INST.</div><div class="sub-grid"><div class="sub-item"><span class="sub-label">MINIMA</span><span class="sub-val c-min">{(round((r_f+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">JUSTO</span><span class="sub-val c-jus">{(round((r_f+0.0310)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">MAXIMA</span><span class="sub-val c-max">{(round((r_f+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
 
-            # RODAPÉ COM CORES E SPOT
             def f_c(t, n, d=2):
                 v = m[t]['v']
                 c = "up" if v >= 0 else "down"
