@@ -34,7 +34,7 @@ if not st.session_state.autenticado:
 if 'v_ajuste' not in st.session_state: st.session_state.v_ajuste = 5.4000
 if 'ref_base' not in st.session_state: st.session_state.ref_base = 5.4000
 
-# CSS CORRIGIDO (SEM QUEBRAS DE LINHA QUE GERAM ERRO)
+# CSS MANTIDO E PROTEGIDO
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700;800&display=swap');
@@ -57,7 +57,8 @@ st.markdown("""
     .ticker-wrap { flex-grow: 1; overflow: hidden; white-space: nowrap; margin: 0 30px; }
     .ticker { display: inline-block; animation: marquee 35s linear infinite; }
     @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-250%); } }
-    .up { color: #00FF80; } .down { color: #FF4B4B; }
+    .up { color: #00FF80; font-weight: bold; }
+    .down { color: #FF4B4B; font-weight: bold; }
     .pulse { animation: pulse-green 2s infinite; color: #00FF80; font-weight: bold; }
 </style>
 """, unsafe_allow_html=True)
@@ -90,17 +91,8 @@ while True:
         ref = st.session_state.ref_base
         equi = (round((ref + 0.0220) * 2000) / 2000)
         
-        # HTML EM LINHA ÚNICA PARA EVITAR SYNTAXERROR
         with placeholder.container():
             st.markdown(f'<div class="terminal-header">TERMINAL <span class="dolar-strong">DOLAR</span></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="data-row"><div class="data-label">PARIDADE GLOBAL</div><div class="data-value c-pari">{paridade:.4f}</div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="data-row"><div class="data-label">EQUILIBRIO</div><div class="data-value c-equi">{equi:.4f}</div></div>', unsafe_allow_html=True)
-            
-            st.markdown(f'<div class="data-row"><div class="data-label">PREÇO JUSTO</div><div class="sub-grid"><div class="sub-item"><span class="sub-label">MINIMA</span><span class="sub-val c-min">{(round((spot+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">JUSTO</span><span class="sub-val c-jus">{(round((spot+0.0310)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">MAXIMA</span><span class="sub-val c-max">{(round((spot+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
-
-            st.markdown(f'<div class="data-row"><div class="data-label">REFERENCIAL INSTITUCIONAL</div><div class="sub-grid"><div class="sub-item"><span class="sub-label">MINIMA</span><span class="sub-val c-min">{(round((ref+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">JUSTO</span><span class="sub-val c-jus">{(round((ref+0.0310)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">MAXIMA</span><span class="sub-val c-max">{(round((ref+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
-
-            agora = datetime.now().strftime("%H:%M:%S")
-            dxy_v, ewz_v = m["DX-Y.NYB"]["v"], m["EWZ"]["v"]
-            st.markdown(f'<div class="footer-bar"><div><span class="pulse">●</span> LIVE</div><div class="ticker-wrap"><div class="ticker">DXY: {m["DX-Y.NYB"]["p"]:.2f} ({dxy_v:+.2f}%) | EWZ: {m["EWZ"]["p"]:.2f} ({ewz_v:+.2f}%) | EURUSD: {m["EURUSD=X"]["p"]:.4f} | SPREAD: {spread:+.2f}%</div></div><div>{agora}</div></div>', unsafe_allow_html=True)
-    time.sleep(2)
+            st.markdown(f'<div class="data-row"><div class="data-label">PREÇO JUSTO</div><div class="sub-grid"><div class="sub-item"><span class="sub-label">MINIMA</span><span class="sub-val c-min">{(round((spot+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">JUSTO</span><span class="sub-val c-jus">{(round((spot+0.0310)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">MAXIMA</span><span class="sub-val c-max">{(
