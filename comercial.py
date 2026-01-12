@@ -13,7 +13,6 @@ def get_global_vars():
     return {
         "ajuste": 5.4000, 
         "ref": 5.4000,
-        "fraldao": 15.0, # Pontos de diferença comercial vs futuro
         "notas_mural": "RESUMO DA ABERTURA E AGENDA: AGUARDANDO ATUALIZAÇÃO...",
         "notas": "MURAL: AGUARDANDO...",
         "notas2": "INFORMATIVO: OPERACIONAL ATIVO"
@@ -64,9 +63,10 @@ st.markdown("""
     .v-peq { font-size: 15px; font-family: 'Chakra Petch'; font-weight: 700; color: #ffff00; }
     .v-extra { font-size: 12px; font-family: 'Chakra Petch'; font-weight: 400; color: #ffff00; opacity: 0.6; margin-top: 2px; }
     .d-value { font-size: 26px; text-align: right; font-family: 'Chakra Petch'; font-weight: 700; }
-    .c-pari { color: #cc9900; } .c-equi { color: #00cccc; } .c-b3 { color: #ffffff; border-left: 2px solid #ff0000; padding-left: 10px; }
+    .c-pari { color: #cc9900; } .c-equi { color: #00cccc; } 
     .c-max { color: #00cc66; } .c-min { color: #cc3333; } .c-jus { color: #0066cc; }
     
+    /* ESTILO SINAL MICRO */
     .micro-container { text-align: right; padding: 0 15px 15px 0; font-family: 'Chakra Petch'; font-size: 10px; font-weight: 700; letter-spacing: 1px; }
     @keyframes blinker { 50% { opacity: 0; } }
     .blink-text { animation: blinker 0.8s linear infinite; }
@@ -109,9 +109,6 @@ while True:
     
     if d_m["last"] > 0:
         spot = s_m["last"]
-        # CÁLCULO DÓLAR B3 SEM DELAY (SINTÉTICO)
-        dol_b3 = spot + (v_global["fraldao"] / 1000)
-        
         spr = d_m["var"] - e_m["var"]
         pari_val = v_global["ajuste"]*(1+(spr/100))
         equilibrio = round((v_global["ref"] + 0.0220) * 2000) / 2000
@@ -121,7 +118,7 @@ while True:
         elif spot > (pari_val + 0.0015): msg, clr, arr = "● PRECIFICAÇÃO DE BAIXA", "#aa3333", "▼ ▼ ▼ ▼ ▼"
         else: msg, clr, arr = "● PRECIFICAÇÃO NEUTRA", "#aaaa00", "◄ ◄ ◄ ► ► ►"
 
-        # LÓGICA MICRO (PONTOS BASEADO NO EQUILÍBRIO)
+        # LÓGICA MICRO (PONTOS)
         diff_pts = (spot - equilibrio) * 1000
         blink_class = ""
         if diff_pts >= 22: mic_msg, mic_clr, blink_class = "DÓLAR MUITO CARO", "#ff0000", "blink-text"
@@ -134,10 +131,9 @@ while True:
             if st.session_state.user_type == "ADM":
                 with st.expander("PAINEL ADM"):
                     with st.form("adm_panel"):
-                        c1, c2, c3 = st.columns(3)
+                        c1, c2 = st.columns(2)
                         v_global["ajuste"] = c1.number_input("PARIDADE", value=v_global["ajuste"], format="%.4f")
                         v_global["ref"] = c2.number_input("REF INST", value=v_global["ref"], format="%.4f")
-                        v_global["fraldao"] = c3.number_input("DIF. FUTURO (PONTOS)", value=v_global["fraldao"], format="%.1f")
                         v_global["notas_mural"] = st.text_area("MORNING CALL & AGENDA", value=v_global["notas_mural"], height=120)
                         v_global["notas"] = st.text_input("RODAPÉ 1", value=v_global["notas"])
                         v_global["notas2"] = st.text_input("RODAPÉ 2", value=v_global["notas2"])
@@ -148,9 +144,8 @@ while True:
             
             st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value c-pari">{pari_val:.4f}</div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value c-equi">{equilibrio:.4f}</div></div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="d-row" style="background: rgba(255,0,0,0.05);"><div class="d-label">DÓLAR B3 (TELA)</div><div class="d-value c-b3">{dol_b3:.4f}</div></div>', unsafe_allow_html=True)
             
-            # JUSTO E REF
+            # JUSTO E REF (MANTIDOS CONFORME ORIGINAL)
             justo = round((spot + 0.0310) * 2000) / 2000
             st.markdown(f'<div class="d-row"><div class="d-label">PREÇO JUSTO</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((spot+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{justo:.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((spot+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="d-row"><div class="d-label">REF. INSTITUCIONAL</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((v_global["ref"]+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{(round((v_global["ref"]+0.0310)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((v_global["ref"]+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
