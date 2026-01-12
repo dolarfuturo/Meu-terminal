@@ -4,9 +4,14 @@ import pandas as pd
 import time
 from datetime import datetime
 
-# 1. SETUP
-st.set_page_config(page_title="TERMINAL", layout="wide", initial_sidebar_state="collapsed")
+# 1. SETUP COM MODO FULLSCREEN FORÇADO
+st.set_page_config(
+    page_title="TERMINAL", 
+    layout="wide", 
+    initial_sidebar_state="collapsed"
+)
 
+# MEMÓRIA GLOBAL PARA SINCRONIZAÇÃO
 @st.cache_resource
 def get_global_params():
     return {"ajuste": 5.4000, "ref": 5.4000}
@@ -34,50 +39,48 @@ if not st.session_state.autenticado:
             st.rerun()
     st.stop()
 
-# 2. CSS AGRESSIVO (ESCONDE LOGOS, RODAPÉ E BARRA DO GOOGLE/SITE)
+# 2. CSS PARA OCULTAR LOGOS DO RODAPÉ E MAXIMIZAR TELA
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700;800&display=swap');
     * { font-family: 'Roboto Mono', monospace !important; text-transform: uppercase; }
     
-    /* REMOVE TUDO: MENU, LOGO GITHUB, BOTÃO DEPLOY E FOOTER */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    [data-testid="stHeader"] {display: none;}
-    [data-testid="stToolbar"] {display: none;}
-    .stDeployButton {display:none;}
-    [data-testid="stStatusWidget"] {display:none;}
-    #viewer-badge {display:none;}
+    /* REMOVE TUDO DO STREAMLIT (LOGOS VERDE/VERMELHO E MENU) */
+    header, [data-testid="stHeader"], footer, [data-testid="stFooter"] { visibility: hidden !important; display: none !important; }
+    #MainMenu, .stDeployButton, [data-testid="stToolbar"] { display: none !important; }
     
     /* ESTICA O CONTEÚDO PARA OCUPAR A TELA TODA */
     .stApp { background-color: #000; color: #fff; }
     .block-container { 
-        padding: 0 !important; 
+        padding-top: 0rem !important; 
+        padding-bottom: 40px !important; 
+        padding-left: 0.5rem !important; 
+        padding-right: 0.5rem !important; 
         max-width: 100% !important; 
-        margin-top: -50px; /* Sobe o conteúdo para tapar o topo */
     }
     
-    /* ESCONDER A ENGENHAGEM NO CELULAR */
-    [data-testid="stPopover"] { position: fixed; top: 0; right: 0; opacity: 0; z-index: 10000; }
+    /* ENGENHAGEM INVISÍVEL NO TOPO DIREITO */
+    [data-testid="stPopover"] { position: fixed; top: 5px; right: 5px; opacity: 0; z-index: 10000; }
     
-    /* TERMINAL VISUAL */
-    .terminal-header { text-align: center; font-size: 12px; letter-spacing: 5px; color: #333; padding: 20px 0; border-bottom: 1px solid #111; }
-    .data-row { display: flex; justify-content: space-between; align-items: center; padding: 18px 10px; border-bottom: 1px solid #111; }
-    .data-label { font-size: 11px; color: #fff; font-weight: 700; width: 40%; }
-    .data-value { font-size: 30px; font-weight: 700; width: 60%; text-align: right; }
+    /* AJUSTE DE LINHAS PARA NÃO QUEBRAR NO CELULAR */
+    .terminal-header { text-align: center; font-size: 11px; letter-spacing: 4px; color: #222; margin-bottom: 15px; }
+    .data-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #111; }
+    .data-label { font-size: 10px; color: #fff; font-weight: 700; width: 45%; }
+    .data-value { font-size: 28px; font-weight: 700; width: 55%; text-align: right; }
     
-    .sub-grid { display: flex; gap: 12px; justify-content: flex-end; width: 60%; }
-    .sub-label { font-size: 9px; color: #fff !important; display: block; font-weight: 800; }
-    .sub-val { font-size: 18px; font-weight: 700; }
+    .sub-grid { display: flex; gap: 8px; justify-content: flex-end; width: 55%; }
+    .sub-item { text-align: right; }
+    .sub-label { font-size: 8px; color: #fff !important; display: block; font-weight: 800; }
+    .sub-val { font-size: 17px; font-weight: 700; }
     
     .c-pari { color: #FFB900; } .c-equi { color: #00FFFF; } .c-max { color: #00FF80; } .c-min { color: #FF4B4B; } .c-jus { color: #0080FF; }
     
-    /* RODAPÉ LIMPO E SEM LOGOS */
-    .footer-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: 40px; background: #080808; border-top: 1px solid #222; display: flex; align-items: center; padding: 0 15px; font-size: 10px; z-index: 9999; }
+    /* RODAPÉ LIMPO E FIXO */
+    .footer-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: 35px; background: #080808; border-top: 1px solid #222; display: flex; align-items: center; padding: 0 10px; font-size: 9px; z-index: 9999; }
     .ticker-wrap { flex-grow: 1; overflow: hidden; white-space: nowrap; }
-    .ticker { display: inline-block; animation: marquee 30s linear infinite; }
-    @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-400%); } }
+    .ticker { display: inline-block; animation: marquee 25s linear infinite; }
+    @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-350%); } }
+    .up { color: #00FF80; } .down { color: #FF4B4B; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -89,15 +92,18 @@ if st.session_state.perfil == "admin":
         if st.button("SALVAR PARA TODOS"):
             params["ajuste"] = novo_aj
             params["ref"] = novo_rf
+            st.success("OK!")
+            time.sleep(1)
             st.rerun()
 
 def get_market_data():
     try:
-        t_list = ["BRL=X", "DX-Y.NYB", "EWZ", "EURUSD=X"]
+        t_list = ["BRL=X", "DX-Y.NYB", "EWZ", "EURUSD=X", "USDJPY=X"]
         d = {}
         for t in t_list:
             tk = yf.Ticker(t); p = tk.fast_info['last_price']
-            hist = tk.history(period="2d"); prev = hist['Close'].iloc[-2]
+            hist = tk.history(period="2d")
+            prev = hist['Close'].iloc[-2]
             v = ((p - prev) / prev) * 100
             d[t] = {"p": p, "v": v}
         return d, d["DX-Y.NYB"]["v"] - d["EWZ"]["v"]
@@ -112,13 +118,17 @@ while True:
             st.markdown(f'<div class="terminal-header">TERMINAL DOLAR</div>', unsafe_allow_html=True)
             st.markdown(f'<div class="data-row"><div class="data-label">PARIDADE</div><div class="data-value c-pari">{(v_aj * (1 + (spr/100))):.4f}</div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="data-row"><div class="data-label">EQUILIBRIO</div><div class="data-value c-equi">{(round((r_f+0.0220)*2000)/2000):.4f}</div></div>', unsafe_allow_html=True)
+            
+            # PREÇO JUSTO
             st.markdown(f'<div class="data-row"><div class="data-label">P. JUSTO</div><div class="sub-grid"><div class="sub-item"><span class="sub-label">MIN</span><span class="sub-val c-min">{(round((s_p+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">JUS</span><span class="sub-val c-jus">{(round((s_p+0.0310)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">MAX</span><span class="sub-val c-max">{(round((s_p+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
+
+            # REF. INST
             st.markdown(f'<div class="data-row"><div class="data-label">REF. INST</div><div class="sub-grid"><div class="sub-item"><span class="sub-label">MIN</span><span class="sub-val c-min">{(round((r_f+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">JUS</span><span class="sub-val c-jus">{(round((r_f+0.0310)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">MAX</span><span class="sub-val c-max">{(round((r_f+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
 
             def f_c(t, n, d=2):
-                v = m[t]['v']; c = "color:#00FF80" if v >= 0 else "color:#FF4B4B"
-                return f"{n}: {m[t]['p']:.{d}f} <span style='{c}'>({v:+.2f}%)</span>"
+                v = m[t]['v']; c = "up" if v >= 0 else "down"
+                return f"{n}: {m[t]['p']:.{d}f} <span class='{c}'>({v:+.2f}%)</span>"
 
             items = f"{f_c('BRL=X','SPOT',4)} | {f_c('DX-Y.NYB','DXY')} | {f_c('EWZ','EWZ')} | SPREAD: {spr:+.2f}%"
-            st.markdown(f'<div class="footer-bar"><div class="ticker-wrap"><div class="ticker">{items}</div></div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="footer-bar"><div>LIVE</div><div class="ticker-wrap"><div class="ticker">{items}</div></div></div>', unsafe_allow_html=True)
     time.sleep(2)
