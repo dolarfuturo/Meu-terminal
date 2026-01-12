@@ -24,49 +24,51 @@ if not st.session_state.autenticado:
             st.rerun()
     st.stop()
 
-# 3. CSS PROFISSIONAL
+# 3. CSS TÉCNICO (FONTE ORBITRON - ULTRA QUADRADA)
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
     
     header, footer, [data-testid="stHeader"], [data-testid="stFooter"], .stDeployButton, [data-testid="stStatusWidget"] {
         display: none !important;
     }
     
-    .stApp { background-color: #000; color: #fff; font-family: 'Share Tech Mono', monospace !important; }
+    .stApp { background-color: #000; color: #fff; font-family: 'Orbitron', sans-serif !important; }
     .block-container { padding-top: 0rem !important; max-width: 100% !important; }
 
-    /* TOPO AJUSTADO - SEM SEPARAÇÃO EXCESSIVA */
-    .terminal-header { text-align: center; padding: 25px 0 10px 0; border-bottom: 1px solid #111; }
-    .header-title { color: #555; font-size: 18px; font-weight: 900; letter-spacing: 2px; }
-    .bold-white { color: #fff; margin-left: -5px; } /* Ajuste de proximidade */
+    /* TOPO: TERMINAL DOLAR COM LINHA BRANCA */
+    .terminal-header { text-align: center; padding: 25px 0 15px 0; border-bottom: 2px solid #fff; margin-bottom: 10px; }
+    .header-title { color: #888; font-size: 16px; letter-spacing: 3px; font-weight: 400; }
+    .bold-white { color: #fff; font-weight: 900; }
     
-    .status-arrow { font-size: 24px; font-weight: 900; margin-top: 5px; }
+    .status-text { font-size: 14px; font-weight: 900; margin-top: 10px; letter-spacing: 2px; }
 
-    .data-row { display: flex; justify-content: space-between; align-items: center; padding: 35px 15px; border-bottom: 1px solid #111; }
-    .data-label { font-size: 11px; color: #aaa; width: 45%; font-weight: bold; }
-    .data-value { font-size: 32px; width: 55%; text-align: right; font-weight: bold; }
+    /* LINHAS DE DADOS */
+    .data-row { display: flex; justify-content: space-between; align-items: center; padding: 32px 15px; border-bottom: 1px solid #111; }
+    .data-label { font-size: 10px; color: #aaa; width: 40%; font-weight: 700; }
+    .data-value { font-size: 34px; width: 60%; text-align: right; font-weight: 900; letter-spacing: -1px; }
     
-    .sub-grid { display: flex; gap: 12px; justify-content: flex-end; width: 55%; }
-    .sub-label { font-size: 8px; color: #666; display: block; margin-bottom: 5px; font-weight: bold; }
-    .sub-val { font-size: 19px; font-weight: bold; }
+    .sub-grid { display: flex; gap: 10px; justify-content: flex-end; width: 60%; }
+    .sub-label { font-size: 8px; color: #555; display: block; margin-bottom: 3px; font-weight: bold; }
+    .sub-val { font-size: 20px; font-weight: 700; }
 
     .c-pari { color: #FFB900; } .c-equi { color: #00FFFF; } .c-max { color: #00FF80; } .c-min { color: #FF4B4B; } .c-jus { color: #0080FF; }
     
-    /* TICKER RODAPÉ */
+    /* RODAPÉ COM SETAS */
     .footer-bar { 
-        position: fixed; bottom: 0; left: 0; width: 100%; height: 50px; 
-        background: #080808; border-top: 1px solid #222; 
+        position: fixed; bottom: 0; left: 0; width: 100%; height: 55px; 
+        background: #050505; border-top: 1px solid #333; 
         display: flex; align-items: center; justify-content: center; z-index: 9999;
     }
-    .ticker-wrap { width: 100%; overflow: hidden; white-space: nowrap; }
-    .ticker { display: inline-block; animation: marquee 30s linear infinite; font-size: 12px; }
+    .ticker-content { display: flex; align-items: center; gap: 20px; width: 100%; overflow: hidden; white-space: nowrap; }
+    .footer-arrows { font-size: 20px; font-weight: 900; padding: 0 15px; border-right: 1px solid #222; }
     
-    .t-name { color: #fff; font-weight: 900; } /* Moedas em Branco Negrito */
+    .ticker { display: inline-block; animation: marquee 25s linear infinite; font-size: 11px; }
+    .t-name { color: #fff; font-weight: 900; }
     .t-up { color: #00FF80; font-weight: bold; }
     .t-down { color: #FF4B4B; font-weight: bold; }
 
-    @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-350%); } }
+    @keyframes marquee { 0% { transform: translateX(50%); } 100% { transform: translateX(-200%); } }
 </style>
 """, unsafe_allow_html=True)
 
@@ -76,9 +78,8 @@ def get_market_data():
         t_list = ["BRL=X", "DX-Y.NYB", "EWZ", "EURUSD=X"]
         d = {}
         for t in t_list:
-            tk = yf.Ticker(t); p = tk.fast_info['last_price']
-            prev = tk.fast_info['previous_close']
-            d[t] = {"p": p, "v": ((p - prev) / prev) * 100}
+            tk = yf.Ticker(t); info = tk.fast_info
+            d[t] = {"p": info['last_price'], "v": ((info['last_price'] - info['previous_close']) / info['previous_close']) * 100}
         return d, d["DX-Y.NYB"]["v"] - d["EWZ"]["v"]
     except: return None, 0.0
 
@@ -91,42 +92,42 @@ while True:
         p_jus = round((s_p + 0.0310) * 2000) / 2000
         diff = s_p - p_jus
         
-        # DEFINIÇÃO DE CORES E SETAS
+        # DEFINIÇÃO DE CORES (SEU PADRÃO)
         if diff < -0.0015:
-            st_arrow, st_clr = "▼ ▼ ▼", "#00FF80" # Barato
+            st_msg, st_clr, st_arrow = "DOLAR BARATO", "#FF4B4B", "▼ ▼ ▼" # Vermelho
         elif diff > 0.0015:
-            st_arrow, st_clr = "▲ ▲ ▲", "#FF4B4B" # Caro
+            st_msg, st_clr, st_arrow = "DOLAR CARO", "#00FF80", "▲ ▲ ▲" # Verde
         else:
-            st_arrow, st_clr = "— — —", "#888888" # Neutro
+            st_msg, st_clr, st_arrow = "DOLAR NEUTRO", "#FFFF00", "— — —" # Amarelo
 
         with placeholder.container():
             st.markdown(f"""
-                <div class="terminal-header" style="border-bottom: 2px solid {st_clr}">
-                    <div class="header-title">TERMINAL<span class="bold-white">DOLAR</span></div>
-                    <div class="status-arrow" style="color:{st_clr}">{st_arrow}</div>
+                <div class="terminal-header">
+                    <div class="header-title">TERMINAL <span class="bold-white">DOLAR</span></div>
+                    <div class="status-text" style="color:{st_clr}">{st_msg}</div>
                 </div>
             """, unsafe_allow_html=True)
             
-            # VALORES CENTRAIS
+            # BLOCO PRINCIPAL
             st.markdown(f'<div class="data-row"><div class="data-label">PARIDADE GLOBAL</div><div class="data-value c-pari">{(params["ajuste"]*(1+(spr/100))):.4f}</div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="data-row"><div class="data-label">EQUILIBRIO</div><div class="data-value c-equi">{(round((params["ref"]+0.0220)*2000)/2000):.4f}</div></div>', unsafe_allow_html=True)
             
             # PREÇO JUSTO
-            st.markdown(f'<div class="data-row"><div class="data-label">PREÇO JUSTO</div><div class="sub-grid"><div class="sub-item"><span class="sub-label">MINIMA</span><span class="sub-val c-min">{(round((s_p+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">JUSTO</span><span class="sub-val c-jus">{p_jus:.4f}</span></div><div class="sub-item"><span class="sub-label">MAXIMA</span><span class="sub-val c-max">{(round((s_p+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="data-row"><div class="data-label">PREÇO JUSTO</div><div class="sub-grid"><div class="sub-item"><span class="sub-label">MIN</span><span class="sub-val c-min">{(round((s_p+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">JUSTO</span><span class="sub-val c-jus">{p_jus:.4f}</span></div><div class="sub-item"><span class="sub-label">MAX</span><span class="sub-val c-max">{(round((s_p+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
             
             # REF INSTITUCIONAL
-            st.markdown(f'<div class="data-row"><div class="data-label">REF. INSTITUCIONAL</div><div class="sub-grid"><div class="sub-item"><span class="sub-label">MINIMA</span><span class="sub-val c-min">{(round((params["ref"]+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">JUSTO</span><span class="sub-val c-jus">{(round((params["ref"]+0.0310)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">MAXIMA</span><span class="sub-val c-max">{(round((params["ref"]+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="data-row"><div class="data-label">REF. INSTITUCIONAL</div><div class="sub-grid"><div class="sub-item"><span class="sub-label">MIN</span><span class="sub-val c-min">{(round((params["ref"]+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">JUS</span><span class="sub-val c-jus">{(round((params["ref"]+0.0310)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">MAX</span><span class="sub-val c-max">{(round((params["ref"]+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
 
-            # TICKER RODAPÉ FORMATADO
+            # TICKER COM SETAS
             def f_t(t, n):
                 v = m[t]['v']
-                c_class = "t-up" if v >= 0 else "t-down"
-                return f"<span class='t-name'>{n} {m[t]['p']:.2f}</span> <span class='{c_class}'>({v:+.2f}%)</span>"
+                return f"<span class='t-name'>{n} {m[t]['p']:.2f}</span> <span class='{'t-up' if v >= 0 else 't-down'}'>({v:+.2f}%)</span>"
 
-            moedas = f"{f_t('DX-Y.NYB','DXY')} | {f_t('EWZ','EWZ')} | {f_t('EURUSD=X','EUR/USD')} | SPREAD: <span class='{'t-up' if spr >=0 else 't-down'}'>{spr:+.2f}%</span>"
+            moedas = f"{f_t('DX-Y.NYB','DXY')} | {f_t('EWZ','EWZ')} | {f_t('EURUSD=X','EUR/USD')} | SPREAD: {spr:+.2f}%"
             
             st.markdown(f"""
                 <div class="footer-bar">
+                    <div class="footer-arrows" style="color:{st_clr}">{st_arrow}</div>
                     <div class="ticker-wrap"><div class="ticker">{moedas}</div></div>
                 </div>
             """, unsafe_allow_html=True)
