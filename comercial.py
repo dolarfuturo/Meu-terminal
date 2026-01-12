@@ -45,7 +45,7 @@ if not st.session_state.auth:
                 st.rerun()
     st.stop()
 
-# 4. CSS DO TERMINAL (TICKER CONTÍNUO E LABELS)
+# 4. CSS DO TERMINAL
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;700&family=Orbitron:wght@400;900&display=swap');
@@ -74,13 +74,12 @@ st.markdown("""
     .d-value { font-size: 26px; text-align: right; font-family: 'Chakra Petch'; font-weight: 700; }
     .c-pari { color: #cc9900; } .c-equi { color: #00cccc; } .c-max { color: #00cc66; } .c-min { color: #cc3333; } .c-jus { color: #0066cc; }
 
-    /* RODAPÉ INFINITO */
     .f-bar { 
         position: fixed; bottom: 0; left: 0; width: 100%; height: 95px; 
         background: #050505; border-top: 1px solid #222; 
         display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; 
     }
-    .f-arrows { font-size: 16px; margin-bottom: 8px; letter-spacing: 5px; font-weight: normal; }
+    .f-arrows { font-size: 18px; margin-bottom: 8px; letter-spacing: 8px; font-weight: normal; }
     .f-line { width: 85%; height: 1px; background: rgba(255,255,255,0.1); margin-bottom: 8px; }
     
     .tk-wrap { width: 100%; overflow: hidden; white-space: nowrap; display: flex; }
@@ -113,10 +112,14 @@ while True:
         justo = round((spot + 0.0310) * 2000) / 2000
         diff = spot - justo
         
-        if diff < -0.0015: msg, clr, arr = "● DOLAR BARATO", "#aa3333", "▼ ▼ ▼ ▼ ▼"
-        elif diff > 0.0015: msg, clr, arr = "● DOLAR CARO", "#00aa55", "▲ ▲ ▲ ▲ ▲"
-        else: msg, clr, arr = "● DOLAR NEUTRO", "#aaaa00", "— — — — —"
-
+        # LÓGICA DE CORES E SETAS ATUALIZADA
+        if diff < -0.0015: 
+            msg, clr, arr = "● DOLAR BARATO", "#00aa55", "▲ ▲ ▲ ▲ ▲"  # VERDE
+        elif diff > 0.0015: 
+            msg, clr, arr = "● DOLAR CARO", "#aa3333", "▼ ▼ ▼ ▼ ▼"   # VERMELHO
+        else: 
+            msg, clr, arr = "● DOLAR NEUTRO", "#aaaa00", "◄ ◄ ◄ ► ► ►" # AMARELO + SETA LADO
+            
         with ui_area.container():
             if st.session_state.user_type == "ADM":
                 with st.expander(" "):
@@ -127,11 +130,10 @@ while True:
             st.markdown(f'<div class="t-header"><div class="t-title">TERMINAL <span class="t-bold">DOLAR</span></div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="s-container" style="border-bottom: 2px solid {clr}77"><div class="s-text" style="color:{clr}">{msg}</div></div>', unsafe_allow_html=True)
             
-            # LINHAS SIMPLES
             st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value c-pari">{(v_global["ajuste"]*(1+(spr/100))):.4f}</div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value c-equi">{(round((v_global["ref"]+0.0220)*2000)/2000):.4f}</div></div>', unsafe_allow_html=True)
             
-            # LINHA PREÇO JUSTO COM LABELS
+            # LINHA PREÇO JUSTO
             st.markdown(f"""
                 <div class="d-row">
                     <div class="d-label">PREÇO JUSTO</div>
@@ -143,7 +145,7 @@ while True:
                 </div>
             """, unsafe_allow_html=True)
 
-            # LINHA REF INSTITUCIONAL COM LABELS
+            # LINHA REF INSTITUCIONAL
             st.markdown(f"""
                 <div class="d-row" style="border-bottom:none;">
                     <div class="d-label">REF. INSTITUCIONAL</div>
@@ -155,7 +157,6 @@ while True:
                 </div>
             """, unsafe_allow_html=True)
 
-            # TICKER INFINITO
             def f_tk(tk, n):
                 val = m[tk]['p']; v = m[tk]['v']; c = "#00aa55" if v >= 0 else "#aa3333"
                 return f"<span class='tk-item'><b>{n}</b> {val:.2f} <span style='color:{c}'>({v:+.2f}%)</span></span>"
