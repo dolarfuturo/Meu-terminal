@@ -4,19 +4,21 @@ import pandas as pd
 import time
 from datetime import datetime
 
-# 1. SETUP COM MODO FULLSCREEN FORÇADO
-st.set_page_config(
-    page_title="TERMINAL", 
-    layout="wide", 
-    initial_sidebar_state="collapsed"
-)
+# 1. SETUP E MEMÓRIA GLOBAL (PARA SINCRONIZAR ADMIN E CLIENTE)
+st.set_page_config(page_title="TERMINAL DOLAR", layout="wide")
 
-# MEMÓRIA GLOBAL PARA SINCRONIZAÇÃO
+# Inicializa valores globais se não existirem
+if 'v_ajuste' not in st.session_state: st.session_state.v_ajuste = 5.4000
+if 'ref_base' not in st.session_state: st.session_state.ref_base = 5.4000
+
+# FUNÇÃO PARA COMPARTILHAR DADOS ENTRE USUÁRIOS
 @st.cache_resource
 def get_global_params():
     return {"ajuste": 5.4000, "ref": 5.4000}
 
 params = get_global_params()
+
+# SENHAS
 SENHA_ADMIN = "admin123"
 SENHA_CLIENTE = "trader123"
 
@@ -24,7 +26,6 @@ if 'autenticado' not in st.session_state:
     st.session_state.autenticado = False
     st.session_state.perfil = None
 
-# TELA DE LOGIN
 if not st.session_state.autenticado:
     st.markdown("<style>.stApp { background-color: #000; }</style>", unsafe_allow_html=True)
     senha = st.text_input("CHAVE DE ACESSO:", type="password")
@@ -39,52 +40,31 @@ if not st.session_state.autenticado:
             st.rerun()
     st.stop()
 
-# 2. CSS PARA OCULTAR LOGOS DO RODAPÉ E MAXIMIZAR TELA
-st.markdown("""
-<style>
+# CSS (Rótulos brancos e visual limpo)
+st.markdown("""<style>
     @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700;800&display=swap');
     * { font-family: 'Roboto Mono', monospace !important; text-transform: uppercase; }
-    
-    /* REMOVE TUDO DO STREAMLIT (LOGOS VERDE/VERMELHO E MENU) */
-    header, [data-testid="stHeader"], footer, [data-testid="stFooter"] { visibility: hidden !important; display: none !important; }
-    #MainMenu, .stDeployButton, [data-testid="stToolbar"] { display: none !important; }
-    
-    /* ESTICA O CONTEÚDO PARA OCUPAR A TELA TODA */
     .stApp { background-color: #000; color: #fff; }
-    .block-container { 
-        padding-top: 0rem !important; 
-        padding-bottom: 40px !important; 
-        padding-left: 0.5rem !important; 
-        padding-right: 0.5rem !important; 
-        max-width: 100% !important; 
-    }
-    
-    /* ENGENHAGEM INVISÍVEL NO TOPO DIREITO */
-    [data-testid="stPopover"] { position: fixed; top: 5px; right: 5px; opacity: 0; z-index: 10000; }
-    
-    /* AJUSTE DE LINHAS PARA NÃO QUEBRAR NO CELULAR */
-    .terminal-header { text-align: center; font-size: 11px; letter-spacing: 4px; color: #222; margin-bottom: 15px; }
-    .data-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #111; }
-    .data-label { font-size: 10px; color: #fff; font-weight: 700; width: 45%; }
-    .data-value { font-size: 28px; font-weight: 700; width: 55%; text-align: right; }
-    
-    .sub-grid { display: flex; gap: 8px; justify-content: flex-end; width: 55%; }
-    .sub-item { text-align: right; }
-    .sub-label { font-size: 8px; color: #fff !important; display: block; font-weight: 800; }
-    .sub-val { font-size: 17px; font-weight: 700; }
-    
+    header, [data-testid="stHeader"], [data-testid="stToolbar"] { display: none !important; }
+    .block-container { padding-top: 0.5rem !important; max-width: 850px !important; margin: auto; padding-bottom: 80px; }
+    [data-testid="stPopover"] { position: fixed; top: 10px; right: 10px; opacity: 0; z-index: 10000; }
+    .terminal-header { text-align: center; font-size: 14px; letter-spacing: 8px; color: #333; border-bottom: 1px solid #111; padding-bottom: 10px; margin-bottom: 20px; }
+    .data-row { display: flex; justify-content: space-between; align-items: center; padding: 18px 0; border-bottom: 1px solid #111; }
+    .data-label { font-size: 11px; color: #fff; font-weight: 700; letter-spacing: 2px; width: 35%; }
+    .data-value { font-size: 32px; font-weight: 700; width: 65%; text-align: right; }
+    .sub-grid { display: flex; gap: 25px; justify-content: flex-end; width: 65%; }
+    .sub-item { text-align: right; min-width: 105px; }
+    .sub-label { font-size: 10px; color: #fff !important; display: block; margin-bottom: 4px; font-weight: 800; }
+    .sub-val { font-size: 24px; font-weight: 700; }
     .c-pari { color: #FFB900; } .c-equi { color: #00FFFF; } .c-max { color: #00FF80; } .c-min { color: #FF4B4B; } .c-jus { color: #0080FF; }
-    
-    /* RODAPÉ LIMPO E FIXO */
-    .footer-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: 35px; background: #080808; border-top: 1px solid #222; display: flex; align-items: center; padding: 0 10px; font-size: 9px; z-index: 9999; }
-    .ticker-wrap { flex-grow: 1; overflow: hidden; white-space: nowrap; }
-    .ticker { display: inline-block; animation: marquee 25s linear infinite; }
-    @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-350%); } }
-    .up { color: #00FF80; } .down { color: #FF4B4B; }
-</style>
-""", unsafe_allow_html=True)
+    .footer-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: 40px; background: #080808; border-top: 1px solid #222; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; font-size: 11px; z-index: 9999; }
+    .ticker-wrap { flex-grow: 1; overflow: hidden; white-space: nowrap; margin: 0 30px; }
+    .ticker { display: inline-block; animation: marquee 35s linear infinite; }
+    @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-250%); } }
+    .up { color: #00FF80; font-weight: bold; } .down { color: #FF4B4B; font-weight: bold; }
+</style>""", unsafe_allow_html=True)
 
-# 3. ADMIN
+# 4. PAINEL ADMIN (ATUALIZA O CACHE GLOBAL)
 if st.session_state.perfil == "admin":
     with st.popover(" "):
         novo_aj = st.number_input("AJUSTE", value=params["ajuste"], format="%.4f")
@@ -92,7 +72,7 @@ if st.session_state.perfil == "admin":
         if st.button("SALVAR PARA TODOS"):
             params["ajuste"] = novo_aj
             params["ref"] = novo_rf
-            st.success("OK!")
+            st.success("Atualizado!")
             time.sleep(1)
             st.rerun()
 
@@ -101,8 +81,8 @@ def get_market_data():
         t_list = ["BRL=X", "DX-Y.NYB", "EWZ", "EURUSD=X", "USDJPY=X"]
         d = {}
         for t in t_list:
-            tk = yf.Ticker(t); p = tk.fast_info['last_price']
-            hist = tk.history(period="2d")
+            tk = yf.Ticker(t); inf = tk.fast_info; p = inf['last_price']
+            hist = yf.Ticker(t).history(period="2d")
             prev = hist['Close'].iloc[-2]
             v = ((p - prev) / prev) * 100
             d[t] = {"p": p, "v": v}
@@ -113,22 +93,21 @@ scr = st.empty()
 while True:
     m, spr = get_market_data()
     if m:
-        s_p = m["BRL=X"]["p"]; v_aj = params["ajuste"]; r_f = params["ref"]
+        s_p = m["BRL=X"]["p"]
+        v_aj = params["ajuste"] # Pega do valor global
+        r_f = params["ref"]    # Pega do valor global
+        
         with scr.container():
-            st.markdown(f'<div class="terminal-header">TERMINAL DOLAR</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="data-row"><div class="data-label">PARIDADE</div><div class="data-value c-pari">{(v_aj * (1 + (spr/100))):.4f}</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="terminal-header">TERMINAL <span style="color:#fff">DOLAR</span></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="data-row"><div class="data-label">PARIDADE GLOBAL</div><div class="data-value c-pari">{(v_aj * (1 + (spr/100))):.4f}</div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="data-row"><div class="data-label">EQUILIBRIO</div><div class="data-value c-equi">{(round((r_f+0.0220)*2000)/2000):.4f}</div></div>', unsafe_allow_html=True)
-            
-            # PREÇO JUSTO
-            st.markdown(f'<div class="data-row"><div class="data-label">P. JUSTO</div><div class="sub-grid"><div class="sub-item"><span class="sub-label">MIN</span><span class="sub-val c-min">{(round((s_p+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">JUS</span><span class="sub-val c-jus">{(round((s_p+0.0310)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">MAX</span><span class="sub-val c-max">{(round((s_p+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
-
-            # REF. INST
-            st.markdown(f'<div class="data-row"><div class="data-label">REF. INST</div><div class="sub-grid"><div class="sub-item"><span class="sub-label">MIN</span><span class="sub-val c-min">{(round((r_f+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">JUS</span><span class="sub-val c-jus">{(round((r_f+0.0310)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">MAX</span><span class="sub-val c-max">{(round((r_f+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="data-row"><div class="data-label">PREÇO JUSTO</div><div class="sub-grid"><div class="sub-item"><span class="sub-label">MINIMA</span><span class="sub-val c-min">{(round((s_p+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">JUSTO</span><span class="sub-val c-jus">{(round((s_p+0.0310)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">MAXIMA</span><span class="sub-val c-max">{(round((s_p+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="data-row"><div class="data-label">REF. INST.</div><div class="sub-grid"><div class="sub-item"><span class="sub-label">MINIMA</span><span class="sub-val c-min">{(round((r_f+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">JUSTO</span><span class="sub-val c-jus">{(round((r_f+0.0310)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">MAXIMA</span><span class="sub-val c-max">{(round((r_f+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
 
             def f_c(t, n, d=2):
                 v = m[t]['v']; c = "up" if v >= 0 else "down"
                 return f"{n}: {m[t]['p']:.{d}f} <span class='{c}'>({v:+.2f}%)</span>"
 
-            items = f"{f_c('BRL=X','SPOT',4)} | {f_c('DX-Y.NYB','DXY')} | {f_c('EWZ','EWZ')} | SPREAD: {spr:+.2f}%"
-            st.markdown(f'<div class="footer-bar"><div>LIVE</div><div class="ticker-wrap"><div class="ticker">{items}</div></div></div>', unsafe_allow_html=True)
+            items = f"{f_c('BRL=X','SPOT',4)} | {f_c('DX-Y.NYB','DXY')} | {f_c('EWZ','EWZ')} | SPREAD: <span class='{'up' if spr >=0 else 'down'}'>{spr:+.2f}%</span>"
+            st.markdown(f'<div class="footer-bar"><div>LIVE</div><div class="ticker-wrap"><div class="ticker">{items}</div></div><div>{datetime.now().strftime("%H:%M:%S")}</div></div>', unsafe_allow_html=True)
     time.sleep(2)
