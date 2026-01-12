@@ -2,17 +2,25 @@ import streamlit as st
 import yfinance as yf
 import time
 
-# 1. CONFIGURAÇÃO INICIAL
+# 1. CONFIGURAÇÃO DO TERMINAL E LIMPEZA DE ÍCONES
 st.set_page_config(page_title="TERMINAL", layout="wide", initial_sidebar_state="collapsed")
 
-# 2. SISTEMA DE LOGIN (FIXO NO TOPO)
+# 2. BANCO DE DADOS GLOBAL (SINCRONIZA PARA TODOS OS USUÁRIOS)
+@st.cache_resource
+def shared_vars():
+    # Valores iniciais padrão
+    return {"val_ajuste": 5.4000, "val_ref": 5.4000}
+
+v_global = shared_vars()
+
+# 3. SISTEMA DE LOGIN
 if 'auth' not in st.session_state:
     st.session_state.auth = False
     st.session_state.user_type = None
 
 if not st.session_state.auth:
     st.markdown("<style>.stApp { background-color: #000; }</style>", unsafe_allow_html=True)
-    st.title("SISTEMA PRIVADO")
+    st.markdown("<h2 style='color:white; text-align:center;'>SISTEMA PRIVADO</h2>", unsafe_allow_html=True)
     senha = st.text_input("CHAVE DE ACESSO:", type="password")
     if st.button("ACESSAR"):
         if senha == "admin123":
@@ -25,28 +33,33 @@ if not st.session_state.auth:
             st.rerun()
     st.stop()
 
-# 3. VARIÁVEIS DE CONTROLE (APENAS ADM VÊ NA SIDEBAR)
+# 4. PAINEL DE CONTROLE NA ENGRENAGEM (APENAS ADM MUDA, TODOS RECEBEM)
 if st.session_state.user_type == "ADM":
     with st.sidebar:
-        st.header("⚙️ AJUSTES ADM")
-        val_ajuste = st.number_input("PARIDADE (AJUSTE):", value=5.4000, format="%.4f", step=0.0001)
-        val_ref = st.number_input("REF. INSTITUCIONAL:", value=5.4000, format="%.4f", step=0.0001)
+        st.header("⚙️ AJUSTE GLOBAL")
+        # Ao mudar aqui, altera o v_global que é compartilhado
+        v_global["val_ajuste"] = st.number_input("PARIDADE (AJUSTE):", value=v_global["val_ajuste"], format="%.4f", step=0.0001)
+        v_global["val_ref"] = st.number_input("REF. INSTITUCIONAL:", value=v_global["val_ref"], format="%.4f", step=0.0001)
+        st.success("Alterações aplicadas a todos os usuários.")
 else:
-    val_ajuste = 5.4000
-    val_ref = 5.4000
+    with st.sidebar:
+        st.warning("Variáveis controladas pelo ADM.")
 
-# 4. CSS DO TERMINAL
+# 5. CSS - REMOVE FORK, ICONES E ESTILIZA TERMINAL
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;700&family=Orbitron:wght@400;900&display=swap');
     
-    /* MANTÉM A SETA DA SIDEBAR MAS LIMPA O RESTO */
-    header { background-color: rgba(0,0,0,0) !important; }
-    footer, .stDeployButton { display: none !important; }
+    /* ESCONDE FORK, GITHUB E CABEÇALHO */
+    [data-testid="stHeader"], .stAppDeployButton, header, [data-testid="stToolbar"] {
+        display: none !important;
+    }
     
+    footer { display: none !important; }
     .stApp { background-color: #000; color: #fff; font-family: 'Orbitron', sans-serif; }
     .block-container { padding-top: 0rem !important; max-width: 100% !important; }
 
+    /* CABEÇALHO TERMINAL */
     .t-header { text-align: center; padding: 25px 0 5px 0; border-bottom: 1px solid rgba(255,255,255,0.15); }
     .t-title { color: #555; font-size: 13px; letter-spacing: 4px; }
     .t-bold { color: #fff; font-weight: 900; }
@@ -64,6 +77,7 @@ st.markdown("""
 
     .c-pari { color: #cc9900; } .c-equi { color: #00cccc; } .c-max { color: #00cc66; } .c-min { color: #cc3333; } .c-jus { color: #0066cc; }
     
+    /* RODAPÉ LIMPO */
     .f-bar { 
         position: fixed; bottom: 0; left: 0; width: 100%; height: 80px; 
         background: #050505; border-top: 1px solid #222; 
@@ -78,7 +92,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 5. DADOS E LOOP
+# 6. CAPTURA DE DADOS E LOOP (ATUALIZAÇÃO 2S)
 def get_data():
     try:
         tkrs = ["BRL=X", "DX-Y.NYB", "EWZ", "EURUSD=X"]
@@ -107,8 +121,9 @@ while True:
             st.markdown(f'<div class="t-header"><div class="t-title">TERMINAL <span class="t-bold">DOLAR</span></div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="s-container" style="border-bottom: 2px solid {clr}77"><div class="s-text" style="color:{clr}">{msg}</div></div>', unsafe_allow_html=True)
             
-            st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value c-pari">{(val_ajuste*(1+(spr/100))):.4f}</div></div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value c-equi">{(round((val_ref+0.0220)*2000)/2000):.4f}</div></div>', unsafe_allow_html=True)
+            # USA VARIÁVEIS GLOBAIS COMPARTILHADAS
+            st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value c-pari">{(v_global["val_ajuste"]*(1+(spr/100))):.4f}</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value c-equi">{(round((v_global["val_ref"]+0.0220)*2000)/2000):.4f}</div></div>', unsafe_allow_html=True)
             
             st.markdown(f"""
                 <div class="d-row">
@@ -125,9 +140,9 @@ while True:
                 <div class="d-row" style="border-bottom:none;">
                     <div class="d-label">REF. INSTITUCIONAL</div>
                     <div class="sub-grid">
-                        <div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((val_ref+0.0220)*2000)/2000):.4f}</span></div>
-                        <div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{(round((val_ref+0.0310)*2000)/2000):.4f}</span></div>
-                        <div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((val_ref+0.0420)*2000)/2000):.4f}</span></div>
+                        <div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((v_global["val_ref"]+0.0220)*2000)/2000):.4f}</span></div>
+                        <div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{(round((v_global["val_ref"]+0.0310)*2000)/2000):.4f}</span></div>
+                        <div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((v_global["val_ref"]+0.0420)*2000)/2000):.4f}</span></div>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
