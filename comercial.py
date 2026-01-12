@@ -5,23 +5,24 @@ import time
 # 1. SETUP E LIMPEZA DE INTERFACE
 st.set_page_config(page_title="TERMINAL", layout="wide", initial_sidebar_state="collapsed")
 
-# 2. BANCO DE DADOS EM MEMÓRIA (COMPARTILHADO ENTRE TODOS OS USUÁRIOS)
+# 2. BANCO DE DADOS EM MEMÓRIA (SINCRONIZADO)
 @st.cache_resource
 def get_shared_state():
     return {"ajuste": 5.4000, "ref": 5.4000}
 
 v_global = get_shared_state()
 
-# 3. SISTEMA DE LOGIN SEPARADO DO TERMINAL
+# 3. LÓGICA DE LOGIN (ESTRUTURA À PROVA DE FANTASMAS)
 if 'auth' not in st.session_state:
     st.session_state.auth = False
     st.session_state.user_type = None
 
-if not st.session_state.auth:
+def login():
     st.markdown("<style>.stApp { background-color: #000; }</style>", unsafe_allow_html=True)
-    with st.container():
+    container = st.empty()
+    with container.container():
         st.markdown("<h2 style='color:white; text-align:center; padding-top:50px;'>TERMINAL PRIVADO</h2>", unsafe_allow_html=True)
-        senha = st.text_input("CHAVE DE ACESSO:", type="password")
+        senha = st.text_input("CHAVE DE ACESSO:", type="password", key="login_pass")
         if st.button("ENTRAR NO SISTEMA"):
             if senha == "admin123":
                 st.session_state.auth = True
@@ -31,33 +32,35 @@ if not st.session_state.auth:
                 st.session_state.auth = True
                 st.session_state.user_type = "USER"
                 st.rerun()
+            else:
+                st.error("Chave inválida.")
     st.stop()
 
-# 4. CONTROLE DA BARRA LATERAL (APENAS ADM ACESSA AS VARIÁVEIS)
+if not st.session_state.auth:
+    login()
+
+# 4. CONTROLE DA BARRA LATERAL (ENGRENAGEM)
 if st.session_state.user_type == "ADM":
     with st.sidebar:
         st.header("⚙️ PAINEL MESTRE")
         v_global["ajuste"] = st.number_input("AJUSTE GLOBAL:", value=v_global["ajuste"], format="%.4f", step=0.0001)
         v_global["ref"] = st.number_input("REFERÊNCIA GLOBAL:", value=v_global["ref"], format="%.4f", step=0.0001)
-        st.success("Sincronizado com todos os clientes.")
+        st.success("Sincronizado para Clientes.")
 else:
-    # CLIENTE NÃO VÊ A BARRA LATERAL
     st.markdown("<style>[data-testid='stSidebar'] { display: none !important; }</style>", unsafe_allow_html=True)
 
-# 5. CSS - ESTILO INDUSTRIAL E LIMPEZA DE ÍCONES
+# 5. CSS DO TERMINAL (LIMPEZA TOTAL)
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;700&family=Orbitron:wght@400;900&display=swap');
     
-    /* ESCONDE ELEMENTOS NATIVOS DO STREAMLIT */
     [data-testid="stHeader"], .stAppDeployButton, header, [data-testid="stToolbar"], footer {
         display: none !important;
     }
     
     .stApp { background-color: #000; color: #fff; font-family: 'Orbitron', sans-serif; }
-    .block-container { padding-top: 0rem !important; max-width: 100% !important; }
+    .block-container { padding: 0rem !important; max-width: 100% !important; }
 
-    /* LAYOUT DAS LINHAS */
     .t-header { text-align: center; padding: 25px 0 5px 0; border-bottom: 1px solid rgba(255,255,255,0.15); }
     .t-title { color: #555; font-size: 13px; letter-spacing: 4px; }
     .t-bold { color: #fff; font-weight: 900; }
@@ -75,7 +78,6 @@ st.markdown("""
 
     .c-pari { color: #cc9900; } .c-equi { color: #00cccc; } .c-max { color: #00cc66; } .c-min { color: #cc3333; } .c-jus { color: #0066cc; }
     
-    /* RODAPÉ E TICKER */
     .f-bar { 
         position: fixed; bottom: 0; left: 0; width: 100%; height: 80px; 
         background: #050505; border-top: 1px solid #222; 
@@ -90,7 +92,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 6. CAPTURA DE DADOS E LOOP
+# 6. CAPTURA E LOOP DE DADOS
 def get_market_data():
     try:
         tkrs = ["BRL=X", "DX-Y.NYB", "EWZ", "EURUSD=X"]
@@ -103,7 +105,8 @@ def get_market_data():
         return res, res["DX-Y.NYB"]["v"] - res["EWZ"]["v"]
     except: return None, 0.0
 
-main_ui = st.empty()
+# ÁREA ÚNICA DO TERMINAL
+terminal_ui = st.empty()
 
 while True:
     data, spr = get_market_data()
@@ -116,12 +119,10 @@ while True:
         elif diff > 0.0015: msg, clr, arr = "● DOLAR CARO", "#00aa55", "▲ ▲ ▲ ▲ ▲"
         else: msg, clr, arr = "● DOLAR NEUTRO", "#aaaa00", "— — — — —"
 
-        with main_ui.container():
-            # TOPO
+        with terminal_ui.container():
             st.markdown(f'<div class="t-header"><div class="t-title">TERMINAL <span class="t-bold">DOLAR</span></div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="s-container" style="border-bottom: 2px solid {clr}77"><div class="s-text" style="color:{clr}">{msg}</div></div>', unsafe_allow_html=True)
             
-            # LINHAS DE DADOS (USANDO VALORES GLOBAIS DO ADM)
             st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value c-pari">{(v_global["ajuste"]*(1+(spr/100))):.4f}</div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value c-equi">{(round((v_global["ref"]+0.0220)*2000)/2000):.4f}</div></div>', unsafe_allow_html=True)
             
@@ -147,7 +148,6 @@ while True:
                 </div>
             """, unsafe_allow_html=True)
 
-            # TICKER RODAPÉ
             def f_ticker(tk, name):
                 v = data[tk]['v']
                 c = "#00aa55" if v >= 0 else "#aa3333"
