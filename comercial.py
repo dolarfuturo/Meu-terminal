@@ -19,7 +19,7 @@ def get_global_vars():
 
 v_global = get_global_vars()
 
-# 3. CONTROLE DE ACESSO
+# 3. CONTROLE DE ACESSO (Login)
 if 'auth' not in st.session_state:
     st.session_state.auth = False
     st.session_state.user_type = None
@@ -41,7 +41,7 @@ if not st.session_state.auth:
                 st.rerun()
     st.stop()
 
-# 4. CSS DO TERMINAL ATUALIZADO
+# 4. CSS DO TERMINAL
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;700&family=Orbitron:wght@400;900&display=swap');
@@ -59,10 +59,7 @@ st.markdown("""
     .sub-item { text-align: center; min-width: 70px; }
     .sub-l { font-size: 8px; color: #888; display: block; margin-bottom: 2px; font-weight: 400; }
     .sub-v { font-size: 18px; font-family: 'Chakra Petch'; font-weight: 700; }
-    
-    /* CORREÇÃO: Amarelo e Menor conforme solicitado */
     .v-peq { font-size: 15px; font-family: 'Chakra Petch'; font-weight: 700; color: #ffff00; opacity: 0.9; }
-    
     .d-value { font-size: 26px; text-align: right; font-family: 'Chakra Petch'; font-weight: 700; }
     .c-pari { color: #cc9900; } .c-equi { color: #00cccc; } 
     .c-max { color: #00cc66; } .c-min { color: #cc3333; } .c-jus { color: #0066cc; }
@@ -78,51 +75,36 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 5. MOTOR DE DADOS COM FILTRO DE VOLATILIDADE EXTREMA
-def get_market():
+# 5. MOTOR DE DATA (INTEGRADO COM LÓGICA PRE-MARKET)
+def get_clean_data(ticker):
     try:
-        br_tz = pytz.timezone('America/Sao_Paulo')
-        agora = datetime.now(br_tz)
-        hora = agora.hour
-        d = {}
-        for t in ["BRL=X", "EURUSD=X"]:
-            inf = yf.Ticker(t).fast_info
-            d[t] = {"p": inf['last_price'], "v": ((inf['last_price'] - inf['previous_close']) / inf['previous_close']) * 100}
-        
-        for t in ["DX-Y.NYB", "EWZ"]:
-            tick = yf.Ticker(t)
-            inf = tick.info
-            prev_c = inf.get('regularMarketPreviousClose') or inf.get('previousClose')
-            
-            # FILTRO ANTI-ERRO: Prioriza Bid/Ask para evitar saltos de baixa liquidez
-            if 8 <= hora < 11.5:
-                bid, ask = inf.get('bid'), inf.get('ask')
-                if bid and ask and bid > 0:
-                    cp = (bid + ask) / 2
-                else:
-                    cp = inf.get('preMarketPrice') or inf.get('regularMarketPrice')
-                
-                # Bloqueia variações absurdas em pré-mercado (geralmente erro de dado)
-                if abs(((cp - prev_c) / prev_c)) > 0.03:
-                    cp = prev_c
-            else:
-                cp = inf.get('regularMarketPrice') or inf.get('lastPrice')
-            
-            if not cp: cp = tick.fast_info['last_price']
-            d[t] = {"p": cp, "v": ((cp - prev_c) / prev_c) * 100 if cp and prev_c else 0.0}
-        return d, (d["DX-Y.NYB"]["v"] - d["EWZ"]["v"])
-    except: return None, 0.0
+        # Puxa 1 dia com intervalo de 1m incluindo Pre-Market
+        df = yf.download(ticker, period="1d", interval="1m", progress=False, prepost=True)
+        t = yf.Ticker(ticker)
+        prev = float(t.fast_info.previous_close)
+        last = float(df['Close'].iloc[-1]) if not df.empty else prev
+        var = ((last - prev) / prev * 100) if prev != 0 else 0
+        return {"last": last, "prev": prev, "var": var}
+    except:
+        return {"last": 0.0, "prev": 0.0, "var": 0.0}
 
 # 6. LOOP DE EXECUÇÃO
 ui_area = st.empty()
 while True:
-    m_data, spr = get_market()
-    if m_data:
-        spot = m_data["BRL=X"]["p"]
+    # Coleta dados usando a nova lógica de download direto
+    d_m = get_clean_data("DX-Y.NYB")
+    e_m = get_clean_data("EWZ")
+    s_m = get_clean_data("BRL=X")
+    eu_m = get_clean_data("EURUSD=X")
+    
+    if d_m["last"] > 0:
+        spot = s_m["last"]
+        spr = d_m["var"] - e_m["var"]
+        
         justo = round((spot + 0.0310) * 2000) / 2000
         equilibrio = round((v_global["ref"] + 0.0220) * 2000) / 2000
-        diff = spot - justo
         
+        diff = spot - justo
         if diff < -0.0015: msg, clr, arr = "● DOLAR BARATO", "#00aa55", "▲ ▲ ▲ ▲ ▲"
         elif diff > 0.0015: msg, clr, arr = "● DOLAR CARO", "#aa3333", "▼ ▼ ▼ ▼ ▼"
         else: msg, clr, arr = "● DOLAR NEUTRO", "#aaaa00", "◄ ◄ ◄ ► ► ►"
@@ -140,21 +122,25 @@ while True:
 
             st.markdown(f'<div class="t-header"><div class="t-title">TERMINAL <span class="t-bold">DOLAR</span></div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="s-container" style="border-bottom: 2px solid {clr}77"><div class="s-text" style="color:{clr}">{msg}</div></div>', unsafe_allow_html=True)
+            
             st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value c-pari">{(v_global["ajuste"]*(1+(spr/100))):.4f}</div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value c-equi">{equilibrio:.4f}</div></div>', unsafe_allow_html=True)
+            
             st.markdown(f'<div class="d-row"><div class="d-label">PREÇO JUSTO</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((spot+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{justo:.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((spot+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="d-row"><div class="d-label">REF. INSTITUCIONAL</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((v_global["ref"]+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{(round((v_global["ref"]+0.0310)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((v_global["ref"]+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
 
-            # REGIÃO DE CORREÇÃO (AMARELO, FONTE MENOR E NO FINAL)
+            # REGIÃO DE CORREÇÃO (AMARELO, ABAIXO DA REF INST)
             st.markdown(f'<div class="d-row" style="border-bottom:none; padding-top:10px;"><div class="d-label" style="opacity:0.6;">REGIÃO DE CORREÇÃO</div><div class="sub-grid"><div class="sub-item"><span class="v-peq">{(equilibrio - 0.0110):.4f}</span></div><div class="sub-item"><span class="v-peq">{(equilibrio + 0.0110):.4f}</span></div></div></div>', unsafe_allow_html=True)
 
-            def f_tk(tk, n):
-                try:
-                    p, v = m_data[tk]['p'], m_data[tk]['v']
-                    c = "#00aa55" if v >= 0 else "#aa3333"
-                    return f"<span class='tk-item'><b>{n}</b> {(f'{p:.4f}' if n=='SPOT' else f'{p:.2f}')} <span style='color:{c}'>({v:+.2f}%)</span></span>"
-                except: return ""
+            # TICKER RODAPÉ
+            def f_tk(data_dict, name):
+                v = data_dict["var"]
+                p = data_dict["last"]
+                c = "#00aa55" if v >= 0 else "#aa3333"
+                p_f = f"{p:.4f}" if name == "SPOT" else f"{p:.2f}"
+                return f"<span class='tk-item'><b>{name}</b> {p_f} <span style='color:{c}'>({v:+.2f}%)</span></span>"
 
-            btk = f"{f_tk('BRL=X','SPOT')} {f_tk('DX-Y.NYB','DXY')} {f_tk('EWZ','EWZ')} {f_tk('EURUSD=X','EURUSD')} <span class='tk-item'><b>SPREAD</b> {spr:+.2f}%</span>"
+            btk = f"{f_tk(s_m,'SPOT')} {f_tk(d_m,'DXY')} {f_tk(e_m,'EWZ')} {f_tk(eu_m,'EURUSD')} <span class='tk-item'><b>SPREAD</b> {spr:+.2f}%</span>"
             st.markdown(f'<div class="f-bar"><div class="f-notes">{v_global["notas"]}</div><div class="f-notes2">{v_global["notas2"]}</div><div class="f-line"></div><div class="f-arrows" style="color:{clr}">{arr}</div><div class="f-line"></div><div class="tk-wrap"><div class="tk-move">{btk} {btk} {btk}</div></div></div>', unsafe_allow_html=True)
+            
     time.sleep(2)
