@@ -2,16 +2,17 @@ import streamlit as st
 import yfinance as yf
 import time
 
-# 1. SETUP
+# 1. CONFIGURAÇÃO INICIAL
 st.set_page_config(page_title="TERMINAL", layout="wide", initial_sidebar_state="collapsed")
 
-# 2. LOGIN E CONTROLO DE ACESSO
+# 2. SISTEMA DE LOGIN (FIXO NO TOPO)
 if 'auth' not in st.session_state:
     st.session_state.auth = False
     st.session_state.user_type = None
 
 if not st.session_state.auth:
     st.markdown("<style>.stApp { background-color: #000; }</style>", unsafe_allow_html=True)
+    st.title("SISTEMA PRIVADO")
     senha = st.text_input("CHAVE DE ACESSO:", type="password")
     if st.button("ACESSAR"):
         if senha == "admin123":
@@ -24,43 +25,43 @@ if not st.session_state.auth:
             st.rerun()
     st.stop()
 
-# 3. BARRA LATERAL (APENAS PARA ADM)
-# Se não for ADM, os valores ficam travados no padrão 5.4000
+# 3. VARIÁVEIS DE CONTROLE (APENAS ADM VÊ NA SIDEBAR)
 if st.session_state.user_type == "ADM":
     with st.sidebar:
-        st.header("⚙️ PAINEL ADM")
-        val_ajuste = st.number_input("AJUSTE (PARIDADE):", value=5.4000, format="%.4f", step=0.0001)
+        st.header("⚙️ AJUSTES ADM")
+        val_ajuste = st.number_input("PARIDADE (AJUSTE):", value=5.4000, format="%.4f", step=0.0001)
         val_ref = st.number_input("REF. INSTITUCIONAL:", value=5.4000, format="%.4f", step=0.0001)
-        st.success("Acesso total libertado.")
 else:
     val_ajuste = 5.4000
     val_ref = 5.4000
-    with st.sidebar:
-        st.warning("Apenas administradores podem alterar as variáveis.")
 
-# 4. CSS - VISUAL DO TERMINAL
+# 4. CSS DO TERMINAL
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;700&family=Orbitron:wght@400;900&display=swap');
     
-    [data-testid="stHeader"] { background-color: rgba(0,0,0,0) !important; color: white !important; }
-    footer, .stDeployButton, [data-testid="stStatusWidget"] { display: none !important; }
+    /* MANTÉM A SETA DA SIDEBAR MAS LIMPA O RESTO */
+    header { background-color: rgba(0,0,0,0) !important; }
+    footer, .stDeployButton { display: none !important; }
+    
     .stApp { background-color: #000; color: #fff; font-family: 'Orbitron', sans-serif; }
     .block-container { padding-top: 0rem !important; max-width: 100% !important; }
 
     .t-header { text-align: center; padding: 25px 0 5px 0; border-bottom: 1px solid rgba(255,255,255,0.15); }
     .t-title { color: #555; font-size: 13px; letter-spacing: 4px; }
     .t-bold { color: #fff; font-weight: 900; }
+    
     .s-container { text-align: center; padding: 10px 0; margin-bottom: 5px; }
     .s-text { font-size: 12px; font-weight: 700; letter-spacing: 2px; }
+
     .d-row { display: flex; justify-content: space-between; align-items: center; padding: 22px 15px; border-bottom: 1px solid #111; }
     .d-label { font-size: 11px; color: #FFFFFF !important; width: 45%; font-weight: 900; text-transform: uppercase; }
     .d-value { font-size: 26px; width: 55%; text-align: right; font-family: 'Chakra Petch', sans-serif; font-weight: 700; color: #eee; }
-    .sub-grid { display: flex; gap: 12px; justify-content: flex-end; width: 55%; }
-    .sub-item { text-align: right; }
-    .sub-l { font-size: 8px; color: #FFFFFF !important; display: block; font-weight: 400 !important; }
-    .sub-v { font-size: 17px; font-family: 'Chakra Petch', sans-serif; font-weight: 700; }
     
+    .sub-grid { display: flex; gap: 12px; justify-content: flex-end; width: 55%; }
+    .sub-l { font-size: 8px; color: #FFFFFF !important; display: block; font-weight: 400; }
+    .sub-v { font-size: 17px; font-family: 'Chakra Petch', sans-serif; font-weight: 700; }
+
     .c-pari { color: #cc9900; } .c-equi { color: #00cccc; } .c-max { color: #00cc66; } .c-min { color: #cc3333; } .c-jus { color: #0066cc; }
     
     .f-bar { 
@@ -69,26 +70,23 @@ st.markdown("""
         display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999;
     }
     .f-arrows { font-size: 16px; margin-bottom: 4px; letter-spacing: 5px; }
-    .tk-wrap { width: 100%; overflow: hidden; white-space: nowrap; position: relative; }
+    .tk-wrap { width: 100%; overflow: hidden; white-space: nowrap; }
     .tk-move { display: inline-block; white-space: nowrap; animation: slide 25s linear infinite; }
     .tk-item { padding-right: 80px; display: inline-block; font-family: 'Chakra Petch', sans-serif; font-size: 13px; }
-    .tk-n { color: #fff; font-weight: bold; }
-    .tk-up { color: #00aa55; }
-    .tk-down { color: #aa3333; }
+    
     @keyframes slide { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 </style>
 """, unsafe_allow_html=True)
 
-# 5. LÓGICA DE DADOS
+# 5. DADOS E LOOP
 def get_data():
     try:
         tkrs = ["BRL=X", "DX-Y.NYB", "EWZ", "EURUSD=X"]
         d = {}
         for t in tkrs:
             ticker = yf.Ticker(t)
-            px = ticker.fast_info['last_price']
-            pc = ticker.fast_info['previous_close']
-            d[t] = {"p": px, "v": ((px - pc) / pc) * 100}
+            info = ticker.fast_info
+            d[t] = {"p": info['last_price'], "v": ((info['last_price'] - info['previous_close']) / info['previous_close']) * 100}
         return d, d["DX-Y.NYB"]["v"] - d["EWZ"]["v"]
     except: return None, 0.0
 
@@ -101,12 +99,9 @@ while True:
         justo = round((spot + 0.0310) * 2000) / 2000
         diff = spot - justo
         
-        if diff < -0.0015:
-            msg, clr, arr = "● DOLAR BARATO", "#aa3333", "▼ ▼ ▼ ▼ ▼"
-        elif diff > 0.0015:
-            msg, clr, arr = "● DOLAR CARO", "#00aa55", "▲ ▲ ▲ ▲ ▲"
-        else:
-            msg, clr, arr = "● DOLAR NEUTRO", "#aaaa00", "— — — — —"
+        if diff < -0.0015: msg, clr, arr = "● DOLAR BARATO", "#aa3333", "▼ ▼ ▼ ▼ ▼"
+        elif diff > 0.0015: msg, clr, arr = "● DOLAR CARO", "#00aa55", "▲ ▲ ▲ ▲ ▲"
+        else: msg, clr, arr = "● DOLAR NEUTRO", "#aaaa00", "— — — — —"
 
         with ui.container():
             st.markdown(f'<div class="t-header"><div class="t-title">TERMINAL <span class="t-bold">DOLAR</span></div></div>', unsafe_allow_html=True)
@@ -137,16 +132,18 @@ while True:
                 </div>
             """, unsafe_allow_html=True)
 
+            # TICKER
             def f_tk(tk, n):
                 v = m[tk]['v']
-                return f"<span class='tk-item'><span class='tk-n'>{n} {m[tk]['p']:.2f}</span> <span class='{'tk-up' if v >= 0 else 'tk-down'}'>({v:+.2f}%)</span></span>"
+                c = "#00aa55" if v >= 0 else "#aa3333"
+                return f"<span class='tk-item'><b style='color:#fff'>{n} {m[tk]['p']:.2f}</b> <span style='color:{c}'>({v:+.2f}%)</span></span>"
 
-            conteudo = f"{f_tk('DX-Y.NYB','DXY')}{f_tk('EWZ','EWZ')}{f_tk('EURUSD=X','EUR/USD')}<span class='tk-item'><span class='tk-n'>SPREAD</span> <span class='tk-up'>{spr:+.2f}%</span></span>"
+            cont = f"{f_tk('DX-Y.NYB','DXY')}{f_tk('EWZ','EWZ')}{f_tk('EURUSD=X','EUR/USD')}<span class='tk-item'><b style='color:#fff'>SPREAD</b> <b style='color:#00aa55'>{spr:+.2f}%</b></span>"
             
             st.markdown(f"""
                 <div class="f-bar">
                     <div class="f-arrows" style="color:{clr}">{arr}</div>
-                    <div class="tk-wrap"><div class="tk-move">{conteudo}{conteudo}</div></div>
+                    <div class="tk-wrap"><div class="tk-move">{cont}{cont}</div></div>
                 </div>
             """, unsafe_allow_html=True)
             
