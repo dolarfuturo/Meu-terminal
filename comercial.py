@@ -42,7 +42,7 @@ if not st.session_state.auth:
                 st.rerun()
     st.stop()
 
-# 4. CSS DO TERMINAL
+# 4. CSS DO TERMINAL (SEU LAYOUT ORIGINAL MANTIDO 100%)
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;700&family=Orbitron:wght@400;900&display=swap');
@@ -58,10 +58,12 @@ st.markdown("""
     .d-label { font-size: 11px; color: #FFFFFF; font-weight: 900; width: 40%; }
     .sub-grid { display: flex; gap: 15px; justify-content: flex-end; width: 60%; }
     .sub-item { text-align: center; min-width: 70px; }
+    .sub-l { font-size: 8px; color: #888; display: block; margin-bottom: 2px; font-weight: 400; }
     .sub-v { font-size: 18px; font-family: 'Chakra Petch'; font-weight: 700; }
     .v-peq { font-size: 15px; font-family: 'Chakra Petch'; font-weight: 700; color: #ffff00; opacity: 0.9; }
     .d-value { font-size: 26px; text-align: right; font-family: 'Chakra Petch'; font-weight: 700; }
     .c-pari { color: #cc9900; } .c-equi { color: #00cccc; } 
+    .c-max { color: #00cc66; } .c-min { color: #cc3333; } .c-jus { color: #0066cc; }
     
     .note-box { background: #050505; border-top: 1px solid #111; padding: 15px 20px; margin-top: 5px; min-height: 120px; }
     .note-title { font-size: 9px; color: #444; letter-spacing: 2px; margin-bottom: 8px; font-weight: 900; border-bottom: 1px solid #111; padding-bottom: 4px; }
@@ -103,23 +105,23 @@ while True:
         spot = s_m["last"]
         spr = d_m["var"] - e_m["var"]
         
-        # CÁLCULOS
-        paridade_real = v_global["ajuste"]*(1+(spr/100))
+        paridade_calculada = v_global["ajuste"]*(1+(spr/100))
+        # EQUILÍBRIO BASEADO NA REF + 22 PONTOS
         equilibrio = round((v_global["ref"] + 0.0220) * 2000) / 2000
         
-        # NOVO MACRO: PRECIFICAÇÃO
-        if spot < (paridade_real - 0.0015): msg, clr, arr = "● PRECIFICAÇÃO DE ALTA", "#00aa55", "▲ ▲ ▲ ▲ ▲"
-        elif spot > (paridade_real + 0.0015): msg, clr, arr = "● PRECIFICAÇÃO DE BAIXA", "#aa3333", "▼ ▼ ▼ ▼ ▼"
+        # --- NOVO MACRO ---
+        if spot < (paridade_calculada - 0.0015): msg, clr, arr = "● PRECIFICAÇÃO DE ALTA", "#00aa55", "▲ ▲ ▲ ▲ ▲"
+        elif spot > (paridade_calculada + 0.0015): msg, clr, arr = "● PRECIFICAÇÃO DE BAIXA", "#aa3333", "▼ ▼ ▼ ▼ ▼"
         else: msg, clr, arr = "● PRECIFICAÇÃO NEUTRA", "#aaaa00", "◄ ◄ ◄ ► ► ►"
-            
-        # REGRA MICRO: PONTOS SOBRE EQUILÍBRIO
-        diff_pts = (spot - equilibrio) * 1000
-        if diff_pts >= 22: mic_t, mic_c = "MICRO: MUITO CARO (+22)", "#ff0000"
-        elif diff_pts >= 11: mic_t, mic_c = "MICRO: CARO (+11)", "#ff6600"
-        elif diff_pts <= -22: mic_t, mic_c = "MICRO: MUITO BARATO (-22)", "#00ff00"
-        elif diff_pts <= -11: mic_t, mic_c = "MICRO: BARATO (-11)", "#00cc66"
-        else: mic_t, mic_c = "MICRO: SINAL NEUTRO", "#555555"
 
+        # --- NOVO MICRO (ALERTA DISCRETO) ---
+        diff_pts = (spot - equilibrio) * 1000
+        if diff_pts >= 22: mic_msg, mic_clr = "MICRO: MUITO CARO (+22)", "#ff0000"
+        elif diff_pts >= 11: mic_msg, mic_clr = "MICRO: CARO (+11)", "#ff6600"
+        elif diff_pts <= -22: mic_msg, mic_clr = "MICRO: MUITO BARATO (-22)", "#00ff00"
+        elif diff_pts <= -11: mic_msg, mic_clr = "MICRO: BARATO (-11)", "#00cc66"
+        else: mic_msg, mic_clr = "MICRO: SINAL NEUTRO", "#666666"
+            
         with ui_area.container():
             if st.session_state.user_type == "ADM":
                 with st.expander("PAINEL ADM"):
@@ -132,13 +134,18 @@ while True:
                         v_global["notas2"] = st.text_input("RODAPÉ 2", value=v_global["notas2"])
                         if st.form_submit_button("SALVAR"): st.rerun()
 
-            st.markdown(f'<div class="t-header"><div class="t-title">TERMINAL <span class="t-bold">DOLAR PRO</span></div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="t-header"><div class="t-title">TERMINAL <span class="t-bold">DOLAR</span></div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="s-container" style="border-bottom: 2px solid {clr}77"><div class="s-text" style="color:{clr}">{msg}</div></div>', unsafe_allow_html=True)
             
-            st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value c-pari">{paridade_real:.4f}</div></div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="d-row"><div class="d-label">PREÇO EQUILÍBRIO</div><div class="d-value c-equi">{equilibrio:.4f}</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value c-pari">{paridade_calculada:.4f}</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value c-equi">{equilibrio:.4f}</div></div>', unsafe_allow_html=True)
+            
+            # --- PREÇO JUSTO E REF MANTIDOS ---
+            justo = round((spot + 0.0310) * 2000) / 2000
+            st.markdown(f'<div class="d-row"><div class="d-label">PREÇO JUSTO</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((spot+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{justo:.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((spot+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="d-row"><div class="d-label">REF. INSTITUCIONAL</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((v_global["ref"]+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{(round((v_global["ref"]+0.0310)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((v_global["ref"]+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
 
-            # REGIÃO DE CORREÇÃO COM 4 PREÇOS
+            # --- REGIÃO DE CORREÇÃO (AGORA COM OS 4 PREÇOS) ---
             st.markdown(f"""
             <div class="d-row" style="padding-top:10px; border-bottom: none;">
                 <div class="d-label" style="opacity:0.6;">REGIÃO DE CORREÇÃO</div>
@@ -151,8 +158,8 @@ while True:
             </div>
             """, unsafe_allow_html=True)
 
-            # ALERTA MICRO DISCRETO ABAIXO DA REGIÃO
-            st.markdown(f'<div style="text-align:right; padding-right:15px; font-size:10px; font-weight:700; color:{mic_c}; font-family:Chakra Petch; margin-top:-10px;">{mic_t}</div>', unsafe_allow_html=True)
+            # --- ALERTA MICRO DISCRETO ---
+            st.markdown(f'<div style="text-align:right; padding-right:15px; font-size:10px; font-weight:700; color:{mic_clr}; font-family:Chakra Petch; margin-top:-8px; margin-bottom:12px;">{mic_msg}</div>', unsafe_allow_html=True)
 
             # BLOCO DE NOTAS
             st.markdown(f"""
