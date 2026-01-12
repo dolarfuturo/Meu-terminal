@@ -1,137 +1,175 @@
 import streamlit as st
 import yfinance as yf
 import time
+from datetime import datetime
+import pytz
 
-# 1. SETUP
-st.set_page_config(page_title="TERMINAL PRO", layout="wide", initial_sidebar_state="collapsed")
+# 1. CONFIGURAÇÃO DE PÁGINA
+st.set_page_config(page_title="TERMINAL FINANCEIRO", layout="wide", initial_sidebar_state="collapsed")
 
+# 2. ESTADO GLOBAL
 @st.cache_resource
-def vars_terminal():
+def get_global_vars():
     return {
-        "pari_ref": 5.4000, 
-        "inst_ref": 5.4000,
-        "mural_txt": "AGUARDANDO ATUALIZAÇÃO...",
-        "rodape_1": "MURAL ATIVO",
-        "rodape_2": "SISTEMA OPERACIONAL"
+        "ajuste": 5.4000, 
+        "ref": 5.4000,
+        "notas_mural": "RESUMO DA ABERTURA E AGENDA: AGUARDANDO ATUALIZAÇÃO...",
+        "notas": "MURAL: AGUARDANDO...",
+        "notas2": "INFORMATIVO: OPERACIONAL ATIVO"
     }
 
-v = vars_terminal()
+v_global = get_global_vars()
 
-# 2. LOGIN (SIMPLIFICADO PARA TESTE)
-if 'logado' not in st.session_state:
-    st.session_state.logado = False
+# 3. CONTROLE DE ACESSO
+if 'auth' not in st.session_state:
+    st.session_state.auth = False
+    st.session_state.user_type = None
 
-if not st.session_state.logado:
-    st.markdown("<style>.stApp { background-color: #000; }</style>", unsafe_allow_html=True)
-    c1, c2, c3 = st.columns([1,2,1])
-    with c2:
-        st.markdown("<div style='height:100px;'></div>", unsafe_allow_html=True)
-        pwd = st.text_input("CHAVE", type="password")
-        if st.button("ACESSAR"):
-            if pwd in ["admin123", "trader123"]:
-                st.session_state.logado = True
+if not st.session_state.auth:
+    st.markdown("<style>.stApp { background-color: #000; } [data-testid='stHeader'], label { display: none !important; } .stButton button { width: 100%; background-color: #222; color: white; border: 1px solid #444; margin-top: 20px; }</style>", unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
+        st.markdown("<div style='height:150px;'></div>", unsafe_allow_html=True)
+        senha = st.text_input("", type="password", placeholder="CHAVE DE ACESSO")
+        if st.button("ENTRAR"):
+            if senha == "admin123":
+                st.session_state.auth = True
+                st.session_state.user_type = "ADM"
+                st.rerun()
+            elif senha == "trader123":
+                st.session_state.auth = True
+                st.session_state.user_type = "USER"
                 st.rerun()
     st.stop()
 
-# 3. CSS (FORÇANDO O NOVO LAYOUT)
+# 4. CSS DO TERMINAL
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;700&family=Orbitron:wght@400;900&display=swap');
-    [data-testid="stHeader"], .stAppDeployButton, footer, label { display: none !important; }
+    [data-testid="stHeader"], .stAppDeployButton, [data-testid="stToolbar"], footer, [data-testid="stSidebar"], label { display: none !important; }
     .stApp { background-color: #000; color: #fff; font-family: 'Orbitron', sans-serif; }
-    .block-container { padding: 0rem !important; }
+    .block-container { padding: 0rem !important; max-width: 100% !important; }
+    .t-header { text-align: center; padding: 20px 0 10px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    .t-title { color: #555; font-size: 13px; letter-spacing: 4px; }
+    .t-bold { color: #fff; font-weight: 900; }
+    .s-container { text-align: center; padding: 10px 0; margin-bottom: 5px; }
+    .s-text { font-size: 12px; font-weight: 700; letter-spacing: 2px; }
+    .d-row { display: flex; justify-content: space-between; align-items: center; padding: 18px 15px; border-bottom: 1px solid #111; }
+    .d-label { font-size: 11px; color: #FFFFFF; font-weight: 900; width: 40%; }
+    .sub-grid { display: flex; gap: 15px; justify-content: flex-end; width: 60%; }
+    .sub-item { text-align: center; min-width: 70px; }
+    .sub-l { font-size: 8px; color: #888; display: block; margin-bottom: 2px; font-weight: 400; }
+    .sub-v { font-size: 18px; font-family: 'Chakra Petch'; font-weight: 700; }
+    .v-peq { font-size: 15px; font-family: 'Chakra Petch'; font-weight: 700; color: #ffff00; opacity: 0.9; }
+    .d-value { font-size: 26px; text-align: right; font-family: 'Chakra Petch'; font-weight: 700; }
+    .c-pari { color: #cc9900; } .c-equi { color: #00cccc; } 
+    .c-max { color: #00cc66; } .c-min { color: #cc3333; } .c-jus { color: #0066cc; }
     
-    .header-top { text-align: center; padding: 20px 0; border-bottom: 1px solid #222; }
-    .header-bold { color: #fff; font-weight: 900; letter-spacing: 3px; }
-    
-    .box-sinal { text-align: center; padding: 12px 0; margin-bottom: 5px; border-bottom: 2px solid #333; }
-    .txt-sinal { font-size: 14px; font-weight: 900; letter-spacing: 2px; }
-    
-    .linha-dado { display: flex; justify-content: space-between; align-items: center; padding: 18px 15px; border-bottom: 1px solid #111; }
-    .label-dado { font-size: 11px; color: #FFFFFF; font-weight: 900; }
-    .valor-dado { font-size: 26px; font-family: 'Chakra Petch'; font-weight: 700; }
-    
-    .grid-correcao { display: flex; gap: 15px; justify-content: flex-end; }
-    .item-v { font-size: 16px; font-family: 'Chakra Petch'; font-weight: 700; color: #ffff00; }
-    
-    .alerta-micro { text-align: right; padding-right: 15px; font-size: 10px; font-family: 'Chakra Petch'; font-weight: 700; margin-top: -5px; margin-bottom: 15px; }
-    
-    .mural-box { background: #050505; border-top: 1px solid #111; padding: 20px; min-height: 100px; }
-    .mural-content { font-family: 'Chakra Petch'; font-size: 13px; color: #999; }
-    
-    .footer-terminal { position: fixed; bottom: 0; left: 0; width: 100%; height: 140px; background: #050505; border-top: 1px solid #222; text-align: center; z-index: 100; }
+    .note-box { background: #050505; border-top: 1px solid #111; padding: 15px 20px; margin-top: 5px; min-height: 120px; }
+    .note-title { font-size: 9px; color: #444; letter-spacing: 2px; margin-bottom: 8px; font-weight: 900; border-bottom: 1px solid #111; padding-bottom: 4px; }
+    .note-content { font-family: 'Chakra Petch'; font-size: 13px; color: #999; line-height: 1.5; text-transform: none !important; }
+
+    .f-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: 160px; background: #050505; border-top: 1px solid #222; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
+    .f-notes { font-family: 'Chakra Petch'; font-size: 11px; color: #ffff99; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px; }
+    .f-notes2 { font-family: 'Chakra Petch'; font-size: 10px; color: #aaaaaa; margin-bottom: 8px; }
+    .f-arrows { font-size: 16px; margin: 5px 0; letter-spacing: 8px; }
+    .f-line { width: 85%; height: 1px; background: rgba(255,255,255,0.1); }
+    .tk-wrap { width: 100%; overflow: hidden; white-space: nowrap; display: flex; margin-top: 8px; }
+    .tk-move { display: inline-block; animation: slide 40s linear infinite; }
+    .tk-item { padding-right: 50px; display: inline-block; font-family: 'Chakra Petch'; font-size: 13px; color: #fff; }
+    @keyframes slide { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 </style>
 """, unsafe_allow_html=True)
 
-def get_data(ticker):
+# 5. MOTOR DE DATA
+def get_clean_data(ticker):
     try:
-        d = yf.download(ticker, period="1d", interval="1m", progress=False)
-        l = float(d['Close'].iloc[-1])
-        p = float(yf.Ticker(ticker).fast_info.previous_close)
-        return {"last": l, "var": ((l-p)/p*100)}
-    except: return {"last": 0.0, "var": 0.0}
+        df = yf.download(ticker, period="1d", interval="1m", progress=False, prepost=True)
+        t = yf.Ticker(ticker)
+        prev = float(t.fast_info.previous_close)
+        last = float(df['Close'].iloc[-1]) if not df.empty else prev
+        var = ((last - prev) / prev * 100) if prev != 0 else 0
+        return {"last": last, "prev": prev, "var": var}
+    except:
+        return {"last": 0.0, "prev": 0.0, "var": 0.0}
 
-ui = st.empty()
+# 6. LOOP DE EXECUÇÃO
+ui_area = st.empty()
 while True:
-    dxy = get_data("DX-Y.NYB")
-    ewz = get_data("EWZ")
-    dol = get_data("BRL=X")
+    d_m = get_clean_data("DX-Y.NYB")
+    e_m = get_clean_data("EWZ")
+    s_m = get_clean_data("BRL=X")
+    eu_m = get_clean_data("EURUSD=X")
     
-    if dol["last"] > 0:
-        preco_atual = dol["last"]
-        spread_global = dxy["var"] - ewz["var"]
+    if d_m["last"] > 0:
+        spot = s_m["last"]
+        spr = d_m["var"] - e_m["var"]
         
-        # CÁLCULOS NOVOS
-        val_paridade = v["pari_ref"] * (1 + (spread_global/100))
-        val_equilibrio = round((v["inst_ref"] + 0.0220) * 2000) / 2000
+        paridade_calculada = v_global["ajuste"]*(1+(spr/100))
+        equilibrio = round((v_global["ref"] + 0.0220) * 2000) / 2000
         
-        # 1. TENDÊNCIA MACRO (PRECIFICAÇÃO)
-        if preco_atual < (val_paridade - 0.0015): 
-            txt_m, cor_m = "● PRECIFICAÇÃO DE ALTA", "#00ff00"
-        elif preco_atual > (val_paridade + 0.0015): 
-            txt_m, cor_m = "● PRECIFICAÇÃO DE BAIXA", "#ff3333"
-        else: 
-            txt_m, cor_m = "● PRECIFICAÇÃO NEUTRA", "#ffff00"
+        # LÓGICA MACRO: PRECIFICAÇÃO
+        if spot < (paridade_calculada - 0.0015): msg, clr, arr = "● PRECIFICAÇÃO DE ALTA", "#00aa55", "▲ ▲ ▲ ▲ ▲"
+        elif spot > (paridade_calculada + 0.0015): msg, clr, arr = "● PRECIFICAÇÃO DE BAIXA", "#aa3333", "▼ ▼ ▼ ▼ ▼"
+        else: msg, clr, arr = "● PRECIFICAÇÃO NEUTRA", "#aaaa00", "◄ ◄ ◄ ► ► ►"
             
-        # 2. SINAL MICRO (PONTOS)
-        pts_diff = (preco_atual - val_equilibrio) * 1000
-        if pts_diff >= 22: mic_t, mic_c = "MICRO: MUITO CARO (+22)", "#ff0000"
-        elif pts_diff >= 11: mic_t, mic_c = "MICRO: CARO (+11)", "#ff6600"
-        elif pts_diff <= -22: mic_t, mic_c = "MICRO: MUITO BARATO (-22)", "#00ff00"
-        elif pts_diff <= -11: mic_t, mic_c = "MICRO: BARATO (-11)", "#00cc66"
-        else: mic_t, mic_c = "MICRO: ESTÁVEL", "#666666"
+        # LÓGICA MICRO: ALERTA DISCRETO (PONTOS DO EQUILÍBRIO)
+        diff_pts = (spot - equilibrio) * 1000
+        if diff_pts >= 22: mic_txt, mic_clr = "MICRO: MUITO CARO (+22)", "#ff0000"
+        elif diff_pts >= 11: mic_txt, mic_clr = "MICRO: CARO (+11)", "#ff6600"
+        elif diff_pts <= -22: mic_txt, mic_clr = "MICRO: MUITO BARATO (-22)", "#00ff00"
+        elif diff_pts <= -11: mic_txt, mic_clr = "MICRO: BARATO (-11)", "#00cc66"
+        else: mic_txt, mic_clr = "MICRO: SINAL NEUTRO", "#666666"
 
-        with ui.container():
-            # HEADER
-            st.markdown(f'<div class="header-top"><div class="header-bold">TERMINAL DOLAR PRO</div></div>', unsafe_allow_html=True)
-            
-            # TENDÊNCIA MACRO
-            st.markdown(f'<div class="box-sinal" style="border-color:{cor_m}77"><div class="txt-sinal" style="color:{cor_m}">{txt_m}</div></div>', unsafe_allow_html=True)
-            
-            # DADOS
-            st.markdown(f'<div class="linha-dado"><div class="label-dado">PARIDADE GLOBAL</div><div class="valor-dado" style="color:#cc9900">{val_paridade:.4f}</div></div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="linha-dado"><div class="label-dado">PREÇO EQUILÍBRIO</div><div class="valor-dado" style="color:#00cccc">{val_equilibrio:.4f}</div></div>', unsafe_allow_html=True)
+        with ui_area.container():
+            if st.session_state.user_type == "ADM":
+                with st.expander("PAINEL ADM"):
+                    with st.form("adm_panel"):
+                        c1, c2 = st.columns(2)
+                        v_global["ajuste"] = c1.number_input("PARIDADE", value=v_global["ajuste"], format="%.4f")
+                        v_global["ref"] = c2.number_input("REF INST", value=v_global["ref"], format="%.4f")
+                        v_global["notas_mural"] = st.text_area("MORNING CALL & AGENDA", value=v_global["notas_mural"], height=120)
+                        v_global["notas"] = st.text_input("RODAPÉ 1", value=v_global["notas"])
+                        v_global["notas2"] = st.text_input("RODAPÉ 2", value=v_global["notas2"])
+                        if st.form_submit_button("SALVAR"): st.rerun()
 
-            # REGIÃO DE CORREÇÃO (SÓ NÚMEROS)
+            st.markdown(f'<div class="t-header"><div class="t-title">TERMINAL <span class="t-bold">DOLAR PRO</span></div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="s-container" style="border-bottom: 2px solid {clr}77"><div class="s-text" style="color:{clr}">{msg}</div></div>', unsafe_allow_html=True)
+            
+            st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value c-pari">{paridade_calculada:.4f}</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="d-row"><div class="d-label">PREÇO EQUILÍBRIO</div><div class="d-value c-equi">{equilibrio:.4f}</div></div>', unsafe_allow_html=True)
+            
+            # REGIÃO DE CORREÇÃO (SÓ PREÇOS)
             st.markdown(f"""
-            <div class="linha-dado" style="border-bottom:none; padding-bottom:5px;">
-                <div class="label-dado" style="opacity:0.6;">REGIÃO DE CORREÇÃO</div>
-                <div class="grid-correcao">
-                    <div class="item-v">{(val_equilibrio - 0.0220):.4f}</div>
-                    <div class="item-v">{(val_equilibrio - 0.0110):.4f}</div>
-                    <div class="item-v">{(val_equilibrio + 0.0110):.4f}</div>
-                    <div class="item-v">{(val_equilibrio + 0.0220):.4f}</div>
+            <div class="d-row" style="padding-top:10px; border-bottom: none;">
+                <div class="d-label" style="opacity:0.6;">REGIÃO DE CORREÇÃO</div>
+                <div class="sub-grid">
+                    <div class="sub-item"><span class="v-peq">{(equilibrio - 0.0220):.4f}</span></div>
+                    <div class="sub-item"><span class="v-peq">{(equilibrio - 0.0110):.4f}</span></div>
+                    <div class="sub-item"><span class="v-peq">{(equilibrio + 0.0110):.4f}</span></div>
+                    <div class="sub-item"><span class="v-peq">{(equilibrio + 0.0220):.4f}</span></div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
 
             # ALERTA MICRO DISCRETO
-            st.markdown(f'<div class="alerta-micro" style="color:{mic_c}">{mic_t}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="text-align:right; padding-right:15px; font-size:10px; font-weight:700; color:{mic_clr}; font-family:Chakra Petch;">{mic_txt}</div>', unsafe_allow_html=True)
 
-            # MURAL
-            st.markdown(f'<div class="mural-box"><div style="font-size:9px; color:#444; margin-bottom:8px;">MORNING CALL & AGENDA</div><div class="mural-content">{v["mural_txt"].replace(chr(10), "<br>")}</div></div>', unsafe_allow_html=True)
+            # --- BLOCO DE NOTAS ---
+            st.markdown(f"""
+            <div class="note-box">
+                <div class="note-title">MORNING CALL & AGENDA</div>
+                <div class="note-content">{v_global["notas_mural"].replace('\\n', '<br>').replace('\n', '<br>')}</div>
+            </div>
+            """, unsafe_allow_html=True)
 
-            # RODAPÉ
-            st.markdown(f'<div class="footer-terminal"><br><div style="color:#ffff99; font-size:11px;">{v["rodape_1"]}</div><div style="color:#555; font-size:10px;">{v["rodape_2"]}</div></div>', unsafe_allow_html=True)
+            def f_tk(d, n):
+                v, p = d["var"], d["last"]
+                c = "#00aa55" if v >= 0 else "#aa3333"
+                pf = f"{p:.4f}" if n == "SPOT" else f"{p:.2f}"
+                return f"<span class='tk-item'><b>{n}</b> {pf} <span style='color:{c}'>({v:+.2f}%)</span></span>"
+
+            btk = f"{f_tk(s_m,'SPOT')} {f_tk(d_m,'DXY')} {f_tk(e_m,'EWZ')} {f_tk(eu_m,'EURUSD')} <span class='tk-item'><b>SPREAD</b> {spr:+.2f}%</span>"
+            st.markdown(f'<div class="f-bar"><div class="f-notes">{v_global["notas"]}</div><div class="f-notes2">{v_global["notas2"]}</div><div class="f-line"></div><div class="f-arrows" style="color:{clr}">{arr}</div><div class="f-line"></div><div class="tk-wrap"><div class="tk-move">{btk} {btk} {btk}</div></div></div>', unsafe_allow_html=True)
             
     time.sleep(2)
