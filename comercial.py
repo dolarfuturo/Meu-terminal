@@ -7,13 +7,13 @@ import pytz
 # 1. CONFIGURAÇÃO DE PÁGINA
 st.set_page_config(page_title="TERMINAL FINANCEIRO", layout="wide", initial_sidebar_state="collapsed")
 
-# 2. ESTADO GLOBAL (Persistência de dados entre usuários)
+# 2. ESTADO GLOBAL (Sincroniza ajustes e anotações)
 @st.cache_resource
 def get_global_vars():
     return {
         "ajuste": 5.4000, 
         "ref": 5.4000,
-        "notas": "MURAL DE ANOTAÇÕES: AGUARDANDO ATUALIZAÇÃO..."
+        "notas": "MURAL: AGUARDANDO ATUALIZAÇÃO..."
     }
 
 v_global = get_global_vars()
@@ -95,36 +95,42 @@ def get_market():
         agora_br = datetime.now(br_tz)
         hora_atual = agora_br.hour
         d = {}
+        # Coleta moedas (Forex 24h)
         for t in ["BRL=X", "EURUSD=X"]:
             tick = yf.Ticker(t)
             inf = tick.fast_info
             d[t] = {"p": inf['last_price'], "v": ((inf['last_price'] - inf['previous_close']) / inf['previous_close']) * 100}
         
+        # Coleta índices (Pre-Market inteligente)
         tkrs_ny = {"DX-Y.NYB": "DXY", "EWZ": "EWZ"}
         for t, label in tkrs_ny.items():
             tick = yf.Ticker(t)
             if hora_atual >= 8:
                 inf = tick.info
-                current_p = inf.get('preMarketPrice') or inf.get('regularMarketPrice') or inf.get('previousClose')
-                prev_c = inf.get('regularMarketPreviousClose') or inf.get('previousClose')
+                cp = inf.get('preMarketPrice') or inf.get('regularMarketPrice') or inf.get('previousClose')
+                pc = inf.get('regularMarketPreviousClose') or inf.get('previousClose')
             else:
                 inf = tick.fast_info
-                current_p = inf['last_price']
-                prev_c = inf['previous_close']
-            var_pct = ((current_p - prev_c) / prev_c) * 100 if current_p and prev_c else 0.0
-            d[t] = {"p": current_p, "v": var_pct}
-        return d, (d["DX-Y.NYB"]["v"] - d["EWZ"]["v"])
+                cp = inf['last_price']
+                pc = inf['previous_close']
+            v_pct = ((cp - pc) / pc) * 100 if cp and pc else 0.0
+            d[t] = {"p": cp, "v": v_pct}
+        
+        spr_val = d["DX-Y.NYB"]["v"] - d["EWZ"]["v"]
+        return d, spr_val
     except:
         return None, 0.0
 
 # 6. LOOP DE EXECUÇÃO
 ui_area = st.empty()
+
 while True:
-    market_data, spr = get_market()
-    if market_data:
-        spot = market_data["BRL=X"]["p"]
+    m_data, spr = get_market()
+    if m_data:
+        spot = m_data["BRL=X"]["p"]
         justo = round((spot + 0.0310) * 2000) / 2000
         diff = spot - justo
+        
         if diff < -0.0015: msg, clr, arr = "● DOLAR BARATO", "#00aa55", "▲ ▲ ▲ ▲ ▲"
         elif diff > 0.0015: msg, clr, arr = "● DOLAR CARO", "#aa3333", "▼ ▼ ▼ ▼ ▼"
         else: msg, clr, arr = "● DOLAR NEUTRO", "#aaaa00", "◄ ◄ ◄ ► ► ►"
@@ -141,15 +147,31 @@ while True:
             st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value c-pari">{(v_global["ajuste"]*(1+(spr/100))):.4f}</div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value c-equi">{(round((v_global["ref"]+0.0220)*2000)/2000):.4f}</div></div>', unsafe_allow_html=True)
             
+            # PREÇO JUSTO
             st.markdown(f'<div class="d-row"><div class="d-label">PREÇO JUSTO</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((spot+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{justo:.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((spot+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
+            # REF INST
             st.markdown(f'<div class="d-row" style="border-bottom:none;"><div class="d-label">REF. INSTITUCIONAL</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((v_global["ref"]+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{(round((v_global["ref"]+0.0310)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((v_global["ref"]+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
 
-            def f_tk(tk, n):
+            # FUNÇÃO DO TICKER CORRIGIDA
+            def f_tk(t_code, label):
                 try:
-                    val, v = market_data[tk]['p'], market_data[tk]['v']
-                    c = "#00aa55" if v >= 0 else "#aa3333"
-                    p_s = f"{val:.4f}" if n == "SPOT" else f"{val:.2f}"
-                    return f"<span class='tk-item'><b>{n}</b> {p_s} <span style='color:{c}'>({v:+.2f}%)</span></span>"
+                    price = m_data[t_code]['p']
+                    var = m_data[t_code]['v']
+                    color = "#00aa55" if var >= 0 else "#aa3333"
+                    p_fmt = f"{price:.4f}" if label == "SPOT" else f"{price:.2f}"
+                    return f"<span class='tk-item'><b>{label}</b> {p_fmt} <span style='color:{color}'>({var:+.2f}%)</span></span>"
                 except: return ""
 
-            btk = f"{f_tk('BRL=X','SPOT')} {f_tk('
+            btk = f"{f_tk('BRL=X','SPOT')} {f_tk('DX-Y.NYB','DXY')} {f_tk('EWZ','EWZ')} {f_tk('EURUSD=X','EURUSD')} <span class='tk-item'><b>SPREAD</b> {spr:+.2f}%</span>"
+            
+            st.markdown(f"""
+                <div class="f-bar">
+                    <div class="f-notes">{v_global['notas']}</div>
+                    <div class="f-line"></div>
+                    <div class="f-arrows" style="color:{clr}">{arr}</div>
+                    <div class="f-line"></div>
+                    <div class="tk-wrap"><div class="tk-move">{btk} {btk} {btk}</div></div>
+                </div>
+            """, unsafe_allow_html=True)
+            
+    time.sleep(2)
