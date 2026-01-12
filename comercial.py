@@ -112,13 +112,13 @@ while True:
         justo = round((spot + 0.0310) * 2000) / 2000
         diff = spot - justo
         
-        # LÓGICA DE CORES E SETAS ATUALIZADA
+        # LÓGICA DE CORES E SETAS
         if diff < -0.0015: 
-            msg, clr, arr = "● DOLAR BARATO", "#00aa55", "▲ ▲ ▲ ▲ ▲"  # VERDE
+            msg, clr, arr = "● DOLAR BARATO", "#00aa55", "▲ ▲ ▲ ▲ ▲"
         elif diff > 0.0015: 
-            msg, clr, arr = "● DOLAR CARO", "#aa3333", "▼ ▼ ▼ ▼ ▼"   # VERMELHO
+            msg, clr, arr = "● DOLAR CARO", "#aa3333", "▼ ▼ ▼ ▼ ▼"
         else: 
-            msg, clr, arr = "● DOLAR NEUTRO", "#aaaa00", "◄ ◄ ◄ ► ► ►" # AMARELO + SETA LADO
+            msg, clr, arr = "● DOLAR NEUTRO", "#aaaa00", "◄ ◄ ◄ ► ► ►"
             
         with ui_area.container():
             if st.session_state.user_type == "ADM":
@@ -133,7 +133,7 @@ while True:
             st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value c-pari">{(v_global["ajuste"]*(1+(spr/100))):.4f}</div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value c-equi">{(round((v_global["ref"]+0.0220)*2000)/2000):.4f}</div></div>', unsafe_allow_html=True)
             
-            # LINHA PREÇO JUSTO
+            # PREÇO JUSTO
             st.markdown(f"""
                 <div class="d-row">
                     <div class="d-label">PREÇO JUSTO</div>
@@ -145,7 +145,7 @@ while True:
                 </div>
             """, unsafe_allow_html=True)
 
-            # LINHA REF INSTITUCIONAL
+            # REF INSTITUCIONAL
             st.markdown(f"""
                 <div class="d-row" style="border-bottom:none;">
                     <div class="d-label">REF. INSTITUCIONAL</div>
@@ -157,11 +157,12 @@ while True:
                 </div>
             """, unsafe_allow_html=True)
 
+            # TICKER COM SPOT INCLUÍDO
             def f_tk(tk, n):
                 val = m[tk]['p']; v = m[tk]['v']; c = "#00aa55" if v >= 0 else "#aa3333"
-                return f"<span class='tk-item'><b>{n}</b> {val:.2f} <span style='color:{c}'>({v:+.2f}%)</span></span>"
+                return f"<span class='tk-item'><b>{n}</b> {val:.4f if n == 'SPOT' else '%.2f' % val} <span style='color:{c}'>({v:+.2f}%)</span></span>"
             
-            base_ticker = f"{f_tk('DX-Y.NYB','DXY')} {f_tk('EWZ','EWZ')} {f_tk('EURUSD=X','EURUSD')} <span class='tk-item'><b>SPREAD</b> {spr:+.2f}%</span>"
+            base_ticker = f"{f_tk('BRL=X','SPOT')} {f_tk('DX-Y.NYB','DXY')} {f_tk('EWZ','EWZ')} {f_tk('EURUSD=X','EURUSD')} <span class='tk-item'><b>SPREAD</b> {spr:+.2f}%</span>"
             
             st.markdown(f"""
                 <div class="f-bar">
