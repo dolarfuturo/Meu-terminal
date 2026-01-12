@@ -24,7 +24,7 @@ if not st.session_state.auth:
             st.rerun()
     st.stop()
 
-# 3. CSS - ESTILO REFINADO
+# 3. CSS - ESTILO REFINADO COM BRANCO PURO
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;700&family=Orbitron:wght@400;900&display=swap');
@@ -45,18 +45,19 @@ st.markdown("""
     .s-container { text-align: center; padding: 10px 0; margin-bottom: 5px; }
     .s-text { font-size: 12px; font-weight: 700; letter-spacing: 2px; }
 
-    /* DADOS - NÚMEROS MENORES E RÓTULOS EM NEGRITO */
+    /* DADOS - RÓTULOS EM BRANCO PURO NEGRITO */
     .d-row { display: flex; justify-content: space-between; align-items: center; padding: 22px 15px; border-bottom: 1px solid #111; }
-    .d-label { font-size: 10px; color: #777; width: 45%; font-weight: 900; text-transform: uppercase; }
+    .d-label { font-size: 11px; color: #FFFFFF !important; width: 45%; font-weight: 900; text-transform: uppercase; }
     .d-value { font-size: 26px; width: 55%; text-align: right; font-family: 'Chakra Petch', sans-serif; font-weight: 700; color: #eee; }
     
     .sub-grid { display: flex; gap: 12px; justify-content: flex-end; width: 55%; }
     .sub-item { text-align: right; }
-    .sub-l { font-size: 8px; color: #444; display: block; font-weight: 900; }
+    .sub-l { font-size: 8px; color: #FFFFFF !important; display: block; font-weight: 900; }
     .sub-v { font-size: 17px; font-family: 'Chakra Petch', sans-serif; font-weight: 700; }
 
-    /* CLASSES PARA REMOVER NEGRITO ESPECÍFICO */
+    /* CLASSES PARA REMOVER NEGRITO E SUAVIZAR BRANCO ONDE SOLICITADO */
     .no-bold { font-weight: 400 !important; }
+    .dim-white { color: #777 !important; font-weight: 400 !important; }
 
     .c-pari { color: #cc9900; } .c-equi { color: #00cccc; } .c-max { color: #00cc66; } .c-min { color: #cc3333; } .c-jus { color: #0066cc; }
     
@@ -113,7 +114,6 @@ while True:
             st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value c-pari">{(params["ajuste"]*(1+(spr/100))):.4f}</div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value c-equi">{(round((params["ref"]+0.0220)*2000)/2000):.4f}</div></div>', unsafe_allow_html=True)
             
-            # PREÇO JUSTO (NEG)
             st.markdown(f"""
                 <div class="d-row">
                     <div class="d-label">PREÇO JUSTO</div>
@@ -125,14 +125,13 @@ while True:
                 </div>
             """, unsafe_allow_html=True)
 
-            # REF INSTITUCIONAL (COM REGRAS DE NEGRITO)
             st.markdown(f"""
                 <div class="d-row" style="border-bottom:none;">
                     <div class="d-label">REF. INSTITUCIONAL</div>
                     <div class="sub-grid">
                         <div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((params["ref"]+0.0220)*2000)/2000):.4f}</span></div>
-                        <div class="sub-item"><span class="sub-l no-bold">JUS</span><span class="sub-v c-jus no-bold">{(round((params["ref"]+0.0310)*2000)/2000):.4f}</span></div>
-                        <div class="sub-item"><span class="sub-l no-bold">MAX</span><span class="sub-v c-max no-bold">{(round((params["ref"]+0.0420)*2000)/2000):.4f}</span></div>
+                        <div class="sub-item"><span class="sub-l dim-white">JUSTO</span><span class="sub-v c-jus no-bold">{(round((params["ref"]+0.0310)*2000)/2000):.4f}</span></div>
+                        <div class="sub-item"><span class="sub-l dim-white">MAX</span><span class="sub-v c-max no-bold">{(round((params["ref"]+0.0420)*2000)/2000):.4f}</span></div>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
