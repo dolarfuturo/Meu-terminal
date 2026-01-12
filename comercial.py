@@ -2,114 +2,124 @@ import streamlit as st
 import yfinance as yf
 import time
 
-# 1. SETUP
+# 1. SETUP DO TERMINAL
 st.set_page_config(page_title="TERMINAL", layout="wide", initial_sidebar_state="collapsed")
 
 @st.cache_resource
-def get_global_params():
+def get_params():
     return {"ajuste": 5.4000, "ref": 5.4000}
 
-params = get_global_params()
+p = get_params()
 
-# 2. LOGIN
-if 'autenticado' not in st.session_state:
-    st.session_state.autenticado = False
+# 2. SISTEMA DE LOGIN
+if 'auth' not in st.session_state:
+    st.session_state.auth = False
 
-if not st.session_state.autenticado:
+if not st.session_state.auth:
     st.markdown("<style>.stApp { background-color: #000; }</style>", unsafe_allow_html=True)
-    senha = st.text_input("CHAVE:", type="password")
+    senha = st.text_input("CHAVE DE ACESSO:", type="password")
     if st.button("ACESSAR"):
         if senha in ["admin123", "trader123"]:
-            st.session_state.autenticado = True
+            st.session_state.auth = True
             st.rerun()
     st.stop()
 
-# 3. CSS - FONTE CHAKRA PETCH (QUADRADA E NÍTIDA) + TICKER INFINITO
+# 3. CSS BLINDADO (ESTILO QUADRADO INDUSTRIAL)
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;700&family=Orbitron:wght@400;900&display=swap');
     
-    header, footer, [data-testid="stHeader"], [data-testid="stFooter"], .stDeployButton, [data-testid="stStatusWidget"] {
+    header, footer, [data-testid="stHeader"], [data-testid="stFooter"], .stDeployButton {
         display: none !important;
     }
     
     .stApp { background-color: #000; color: #fff; font-family: 'Orbitron', sans-serif; }
     .block-container { padding-top: 0rem !important; max-width: 100% !important; }
 
-    /* CABEÇALHO */
-    .terminal-title-section { text-align: center; padding: 25px 0 5px 0; border-bottom: 1px solid rgba(255,255,255,0.2); }
-    .header-title { color: #555; font-size: 14px; letter-spacing: 4px; }
-    .bold-white { color: #fff; font-weight: 900; }
+    /* TOPO */
+    .header-box { text-align: center; padding: 20px 0 5px 0; border-bottom: 1px solid rgba(255,255,255,0.2); }
+    .h-title { color: #666; font-size: 14px; letter-spacing: 4px; text-transform: uppercase; }
+    .h-bold { color: #fff; font-weight: 900; }
     
-    /* STATUS */
-    .status-container { text-align: center; padding: 10px 0; margin-bottom: 5px; }
-    .status-text { font-size: 13px; font-weight: 700; letter-spacing: 2px; }
+    /* STATUS DINÂMICO */
+    .status-area { text-align: center; padding: 12px 0; margin-bottom: 5px; }
+    .status-txt { font-size: 13px; font-weight: 700; letter-spacing: 2px; }
 
-    /* DADOS - FONTE CHAKRA (NÍTIDA E QUADRADA) */
-    .data-row { display: flex; justify-content: space-between; align-items: center; padding: 25px 15px; border-bottom: 1px solid #111; }
-    .data-label { font-size: 10px; color: #666; width: 40%; }
-    .data-value { font-size: 32px; width: 60%; text-align: right; font-family: 'Chakra Petch', sans-serif; font-weight: 700; color: #fff; }
+    /* GRID DE DADOS PRINCIPAIS */
+    .row { display: flex; justify-content: space-between; align-items: center; padding: 25px 15px; border-bottom: 1px solid #111; }
+    .label { font-size: 10px; color: #555; width: 40%; font-weight: bold; }
+    .value { font-size: 30px; width: 60%; text-align: right; font-family: 'Chakra Petch', sans-serif; font-weight: 700; }
     
-    .sub-grid { display: flex; gap: 10px; justify-content: flex-end; width: 60%; }
-    .sub-label { font-size: 8px; color: #444; display: block; }
-    .sub-val { font-size: 19px; font-family: 'Chakra Petch', sans-serif; font-weight: 700; }
+    /* SUB-VALORES (MIN/JUSTO/MAX) */
+    .sub-grid { display: flex; gap: 15px; justify-content: flex-end; width: 60%; }
+    .sub-item { text-align: right; }
+    .sub-l { font-size: 8px; color: #444; display: block; margin-bottom: 2px; }
+    .sub-v { font-size: 18px; font-family: 'Chakra Petch', sans-serif; font-weight: 700; }
 
-    .c-pari { color: #cc9900; } .c-equi { color: #00cccc; } .c-max { color: #00cc66; } .c-min { color: #cc3333; } .c-jus { color: #0066cc; }
+    /* CORES */
+    .c-pari { color: #FFB900; } .c-equi { color: #00FFFF; } .c-max { color: #00FF80; } .c-min { color: #FF4B4B; } .c-jus { color: #0080FF; }
     
     /* RODAPÉ E TICKER INFINITO */
-    .footer-bar { 
+    .footer { 
         position: fixed; bottom: 0; left: 0; width: 100%; height: 85px; 
         background: #050505; border-top: 1px solid #222; 
         display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999;
     }
-    .footer-arrows { font-size: 18px; margin-bottom: 5px; }
+    .arrows { font-size: 18px; margin-bottom: 5px; font-weight: 900; }
     
-    .ticker-wrap { width: 100%; overflow: hidden; white-space: nowrap; position: relative; }
-    .ticker-move { display: inline-block; white-space: nowrap; animation: marquee 20s linear infinite; }
+    .ticker-container { width: 100%; overflow: hidden; white-space: nowrap; position: relative; }
+    .ticker-track { display: inline-block; white-space: nowrap; animation: move 20s linear infinite; }
     
-    .t-item { padding-right: 100px; display: inline-block; font-family: 'Chakra Petch', sans-serif; font-size: 14px; }
-    .t-name { color: #fff; font-weight: bold; }
-    .t-up { color: #00aa55; }
-    .t-down { color: #aa3333; }
+    .t-unit { padding-right: 80px; display: inline-block; font-family: 'Chakra Petch', sans-serif; font-size: 13px; }
+    .t-n { color: #fff; font-weight: bold; }
+    .t-u { color: #00aa55; font-weight: bold; }
+    .t-d { color: #aa3333; font-weight: bold; }
 
-    @keyframes marquee {
+    @keyframes move {
         0% { transform: translateX(0); }
         100% { transform: translateX(-50%); }
     }
 </style>
 """, unsafe_allow_html=True)
 
-# 4. LÓGICA DE DADOS
-def get_market_data():
+# 4. CAPTURA DE DADOS (YFINANCE)
+def fetch_mkt():
     try:
-        t_list = ["BRL=X", "DX-Y.NYB", "EWZ", "EURUSD=X"]
+        tkrs = ["BRL=X", "DX-Y.NYB", "EWZ", "EURUSD=X"]
         d = {}
-        for t in t_list:
-            tk = yf.Ticker(t); info = tk.fast_info
-            d[t] = {"p": info['last_price'], "v": ((info['last_price'] - info['previous_close']) / info['previous_close']) * 100}
-        return d, d["DX-Y.NYB"]["v"] - d["EWZ"]["v"]
-    except: return None, 0.0
+        for t in tkrs:
+            ticker = yf.Ticker(t)
+            price = ticker.fast_info['last_price']
+            prev = ticker.fast_info['previous_close']
+            var = ((price - prev) / prev) * 100
+            d[t] = {"p": price, "v": var}
+        spread = d["DX-Y.NYB"]["v"] - d["EWZ"]["v"]
+        return d, spread
+    except:
+        return None, 0.0
 
-placeholder = st.empty()
+# 5. LOOP DE ATUALIZAÇÃO
+ui = st.empty()
 
 while True:
-    m, spr = get_market_data()
-    if m:
-        s_p = m["BRL=X"]["p"]
-        p_jus = round((s_p + 0.0310) * 2000) / 2000
-        diff = s_p - p_jus
+    data, spr = fetch_mkt()
+    if data:
+        spot = data["BRL=X"]["p"]
+        justo = round((spot + 0.0310) * 2000) / 2000
+        diff = spot - justo
         
+        # Lógica de Cores (Seu Padrão)
         if diff < -0.0015:
-            st_msg, st_clr, st_arrow = "● DOLAR BARATO", "#aa3333", "▼ ▼ ▼ ▼ ▼"
+            m, c, a = "● DOLAR BARATO", "#aa3333", "▼ ▼ ▼ ▼ ▼" # Vermelho
         elif diff > 0.0015:
-            st_msg, st_clr, st_arrow = "● DOLAR CARO", "#00aa55", "▲ ▲ ▲ ▲ ▲"
+            m, c, a = "● DOLAR CARO", "#00aa55", "▲ ▲ ▲ ▲ ▲" # Verde
         else:
-            st_msg, st_clr, st_arrow = "● DOLAR NEUTRO", "#aaaa00", "— — — — —"
+            m, c, a = "● DOLAR NEUTRO", "#aaaa00", "— — — — —" # Amarelo
 
-        with placeholder.container():
-            st.markdown(f'<div class="terminal-title-section"><div class="header-title">TERMINAL <span class="bold-white">DOLAR</span></div></div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="status-container" style="border-bottom: 2px solid {st_clr}66"><div class="status-text" style="color:{st_clr}">{st_msg}</div></div>', unsafe_allow_html=True)
-            
-            st.markdown(f'<div class="data-row"><div class="data-label">PARIDADE GLOBAL</div><div class="data-value c-pari">{(params["ajuste"]*(1+(spr/100))):.4f}</div></div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="data-row"><div class="data-label">EQUILIBRIO</div><div class="data-value c-equi">{(round((params["ref"]+0.0220)*2000)/2000):.4f}</div></div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="data-row"><div class="data-label">PREÇO JUSTO</div><div class="sub-grid"><div class="sub-item"><span class="sub-label">MIN</span><span class="sub-val c-min">{(round((s_p+0.0220)*2000)/2000):.4f}</span></div><div class="
+        with ui.container():
+            # CABEÇALHO
+            st.markdown(f"""
+                <div class="header-box">
+                    <div class="h-title">TERMINAL <span class="h-bold">DOLAR</span></div>
+                </div>
+                <div class="status
