@@ -34,55 +34,51 @@ if not st.session_state.autenticado:
             st.rerun()
     st.stop()
 
-# 2. CSS AJUSTADO: NÚMEROS MENORES, NEGRITO E INDICADOR DISCRETO
+# 2. CSS AJUSTADO: FONTE SHARE TECH MONO E CORES SEMÁFORO
 st.markdown("""
 <style>
-    /* REMOVE LOGOS E INTERFACE STREAMLIT */
-    [data-testid="stHeader"], [data-testid="stFooter"], .stDeployButton, 
-    [data-testid="stStatusWidget"], #viewer-badge, header, footer {
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+    
+    header, footer, [data-testid="stHeader"], [data-testid="stFooter"], .stDeployButton, 
+    [data-testid="stStatusWidget"], #viewer-badge {
         display: none !important; visibility: hidden !important;
     }
     
-    .stApp { background-color: #000; color: #fff; font-family: 'Roboto Mono', monospace !important; }
+    .stApp { background-color: #000; color: #fff; font-family: 'Share Tech Mono', monospace !important; }
     .block-container { padding-top: 0rem !important; max-width: 100% !important; }
 
-    /* CABEÇALHO COM DOLAR EM NEGRITO */
     .terminal-header { 
-        text-align: center; font-size: 12px; letter-spacing: 6px; color: #444; 
+        text-align: center; font-size: 14px; letter-spacing: 6px; color: #444; 
         padding: 30px 0 10px 0; border-bottom: 1px solid #111; 
     }
     .bold-white { color: #fff; font-weight: 900; }
 
-    /* INDICADOR CARO/BARATO DISCRETO */
-    .status-badge {
-        text-align: center; font-size: 9px; font-weight: 700; margin-top: 5px;
-        letter-spacing: 2px;
-    }
-    .badge-barato { color: #00FFFF; opacity: 0.6; }
-    .badge-caro { color: #FF4B4B; opacity: 0.6; }
+    /* CORES DO STATUS */
+    .status-badge { text-align: center; font-size: 11px; font-weight: 700; margin-top: 8px; letter-spacing: 2px; }
+    .status-verde { color: #00FF80; } /* BARATO */
+    .status-vermelho { color: #FF4B4B; } /* CARO */
+    .status-cinza { color: #888888; } /* NEUTRO */
 
-    /* LINHAS EXPANDIDAS MAS COM NÚMEROS MENORES */
     .data-row { 
         display: flex; justify-content: space-between; align-items: center; 
         padding: 35px 15px; border-bottom: 1px solid #111; 
     }
     
-    .data-label { font-size: 10px; color: #aaa; font-weight: 700; width: 45%; }
-    .data-value { font-size: 32px; font-weight: 700; width: 55%; text-align: right; }
+    .data-label { font-size: 11px; color: #aaa; width: 45%; }
+    .data-value { font-size: 30px; width: 55%; text-align: right; }
     
     .sub-grid { display: flex; gap: 12px; justify-content: flex-end; width: 55%; }
-    .sub-label { font-size: 8px; color: #666 !important; font-weight: 800; display: block; margin-bottom: 5px; }
-    .sub-val { font-size: 19px; font-weight: 700; }
+    .sub-label { font-size: 8px; color: #666 !important; display: block; margin-bottom: 5px; }
+    .sub-val { font-size: 19px; }
     
     .c-pari { color: #FFB900; } .c-equi { color: #00FFFF; } .c-max { color: #00FF80; } .c-min { color: #FF4B4B; } .c-jus { color: #0080FF; }
     
     .footer-bar { 
-        position: fixed; bottom: 0; left: 0; width: 100%; height: 40px; 
-        background: #080808; border-top: 1px solid #111; 
-        display: flex; align-items: center; padding: 0 20px; z-index: 9999; 
+        position: fixed; bottom: 0; left: 0; width: 100%; height: 50px; 
+        background: #080808; border-top: 1px solid #222; 
+        display: flex; align-items: center; justify-content: center; z-index: 9999; 
     }
-    .ticker { white-space: nowrap; font-size: 10px; animation: marquee 30s linear infinite; }
-    @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-350%); } }
+    .instr-text { font-size: 10px; text-align: center; font-weight: bold; }
 
     [data-testid="stPopover"] { position: fixed; top: 0; right: 0; opacity: 0; }
 </style>
@@ -94,8 +90,7 @@ if st.session_state.perfil == "admin":
         novo_aj = st.number_input("AJUSTE", value=params["ajuste"], format="%.4f")
         novo_rf = st.number_input("REFERENCIAL", value=params["ref"], format="%.4f")
         if st.button("SALVAR"):
-            params["ajuste"] = novo_aj
-            params["ref"] = novo_rf
+            params["ajuste"] = novo_aj; params["ref"] = novo_rf
             st.rerun()
 
 def get_market_data():
@@ -117,24 +112,32 @@ while True:
         s_p = m["BRL=X"]["p"]; v_aj = params["ajuste"]; r_f = params["ref"]
         p_justo = round((s_p + 0.0310) * 2000) / 2000
         
-        # Lógica Caro/Barato
-        if s_p < p_justo:
-            status_html = '<div class="status-badge badge-barato">● DESCONTO (BARATO)</div>'
+        # LOGICA DE 3 ESTADOS (CARO, NEUTRO, BARATO)
+        diff = s_p - p_justo
+        margem_neutra = 0.0015 # Faixa de "respiro" para o Neutro
+        
+        if diff < -margem_neutra:
+            status_html = '<div class="status-badge status-verde">● DÓLAR BARATO</div>'
+            rodape_text = '<span style="color:#00FF80">COMPRA: PREÇO ABAIXO DO JUSTO.</span>'
+            cor_borda = "#00FF80"
+        elif diff > margem_neutra:
+            status_html = '<div class="status-badge status-vermelho">● DÓLAR CARO</div>'
+            rodape_text = '<span style="color:#FF4B4B">VENDA: PREÇO ACIMA DO JUSTO.</span>'
+            cor_borda = "#FF4B4B"
         else:
-            status_html = '<div class="status-badge badge-caro">● ÁGIO (CARO)</div>'
+            status_html = '<div class="status-badge status-cinza">● DÓLAR EM EQUILÍBRIO</div>'
+            rodape_text = '<span style="color:#888">AGUARDAR: MERCADO EM ZONA NEUTRA.</span>'
+            cor_borda = "#333333"
 
         with scr.container():
-            st.markdown(f'<div class="terminal-header">TERMINAL <span class="bold-white">DOLAR</span>{status_html}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="terminal-header" style="border-bottom: 2px solid {cor_borda}">TERMINAL <span class="bold-white">DOLAR</span>{status_html}</div>', unsafe_allow_html=True)
             
             st.markdown(f'<div class="data-row"><div class="data-label">PARIDADE GLOBAL</div><div class="data-value c-pari">{(v_aj*(1+(spr/100))):.4f}</div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="data-row"><div class="data-label">EQUILIBRIO</div><div class="data-value c-equi">{(round((r_f+0.0220)*2000)/2000):.4f}</div></div>', unsafe_allow_html=True)
             
-            # PREÇO JUSTO
             st.markdown(f'<div class="data-row"><div class="data-label">PREÇO JUSTO</div><div class="sub-grid"><div class="sub-item"><span class="sub-label">MINIMA</span><span class="sub-val c-min">{(round((s_p+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">JUSTO</span><span class="sub-val c-jus">{p_justo:.4f}</span></div><div class="sub-item"><span class="sub-label">MAXIMA</span><span class="sub-val c-max">{(round((s_p+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
             
-            # REF INSTITUCIONAL
             st.markdown(f'<div class="data-row"><div class="data-label">REF. INSTITUCIONAL</div><div class="sub-grid"><div class="sub-item"><span class="sub-label">MINIMA</span><span class="sub-val c-min">{(round((r_f+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">JUSTO</span><span class="sub-val c-jus">{(round((r_f+0.0310)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-label">MAXIMA</span><span class="sub-val c-max">{(round((r_f+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
 
-            items = f"SPOT: {s_p:.4f} | DXY: {m['DX-Y.NYB']['p']:.2f} | SPREAD: {spr:+.2f}%"
-            st.markdown(f'<div class="footer-bar"><div class="ticker">{items}</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="footer-bar"><div class="instr-text">{rodape_text}</div></div>', unsafe_allow_html=True)
     time.sleep(2)
