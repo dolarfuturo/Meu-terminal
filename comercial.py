@@ -41,7 +41,7 @@ if not st.session_state.auth:
                 st.rerun()
     st.stop()
 
-# 4. CSS DO TERMINAL
+# 4. CSS DO TERMINAL ATUALIZADO
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;700&family=Orbitron:wght@400;900&display=swap');
@@ -59,8 +59,9 @@ st.markdown("""
     .sub-item { text-align: center; min-width: 70px; }
     .sub-l { font-size: 8px; color: #888; display: block; margin-bottom: 2px; font-weight: 400; }
     .sub-v { font-size: 18px; font-family: 'Chakra Petch'; font-weight: 700; }
+    .v-peq { font-size: 14px; font-family: 'Chakra Petch'; font-weight: 700; color: #ff6600; opacity: 0.8; }
     .d-value { font-size: 26px; text-align: right; font-family: 'Chakra Petch'; font-weight: 700; }
-    .c-pari { color: #cc9900; } .c-equi { color: #00cccc; } .c-corr { color: #ff6600; }
+    .c-pari { color: #cc9900; } .c-equi { color: #00cccc; } 
     .c-max { color: #00cc66; } .c-min { color: #cc3333; } .c-jus { color: #0066cc; }
     .f-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: 160px; background: #050505; border-top: 1px solid #222; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
     .f-notes { font-family: 'Chakra Petch'; font-size: 11px; color: #ffff99; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px; }
@@ -74,7 +75,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 5. MOTOR DE DADOS COM ESTABILIZAÇÃO DE EWZ
+# 5. MOTOR DE DADOS COM FILTRO DE VOLATILIDADE EXTREMA
 def get_market():
     try:
         br_tz = pytz.timezone('America/Sao_Paulo')
@@ -90,10 +91,17 @@ def get_market():
             inf = tick.info
             prev_c = inf.get('regularMarketPreviousClose') or inf.get('previousClose')
             
-            # ANTI-DISTORÇÃO: Usa média de Bid/Ask no Pré-Mercado
+            # FILTRO ANTI-ERRO: Prioriza Bid/Ask para evitar saltos de baixa liquidez
             if 8 <= hora < 11.5:
                 bid, ask = inf.get('bid'), inf.get('ask')
-                cp = (bid + ask) / 2 if bid and ask and bid > 0 else (inf.get('preMarketPrice') or inf.get('regularMarketPrice'))
+                if bid and ask and bid > 0:
+                    cp = (bid + ask) / 2
+                else:
+                    cp = inf.get('preMarketPrice') or inf.get('regularMarketPrice')
+                
+                # Bloqueia variações absurdas (>3%) em pré-mercado (geralmente erro de dado)
+                if abs(((cp - prev_c) / prev_c)) > 0.03:
+                    cp = prev_c
             else:
                 cp = inf.get('regularMarketPrice') or inf.get('lastPrice')
             
@@ -120,22 +128,22 @@ while True:
             if st.session_state.user_type == "ADM":
                 with st.expander("PAINEL ADM"):
                     with st.form("adm_panel"):
-                        v_global["ajuste"] = st.number_input("PARIDADE", value=v_global["ajuste"], format="%.4f", step=0.0001)
-                        v_global["ref"] = st.number_input("REF INST", value=v_global["ref"], format="%.4f", step=0.0001)
-                        v_global["notas"] = st.text_input("MURAL 1 (AMARELO)", value=v_global["notas"])
-                        v_global["notas2"] = st.text_input("MURAL 2 (CINZA)", value=v_global["notas2"])
+                        c1, c2 = st.columns(2)
+                        v_global["ajuste"] = c1.number_input("PARIDADE", value=v_global["ajuste"], format="%.4f", step=0.0001)
+                        v_global["ref"] = c2.number_input("REF INST", value=v_global["ref"], format="%.4f", step=0.0001)
+                        v_global["notas"] = st.text_input("MURAL 1", value=v_global["notas"])
+                        v_global["notas2"] = st.text_input("MURAL 2", value=v_global["notas2"])
                         if st.form_submit_button("SALVAR"): st.rerun()
 
             st.markdown(f'<div class="t-header"><div class="t-title">TERMINAL <span class="t-bold">DOLAR</span></div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="s-container" style="border-bottom: 2px solid {clr}77"><div class="s-text" style="color:{clr}">{msg}</div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value c-pari">{(v_global["ajuste"]*(1+(spr/100))):.4f}</div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value c-equi">{equilibrio:.4f}</div></div>', unsafe_allow_html=True)
-
-            # NOVO BLOCO: REGIÃO DE CORREÇÃO
-            st.markdown(f'<div class="d-row"><div class="d-label">REGIÃO DE CORREÇÃO</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">-11 PTS</span><span class="sub-v c-corr">{(equilibrio - 0.0110):.4f}</span></div><div class="sub-item"><span class="sub-l">+11 PTS</span><span class="sub-v c-corr">{(equilibrio + 0.0110):.4f}</span></div></div></div>', unsafe_allow_html=True)
-            
             st.markdown(f'<div class="d-row"><div class="d-label">PREÇO JUSTO</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((spot+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{justo:.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((spot+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="d-row" style="border-bottom:none;"><div class="d-label">REF. INSTITUCIONAL</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((v_global["ref"]+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{(round((v_global["ref"]+0.0310)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((v_global["ref"]+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="d-row"><div class="d-label">REF. INSTITUCIONAL</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((v_global["ref"]+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{(round((v_global["ref"]+0.0310)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((v_global["ref"]+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
+
+            # BLOCO REGIÃO DE CORREÇÃO (FONTE MENOR E NO FINAL)
+            st.markdown(f'<div class="d-row" style="border-bottom:none; padding-top:10px;"><div class="d-label" style="opacity:0.6;">REGIÃO DE CORREÇÃO</div><div class="sub-grid"><div class="sub-item"><span class="v-peq">{(equilibrio - 0.0110):.4f}</span></div><div class="sub-item"><span class="v-peq">{(equilibrio + 0.0110):.4f}</span></div></div></div>', unsafe_allow_html=True)
 
             def f_tk(tk, n):
                 try:
