@@ -2,64 +2,62 @@ import streamlit as st
 import yfinance as yf
 import time
 
-# 1. CONFIGURAÇÃO DO TERMINAL E LIMPEZA DE ÍCONES
+# 1. SETUP E LIMPEZA DE INTERFACE
 st.set_page_config(page_title="TERMINAL", layout="wide", initial_sidebar_state="collapsed")
 
-# 2. BANCO DE DADOS GLOBAL (SINCRONIZA PARA TODOS OS USUÁRIOS)
+# 2. BANCO DE DADOS EM MEMÓRIA (COMPARTILHADO ENTRE TODOS OS USUÁRIOS)
 @st.cache_resource
-def shared_vars():
-    # Valores iniciais padrão
-    return {"val_ajuste": 5.4000, "val_ref": 5.4000}
+def get_shared_state():
+    return {"ajuste": 5.4000, "ref": 5.4000}
 
-v_global = shared_vars()
+v_global = get_shared_state()
 
-# 3. SISTEMA DE LOGIN
+# 3. SISTEMA DE LOGIN SEPARADO DO TERMINAL
 if 'auth' not in st.session_state:
     st.session_state.auth = False
     st.session_state.user_type = None
 
 if not st.session_state.auth:
     st.markdown("<style>.stApp { background-color: #000; }</style>", unsafe_allow_html=True)
-    st.markdown("<h2 style='color:white; text-align:center;'>SISTEMA PRIVADO</h2>", unsafe_allow_html=True)
-    senha = st.text_input("CHAVE DE ACESSO:", type="password")
-    if st.button("ACESSAR"):
-        if senha == "admin123":
-            st.session_state.auth = True
-            st.session_state.user_type = "ADM"
-            st.rerun()
-        elif senha == "trader123":
-            st.session_state.auth = True
-            st.session_state.user_type = "USER"
-            st.rerun()
+    with st.container():
+        st.markdown("<h2 style='color:white; text-align:center; padding-top:50px;'>TERMINAL PRIVADO</h2>", unsafe_allow_html=True)
+        senha = st.text_input("CHAVE DE ACESSO:", type="password")
+        if st.button("ENTRAR NO SISTEMA"):
+            if senha == "admin123":
+                st.session_state.auth = True
+                st.session_state.user_type = "ADM"
+                st.rerun()
+            elif senha == "trader123":
+                st.session_state.auth = True
+                st.session_state.user_type = "USER"
+                st.rerun()
     st.stop()
 
-# 4. PAINEL DE CONTROLE NA ENGRENAGEM (APENAS ADM MUDA, TODOS RECEBEM)
+# 4. CONTROLE DA BARRA LATERAL (APENAS ADM ACESSA AS VARIÁVEIS)
 if st.session_state.user_type == "ADM":
     with st.sidebar:
-        st.header("⚙️ AJUSTE GLOBAL")
-        # Ao mudar aqui, altera o v_global que é compartilhado
-        v_global["val_ajuste"] = st.number_input("PARIDADE (AJUSTE):", value=v_global["val_ajuste"], format="%.4f", step=0.0001)
-        v_global["val_ref"] = st.number_input("REF. INSTITUCIONAL:", value=v_global["val_ref"], format="%.4f", step=0.0001)
-        st.success("Alterações aplicadas a todos os usuários.")
+        st.header("⚙️ PAINEL MESTRE")
+        v_global["ajuste"] = st.number_input("AJUSTE GLOBAL:", value=v_global["ajuste"], format="%.4f", step=0.0001)
+        v_global["ref"] = st.number_input("REFERÊNCIA GLOBAL:", value=v_global["ref"], format="%.4f", step=0.0001)
+        st.success("Sincronizado com todos os clientes.")
 else:
-    with st.sidebar:
-        st.warning("Variáveis controladas pelo ADM.")
+    # CLIENTE NÃO VÊ A BARRA LATERAL
+    st.markdown("<style>[data-testid='stSidebar'] { display: none !important; }</style>", unsafe_allow_html=True)
 
-# 5. CSS - REMOVE FORK, ICONES E ESTILIZA TERMINAL
+# 5. CSS - ESTILO INDUSTRIAL E LIMPEZA DE ÍCONES
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;700&family=Orbitron:wght@400;900&display=swap');
     
-    /* ESCONDE FORK, GITHUB E CABEÇALHO */
-    [data-testid="stHeader"], .stAppDeployButton, header, [data-testid="stToolbar"] {
+    /* ESCONDE ELEMENTOS NATIVOS DO STREAMLIT */
+    [data-testid="stHeader"], .stAppDeployButton, header, [data-testid="stToolbar"], footer {
         display: none !important;
     }
     
-    footer { display: none !important; }
     .stApp { background-color: #000; color: #fff; font-family: 'Orbitron', sans-serif; }
     .block-container { padding-top: 0rem !important; max-width: 100% !important; }
 
-    /* CABEÇALHO TERMINAL */
+    /* LAYOUT DAS LINHAS */
     .t-header { text-align: center; padding: 25px 0 5px 0; border-bottom: 1px solid rgba(255,255,255,0.15); }
     .t-title { color: #555; font-size: 13px; letter-spacing: 4px; }
     .t-bold { color: #fff; font-weight: 900; }
@@ -77,7 +75,7 @@ st.markdown("""
 
     .c-pari { color: #cc9900; } .c-equi { color: #00cccc; } .c-max { color: #00cc66; } .c-min { color: #cc3333; } .c-jus { color: #0066cc; }
     
-    /* RODAPÉ LIMPO */
+    /* RODAPÉ E TICKER */
     .f-bar { 
         position: fixed; bottom: 0; left: 0; width: 100%; height: 80px; 
         background: #050505; border-top: 1px solid #222; 
@@ -92,24 +90,25 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 6. CAPTURA DE DADOS E LOOP (ATUALIZAÇÃO 2S)
-def get_data():
+# 6. CAPTURA DE DADOS E LOOP
+def get_market_data():
     try:
         tkrs = ["BRL=X", "DX-Y.NYB", "EWZ", "EURUSD=X"]
-        d = {}
+        res = {}
         for t in tkrs:
             ticker = yf.Ticker(t)
-            info = ticker.fast_info
-            d[t] = {"p": info['last_price'], "v": ((info['last_price'] - info['previous_close']) / info['previous_close']) * 100}
-        return d, d["DX-Y.NYB"]["v"] - d["EWZ"]["v"]
+            px = ticker.fast_info['last_price']
+            pc = ticker.fast_info['previous_close']
+            res[t] = {"p": px, "v": ((px - pc) / pc) * 100}
+        return res, res["DX-Y.NYB"]["v"] - res["EWZ"]["v"]
     except: return None, 0.0
 
-ui = st.empty()
+main_ui = st.empty()
 
 while True:
-    m, spr = get_data()
-    if m:
-        spot = m["BRL=X"]["p"]
+    data, spr = get_market_data()
+    if data:
+        spot = data["BRL=X"]["p"]
         justo = round((spot + 0.0310) * 2000) / 2000
         diff = spot - justo
         
@@ -117,13 +116,14 @@ while True:
         elif diff > 0.0015: msg, clr, arr = "● DOLAR CARO", "#00aa55", "▲ ▲ ▲ ▲ ▲"
         else: msg, clr, arr = "● DOLAR NEUTRO", "#aaaa00", "— — — — —"
 
-        with ui.container():
+        with main_ui.container():
+            # TOPO
             st.markdown(f'<div class="t-header"><div class="t-title">TERMINAL <span class="t-bold">DOLAR</span></div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="s-container" style="border-bottom: 2px solid {clr}77"><div class="s-text" style="color:{clr}">{msg}</div></div>', unsafe_allow_html=True)
             
-            # USA VARIÁVEIS GLOBAIS COMPARTILHADAS
-            st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value c-pari">{(v_global["val_ajuste"]*(1+(spr/100))):.4f}</div></div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value c-equi">{(round((v_global["val_ref"]+0.0220)*2000)/2000):.4f}</div></div>', unsafe_allow_html=True)
+            # LINHAS DE DADOS (USANDO VALORES GLOBAIS DO ADM)
+            st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value c-pari">{(v_global["ajuste"]*(1+(spr/100))):.4f}</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value c-equi">{(round((v_global["ref"]+0.0220)*2000)/2000):.4f}</div></div>', unsafe_allow_html=True)
             
             st.markdown(f"""
                 <div class="d-row">
@@ -140,20 +140,20 @@ while True:
                 <div class="d-row" style="border-bottom:none;">
                     <div class="d-label">REF. INSTITUCIONAL</div>
                     <div class="sub-grid">
-                        <div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((v_global["val_ref"]+0.0220)*2000)/2000):.4f}</span></div>
-                        <div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{(round((v_global["val_ref"]+0.0310)*2000)/2000):.4f}</span></div>
-                        <div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((v_global["val_ref"]+0.0420)*2000)/2000):.4f}</span></div>
+                        <div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((v_global["ref"]+0.0220)*2000)/2000):.4f}</span></div>
+                        <div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{(round((v_global["ref"]+0.0310)*2000)/2000):.4f}</span></div>
+                        <div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((v_global["ref"]+0.0420)*2000)/2000):.4f}</span></div>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
 
-            # TICKER
-            def f_tk(tk, n):
-                v = m[tk]['v']
+            # TICKER RODAPÉ
+            def f_ticker(tk, name):
+                v = data[tk]['v']
                 c = "#00aa55" if v >= 0 else "#aa3333"
-                return f"<span class='tk-item'><b style='color:#fff'>{n} {m[tk]['p']:.2f}</b> <span style='color:{c}'>({v:+.2f}%)</span></span>"
+                return f"<span class='tk-item'><b style='color:#fff'>{name} {data[tk]['p']:.2f}</b> <span style='color:{c}'>({v:+.2f}%)</span></span>"
 
-            cont = f"{f_tk('DX-Y.NYB','DXY')}{f_tk('EWZ','EWZ')}{f_tk('EURUSD=X','EUR/USD')}<span class='tk-item'><b style='color:#fff'>SPREAD</b> <b style='color:#00aa55'>{spr:+.2f}%</b></span>"
+            cont = f"{f_ticker('DX-Y.NYB','DXY')}{f_ticker('EWZ','EWZ')}{f_ticker('EURUSD=X','EUR/USD')}<span class='tk-item'><b style='color:#fff'>SPREAD</b> <b style='color:#00aa55'>{spr:+.2f}%</b></span>"
             
             st.markdown(f"""
                 <div class="f-bar">
