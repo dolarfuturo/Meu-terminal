@@ -2,64 +2,67 @@ import streamlit as st
 import yfinance as yf
 import time
 
-# 1. CONFIGURAÇÃO
+# 1. SETUP
 st.set_page_config(page_title="TERMINAL", layout="wide", initial_sidebar_state="collapsed")
 
-@st.cache_resource
-def get_global_params():
-    return {"ajuste": 5.4000, "ref": 5.4000}
-
-params = get_global_params()
-
-# 2. LOGIN
+# 2. LOGIN E CONTROLO DE ACESSO
 if 'auth' not in st.session_state:
     st.session_state.auth = False
+    st.session_state.user_type = None
 
 if not st.session_state.auth:
     st.markdown("<style>.stApp { background-color: #000; }</style>", unsafe_allow_html=True)
-    senha = st.text_input("CHAVE:", type="password")
+    senha = st.text_input("CHAVE DE ACESSO:", type="password")
     if st.button("ACESSAR"):
-        if senha in ["admin123", "trader123"]:
+        if senha == "admin123":
             st.session_state.auth = True
+            st.session_state.user_type = "ADM"
+            st.rerun()
+        elif senha == "trader123":
+            st.session_state.auth = True
+            st.session_state.user_type = "USER"
             st.rerun()
     st.stop()
 
-# 3. CSS - ESTILO FINAL (SEM NEGRITO NOS SUB-RÓTULOS)
+# 3. BARRA LATERAL (APENAS PARA ADM)
+# Se não for ADM, os valores ficam travados no padrão 5.4000
+if st.session_state.user_type == "ADM":
+    with st.sidebar:
+        st.header("⚙️ PAINEL ADM")
+        val_ajuste = st.number_input("AJUSTE (PARIDADE):", value=5.4000, format="%.4f", step=0.0001)
+        val_ref = st.number_input("REF. INSTITUCIONAL:", value=5.4000, format="%.4f", step=0.0001)
+        st.success("Acesso total libertado.")
+else:
+    val_ajuste = 5.4000
+    val_ref = 5.4000
+    with st.sidebar:
+        st.warning("Apenas administradores podem alterar as variáveis.")
+
+# 4. CSS - VISUAL DO TERMINAL
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;700&family=Orbitron:wght@400;900&display=swap');
     
-    header, footer, [data-testid="stHeader"], [data-testid="stFooter"], .stDeployButton, [data-testid="stStatusWidget"] {
-        display: none !important;
-    }
-    
+    [data-testid="stHeader"] { background-color: rgba(0,0,0,0) !important; color: white !important; }
+    footer, .stDeployButton, [data-testid="stStatusWidget"] { display: none !important; }
     .stApp { background-color: #000; color: #fff; font-family: 'Orbitron', sans-serif; }
     .block-container { padding-top: 0rem !important; max-width: 100% !important; }
 
-    /* TITULO */
     .t-header { text-align: center; padding: 25px 0 5px 0; border-bottom: 1px solid rgba(255,255,255,0.15); }
     .t-title { color: #555; font-size: 13px; letter-spacing: 4px; }
     .t-bold { color: #fff; font-weight: 900; }
-    
-    /* STATUS */
     .s-container { text-align: center; padding: 10px 0; margin-bottom: 5px; }
     .s-text { font-size: 12px; font-weight: 700; letter-spacing: 2px; }
-
-    /* DADOS - CATEGORIAS EM BRANCO NEGRITO */
     .d-row { display: flex; justify-content: space-between; align-items: center; padding: 22px 15px; border-bottom: 1px solid #111; }
     .d-label { font-size: 11px; color: #FFFFFF !important; width: 45%; font-weight: 900; text-transform: uppercase; }
     .d-value { font-size: 26px; width: 55%; text-align: right; font-family: 'Chakra Petch', sans-serif; font-weight: 700; color: #eee; }
-    
     .sub-grid { display: flex; gap: 12px; justify-content: flex-end; width: 55%; }
     .sub-item { text-align: right; }
-    
-    /* SUB-RÓTULOS SEM NEGRITO */
     .sub-l { font-size: 8px; color: #FFFFFF !important; display: block; font-weight: 400 !important; }
     .sub-v { font-size: 17px; font-family: 'Chakra Petch', sans-serif; font-weight: 700; }
-
+    
     .c-pari { color: #cc9900; } .c-equi { color: #00cccc; } .c-max { color: #00cc66; } .c-min { color: #cc3333; } .c-jus { color: #0066cc; }
     
-    /* RODAPÉ */
     .f-bar { 
         position: fixed; bottom: 0; left: 0; width: 100%; height: 80px; 
         background: #050505; border-top: 1px solid #222; 
@@ -72,11 +75,11 @@ st.markdown("""
     .tk-n { color: #fff; font-weight: bold; }
     .tk-up { color: #00aa55; }
     .tk-down { color: #aa3333; }
-
     @keyframes slide { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 </style>
 """, unsafe_allow_html=True)
 
+# 5. LÓGICA DE DADOS
 def get_data():
     try:
         tkrs = ["BRL=X", "DX-Y.NYB", "EWZ", "EURUSD=X"]
@@ -109,8 +112,8 @@ while True:
             st.markdown(f'<div class="t-header"><div class="t-title">TERMINAL <span class="t-bold">DOLAR</span></div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="s-container" style="border-bottom: 2px solid {clr}77"><div class="s-text" style="color:{clr}">{msg}</div></div>', unsafe_allow_html=True)
             
-            st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value c-pari">{(params["ajuste"]*(1+(spr/100))):.4f}</div></div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value c-equi">{(round((params["ref"]+0.0220)*2000)/2000):.4f}</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value c-pari">{(val_ajuste*(1+(spr/100))):.4f}</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value c-equi">{(round((val_ref+0.0220)*2000)/2000):.4f}</div></div>', unsafe_allow_html=True)
             
             st.markdown(f"""
                 <div class="d-row">
@@ -127,9 +130,9 @@ while True:
                 <div class="d-row" style="border-bottom:none;">
                     <div class="d-label">REF. INSTITUCIONAL</div>
                     <div class="sub-grid">
-                        <div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((params["ref"]+0.0220)*2000)/2000):.4f}</span></div>
-                        <div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{(round((params["ref"]+0.0310)*2000)/2000):.4f}</span></div>
-                        <div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((params["ref"]+0.0420)*2000)/2000):.4f}</span></div>
+                        <div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((val_ref+0.0220)*2000)/2000):.4f}</span></div>
+                        <div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{(round((val_ref+0.0310)*2000)/2000):.4f}</span></div>
+                        <div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((val_ref+0.0420)*2000)/2000):.4f}</span></div>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
