@@ -57,7 +57,7 @@ st.markdown("""
     .d-row { display: flex; justify-content: space-between; align-items: center; padding: 18px 15px; border-bottom: 1px solid #111; }
     .d-label { font-size: 11px; color: #FFFFFF; font-weight: 900; width: 40%; }
     .sub-grid { display: flex; gap: 15px; justify-content: flex-end; width: 60%; }
-    .sub-item { text-align: center; min-width: 70px; }
+    .sub-item { text-align: center; min-width: 70px; display: flex; flex-direction: column; }
     .sub-l { font-size: 8px; color: #888; display: block; margin-bottom: 2px; font-weight: 400; }
     .sub-v { font-size: 18px; font-family: 'Chakra Petch'; font-weight: 700; }
     .v-peq { font-size: 15px; font-family: 'Chakra Petch'; font-weight: 700; color: #ffff00; }
@@ -66,14 +66,7 @@ st.markdown("""
     .c-pari { color: #cc9900; } .c-equi { color: #00cccc; } 
     .c-max { color: #00cc66; } .c-min { color: #cc3333; } .c-jus { color: #0066cc; }
     
-    /* BLOCO DE NOTAS NO ESPAÇO PRETO FINAL */
-    .note-box { 
-        background: #050505; 
-        border-top: 1px solid #111; 
-        padding: 15px 20px; 
-        margin-top: 5px;
-        min-height: 120px;
-    }
+    .note-box { background: #050505; border-top: 1px solid #111; padding: 15px 20px; margin-top: 5px; min-height: 120px; }
     .note-title { font-size: 9px; color: #444; letter-spacing: 2px; margin-bottom: 8px; font-weight: 900; border-bottom: 1px solid #111; padding-bottom: 4px; }
     .note-content { font-family: 'Chakra Petch'; font-size: 13px; color: #999; line-height: 1.5; text-transform: none !important; }
 
@@ -86,9 +79,6 @@ st.markdown("""
     .tk-move { display: inline-block; animation: slide 40s linear infinite; }
     .tk-item { padding-right: 50px; display: inline-block; font-family: 'Chakra Petch'; font-size: 13px; color: #fff; }
     @keyframes slide { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-
-    /* EFEITO PISCANTE REMOVIDO DAQUI */
-    .micro-container { text-align: right; padding: 0 15px 15px 0; font-family: 'Chakra Petch'; font-size: 10px; font-weight: 700; letter-spacing: 1px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -119,9 +109,9 @@ while True:
         equilibrio = round((v_global["ref"] + 0.0220) * 2000) / 2000
         
         diff = spot - justo
-        if diff < -0.0015: msg, clr, arr = "● DOLAR BARATO", "#00aa55", "▲ ▲ ▲ ▲ ▲"
-        elif diff > 0.0015: msg, clr, arr = "● DOLAR CARO", "#aa3333", "▼ ▼ ▼ ▼ ▼"
-        else: msg, clr, arr = "● DOLAR NEUTRO", "#aaaa00", "◄ ◄ ◄ ► ► ►"
+        if diff < -0.0015: msg, clr, arr = "● PRECIFICAÇÃO DE ALTA", "#00aa55", "▲ ▲ ▲ ▲ ▲"
+        elif diff > 0.0015: msg, clr, arr = "● PRECIFICAÇÃO DE BAIXA", "#aa3333", "▼ ▼ ▼ ▼ ▼"
+        else: msg, clr, arr = "● PRECIFICAÇÃO NEUTRA", "#aaaa00", "◄ ◄ ◄ ► ► ►"
             
         with ui_area.container():
             if st.session_state.user_type == "ADM":
@@ -143,10 +133,24 @@ while True:
             st.markdown(f'<div class="d-row"><div class="d-label">PREÇO JUSTO</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((spot+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{justo:.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((spot+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="d-row"><div class="d-label">REF. INSTITUCIONAL</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((v_global["ref"]+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{(round((v_global["ref"]+0.0310)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((v_global["ref"]+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
 
-            # REGIÃO DE CORREÇÃO
-            st.markdown(f'<div class="d-row" style="padding-top:10px;"><div class="d-label" style="opacity:0.6;">REGIÃO DE CORREÇÃO</div><div class="sub-grid"><div class="sub-item"><span class="v-peq">{(equilibrio - 0.0110):.4f}</span></div><div class="sub-item"><span class="v-peq">{(equilibrio + 0.0110):.4f}</span></div></div></div>', unsafe_allow_html=True)
+            # REGIÃO DE CORREÇÃO (COLUNAS VERTICAIS)
+            st.markdown(f"""
+            <div class="d-row" style="padding-top:10px; border-bottom: none; align-items: flex-start;">
+                <div class="d-label" style="opacity:0.6; margin-top:5px;">REGIÃO DE CORREÇÃO</div>
+                <div class="sub-grid">
+                    <div class="sub-item">
+                        <span class="v-peq">{(equilibrio - 0.0110):.4f}</span>
+                        <span class="v-extra">{(equilibrio - 0.0220):.4f}</span>
+                    </div>
+                    <div class="sub-item">
+                        <span class="v-peq">{(equilibrio + 0.0110):.4f}</span>
+                        <span class="v-extra">{(equilibrio + 0.0220):.4f}</span>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
-            # --- BLOCO DE NOTAS ---
+            # BLOCO DE NOTAS
             st.markdown(f"""
             <div class="note-box">
                 <div class="note-title">MORNING CALL & AGENDA</div>
