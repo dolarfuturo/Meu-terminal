@@ -1,12 +1,11 @@
 import streamlit as st
 import yfinance as yf
-import plotly.graph_objects as go
 import time
 
 # 1. SETUP
 st.set_page_config(page_title="TERMINAL DÓLAR", layout="wide", initial_sidebar_state="collapsed")
 
-# 2. VARIÁVEIS DE MEMÓRIA (PTAX E FECH)
+# 2. VARIÁVEIS DE MEMÓRIA
 if 'ptax' not in st.session_state: st.session_state.ptax = 5.4000
 if 'fech' not in st.session_state: st.session_state.fech = 5.4000
 if 'ref' not in st.session_state: st.session_state.ref = 5.4000
@@ -24,7 +23,7 @@ if not st.session_state.auth:
             if senha == "admin123": st.session_state.auth = True; st.rerun()
     st.stop()
 
-# 4. SIDEBAR PARA AJUSTES (SEM MEXER NO LAYOUT DA TELA)
+# 4. SIDEBAR - SET DE VARIÁVEIS (PTAX E FECHAMENTO)
 with st.sidebar:
     st.header("SET VARIÁVEIS")
     st.session_state.ptax = st.number_input("PTAX", value=st.session_state.ptax, format="%.4f")
@@ -33,22 +32,28 @@ with st.sidebar:
     st.session_state.ajuste = st.number_input("PARIDADE", value=st.session_state.ajuste, format="%.4f")
     if st.button("SALVAR"): st.rerun()
 
-# 5. CSS ORIGINAL (LAYOUT PRETO)
+# 5. CSS ORIGINAL + VELOCÍMETRO EM HTML PURO
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;700&family=Orbitron:wght@400;900&display=swap');
     [data-testid="stHeader"], footer, [data-testid="stToolbar"], label { display: none !important; }
     .stApp { background-color: #000; color: #fff; font-family: 'Orbitron', sans-serif; overflow: hidden; }
     
-    .t-header { text-align: center; padding: 15px 0 5px 0; }
-    .t-title { font-size: 24px; letter-spacing: 5px; font-weight: 900; }
+    .t-header { text-align: center; padding: 10px 0; }
+    .t-title { font-size: 22px; letter-spacing: 4px; font-weight: 900; margin-bottom: 10px; }
     
+    /* VELOCÍMETRO CSS */
+    .gauge-container { position: relative; width: 180px; height: 90px; margin: 0 auto; overflow: hidden; }
+    .gauge-bg { position: absolute; top: 0; left: 0; width: 180px; height: 180px; border-radius: 50%; background: conic-gradient(#ff3333 0deg 60deg, #ffff00 60deg 120deg, #00ff88 120deg 180deg, #000 180deg); transform: rotate(-90deg); }
+    .gauge-cover { position: absolute; top: 15px; left: 15px; width: 150px; height: 150px; background: #000; border-radius: 50%; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 75px; }
+    .gauge-needle { position: absolute; bottom: 0; left: 50%; width: 3px; height: 80px; background: #fff; transform-origin: bottom center; transition: transform 0.8s cubic-bezier(0.65, 0, 0.35, 1); box-shadow: 0 0 10px #fff; }
+    .gauge-value { position: absolute; bottom: 5px; width: 100%; text-align: center; font-family: 'Chakra Petch'; font-size: 14px; font-weight: 700; }
+
     .d-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; border-bottom: 1px solid #111; }
     .d-label { font-size: 11px; font-weight: 900; color: #888; text-transform: uppercase; }
     .d-value { font-size: 22px; font-family: 'Chakra Petch'; font-weight: 700; }
     .sub-v { font-size: 17px; font-family: 'Chakra Petch'; font-weight: 700; }
 
-    /* TICKER */
     .f-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: 35px; background: #050505; border-top: 1px solid #222; display: flex; align-items: center; z-index: 999; }
     .tk-move { white-space: nowrap; animation: move 40s linear infinite; }
     .tk-item { display: inline-block; padding-right: 50px; font-family: 'Chakra Petch'; font-size: 11px; }
@@ -74,35 +79,31 @@ while True:
     ew_p, ew_v = get_live("EWZ")
     
     if s_p > 0:
-        # LÓGICA DO VELOCÍMETRO (TERMÔMETRO)
+        # LÓGICA DO VELOCÍMETRO: SPOT vs MÉDIA PTAX/FECH
         memoria = (st.session_state.ptax + st.session_state.fech) / 2
         diff = ((s_p / memoria) - 1) * 100
+        # needle_angle: -90deg (vermelho) a +90deg (verde)
+        angle = max(min(diff * 150, 90), -90) 
+        
         spr = dx_v - ew_v
         justo = round((s_p + 0.0310) * 2000) / 2000
 
         with main_area.container():
-            # 1. TÍTULO E VELOCÍMETRO (CENTRALIZADOS)
-            st.markdown("<div class='t-header'><div class='t-title'>TERMINAL DÓLAR</div></div>", unsafe_allow_html=True)
-            
-            fig = go.Figure(go.Indicator(
-                mode = "gauge+number",
-                value = diff,
-                number = {'suffix': "%", 'font': {'size': 20, 'color': "#fff"}, 'valueformat': ".2f"},
-                domain = {'x': [0, 1], 'y': [0, 1]},
-                gauge = {
-                    'axis': {'range': [-1, 1], 'tickwidth': 1, 'tickcolor': "#444"},
-                    'bar': {'color': "#fff"},
-                    'bgcolor': "rgba(0,0,0,0)",
-                    'steps': [
-                        {'range': [-1, -0.1], 'color': "#ff3333"}, # PERDEU MEMÓRIA
-                        {'range': [-0.1, 0.1], 'color': "#ffff00"}, # BRIGA
-                        {'range': [0.1, 1], 'color': "#00ff88"}], # ACIMA DA MEMÓRIA
-                }
-            ))
-            fig.update_layout(height=160, margin=dict(l=50, r=50, t=10, b=0), paper_bgcolor="black")
-            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+            # 1. TÍTULO E VELOCÍMETRO CSS
+            st.markdown(f"""
+                <div class='t-header'>
+                    <div class='t-title'>TERMINAL DÓLAR</div>
+                    <div class="gauge-container">
+                        <div class="gauge-bg"></div>
+                        <div class="gauge-cover"></div>
+                        <div class="gauge-needle" style="transform: translateX(-50%) rotate({angle}deg);"></div>
+                        <div class="gauge-value">{diff:+.2f}%</div>
+                    </div>
+                    <div style="font-size: 10px; color: #555; margin-top: 5px;">SPOT vs PTAX/FECH</div>
+                </div>
+            """, unsafe_allow_html=True)
 
-            # 2. ESTRUTURA DO TERMINAL (SEM ALTERAÇÃO DE LAYOUT)
+            # 2. ESTRUTURA ORIGINAL
             st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value" style="color:#cc9900">{(st.session_state.ajuste*(1+(spr/100))):.4f}</div></div>', unsafe_allow_html=True)
             
             st.markdown(f"""<div class="d-row"><div class="d-label">PREÇO JUSTO SPOT</div><div style="display:flex; gap:15px;">
