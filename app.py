@@ -4,7 +4,7 @@ import time
 from datetime import datetime
 
 # 1. CONFIGURAÇÃO DE PÁGINA
-st.set_page_config(page_title="TERMINAL FINANCEIRO", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="TERMINAL DOLAR", layout="wide", initial_sidebar_state="collapsed")
 
 # 2. ESTADO GLOBAL
 @st.cache_resource
@@ -39,18 +39,26 @@ if not st.session_state.auth:
                 st.rerun()
     st.stop()
 
-# 4. CSS (MANTIDO E AJUSTADO PARA O SPOT)
+# 4. CSS COMPLETO (COM TERMÔMETRO E NOME TERMINAL)
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;700&family=Orbitron:wght@400;900&display=swap');
     [data-testid="stHeader"], .stAppDeployButton, [data-testid="stToolbar"], footer, [data-testid="stSidebar"], label { display: none !important; }
     .stApp { background-color: #000; color: #fff; font-family: 'Orbitron', sans-serif; }
     .block-container { padding: 0rem !important; max-width: 100% !important; }
-    .t-header { text-align: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
-    .t-title { color: #555; font-size: 11px; letter-spacing: 3px; }
-    .spot-destaque { font-size: 45px; color: #fff; font-weight: 900; font-family: 'Chakra Petch'; margin-top: -5px; }
+    
+    .t-header { text-align: center; padding: 15px 0 5px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    .t-title { color: #555; font-size: 13px; letter-spacing: 4px; }
+    .t-bold { color: #fff; font-weight: 900; }
+    .spot-destaque { font-size: 48px; color: #fff; font-weight: 900; font-family: 'Chakra Petch'; margin: 5px 0; }
+    
+    /* TERMÔMETRO */
+    .thermo-wrap { width: 80%; margin: 10px auto; height: 6px; background: #111; border-radius: 10px; overflow: hidden; position: relative; }
+    .thermo-bar { height: 100%; transition: 0.5s; border-radius: 10px; }
+    
     .s-container { text-align: center; padding: 10px 0; }
     .s-text { font-size: 12px; font-weight: 700; letter-spacing: 2px; }
+    
     .d-row { display: flex; justify-content: space-between; align-items: center; padding: 18px 15px; border-bottom: 1px solid #111; }
     .d-label { font-size: 11px; color: #FFFFFF; font-weight: 900; width: 40%; }
     .sub-grid { display: flex; gap: 15px; justify-content: flex-end; width: 60%; }
@@ -62,7 +70,8 @@ st.markdown("""
     .d-value { font-size: 26px; text-align: right; font-family: 'Chakra Petch'; font-weight: 700; }
     .c-pari { color: #cc9900; } .c-equi { color: #00cccc; } 
     .c-max { color: #00cc66; } .c-min { color: #cc3333; } .c-jus { color: #0066cc; }
-    .f-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: 80px; background: #050505; border-top: 1px solid #222; display: flex; align-items: center; z-index: 9999; }
+
+    .f-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: 60px; background: #050505; border-top: 1px solid #222; display: flex; align-items: center; z-index: 9999; }
     .tk-wrap { width: 100%; overflow: hidden; white-space: nowrap; display: flex; }
     .tk-move { display: inline-block; animation: slide 40s linear infinite; }
     .tk-item { padding-right: 50px; display: inline-block; font-family: 'Chakra Petch'; font-size: 13px; color: #fff; }
@@ -86,13 +95,17 @@ while True:
     d_m = get_clean_data("DX-Y.NYB")
     e_m = get_clean_data("EWZ")
     s_m = get_clean_data("BRL=X")
+    eu_m = get_clean_data("EURUSD=X")
     
     if d_m["last"] > 0:
         spot = s_m["last"]
         spr = d_m["var"] - e_m["var"]
-        # CÁLCULOS ORIGINAIS MANTIDOS
         justo = round((spot + 0.0310) * 2000) / 2000
         equilibrio = round((v_global["ref"] + 0.0220) * 2000) / 2000
+        
+        # Lógica do Termômetro (Distorção)
+        dist_pts = (spot - equilibrio) * 1000
+        fill_pct = min(max(abs(dist_pts) * 4, 10), 100) # Sensibilidade do termômetro
         
         diff = spot - justo
         if diff < -0.0015: msg, clr = "● PRECIFICAÇÃO DE ALTA", "#00aa55"
@@ -106,20 +119,28 @@ while True:
                         c1, c2 = st.columns(2)
                         v_global["ajuste"] = c1.number_input("PARIDADE", value=v_global["ajuste"], format="%.4f")
                         v_global["ref"] = c2.number_input("REF INST", value=v_global["ref"], format="%.4f")
-                        v_global["notas_mural"] = st.text_area("MORNING CALL", value=v_global["notas_mural"])
+                        v_global["notas_mural"] = st.text_area("INFORMATIVO MURAL", value=v_global["notas_mural"])
                         if st.form_submit_button("SALVAR"): st.rerun()
 
-            # HEADER COM SPOT ACRESCENTADO
-            st.markdown(f'<div class="t-header"><div class="t-title">DOLAR SPOT</div><div class="spot-destaque">{spot:.4f}</div></div>', unsafe_allow_html=True)
+            # HEADER COM TERMINAL DOLAR + SPOT
+            st.markdown(f"""
+                <div class="t-header">
+                    <div class="t-title">TERMINAL <span class="t-bold">DOLAR</span></div>
+                    <div class="spot-destaque">{spot:.4f}</div>
+                    <div class="thermo-wrap">
+                        <div class="thermo-bar" style="width: {fill_pct}%; background: {clr};"></div>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+            
             st.markdown(f'<div class="s-container" style="border-bottom: 2px solid {clr}77"><div class="s-text" style="color:{clr}">{msg}</div></div>', unsafe_allow_html=True)
             
-            # BLOCO DE PREÇOS (IGUAL AO ORIGINAL)
+            # BLOCO DE PREÇOS (MATEMÁTICA ORIGINAL)
             st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value c-pari">{(v_global["ajuste"]*(1+(spr/100))):.4f}</div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value c-equi">{equilibrio:.4f}</div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="d-row"><div class="d-label">PREÇO JUSTO</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((spot+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{justo:.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((spot+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="d-row"><div class="d-label">REF. INSTITUCIONAL</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((v_global["ref"]+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{(round((v_global["ref"]+0.0310)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((v_global["ref"]+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
 
-            # REGIÃO DE CORREÇÃO (FREQUÊNCIAS MANTIDAS)
             st.markdown(f"""
             <div class="d-row" style="border-bottom: none;">
                 <div class="d-label">REGIÃO DE CORREÇÃO</div>
@@ -130,8 +151,14 @@ while True:
             </div>
             """, unsafe_allow_html=True)
 
-            # RODAPÉ TICKER (REDUZIDO PARA DAR ESPAÇO)
-            btk = f"<span class='tk-item'><b>SPOT</b> {spot:.4f}</span> <span class='tk-item'><b>MURAL:</b> {v_global['notas_mural']}</span>"
+            # TICKER COMPLETO REATIVADO
+            def f_tk(d, n):
+                v, p = d["var"], d["last"]
+                c = "#00aa55" if v >= 0 else "#aa3333"
+                pf = f"{p:.4f}" if n == "SPOT" else f"{p:.2f}"
+                return f"<span class='tk-item'><b>{n}</b> {pf} <span style='color:{c}'>({v:+.2f}%)</span></span>"
+
+            btk = f"{f_tk(s_m,'SPOT')} {f_tk(d_m,'DXY')} {f_tk(e_m,'EWZ')} {f_tk(eu_m,'EURUSD')} <span class='tk-item'><b>SPREAD</b> {spr:+.2f}%</span> <span class='tk-item'><b>MURAL:</b> {v_global['notas_mural']}</span>"
             st.markdown(f'<div class="f-bar"><div class="tk-wrap"><div class="tk-move">{btk} {btk} {btk}</div></div></div>', unsafe_allow_html=True)
             
     time.sleep(2)
