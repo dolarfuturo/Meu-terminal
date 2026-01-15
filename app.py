@@ -1,4 +1,4 @@
-Import streamlit as st
+import streamlit as st  # Corrigido: 'import' em minúsculo
 import yfinance as yf
 import pandas as pd
 import time
@@ -20,26 +20,59 @@ st.markdown("""
     .name { width: 160px; font-size: 18px; color: #888; }
     .price { width: 130px; font-size: 18px; font-weight: bold; }
     .var { font-size: 18px; font-weight: bold; }
-    
-    /* LINHA EXCLUSIVA PRÉ-MERCADO */
-    .pre-row { display: flex; gap: 20px; margin-bottom: 12px; align-items: center; margin-left: 20px; border-left: 2px solid #333; padding-left: 10px; }
-    .pre-name { width: 140px; font-size: 12px; color: #FFB900; font-weight: bold; }
-    .pre-price { width: 130px; font-size: 14px; color: #BBB; }
-    .pre-var { font-size: 14px; font-weight: bold; }
-
     .pos { color: #00FF00 !important; }
     .neg { color: #FF0000 !important; }
-    .blu { color: #0080FF !important; }
-    .trava-orange { color: #FF8C00 !important; font-size: 18px; margin-top: 20px; font-weight: bold; border-top: 1px solid #333; padding-top: 10px; }
-    .frp-box { margin-left: 180px; margin-top: -5px; margin-bottom: 15px; display: flex; flex-direction: column; gap: 2px; }
-    .frp-item { display: flex; gap: 25px; font-size: 13px; }
-    .stPopover button { background-color: #111 !important; color: #666 !important; border: 1px solid #222 !important; font-size: 10px !important; }
+    .dist-box { background: #111; padding: 10px; border-radius: 5px; margin-top: 20px; border: 1px solid #333; }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div class="main-title">TERMINAL DE CÂMBIO</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-title">TERMINAL DE CÂMBIO - QUANT</div>', unsafe_allow_html=True)
 
-# 3. INPUTS
+# 3. INPUTS NO POPOVER
 with st.popover("⚙️ AJUSTAR PARÂMETROS"):
     v_aj = st.number_input("AJUSTE", value=5.3900, format="%.4f")
     v_ptax_m = st.number_input("PTAX", value=5.3850, format="%.4f")
+    # Seletor para o usuário escolher qual âncora usar agora
+    ancora_ativa = st.radio("ÂNCORA ATIVA:", ["AJUSTE", "PTAX"], horizontal=True)
+
+# 4. BUSCA DE DADOS (SPOT ATUAL)
+@st.cache_data(ttl=5)
+def get_spot():
+    try:
+        data = yf.Ticker("USDBRL=X").history(period="1d", interval="1m")
+        return data['Close'].iloc[-1]
+    except:
+        return 5.3800 # Fallback caso a API falhe
+
+spot = get_spot()
+referencia = v_aj if ancora_ativa == "AJUSTE" else v_ptax_m
+
+# 5. EXIBIÇÃO DO PREÇO ATUAL
+st.markdown(f"""
+<div class="asset-row">
+    <div class="name">DÓLAR SPOT</div>
+    <div class="price">{spot:.4f}</div>
+    <div class="var {'pos' if spot >= referencia else 'neg'}">
+        {((spot/referencia)-1)*100:.2f}%
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+# 6. LÓGICA DE DISTORÇÃO (O SEU +22, +31, +42)
+st.markdown('<div class="dist-box">', unsafe_allow_html=True)
+st.write(f"DISTORÇÕES SOBRE {ancora_ativa}:")
+
+def mostrar_nivel(label, pontos):
+    valor_nivel = referencia + (pontos / 1000)
+    dist_atual = (spot - valor_nivel) * 1000
+    color = "#FF0000" if spot > valor_nivel else "#00FF00"
+    st.markdown(f"**{label} ({pontos} PTS):** {valor_nivel:.4f} | <span style='color:{color}'>DIST: {dist_atual:.1f} PTS</span>", unsafe_allow_html=True)
+
+mostrar_nivel("NÍVEL 1", 22)
+mostrar_nivel("NÍVEL 2", 31)
+mostrar_nivel("NÍVEL 3", 42)
+st.markdown('</div>', unsafe_allow_html=True)
+
+# AUTO-REFRESH
+time.sleep(5)
+st.rerun()
