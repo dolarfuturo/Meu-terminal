@@ -10,6 +10,7 @@ if 'ptax' not in st.session_state: st.session_state.ptax = 5.4000
 if 'fech' not in st.session_state: st.session_state.fech = 5.4000
 if 'ref' not in st.session_state: st.session_state.ref = 5.4000
 if 'ajuste' not in st.session_state: st.session_state.ajuste = 5.4000
+if 'show_settings' not in st.session_state: st.session_state.show_settings = False
 
 # 3. CSS
 st.markdown("""
@@ -18,22 +19,19 @@ st.markdown("""
     [data-testid="stHeader"], footer, [data-testid="stToolbar"], label { display: none !important; }
     .stApp { background-color: #000; color: #fff; font-family: 'Orbitron', sans-serif; }
     
-    /* INPUTS DISCRETOS NO TOPO */
+    /* INPUTS DISCRETOS */
     .stNumberInput div div input {
-        background-color: #000 !important;
-        color: #555 !important;
-        border: 1px solid #222 !important;
-        font-size: 10px !important;
-        height: 24px !important;
-        text-align: center !important;
+        background-color: #111 !important;
+        color: #fff !important;
+        border: 1px solid #333 !important;
+        font-size: 11px !important;
+        height: 28px !important;
     }
     .stButton button {
         background-color: #111 !important;
-        color: #444 !important;
-        border: 1px solid #222 !important;
-        font-size: 10px !important;
-        height: 24px !important;
-        width: 100% !important;
+        color: #777 !important;
+        border: 1px solid #333 !important;
+        font-size: 11px !important;
     }
 
     .t-header { text-align: center; padding-top: 5px; }
@@ -46,7 +44,6 @@ st.markdown("""
     .gauge-cover { position: absolute; top: 12px; left: 12px; width: 136px; height: 136px; background: #000; border-radius: 50%; }
     .gauge-needle { position: absolute; bottom: 0; left: 50%; width: 2px; height: 70px; background: #fff; transform-origin: bottom center; transition: all 0.5s ease; }
 
-    /* BOTÃO ALERTA */
     .btn-alerta { 
         width: 220px; margin: 10px auto; padding: 5px; border-radius: 4px; 
         font-size: 11px; font-weight: 900; text-align: center; letter-spacing: 2px;
@@ -67,15 +64,26 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 4. ÁREA DE AJUSTE DISCRETA NO TOPO
-c1, c2, c3, c4, c5 = st.columns(5)
-with c1: st.session_state.ptax = st.number_input("P", value=st.session_state.ptax, format="%.4f")
-with c2: st.session_state.fech = st.number_input("F", value=st.session_state.fech, format="%.4f")
-with c3: st.session_state.ref = st.number_input("R", value=st.session_state.ref, format="%.4f")
-with c4: st.session_state.ajuste = st.number_input("A", value=st.session_state.ajuste, format="%.4f")
-with c5: 
-    st.write("<div style='height:3px;'></div>", unsafe_allow_html=True)
-    if st.button("SET"): st.rerun()
+# 4. BOTÃO DE ENTRAR/SAIR DAS VARIÁVEIS
+col_btn, _ = st.columns([1, 10])
+with col_btn:
+    if st.button("⚙️ SET" if not st.session_state.show_settings else "✖ FECHAR"):
+        st.session_state.show_settings = not st.session_state.show_settings
+        st.rerun()
+
+# 5. CAMPOS DE AJUSTE (SÓ APARECEM SE SHOW_SETTINGS FOR TRUE)
+if st.session_state.show_settings:
+    with st.container():
+        c1, c2, c3, c4, c5 = st.columns(5)
+        with c1: st.session_state.ptax = st.number_input("P", value=st.session_state.ptax, format="%.4f")
+        with c2: st.session_state.fech = st.number_input("F", value=st.session_state.fech, format="%.4f")
+        with c3: st.session_state.ref = st.number_input("R", value=st.session_state.ref, format="%.4f")
+        with c4: st.session_state.ajuste = st.number_input("A", value=st.session_state.ajuste, format="%.4f")
+        with c5: 
+            st.write("<div style='height:25px;'></div>", unsafe_allow_html=True)
+            if st.button("SALVAR"): 
+                st.session_state.show_settings = False
+                st.rerun()
 
 main_area = st.empty()
 
@@ -85,11 +93,11 @@ while True:
         s_p = ticker_brl.fast_info.last_price
         s_v = ((s_p / ticker_brl.fast_info.previous_close) - 1) * 100
         
-        dxy = yf.Ticker("DX-Y.NYB").fast_info
-        dx_p, dx_v = dxy.last_price, ((dxy.last_price / dxy.previous_close) - 1) * 100
+        dxy_data = yf.Ticker("DX-Y.NYB").fast_info
+        dx_p, dx_v = dxy_data.last_price, ((dxy_data.last_price / dxy_data.previous_close) - 1) * 100
         
-        ewz = yf.Ticker("EWZ").fast_info
-        ew_p, ew_v = ewz.last_price, ((ewz.last_price / ewz.previous_close) - 1) * 100
+        ewz_data = yf.Ticker("EWZ").fast_info
+        ew_p, ew_v = ewz_data.last_price, ((ewz_data.last_price / ewz_data.previous_close) - 1) * 100
     except:
         s_p, s_v, dx_p, dx_v, ew_p, ew_v = 0, 0, 0, 0, 0, 0
 
@@ -98,7 +106,6 @@ while True:
         diff = ((s_p / memoria) - 1) * 100
         angle = max(min(diff * 140, 90), -90)
 
-        # Lógica do Alerta
         if diff > 0.10:
             alerta_text, alerta_clr = "PRECIFICAÇÃO DE ALTA", "#00ff88"
         elif diff < -0.10:
@@ -152,7 +159,6 @@ while True:
                 </div>
             """, unsafe_allow_html=True)
 
-            # TICKER RODAPÉ
             def color_tick(v): return "#00ff88" if v >= 0 else "#ff3333"
             ticker_html = (
                 f"<span class='tk-item'>SPOT: {s_p:.4f} <span style='color:{color_tick(s_v)}'>({s_v:+.2f}%)</span></span>"
