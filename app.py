@@ -7,7 +7,6 @@ st.set_page_config(page_title="TERMINAL DÓLAR", layout="wide", initial_sidebar_
 
 @st.cache_resource
 def get_global_data():
-    # Este dicionário é compartilhado entre TODOS os usuários do sistema
     return {
         "ptax": 5.4000,
         "ajuste": 5.4000,
@@ -53,12 +52,12 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # 3. MENU DE CONFIGURAÇÃO GLOBAL
-if st.button("⚙️ CONFIGURAR PARA TODOS"):
+if st.button("⚙️ CONFIGURAR GLOBAL"):
     st.session_state.edit_mode = True
 
 if st.session_state.get('edit_mode', False):
     with st.container():
-        st.markdown("<h3 style='color:orange;'>PAINEL GLOBAL (O QUE SALVAR AQUI APARECE PARA TODOS)</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='color:orange;'>PAINEL DE CONTROLE (TODOS USUÁRIOS)</h3>", unsafe_allow_html=True)
         c1, c2 = st.columns(2)
         with c1:
             st.markdown("<p class='id-tag'>NOME: AJUSTE</p>", unsafe_allow_html=True)
@@ -73,7 +72,7 @@ if st.session_state.get('edit_mode', False):
             v_42 = st.number_input("VAR 42", value=global_vars["v42"], format="%.4f")
             v_txt = st.text_input("FRASE", value=global_vars["txt_topo"])
         
-        if st.button("SALVAR VALORES E ATUALIZAR TERMINAL"):
+        if st.button("SALVAR E ATUALIZAR"):
             global_vars["ajuste"] = v_ajuste
             global_vars["ptax"] = v_ptax
             global_vars["ref"] = v_ref
@@ -151,8 +150,17 @@ while True:
             <div class="txt-editavel">{global_vars["txt_topo"]}</div>
             """, unsafe_allow_html=True)
             
-            tk = f"<span class='tk-item'><b>SPOT:</b> {spot:.4f}</span> <span class='tk-item'><b>DXY:</b> {v_dxy:+.2f}%</span> <span class='tk-item'><b>EWZ:</b> {v_ewz:+.2f}%</span> <span class='tk-item'><b>PTAX:</b> {global_vars['ptax']:.4f}</span>"
-            st.markdown(f"<div class='f-bar'><div class='tk-move'>{tk} &nbsp;&nbsp;&nbsp; {tk}</div></div>", unsafe_allow_html=True)
+            # Função para cor do ticker
+            def get_clr(v): return "#00ff88" if v >= 0 else "#ff3333"
+            
+            # Construção do Ticker Ticking (Sem PTAX)
+            tk_content = f"""
+                <span class='tk-item'><b>SPOT:</b> {spot:.4f} <span style='color:{get_clr(v_spot)}'>({v_spot:+.2f}%)</span></span>
+                <span class='tk-item'><b>DXY:</b> {dxy.last_price:.2f} <span style='color:{get_clr(v_dxy)}'>({v_dxy:+.2f}%)</span></span>
+                <span class='tk-item'><b>EWZ:</b> {ewz.last_price:.2f} <span style='color:{get_clr(v_ewz)}'>({v_ewz:+.2f}%)</span></span>
+                <span class='tk-item'><b>SPREAD:</b> <span style='color:#ffff00'>{spr:+.2f}%</span></span>
+            """
+            st.markdown(f"<div class='f-bar'><div class='tk-move'>{tk_content} &nbsp;&nbsp;&nbsp; {tk_content}</div></div>", unsafe_allow_html=True)
     except:
         pass
     time.sleep(2)
