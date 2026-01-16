@@ -5,8 +5,7 @@ import time
 # 1. SETUP
 st.set_page_config(page_title="TERMINAL DÓLAR", layout="wide", initial_sidebar_state="collapsed")
 
-# 2. INICIALIZAÇÃO COM TRAVA (SESSION STATE)
-# Os valores abaixo são apenas o padrão inicial. Uma vez alterados no SET, eles permanecem.
+# 2. INICIALIZAÇÃO FIXA (SESSION STATE)
 if 'ptax' not in st.session_state: st.session_state.ptax = 5.4000
 if 'ajuste' not in st.session_state: st.session_state.ajuste = 5.4000
 if 'ref' not in st.session_state: st.session_state.ref = 5.4000
@@ -23,7 +22,7 @@ st.markdown("""
     [data-testid="stHeader"], footer, [data-testid="stToolbar"], label { display: none !important; }
     .stApp { background-color: #000; color: #fff; font-family: 'Orbitron', sans-serif; }
     .stNumberInput div div input, .stTextInput div div input { 
-        background-color: #111 !important; color: #fff !important; border: 1px solid #333 !important; font-size: 11px !important; 
+        background-color: #111 !important; color: #fff !important; border: 1px solid #333 !important; font-size: 14px !important; 
     }
     .stButton button { background-color: #111 !important; color: #888 !important; border: 1px solid #333 !important; font-size: 10px !important; }
     .t-header { text-align: center; padding-top: 5px; }
@@ -47,31 +46,42 @@ st.markdown("""
     .tk-move { white-space: nowrap; animation: move 35s linear infinite; display: flex; align-items: center; }
     .tk-item { padding-right: 40px; font-family: 'Chakra Petch'; font-size: 11px; font-weight: 700; }
     @keyframes move { from { transform: translateX(100%); } to { transform: translateX(-100%); } }
+    .label-set { font-size: 12px; color: #ffff00; font-weight: bold; margin-bottom: 5px; display: block; }
 </style>
 """, unsafe_allow_html=True)
 
-# 4. BOTÃO SET (CONFIGURAÇÕES)
-if st.button("⚙️ SET" if not st.session_state.show_settings else "✖ FECHAR"):
+# 4. BOTÃO SET ÚNICO
+if st.button("⚙️ CONFIGURAÇÕES" if not st.session_state.show_settings else "✖ FECHAR"):
     st.session_state.show_settings = not st.session_state.show_settings
     st.rerun()
 
 if st.session_state.show_settings:
-    st.markdown("### CONFIGURAÇÕES")
-    c1, c2 = st.columns(2)
-    with c1:
-        st.session_state.ajuste = st.number_input("AJUSTE (TRAVADO)", value=st.session_state.ajuste, format="%.4f")
-        st.session_state.ptax = st.number_input("PTAX (TRAVADA)", value=st.session_state.ptax, format="%.4f")
-        st.session_state.ref = st.number_input("REF. INSTITUCIONAL", value=st.session_state.ref, format="%.4f")
-    with c2:
-        st.session_state.v22 = st.number_input("VAR 22", value=st.session_state.v22, format="%.4f")
-        st.session_state.v31 = st.number_input("VAR 31", value=st.session_state.v31, format="%.4f")
-        st.session_state.v42 = st.number_input("VAR 42", value=st.session_state.v42, format="%.4f")
-    st.session_state.txt_topo = st.text_input("FRASE TOPO", value=st.session_state.txt_topo)
-    if st.button("SALVAR E TRAVAR"):
+    st.write("---")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("<span class='label-set'>VALOR DO AJUSTE</span>", unsafe_allow_html=True)
+        st.session_state.ajuste = st.number_input("AJUSTE", value=st.session_state.ajuste, format="%.4f", key="inp_ajuste", label_visibility="collapsed")
+        
+        st.markdown("<span class='label-set'>VALOR DA PTAX</span>", unsafe_allow_html=True)
+        st.session_state.ptax = st.number_input("PTAX", value=st.session_state.ptax, format="%.4f", key="inp_ptax", label_visibility="collapsed")
+        
+        st.markdown("<span class='label-set'>REF. INSTITUCIONAL</span>", unsafe_allow_html=True)
+        st.session_state.ref = st.number_input("REF", value=st.session_state.ref, format="%.4f", key="inp_ref", label_visibility="collapsed")
+        
+    with col2:
+        st.markdown("<span class='label-set'>VAR 22 | VAR 31 | VAR 42</span>", unsafe_allow_html=True)
+        st.session_state.v22 = st.number_input("V22", value=st.session_state.v22, format="%.4f", key="inp_v22")
+        st.session_state.v31 = st.number_input("V31", value=st.session_state.v31, format="%.4f", key="inp_v31")
+        st.session_state.v42 = st.number_input("V42", value=st.session_state.v42, format="%.4f", key="inp_v42")
+    
+    st.session_state.txt_topo = st.text_input("FRASE DO TOPO", value=st.session_state.txt_topo)
+    
+    if st.button("SALVAR E TRAVAR DADOS"):
         st.session_state.show_settings = False
         st.rerun()
+    st.write("---")
 
-# 5. MOTOR DE DADOS
+# 5. MOTOR E TERMINAL
 placeholder = st.empty()
 while True:
     if not st.session_state.show_settings:
@@ -133,7 +143,6 @@ while True:
                 <div class="txt-editavel">{st.session_state.txt_topo}</div>
                 """, unsafe_allow_html=True)
                 
-                # TICKER RODAPÉ LIMPO
                 def c(v): return "#00ff88" if v >= 0 else "#ff3333"
                 tk = f"<span class='tk-item'><b>SPOT</b> {spot:.4f} <span style='color:{c(v_spot)}'>({v_spot:+.2f}%)</span></span>"
                 tk += f"<span class='tk-item'><b>DXY</b> {t_dxy.last_price:.2f} <span style='color:{c(v_dxy)}'>({v_dxy:+.2f}%)</span></span>"
@@ -141,7 +150,6 @@ while True:
                 tk += f"<span class='tk-item'><b>EURUSD</b> {t_eur.last_price:.4f} <span style='color:{c(v_eur)}'>({v_eur:+.2f}%)</span></span>"
                 tk += f"<span class='tk-item'><b>SPREAD</b> <span style='color:#ffff00'>{spr:+.2f}%</span></span>"
                 tk += f"<span class='tk-item'><b>PTAX</b> {st.session_state.ptax:.4f}</span>"
-                
                 st.markdown(f"<div class='f-bar'><div class='tk-move'>{tk} {tk}</div></div>", unsafe_allow_html=True)
         except: pass
     time.sleep(2)
