@@ -55,19 +55,12 @@ if st.button("⚙️ SET" if not st.session_state.show_settings else "✖ FECHAR
     st.rerun()
 
 if st.session_state.show_settings:
-    st.markdown("### CONFIGURAÇÕES DO TERMINAL")
-    c_p, c_v = st.columns(2)
-    with c_p:
-        st.write("**DADOS DE ENTRADA**")
-        st.session_state.ajuste = st.number_input("AJUSTE (BASE DA PARIDADE)", value=st.session_state.ajuste, format="%.4f")
-        st.session_state.ptax = st.number_input("PTAX (VALOR OFICIAL)", value=st.session_state.ptax, format="%.4f")
-        st.session_state.ref = st.number_input("REFERÊNCIA (BASE INSTITUCIONAL)", value=st.session_state.ref, format="%.4f")
-    with c_v:
-        st.write("**VARIÁVEIS DE PONTOS**")
-        st.session_state.v22 = st.number_input("VAR 22", value=st.session_state.v22, format="%.4f")
-        st.session_state.v31 = st.number_input("VAR 31", value=st.session_state.v31, format="%.4f")
-        st.session_state.v42 = st.number_input("VAR 42", value=st.session_state.v42, format="%.4f")
-        st.session_state.txt_topo = st.text_input("FRASE TOPO", value=st.session_state.txt_topo)
+    st.markdown("### CONFIGURAÇÕES")
+    # Apenas AJUSTE e PTAX conforme solicitado
+    st.session_state.ajuste = st.number_input("DEFINIR AJUSTE", value=st.session_state.ajuste, format="%.4f")
+    st.session_state.ptax = st.number_input("DEFINIR PTAX", value=st.session_state.ptax, format="%.4f")
+    st.session_state.ref = st.session_state.ptax # REF segue a PTAX conforme lógica anterior
+    
     if st.button("SALVAR"):
         st.session_state.show_settings = False
         st.rerun()
@@ -87,7 +80,7 @@ while True:
             paridade = st.session_state.ajuste * (1 + (spr / 100))
             pari_justo = round((paridade + st.session_state.v22) * 2000) / 2000
         except:
-            spot = spr = paridade = pari_justo = 0
+            spot = spr = paridade = pari_justo = dxy_v = ewz_v = 0
 
         if spot > 0:
             equi = round((st.session_state.ref + st.session_state.v22) * 2000) / 2000
@@ -117,7 +110,7 @@ while True:
                         </div>
                         <div class="btn-alerta" style="border: 1px solid {al_c}; color: {al_c};">{al_t}</div>
                     </div>
-                    <div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div><span class="d-value" style="color:#cc9900">{paridade:.4f}</span><span class="v-pari-justo">{pari_justo:.4f}</span></div></div>
+                    <div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value" style="color:#cc9900">{paridade:.4f}<span class="v-pari-justo">{pari_justo:.4f}</span></div></div>
                     <div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value" style="color:#00cccc">{equi:.4f}</div></div>
                     <div class="d-row"><div class="d-label">PREÇO JUSTO</div><div style="display:flex; gap:15px;">
                         <div style="text-align:center"><small>MIN</small><br><span style="color:#cc3333" class="d-value">{j_min:.4f}</span></div>
@@ -136,6 +129,15 @@ while True:
                     <div class="txt-editavel">{st.session_state.txt_topo}</div>
                 """, unsafe_allow_html=True)
                 
-                tk = f"<span class='tk-item'><b>DXY</b> {d_m.last_price:.2f} ({dxy_v:+.2f}%)</span><span class='tk-item'><b>EWZ</b> {e_m.last_price:.2f} ({ewz_v:+.2f}%)</span><span class='tk-item'><b>SPREAD</b> <span style='color:#ffff00'>{spr:+.2f}%</span></span><span class='tk-item'><b>PTAX</b> {st.session_state.ptax:.4f}</span>"
+                # RODAPÉ COM CORES VERDE/VERMELHO
+                c_dxy = "#00ff88" if dxy_v >= 0 else "#ff3333"
+                c_ewz = "#00ff88" if ewz_v >= 0 else "#ff3333"
+                
+                tk = f"""
+                <span class='tk-item'><b>DXY</b> {d_m.last_price:.2f} <span style='color:{c_dxy}'>({dxy_v:+.2f}%)</span></span>
+                <span class='tk-item'><b>EWZ</b> {e_m.last_price:.2f} <span style='color:{c_ewz}'>({ewz_v:+.2f}%)</span></span>
+                <span class='tk-item'><b>SPREAD</b> <span style='color:#ffff00'>{spr:+.2f}%</span></span>
+                <span class='tk-item'><b>PTAX</b> {st.session_state.ptax:.4f}</span>
+                """
                 st.markdown(f"<div class='f-bar'><div class='tk-move'>{tk} {tk}</div></div>", unsafe_allow_html=True)
     time.sleep(2)
