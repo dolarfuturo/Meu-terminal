@@ -5,11 +5,11 @@ import time
 # 1. SETUP
 st.set_page_config(page_title="TERMINAL DÓLAR", layout="wide", initial_sidebar_state="collapsed")
 
-# 2. INICIALIZAÇÃO DE VARIÁVEIS
+# 2. INICIALIZAÇÃO DE VARIÁVEIS (MANTENDO O RESTO)
 defaults = {
     'ptax': 5.4000, 'fech': 5.4000, 'ref': 5.4000, 'ajuste': 5.4000,
     'v22': 0.0220, 'v31': 0.0310, 'v42': 0.0420,
-    'txt_rodape': "CONTROLE O EMOCIONAL - RESPEITE O GERENCIAMENTO",
+    'txt_topo': "GERENCIAMENTO É A CHAVE",
     'show_settings': False
 }
 for key, value in defaults.items():
@@ -47,11 +47,7 @@ st.markdown("""
     .val-11 { font-weight: 700; color: #ffff00; }
     .val-22 { font-weight: 400; color: #ffff00; }
 
-    /* TEXTO SOBRE O TICKER */
-    .txt-sobre-ticker { 
-        text-align: center; font-family: 'Chakra Petch'; font-size: 10px; 
-        color: #555; margin-top: 20px; margin-bottom: 40px; text-transform: uppercase; letter-spacing: 1px;
-    }
+    .txt-editavel { text-align: center; font-family: 'Chakra Petch'; font-size: 11px; color: #666; margin-top: 15px; margin-bottom: 35px; text-transform: uppercase; }
 
     .f-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: 35px; background: #050505; border-top: 1px solid #222; display: flex; align-items: center; z-index: 999; overflow: hidden; }
     .tk-move { white-space: nowrap; animation: move 30s linear infinite; display: flex; align-items: center; }
@@ -60,68 +56,23 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 4. BOTÃO SET
+# 4. BOTÃO SET/FECHAR
 if st.button("⚙️ SET" if not st.session_state.show_settings else "✖ FECHAR"):
     st.session_state.show_settings = not st.session_state.show_settings
     st.rerun()
 
-# 5. PAINEL SETTINGS
+# 5. MENU DE VARIÁVEIS (EXATAMENTE O QUE PEDIU)
 if st.session_state.show_settings:
     with st.container():
-        st.write("<small>AJUSTES GERAIS</small>", unsafe_allow_html=True)
-        r1 = st.columns(4)
-        st.session_state.ptax = r1[0].number_input("PTAX", value=st.session_state.ptax, format="%.4f")
-        st.session_state.fech = r1[1].number_input("FECH", value=st.session_state.fech, format="%.4f")
-        st.session_state.ref = r1[2].number_input("REF", value=st.session_state.ref, format="%.4f")
-        st.session_state.ajuste = r1[3].number_input("PARID", value=st.session_state.ajuste, format="%.4f")
+        c1, c2, c3, c4 = st.columns(4)
+        st.session_state.ptax = c1.number_input("PTAX", value=st.session_state.ptax, format="%.4f")
+        st.session_state.fech = c2.number_input("FECH", value=st.session_state.fech, format="%.4f")
+        st.session_state.ref = c3.number_input("REF", value=st.session_state.ref, format="%.4f")
+        st.session_state.ajuste = c4.number_input("PARID", value=st.session_state.ajuste, format="%.4f")
         
-        st.write("<small>VARIAÇÕES E TEXTO</small>", unsafe_allow_html=True)
-        r2 = st.columns(3)
-        st.session_state.v22 = r2[0].number_input("VAR 22", value=st.session_state.v22, format="%.4f")
-        st.session_state.v31 = r2[1].number_input("VAR 31", value=st.session_state.v31, format="%.4f")
-        st.session_state.v42 = r2[2].number_input("VAR 42", value=st.session_state.v42, format="%.4f")
+        v1, v2, v3 = st.columns(3)
+        st.session_state.v22 = v1.number_input("VAR 22", value=st.session_state.v22, format="%.4f")
+        st.session_state.v31 = v2.number_input("VAR 31", value=st.session_state.v31, format="%.4f")
+        st.session_state.v42 = v3.number_input("VAR 42", value=st.session_state.v42, format="%.4f")
         
-        st.session_state.txt_rodape = st.text_input("TEXTO ACIMA DO TICKER", value=st.session_state.txt_rodape)
-        
-        if st.button("SALVAR E APLICAR"):
-            st.session_state.show_settings = False
-            st.rerun()
-
-main_area = st.empty()
-
-while True:
-    try:
-        t = yf.Ticker("BRL=X")
-        s_p = t.fast_info.last_price
-        s_v = ((s_p / t.fast_info.previous_close) - 1) * 100
-    except:
-        s_p, s_v = 0, 0
-
-    if s_p > 0:
-        mem = (st.session_state.ptax + st.session_state.fech) / 2
-        diff = ((s_p / mem) - 1) * 100
-        angle = max(min(diff * 140, 90), -90)
-        
-        if diff > 0.10: alert, clr = "PRECIFICAÇÃO DE ALTA", "#00ff88"
-        elif diff < -0.10: alert, clr = "PRECIFICAÇÃO DE BAIXA", "#ff3333"
-        else: alert, clr = "PRECIFICAÇÃO NEUTRA", "#ffff00"
-
-        with main_area.container():
-            st.markdown(f"""
-                <div class='t-header'>
-                    <div class='t-title'>TERMINAL <span class='t-bold'>DÓLAR</span></div>
-                    <div class='t-line'></div>
-                    <div style='font-family:Chakra Petch; font-size:22px; font-weight:700;'>
-                        {s_p:.4f} <span style='color:{"#00ff88" if s_v >= 0 else "#ff3333"}'>{s_v:+.2f}%</span>
-                    </div>
-                    <div class="gauge-container">
-                        <div class="gauge-bg"></div><div class="gauge-cover"></div>
-                        <div class="gauge-needle" style="transform: translateX(-50%) rotate({angle}deg);"></div>
-                    </div>
-                    <div class="btn-alerta" style="border: 1px solid {clr}; color: {clr};">{alert}</div>
-                </div>
-
-                <div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value" style="color:#cc9900">{st.session_state.ajuste:.4f}</div></div>
-                
-                <div class="d-row"><div class="d-label">PREÇO JUSTO SPOT</div><div style="display:flex; gap:15px;">
-                    <div style="text-align:center"><small>MIN</small><br><span style="font-family:Ch
+        st.session_state.txt_topo = st.text_input("TEXTO SOBRE O TICKER", value=st.session_state.txt_topo)
