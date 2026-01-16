@@ -40,7 +40,7 @@ st.markdown("""
     .btn-alerta { width: 220px; margin: 8px auto; padding: 4px; border-radius: 4px; font-size: 10px; font-weight: 900; text-align: center; letter-spacing: 2px; }
     
     .d-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; border-bottom: 1px solid #111; }
-    .d-label { font-size: 10px; font-weight: 900; color: #777; }
+    .d-label { font-size: 11px; font-weight: 900; color: #fff; } /* Títulos em Negrito e Branco */
     .d-value { font-size: 19px; font-family: 'Chakra Petch'; font-weight: 700; }
     
     .corr-box { display: flex; flex-direction: column; align-items: center; font-family: 'Chakra Petch'; font-size: 14px; }
@@ -56,7 +56,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 4. BOTÃO SET / CONFIGURAÇÕES (DUAS CAIXAS)
+# 4. BOTÃO SET / CONFIGURAÇÕES
 col_set, _ = st.columns([1, 8])
 if col_set.button("⚙️ SET" if not st.session_state.show_settings else "✖ FECHAR"):
     st.session_state.show_settings = not st.session_state.show_settings
@@ -66,11 +66,12 @@ if st.session_state.show_settings:
     st.markdown("### CONFIGURAÇÕES DO TERMINAL")
     caixa_ajuste, caixa_var = st.columns(2)
     with caixa_ajuste:
-        st.markdown("**AJUSTES DE PREÇO**")
-        st.session_state.ptax = st.number_input("PTAX Oficial", value=st.session_state.ptax, format="%.4f")
-        st.session_state.fech = st.number_input("Fechamento Anterior", value=st.session_state.fech, format="%.4f")
-        st.session_state.ref = st.number_input("Referência / Vwap", value=st.session_state.ref, format="%.4f")
-        st.session_state.ajuste = st.number_input("Paridade / Ajuste", value=st.session_state.ajuste, format="%.4f")
+        st.markdown("**PREÇO**")
+        st.session_state.ptax = st.number_input("PTAX", value=st.session_state.ptax, format="%.4f")
+        st.session_state.ajuste = st.number_input("AJUSTE", value=st.session_state.ajuste, format="%.4f")
+        # Mantendo oculto mas funcional para os cálculos
+        st.session_state.fech = st.session_state.fech 
+        st.session_state.ref = st.session_state.ref
     with caixa_var:
         st.markdown("**VARIÁVEIS DE PONTOS**")
         st.session_state.v22 = st.number_input("Variação 22 pts", value=st.session_state.v22, format="%.4f")
@@ -103,10 +104,9 @@ while True:
         s_p = s_v = dx_p = dx_v = ew_p = ew_v = eu_p = eu_v = spread = 0
 
     if s_p > 0:
-        # EQUILÍBRIO CONFORME DEFINIDO: PTAX + 22 PONTOS
+        # EQUILÍBRIO: PTAX + Variação 22
         equi = st.session_state.ptax + st.session_state.v22
         
-        # O cálculo da diferença para o velocímetro continua usando a média para referência de mercado
         diff_gauge = ((s_p / ((st.session_state.ptax + st.session_state.fech) / 2)) - 1) * 100
         angle = max(min(diff_gauge * 140, 90), -90)
         
@@ -129,7 +129,7 @@ while True:
                     <div class="btn-alerta" style="border: 1px solid {clr}; color: {clr};">{alert}</div>
                 </div>
 
-                <div class="d-row"><div class="d-label">EQUILÍBRIO (PTAX+22)</div><div class="d-value" style="color:#00ff88">{equi:.4f}</div></div>
+                <div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value" style="color:#00ff88">{equi:.4f}</div></div>
                 <div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value" style="color:#cc9900">{st.session_state.ajuste:.4f}</div></div>
                 
                 <div class="d-row"><div class="d-label">PREÇO JUSTO SPOT</div><div style="display:flex; gap:15px;">
@@ -154,7 +154,7 @@ while True:
                 <div class="txt-editavel">{st.session_state.txt_topo}</div>
             """, unsafe_allow_html=True)
             
-            # TICKER RODAPÉ ATUALIZADO
+            # TICKER RODAPÉ
             def col(v): return "#00ff88" if v >= 0 else "#ff3333"
             tk = (
                 f"<span class='tk-item'>DXY: {dx_p:.2f} <span style='color:{col(dx_v)}'>({dx_v:+.2f}%)</span></span>"
