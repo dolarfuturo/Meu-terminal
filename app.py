@@ -55,13 +55,20 @@ if st.button("⚙️ SET" if not st.session_state.show_settings else "✖ FECHAR
     st.rerun()
 
 if st.session_state.show_settings:
-    st.markdown("### CONFIGURAÇÕES")
-    # Apenas AJUSTE e PTAX conforme solicitado
-    st.session_state.ajuste = st.number_input("DEFINIR AJUSTE", value=st.session_state.ajuste, format="%.4f")
-    st.session_state.ptax = st.number_input("DEFINIR PTAX", value=st.session_state.ptax, format="%.4f")
-    st.session_state.ref = st.session_state.ptax # REF segue a PTAX conforme lógica anterior
-    
-    if st.button("SALVAR"):
+    st.markdown("### CONFIGURAÇÕES DO TERMINAL")
+    c_p, c_v = st.columns(2)
+    with c_p:
+        st.write("**PREÇOS BASE**")
+        st.session_state.ajuste = st.number_input("AJUSTE (BASE PARIDADE)", value=st.session_state.ajuste, format="%.4f")
+        st.session_state.ptax = st.number_input("PTAX (VALOR OFICIAL)", value=st.session_state.ptax, format="%.4f")
+        st.session_state.ref = st.number_input("REFERÊNCIA (BASE INST.)", value=st.session_state.ref, format="%.4f")
+    with c_v:
+        st.write("**VARIÁVEIS DE PONTOS**")
+        st.session_state.v22 = st.number_input("VAR 22", value=st.session_state.v22, format="%.4f")
+        st.session_state.v31 = st.number_input("VAR 31", value=st.session_state.v31, format="%.4f")
+        st.session_state.v42 = st.number_input("VAR 42", value=st.session_state.v42, format="%.4f")
+        st.session_state.txt_topo = st.text_input("FRASE TOPO", value=st.session_state.txt_topo)
+    if st.button("SALVAR ALTERAÇÕES"):
         st.session_state.show_settings = False
         st.rerun()
 
@@ -73,20 +80,26 @@ while True:
             s_m = yf.Ticker("BRL=X").fast_info
             d_m = yf.Ticker("DX-Y.NYB").fast_info
             e_m = yf.Ticker("EWZ").fast_info
+            eu_m = yf.Ticker("EURUSD=X").fast_info
+            
             spot = s_m.last_price
             dxy_v = ((d_m.last_price / d_m.previous_close) - 1) * 100
             ewz_v = ((e_m.last_price / e_m.previous_close) - 1) * 100
+            eur_v = ((eu_m.last_price / eu_m.previous_close) - 1) * 100
+            spo_v = ((s_m.last_price / s_m.previous_close) - 1) * 100
+            
             spr = dxy_v - ewz_v
             paridade = st.session_state.ajuste * (1 + (spr / 100))
             pari_justo = round((paridade + st.session_state.v22) * 2000) / 2000
         except:
-            spot = spr = paridade = pari_justo = dxy_v = ewz_v = 0
+            spot = spr = paridade = pari_justo = 0
 
         if spot > 0:
             equi = round((st.session_state.ref + st.session_state.v22) * 2000) / 2000
             j_min = round((spot + st.session_state.v22) * 2000) / 2000
             j_med = round((spot + st.session_state.v31) * 2000) / 2000
             j_max = round((spot + st.session_state.v42) * 2000) / 2000
+            
             r_min = round((st.session_state.ref + st.session_state.v22) * 2000) / 2000
             r_med = round((st.session_state.ref + st.session_state.v31) * 2000) / 2000
             r_max = round((st.session_state.ref + st.session_state.v42) * 2000) / 2000
@@ -102,7 +115,7 @@ while True:
                         <div class='t-title'>TERMINAL <span class='t-bold'>DÓLAR</span></div>
                         <div class='t-line'></div>
                         <div style='font-family:Chakra Petch; font-size:22px; font-weight:700;'>
-                            {spot:.4f} <span style='color:{al_c}'>{((spot/s_m.previous_close)-1)*100:+.2f}%</span>
+                            {spot:.4f} <span style='color:{al_c}'>{spo_v:+.2f}%</span>
                         </div>
                         <div class="gauge-container">
                             <div class="gauge-bg"></div><div class="gauge-cover"></div>
@@ -129,15 +142,13 @@ while True:
                     <div class="txt-editavel">{st.session_state.txt_topo}</div>
                 """, unsafe_allow_html=True)
                 
-                # RODAPÉ COM CORES VERDE/VERMELHO
-                c_dxy = "#00ff88" if dxy_v >= 0 else "#ff3333"
-                c_ewz = "#00ff88" if ewz_v >= 0 else "#ff3333"
+                # TICKER ATUALIZADO (SPOT, DXY, EWZ, EURUSD, SPREAD, PTAX)
+                def get_c(v): return "#00ff88" if v >= 0 else "#ff3333"
                 
                 tk = f"""
-                <span class='tk-item'><b>DXY</b> {d_m.last_price:.2f} <span style='color:{c_dxy}'>({dxy_v:+.2f}%)</span></span>
-                <span class='tk-item'><b>EWZ</b> {e_m.last_price:.2f} <span style='color:{c_ewz}'>({ewz_v:+.2f}%)</span></span>
+                <span class='tk-item'><b>SPOT</b> {spot:.4f} <span style='color:{get_c(spo_v)}'>({spo_v:+.2f}%)</span></span>
+                <span class='tk-item'><b>DXY</b> {d_m.last_price:.2f} <span style='color:{get_c(dxy_v)}'>({dxy_v:+.2f}%)</span></span>
+                <span class='tk-item'><b>EWZ</b> {e_m.last_price:.2f} <span style='color:{get_c(ewz_v)}'>({ewz_v:+.2f}%)</span></span>
+                <span class='tk-item'><b>EURUSD</b> {eu_m.last_price:.4f} <span style='color:{get_c(eur_v)}'>({eur_v:+.2f}%)</span></span>
                 <span class='tk-item'><b>SPREAD</b> <span style='color:#ffff00'>{spr:+.2f}%</span></span>
-                <span class='tk-item'><b>PTAX</b> {st.session_state.ptax:.4f}</span>
-                """
-                st.markdown(f"<div class='f-bar'><div class='tk-move'>{tk} {tk}</div></div>", unsafe_allow_html=True)
-    time.sleep(2)
+                <span class='tk-item'><b>PTAX</b> {st.session_state.ptax:.4f}
