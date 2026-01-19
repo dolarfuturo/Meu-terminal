@@ -1,166 +1,118 @@
 import streamlit as st
-import yfinance as yf
-import time
+from datetime import datetime
 
-# 1. SETUP E COMPARTILHAMENTO GLOBAL
-st.set_page_config(page_title="TERMINAL DÓLAR", layout="wide", initial_sidebar_state="collapsed")
+# --- CONFIGURAÇÃO DA INTERFACE ---
+st.set_page_config(page_title="TERMINAL DOLAR", layout="centered")
 
-@st.cache_resource
-def get_global_data():
-    return {
-        "ptax": 5.4000,
-        "ajuste": 5.4000,
-        "ref": 5.4000,
-        "v22": 0.0220,
-        "v31": 0.0310,
-        "v42": 0.0420,
-        "txt_topo": "FOCO NO PLANO - RESPEITE O STOP"
+# Estilização CSS para o Look Termux / Bloomberg
+st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+    
+    /* Fundo Preto Total */
+    .stApp {
+        background-color: #000000;
+    }
+    
+    /* Fonte Estilo Termux */
+    * {
+        font-family: 'JetBrains Mono', monospace !important;
     }
 
-global_vars = get_global_data()
+    /* Cabeçalho */
+    .header-terminal {
+        font-size: 28px;
+        font-weight: bold;
+        color: #FFFFFF;
+        text-align: center;
+        padding: 20px;
+    }
 
-# 2. CSS
-st.markdown("""
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;700&family=Orbitron:wght@400;900&display=swap');
-    [data-testid="stHeader"], footer, [data-testid="stToolbar"], label { display: none !important; }
-    .stApp { background-color: #000; color: #fff; font-family: 'Orbitron', sans-serif; }
-    .stNumberInput div div input { background-color: #111 !important; color: #fff !important; border: 1px solid #444 !important; font-size: 16px !important; }
-    .id-tag { color: #ffff00; font-size: 12px; font-weight: 900; margin-bottom: 2px; }
-    .t-header { text-align: center; padding-top: 5px; }
-    .t-title { font-size: 24px; letter-spacing: 5px; font-weight: 300; } 
-    .t-bold { font-weight: 900; } 
-    .t-line { width: 60%; height: 1px; background: #333; margin: 8px auto 10px auto; }
-    .gauge-container { position: relative; width: 140px; height: 70px; margin: 0 auto; overflow: hidden; }
-    .gauge-bg { position: absolute; top: 0; left: 0; width: 140px; height: 140px; border-radius: 50%; background: conic-gradient(#ff3333 0deg 60deg, #ffff00 60deg 120deg, #00ff88 120deg 180deg, #000 180deg); transform: rotate(-90deg); }
-    .gauge-cover { position: absolute; top: 10px; left: 10px; width: 120px; height: 120px; background: #000; border-radius: 50%; }
-    .gauge-needle { position: absolute; bottom: 0; left: 50%; width: 2px; height: 60px; background: #fff; transform-origin: bottom center; transition: all 0.5s ease; }
-    .btn-alerta { width: 220px; margin: 8px auto; padding: 4px; border-radius: 4px; font-size: 10px; font-weight: 900; text-align: center; letter-spacing: 2px; }
-    .d-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; border-bottom: 1px solid #111; }
-    .d-label { font-size: 11px; font-weight: 900; color: #fff; text-transform: uppercase; }
-    .d-value { font-size: 19px; font-family: 'Chakra Petch'; font-weight: 700; }
-    .v-pari-justo { font-size: 13px; color: #0066cc; font-family: 'Chakra Petch'; margin-left: 10px; font-weight: 400; }
-    .corr-box { display: flex; flex-direction: column; align-items: center; font-family: 'Chakra Petch'; font-size: 14px; }
-    .val-11 { font-weight: 700; color: #ffff00; }
-    .val-22 { font-weight: 400; color: #ffff00; opacity: 0.6; }
-    .txt-editavel { text-align: center; font-family: 'Chakra Petch'; font-size: 11px; color: #666; margin-top: 15px; margin-bottom: 45px; text-transform: uppercase; }
-    .f-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: 35px; background: #050505; border-top: 1px solid #222; display: flex; align-items: center; z-index: 999; overflow: hidden; }
-    .tk-move { white-space: nowrap; animation: move 35s linear infinite; display: flex; align-items: center; }
-    .tk-item { padding-right: 40px; font-family: 'Chakra Petch'; font-size: 11px; font-weight: 700; }
-    @keyframes move { from { transform: translateX(100%); } to { transform: translateX(-100%); } }
-</style>
+    /* Preços e Labels */
+    .label-bold { font-weight: bold; color: #FFFFFF; font-size: 20px; }
+    .price-spot { font-size: 45px; font-weight: bold; color: #FFFFFF; }
+    .price-orange { color: #FFA500; font-size: 24px; font-weight: bold; }
+    .price-green-light { color: #90EE90; font-size: 24px; font-weight: bold; }
+    .price-blue { color: #00BFFF; font-size: 24px; font-weight: bold; }
+    .price-red { color: #FF4B4B; font-size: 24px; font-weight: bold; }
+    .price-yellow { color: #FFFF00; font-size: 14px; }
+    .price-fuchsia { color: #FF00FF; font-size: 14px; }
+    
+    /* Rodapé Ticker */
+    .ticker-container {
+        border-top: 1px solid #333;
+        margin-top: 50px;
+        padding-top: 10px;
+        color: white;
+        font-size: 14px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- ÁREA DO ADMINISTRADOR (OCULTA) ---
+with st.expander("⚙️ CONFIGURAÇÕES ADM (INPUTS)"):
+    col1, col2 = st.columns(2)
+    with col1:
+        ptax_base = st.number_input("PTAX Atual", value=5340.00, format="%.3f")
+        fech_anterior = st.number_input("Fechamento Anterior", value=5360.00, format="%.3f")
+    with col2:
+        price_trava = st.number_input("PRICE (Trava Azul)", value=5335.00, format="%.3f")
+        spot_live = st.number_input("Cotação Spot Atual", value=5362.50, format="%.3f")
+
+# --- LÓGICA DE CÁLCULOS ---
+# Variação Spot
+variacao = ((spot_live / fech_anterior) - 1) * 100
+
+# Cálculo de Equilíbrio: (PTAX * 1.004) - (PRICE * 1.004)
+calc_equilibrio = (ptax_base * 1.004) - (price_trava * 1.004)
+
+# Paridade (Exemplo de ajuste dinâmico)
+paridade_val = spot_live + 1.250
+
+# Preço Justo
+preco_justo_val = (ptax_base + price_trava) / 2
+
+# Referências Institucionais (Vermelho, Azul, Verde Claro)
+ref_vermelho = ptax_base * 1.002
+ref_azul = ptax_base * 1.006
+ref_verde = ptax_base * 1.010
+
+# --- RENDERIZAÇÃO DO TERMINAL ---
+
+# 1. Título
+st.markdown('<div class="header-terminal">TERMINAL DOLAR</div>', unsafe_allow_html=True)
+
+# 2. Bloco SPOT e Variação
+color_var = "#00FF00" if variacao >= 0 else "#FF0000"
+st.markdown(f"""
+    <div style="line-height: 1.2;">
+        <span class="price-spot">{spot_live:.3f}</span> 
+        <span style="color: {color_var}; font-size: 22px;">{variacao:+.2f}%</span><br>
+        <span class="price-yellow">FECH. ANT: {fech_anterior:.3f}</span><br>
+        <span class="price-blue" style="font-size: 14px;">PRICE: {price_trava:.3f}</span>
+    </div>
+    <br>
 """, unsafe_allow_html=True)
 
-# 3. MENU DE CONFIGURAÇÃO GLOBAL
-if st.button("⚙️ CONFIGURAR GLOBAL"):
-    st.session_state.edit_mode = True
+# 3. Lista de Dados Vertical
+st.markdown(f"""
+    <div style="line-height: 2.0;">
+        <span class="label-bold">PARIDADE:</span> <span class="price-orange">{paridade_val:.3f}</span><br>
+        <span class="label-bold">EQUILÍBRIO:</span> <span class="price-green-light">{calc_equilibrio:.3f}</span><br>
+        <span class="label-bold">PREÇO JUSTO:</span> <span class="price-blue">{preco_justo_val:.3f}</span><br>
+        <span class="label-bold">REF INSTITUCIONAL:</span> 
+        <span class="price-red">{ref_vermelho:.3f}</span> &nbsp;
+        <span class="price-blue">{ref_azul:.3f}</span> &nbsp;
+        <span class="price-green-light">{ref_verde:.3f}</span>
+    </div>
+""", unsafe_allow_html=True)
 
-if st.session_state.get('edit_mode', False):
-    with st.container():
-        st.markdown("<h3 style='color:orange;'>PAINEL DE CONTROLE (TODOS USUÁRIOS)</h3>", unsafe_allow_html=True)
-        c1, c2 = st.columns(2)
-        with c1:
-            st.markdown("<p class='id-tag'>NOME: AJUSTE</p>", unsafe_allow_html=True)
-            v_ajuste = st.number_input("A", value=global_vars["ajuste"], format="%.4f", label_visibility="collapsed")
-            st.markdown("<p class='id-tag'>NOME: PTAX</p>", unsafe_allow_html=True)
-            v_ptax = st.number_input("P", value=global_vars["ptax"], format="%.4f", label_visibility="collapsed")
-            st.markdown("<p class='id-tag'>REF. INSTITUCIONAL</p>", unsafe_allow_html=True)
-            v_ref = st.number_input("R", value=global_vars["ref"], format="%.4f", label_visibility="collapsed")
-        with c2:
-            v_22 = st.number_input("VAR 22", value=global_vars["v22"], format="%.4f")
-            v_31 = st.number_input("VAR 31", value=global_vars["v31"], format="%.4f")
-            v_42 = st.number_input("VAR 42", value=global_vars["v42"], format="%.4f")
-            v_txt = st.text_input("FRASE", value=global_vars["txt_topo"])
-        
-        if st.button("SALVAR E ATUALIZAR"):
-            global_vars["ajuste"] = v_ajuste
-            global_vars["ptax"] = v_ptax
-            global_vars["ref"] = v_ref
-            global_vars["v22"] = v_22
-            global_vars["v31"] = v_31
-            global_vars["v42"] = v_42
-            global_vars["txt_topo"] = v_txt
-            st.session_state.edit_mode = False
-            st.rerun()
-
-# 4. MOTOR E INTERFACE
-placeholder = st.empty()
-while True:
-    try:
-        usd = yf.Ticker("BRL=X").fast_info
-        dxy = yf.Ticker("DX-Y.NYB").fast_info
-        ewz = yf.Ticker("EWZ").fast_info
-        
-        spot = usd.last_price
-        v_spot = ((usd.last_price / usd.previous_close) - 1) * 100
-        v_dxy = ((dxy.last_price / dxy.previous_close) - 1) * 100
-        v_ewz = ((ewz.last_price / ewz.previous_close) - 1) * 100
-        
-        spr = v_dxy - v_ewz
-        paridade = global_vars["ajuste"] * (1 + (spr / 100))
-        pari_justo = round((paridade + global_vars["v22"]) * 2000) / 2000
-        equi = round((global_vars["ref"] + global_vars["v22"]) * 2000) / 2000
-        
-        j_min = round((spot + global_vars["v22"]) * 2000) / 2000
-        j_med = round((spot + global_vars["v31"]) * 2000) / 2000
-        j_max = round((spot + global_vars["v42"]) * 2000) / 2000
-        
-        r_min = round((global_vars["ref"] + global_vars["v22"]) * 2000) / 2000
-        r_med = round((global_vars["ref"] + global_vars["v31"]) * 2000) / 2000
-        r_max = round((global_vars["ref"] + global_vars["v42"]) * 2000) / 2000
-
-        diff = spot - j_med
-        if diff < -0.0015: al_t, al_c, ang = "PRECIFICAÇÃO DE ALTA", "#00ff88", 45
-        elif diff > 0.0015: al_t, al_c, ang = "PRECIFICAÇÃO DE BAIXA", "#ff3333", -45
-        else: al_t, al_c, ang = "PRECIFICAÇÃO NEUTRA", "#ffff00", 0
-
-        with placeholder.container():
-            st.markdown(f"""
-            <div class='t-header'>
-                <div class='t-title'>TERMINAL <span class='t-bold'>DÓLAR</span></div>
-                <div class='t-line'></div>
-                <div style='font-size:22px; font-weight:700;'>{spot:.4f} <span style='color:{al_c}'>{v_spot:+.2f}%</span></div>
-                <div class="gauge-container">
-                    <div class="gauge-bg"></div><div class="gauge-cover"></div>
-                    <div class="gauge-needle" style="transform: translateX(-50%) rotate({ang}deg);"></div>
-                </div>
-                <div class="btn-alerta" style="border: 1px solid {al_c}; color: {al_c};">{al_t}</div>
-            </div>
-            
-            <div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div><span class="d-value" style="color:#cc9900">{paridade:.4f}</span><span class="v-pari-justo">{pari_justo:.4f}</span></div></div>
-            <div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value" style="color:#00cccc">{equi:.4f}</div></div>
-            
-            <div class="d-row"><div class="d-label">PREÇO JUSTO</div><div style="display:flex; gap:15px;">
-                <div style="text-align:center"><small>MIN</small><br><span style="color:#cc3333" class="d-value">{j_min:.4f}</span></div>
-                <div style="text-align:center"><small>JUSTO</small><br><span style="color:#0066cc" class="d-value">{j_med:.4f}</span></div>
-                <div style="text-align:center"><small>MAX</small><br><span style="color:#00cc66" class="d-value">{j_max:.4f}</span></div>
-            </div></div>
-            
-            <div class="d-row"><div class="d-label">REF. INSTITUCIONAL</div><div style="display:flex; gap:15px;">
-                <div style="text-align:center"><small>MIN</small><br><span style="color:#cc3333" class="d-value">{r_min:.4f}</span></div>
-                <div style="text-align:center"><small>JUSTO</small><br><span style="color:#0066cc" class="d-value">{r_med:.4f}</span></div>
-                <div style="text-align:center"><small>MAX</small><br><span style="color:#00cc66" class="d-value">{r_max:.4f}</span></div>
-            </div></div>
-
-            <div class="d-row" style="border-bottom:none"><div class="d-label">REGIÕES DE CORREÇÃO</div><div style="display:flex; gap:40px;">
-                <div class="corr-box"><span class="val-11">{(equi - 0.0110):.4f}</span><span class="val-22">{(equi - 0.0220):.4f}</span></div>
-                <div class="corr-box"><span class="val-11">{(equi + 0.0110):.4f}</span><span class="val-22">{(equi + 0.0220):.4f}</span></div>
-            </div></div>
-
-            <div class="txt-editavel">{global_vars["txt_topo"]}</div>
-            """, unsafe_allow_html=True)
-            
-            # Função para cor do ticker
-            def get_clr(v): return "#00ff88" if v >= 0 else "#ff3333"
-            
-            # Construção do Ticker Ticking (Sem PTAX)
-            tk_content = f"""
-                <span class='tk-item'><b>SPOT:</b> {spot:.4f} <span style='color:{get_clr(v_spot)}'>({v_spot:+.2f}%)</span></span>
-                <span class='tk-item'><b>DXY:</b> {dxy.last_price:.2f} <span style='color:{get_clr(v_dxy)}'>({v_dxy:+.2f}%)</span></span>
-                <span class='tk-item'><b>EWZ:</b> {ewz.last_price:.2f} <span style='color:{get_clr(v_ewz)}'>({v_ewz:+.2f}%)</span></span>
-                <span class='tk-item'><b>SPREAD:</b> <span style='color:#ffff00'>{spr:+.2f}%</span></span>
-            """
-            st.markdown(f"<div class='f-bar'><div class='tk-move'>{tk_content} &nbsp;&nbsp;&nbsp; {tk_content}</div></div>", unsafe_allow_html=True)
-    except:
-        pass
-    time.sleep(2)
+# 4. Rodapé Ticker
+st.markdown(f"""
+    <div class="ticker-container">
+        DXY: 103.450 <span style="color:#00FF00;">+0.12%</span> | 
+        EWZ: 32.112 <span style="color:#FF0000;">-0.85%</span> | 
+        SPREAD: <span style="color:#FFFF00;">-4.50 pts</span> | 
+        ATUALIZADO: {datetime.now().strftime('%H:%M:%S')}
+    </div>
+""", unsafe_allow_html=True)
