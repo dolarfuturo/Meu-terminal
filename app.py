@@ -1,68 +1,74 @@
 import streamlit as st
 import time
-import random
 from datetime import datetime
 
-# --- CONFIGURAÇÃO DE INTERFACE ---
+# --- CONFIGURAÇÃO VISUAL ---
 st.set_page_config(page_title="TERMINAL DOLAR", layout="centered")
 
-# CSS Estilo Termux/Bloomberg com foco em 3 casas decimais
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
     .stApp { background-color: #000000; }
     * { font-family: 'JetBrains Mono', monospace !important; color: white; }
-    .header { font-size: 26px; font-weight: bold; text-align: center; padding: 10px; border-bottom: 1px solid #222; margin-bottom: 20px;}
-    .spot-big { font-size: 55px; font-weight: bold; line-height: 1; }
-    .label-bold { font-weight: bold; color: #FFFFFF; font-size: 22px; }
+    .header { font-size: 26px; font-weight: bold; text-align: center; color: #FFFFFF; }
+    .spot-big { font-size: 55px; font-weight: bold; color: #FFFFFF; }
+    .label-bold { font-weight: bold; color: #FFFFFF; font-size: 20px; }
     .p-orange { color: #FFA500; font-size: 26px; font-weight: bold; }
     .p-green { color: #90EE90; font-size: 26px; font-weight: bold; }
     .p-blue { color: #00BFFF; font-size: 26px; font-weight: bold; }
     .p-red { color: #FF4B4B; font-size: 26px; font-weight: bold; }
     .p-yellow { color: #FFFF00; font-size: 16px; }
-    .p-fuchsia { color: #FF00FF; font-size: 16px; }
+    /* Ajuste para os boxes de input não ficarem brancos demais */
+    .stNumberInput input { background-color: #111; color: white; border: 1px solid #333; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- PAINEL ADMINISTRATIVO (SIDEBAR) ---
-with st.sidebar:
-    st.header("⚙️ CONFIGURAÇÃO ADM")
-    ptax_base = st.number_input("PTAX Atual", value=5340.000, format="%.3f", step=0.001)
-    price_val = st.number_input("PRICE (Azul)", value=5335.000, format="%.3f", step=0.001)
-    fech_ant = st.number_input("Fechamento Anterior", value=5360.000, format="%.3f", step=0.001)
+# --- ÁREA DE INPUT DE VARIÁVEIS (VISÍVEL NO TOPO) ---
+st.markdown('<div class="header">INPUT DE DADOS</div>', unsafe_allow_html=True)
+col_in1, col_in2, col_in3 = st.columns(3)
 
-# --- MOTOR DE PREÇOS (Simulação Real-Time) ---
-# Em produção, aqui entra a conexão direta com o Profit ou TradingView
-spot_atual = 5362.500 + (random.uniform(-0.150, 0.150)) 
+with col_in1:
+    ptax_input = st.number_input("PTAX", value=5.340, format="%.3f", step=0.001)
+with col_in2:
+    price_input = st.number_input("PRICE", value=5.335, format="%.3f", step=0.001)
+with col_in3:
+    fech_input = st.number_input("FECH. ANT", value=5.360, format="%.3f", step=0.001)
 
-# --- CÁLCULOS TÉCNICOS ---
-variacao = ((spot_atual / fech_ant) - 1) * 100
-equilibrio = (ptax_base * 1.004) - (price_val * 1.004)
-paridade = spot_atual + 1.350 # Lógica de Spread
-p_justo = (ptax_base + price_val) / 2
+st.write("---")
 
-# Referências Institucionais
-r1 = ptax_base * 1.002
-r2 = ptax_base * 1.006
-r3 = ptax_base * 1.010
+# --- LÓGICA DE MERCADO ---
+# Aqui simulamos o Spot acompanhando seus inputs ou uma variação mínima
+if 'spot' not in st.session_state:
+    st.session_state.spot = 5.362
+
+# Simula pequena oscilação para o terminal não ficar "morto"
+st.session_state.spot += 0.001 
+
+# Cálculos com 3 casas decimais
+variacao = ((st.session_state.spot / fech_input) - 1) * 100
+equilibrio = (ptax_input * 1.004) - (price_input * 1.004)
+paridade = st.session_state.spot + 0.005
+p_justo = (ptax_input + price_input) / 2
+
+# Referências
+r1, r2, r3 = ptax_input * 1.002, ptax_input * 1.006, ptax_input * 1.010
 
 # --- EXIBIÇÃO DO TERMINAL ---
 st.markdown('<div class="header">TERMINAL DOLAR</div>', unsafe_allow_html=True)
 
-# Bloco Principal (Spot e Variação)
-cor_var = "#00FF00" if variacao >= 0 else "#FF0000"
+# SPOT
 st.markdown(f"""
-    <div style="margin-bottom: 30px;">
-        <span class="spot-big">{spot_atual:.3f}</span>
-        <span style="font-size: 28px; color: {cor_var}; vertical-align: top;"> {variacao:+.2f}%</span><br>
-        <span class="p-yellow">FECH. ANT: {fech_ant:.3f}</span><br>
-        <span class="p-blue" style="font-size: 16px;">PRICE: {price_val:.3f}</span>
+    <div style="margin-bottom: 20px;">
+        <span class="spot-big">{st.session_state.spot:.3f}</span>
+        <span style="font-size: 25px; color: {'#00FF00' if variacao >= 0 else '#FF0000'};"> {variacao:+.2f}%</span><br>
+        <span class="p-yellow">FECH. ANT: {fech_input:.3f}</span><br>
+        <span class="p-blue" style="font-size: 16px;">PRICE: {price_input:.3f}</span>
     </div>
 """, unsafe_allow_html=True)
 
-# Lista de Dados Vertical
+# DADOS
 st.markdown(f"""
-    <div style="line-height: 2.5;">
+    <div style="line-height: 2.2;">
         <span class="label-bold">PARIDADE:</span> <span class="p-orange">{paridade:.3f}</span><br>
         <span class="label-bold">EQUILÍBRIO:</span> <span class="p-green">{equilibrio:.3f}</span><br>
         <span class="label-bold">PREÇO JUSTO:</span> <span class="p-blue">{p_justo:.3f}</span><br>
@@ -75,11 +81,11 @@ st.markdown(f"""
 
 # Rodapé Ticker
 st.markdown(f"""
-    <div style="margin-top: 50px; border-top: 1px solid #333; padding-top: 10px; font-size: 13px; color: #888;">
-        DXY: 103.450 | EWZ: 32.110 | SPREAD: -4.500 | HORA: {datetime.now().strftime('%H:%M:%S')}
+    <div style="margin-top: 30px; border-top: 1px solid #333; padding-top: 10px; font-size: 12px; color: #666;">
+        DXY: 103.450 | HORA: {datetime.now().strftime('%H:%M:%S')}
     </div>
 """, unsafe_allow_html=True)
 
-# AUTO-REFRESH (Ativa o Terminal)
+# Atualização de 1 segundo
 time.sleep(1)
 st.rerun()
