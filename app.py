@@ -2,102 +2,100 @@ import streamlit as st
 import time
 from datetime import datetime
 
-# --- CONFIGURAÇÃO DE AMBIENTE ---
+# --- CONFIGURAÇÃO DE INTERFACE (ESTILO TERMUX) ---
 st.set_page_config(page_title="TERMINAL DOLAR", layout="centered")
 
-# CSS Estilo Termux (Fundo Preto, Fonte Mono, Sem Margens)
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
     .stApp { background-color: #000000; }
     * { font-family: 'JetBrains Mono', monospace !important; color: white; }
-    .header { font-size: 24px; font-weight: bold; text-align: center; color: #FFFFFF; }
-    .spot-big { font-size: 60px; font-weight: bold; color: #FFFFFF; }
-    .label-bold { font-weight: bold; color: #FFFFFF; font-size: 22px; }
-    .p-orange { color: #FFA500; font-size: 28px; font-weight: bold; }
-    .p-green { color: #90EE90; font-size: 28px; font-weight: bold; }
-    .p-blue { color: #00BFFF; font-size: 28px; font-weight: bold; }
-    .p-red { color: #FF4B4B; font-size: 28px; font-weight: bold; }
+    
+    /* AJUSTE: Números dos inputs em PRETO */
+    input { color: #000000 !important; font-weight: bold !important; }
+    
+    .header { font-size: 26px; font-weight: bold; text-align: center; color: #FFFFFF; }
+    .spot-big { font-size: 55px; font-weight: bold; color: #FFFFFF; }
+    .label-white-bold { font-weight: bold; color: #FFFFFF; font-size: 22px; }
+    .p-orange { color: #FFA500; font-size: 26px; font-weight: bold; }
+    .p-green-light { color: #90EE90; font-size: 26px; font-weight: bold; }
+    .p-blue { color: #00BFFF; font-size: 26px; font-weight: bold; }
+    .p-red { color: #FF4B4B; font-size: 26px; font-weight: bold; }
     .p-yellow { color: #FFFF00; font-size: 16px; }
-    /* Ajuste de inputs para modo escuro */
-    div[data-baseweb="input"] { background-color: #111; border: 1px solid #333; }
-    input { color: white !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- BLOCO DE INPUTS DE VARIÁVEIS (DISPONÍVEIS E OPERACIONAIS) ---
-with st.expander("🛠️ AJUSTE DE VARIÁVEIS E PREÇOS", expanded=True):
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        v_ptax = st.number_input("PTAX BASE", value=5.345, format="%.3f", step=0.001)
-        m_equi = st.number_input("Var Equi", value=1.004, format="%.3f")
-    with c2:
-        v_price = st.number_input("PRICE AZUL", value=5.335, format="%.3f", step=0.001)
-        m_ref1 = st.number_input("Var Ref 1", value=1.002, format="%.3f")
-    with c3:
-        v_fech = st.number_input("FECH ANT", value=5.360, format="%.3f", step=0.001)
-        m_ref2 = st.number_input("Var Ref 2", value=1.008, format="%.3f")
-    with c4:
-        v_spot = st.number_input("SPOT ATUAL", value=5.342, format="%.3f", step=0.001)
-        m_ref3 = st.number_input("Var Ref 3", value=1.010, format="%.3f")
+# --- ÁREA DE INPUTS DE VARIÁVEIS ---
+with st.sidebar:
+    st.header("⚙️ VARIÁVEIS")
+    # Multiplicadores
+    v_1002 = st.number_input("Multiplicador 1.002", value=1.002, format="%.3f")
+    v_1004 = st.number_input("Multiplicador 1.004 (Equi)", value=1.004, format="%.3f")
+    v_1008 = st.number_input("Multiplicador 1.008", value=1.008, format="%.3f")
+    v_1010 = st.number_input("Multiplicador 1.010", value=1.010, format="%.3f")
+    v_trava = st.number_input("Alvo Trava (0.41%)", value=0.0041, format="%.4f")
+    
+    st.write("---")
+    st.header("📊 PREÇOS")
+    ptax_base = st.number_input("PTAX", value=5.345, format="%.3f")
+    price_azul = st.number_input("PRICE", value=5.335, format="%.3f")
+    fech_ant = st.number_input("FECHAMENTO", value=5.360, format="%.3f")
+    spot_live = st.number_input("SPOT", value=5.342, format="%.3f")
 
-# --- LÓGICA DE EXECUÇÃO (CÁLCULOS ATIVOS) ---
+# --- LÓGICA DE CÁLCULO ---
 # Gatilho: Perda da PTAX - 2 pontos
-gatilho_on = v_spot <= (v_ptax - 0.002)
+gatilho = spot_live <= (ptax_base - 0.002)
 
-# Alvo: Se gatilho ativo, trava em 0,41% abaixo da PTAX
-v_alvo = v_ptax * (1 - 0.0041) if gatilho_on else v_ptax
+# Alvo Principal: Troca automática
+alvo_principal = ptax_base * (1 - v_trava) if gatilho else ptax_base
 
-# Equilíbrio: (PTAX * Var) - (PRICE * Var)
-res_equi = (v_ptax * m_equi) - (v_price * m_equi)
+# EQUILÍBRIO: Diferença esticada entre as duas âncoras
+calc_equilibrio = (ptax_base * v_1004) - (price_azul * v_1004)
 
-# Referências Institucionais
-r1, r2, r3 = v_ptax * m_ref1, v_ptax * m_ref2, v_ptax * m_ref3
+# Referências
+r_red = ptax_base * v_1002
+r_blue = ptax_base * v_1008
+r_green = ptax_base * v_1010
 
 # Variação %
-var_pct = ((v_spot / v_fech) - 1) * 100
+var_pct = ((spot_live / fech_ant) - 1) * 100
 
-# --- DISPLAY DO TERMINAL ---
+# --- DISPLAY ---
 st.markdown('<div class="header">TERMINAL DOLAR</div>', unsafe_allow_html=True)
 
-# Indicador de Gatilho Ativo
-if gatilho_on:
-    st.markdown(f'<div style="background-color:red; color:white; text-align:center; font-weight:bold; padding:5px;">GATILHO ATIVO: ALVO 0.41%</div>', unsafe_allow_html=True)
-else:
-    st.markdown(f'<div style="background-color:#222; color:white; text-align:center; font-weight:bold; padding:5px;">MONITORAMENTO PASSIVO</div>', unsafe_allow_html=True)
-
-# Bloco Principal: SPOT e PRICE
+# SPOT e PRICE
+cor_v = "#00FF00" if var_pct >= 0 else "#FF0000"
 st.markdown(f"""
     <div style="margin-top: 20px;">
-        <span class="spot-big">{v_spot:.3f}</span>
-        <span style="font-size: 30px; color: {'#00FF00' if var_pct >= 0 else '#FF0000'};"> {var_pct:+.2f}%</span><br>
-        <span class="p-yellow">FECH. ANT: {v_fech:.3f}</span><br>
-        <span class="p-blue" style="font-size: 18px;">PRICE: {v_price:.3f}</span>
+        <span class="spot-big">{spot_live:.3f}</span>
+        <span style="font-size: 28px; color: {cor_v};"> {var_pct:+.2f}%</span><br>
+        <span class="p-yellow">FECH. ANT: {fech_ant:.3f}</span><br>
+        <span class="p-blue" style="font-size: 16px;">PRICE: {price_azul:.3f}</span>
     </div>
 """, unsafe_allow_html=True)
 
 st.write("---")
 
-# Dados de Alvo e Institucional
+# Dados Operacionais
 st.markdown(f"""
-    <div style="line-height: 2.5;">
-        <span class="label-bold">ALVO PRINCIPAL:</span> <span class="p-orange">{v_alvo:.3f}</span><br>
-        <span class="label-bold">EQUILÍBRIO:</span> <span class="p-green">{res_equi:.3f}</span><br>
-        <span class="label-bold">PREÇO JUSTO:</span> <span class="p-blue">{(v_ptax + v_price)/2:.3f}</span><br>
-        <span class="label-bold">REF INSTITUCIONAL:</span> 
-        <span class="p-red">{r1:.3f}</span> &nbsp;
-        <span class="p-blue">{r2:.3f}</span> &nbsp;
-        <span class="p-green">{r3:.3f}</span>
+    <div style="line-height: 2.6;">
+        <span class="label-white-bold">ALVO PRINCIPAL:</span> <span class="p-orange">{alvo_principal:.3f}</span><br>
+        <span class="label-white-bold">EQUILÍBRIO:</span> <span class="p-green-light">{calc_equilibrio:.3f}</span><br>
+        <span class="label-white-bold">PREÇO JUSTO:</span> <span class="p-blue">{(ptax_base + price_azul)/2:.3f}</span><br>
+        <span class="label-white-bold">REF INSTITUCIONAL:</span> 
+        <span class="p-red">{r_red:.3f}</span> &nbsp;
+        <span class="p-blue">{r_blue:.3f}</span> &nbsp;
+        <span class="p-green-light">{r_green:.3f}</span>
     </div>
 """, unsafe_allow_html=True)
 
-# Rodapé Ticker
+# Ticker inferior
 st.markdown(f"""
     <div style="margin-top: 40px; border-top: 1px solid #333; padding-top: 10px; font-size: 13px; color: #555;">
-        DXY | EWZ | SPREAD | HORA: {datetime.now().strftime('%H:%M:%S')}
+        DXY | EWZ | HORA BR: {datetime.now().strftime('%H:%M:%S')}
     </div>
 """, unsafe_allow_html=True)
 
-# LOOP DE ATIVAÇÃO (Destrava o Terminal)
+# Loop de atualização
 time.sleep(1)
 st.rerun()
