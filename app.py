@@ -53,7 +53,8 @@ st.markdown("""
     .t-title { color: #555; font-size: 13px; letter-spacing: 4px; }
     .t-bold { color: #fff; font-weight: 900; }
     .s-container { text-align: center; padding: 10px 0; margin-bottom: 5px; }
-    .s-text { font-size: 12px; font-weight: 700; letter-spacing: 2px; }
+    .s-text { font-size: 18px; font-weight: 700; letter-spacing: 1px; font-family: 'Chakra Petch'; }
+    .s-subtext { font-size: 10px; color: #666; font-weight: 400; letter-spacing: 1px; margin-top: 2px; }
     .d-row { display: flex; justify-content: space-between; align-items: center; padding: 18px 15px; border-bottom: 1px solid #111; }
     .d-label { font-size: 11px; color: #FFFFFF; font-weight: 900; width: 40%; }
     .sub-grid { display: flex; gap: 15px; justify-content: flex-end; width: 60%; }
@@ -109,9 +110,9 @@ while True:
         equilibrio = round((v_global["ref"] + 0.0220) * 2000) / 2000
         
         diff = spot - justo
-        if diff < -0.0015: msg, clr, arr = "● PRECIFICAÇÃO DE ALTA", "#00aa55", "▲ ▲ ▲ ▲ ▲"
-        elif diff > 0.0015: msg, clr, arr = "● PRECIFICAÇÃO DE BAIXA", "#aa3333", "▼ ▼ ▼ ▼ ▼"
-        else: msg, clr, arr = "● PRECIFICAÇÃO NEUTRA", "#aaaa00", "◄ ◄ ◄ ► ► ►"
+        if diff < -0.0015: clr, arr = "#00aa55", "▲ ▲ ▲ ▲ ▲"
+        elif diff > 0.0015: clr, arr = "#aa3333", "▼ ▼ ▼ ▼ ▼"
+        else: clr, arr = "#aaaa00", "◄ ◄ ◄ ► ► ►"
             
         with ui_area.container():
             if st.session_state.user_type == "ADM":
@@ -126,14 +127,23 @@ while True:
                         if st.form_submit_button("SALVAR"): st.rerun()
 
             st.markdown(f'<div class="t-header"><div class="t-title">TERMINAL <span class="t-bold">DOLAR</span></div></div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="s-container" style="border-bottom: 2px solid {clr}77"><div class="s-text" style="color:{clr}">{msg}</div></div>', unsafe_allow_html=True)
+            
+            # CABEÇALHO ALTERADO: PREÇO SPOT + VARIAÇÃO E FECHAMENTO ANTERIOR ABAIXO
+            st.markdown(f"""
+            <div class="s-container" style="border-bottom: 2px solid {clr}77">
+                <div class="s-text" style="color:#fff">
+                    SPOT {spot:.4f} <span style="color:{clr}; margin-left:10px;">({s_m['var']:+.2f}%)</span>
+                </div>
+                <div class="s-subtext">FECH. ANTERIOR: {s_m['prev']:.4f}</div>
+            </div>
+            """, unsafe_allow_html=True)
             
             st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value c-pari">{(v_global["ajuste"]*(1+(spr/100))):.4f}</div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value c-equi">{equilibrio:.4f}</div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="d-row"><div class="d-label">PREÇO JUSTO</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((spot+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{justo:.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((spot+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="d-row"><div class="d-label">REF. INSTITUCIONAL</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((v_global["ref"]+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{(round((v_global["ref"]+0.0310)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((v_global["ref"]+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
 
-            # REGIÃO DE CORREÇÃO (COLUNAS VERTICAIS)
+            # REGIÃO DE CORREÇÃO
             st.markdown(f"""
             <div class="d-row" style="padding-top:10px; border-bottom: none; align-items: flex-start;">
                 <div class="d-label" style="opacity:0.6; margin-top:5px;">REGIÃO DE CORREÇÃO</div>
