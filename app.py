@@ -105,16 +105,16 @@ while True:
     eu_m = get_clean_data("EURUSD=X")
     
     if d_m["last"] > 0:
-        # ARREDONDAMENTOS 0.5 pts
-        spot = round(s_m["last"] * 200) / 200
-        prev_disc = (s_m["prev"] * 200 // 1) / 200
+        # --- VALORES SPOT NORMAIS (SEM ARREDONDAMENTO) ---
+        spot = s_m["last"]
+        prev_close = s_m["prev"]
         
         spr = d_m["var"] - e_m["var"]
         paridade_global = v_global["ajuste"]*(1+(spr/100))
         justo = round((spot + 0.0310) * 2000) / 2000
         equilibrio = round((v_global["ref"] + 0.0220) * 2000) / 2000
 
-        # INDICADOR VISUAL DO FUTURO
+        # --- SINAL DO FUTURO ---
         if spot < (paridade_global - 0.0030): fut_seta, fut_clr = "▲ FUTURO", "#00cc66"
         elif spot > (paridade_global + 0.0030): fut_seta, fut_clr = "▼ FUTURO", "#cc3333"
         else: fut_seta, fut_clr = "● ESTÁVEL", "#444"
@@ -138,13 +138,13 @@ while True:
 
             st.markdown(f'<div class="t-header"><div class="t-title">TERMINAL <span class="t-bold">DOLAR</span></div></div>', unsafe_allow_html=True)
             
-            # CABEÇALHO REVISADO - SEM ERROS DE ASPAS
+            # CABEÇALHO COM SPOT NORMAL E SETA
             st.markdown(f"""
             <div class="s-container" style="border-bottom: 2px solid {clr}77">
                 <div class="s-text" style="color:#fff">
                     SPOT {spot:.4f} <span style="color:{clr}; margin-left:10px;">({s_m['var']:+.2f}%)</span>
                 </div>
-                <div class="s-subtext">FECH. ANTERIOR: {prev_disc:.4f}</div>
+                <div class="s-subtext">FECH. ANTERIOR: {prev_close:.4f}</div>
                 <div class="vies-indicator" style="color:{fut_clr}">{fut_seta}</div>
             </div>
             """, unsafe_allow_html=True)
@@ -173,4 +173,17 @@ while True:
             st.markdown(f"""
             <div class="note-box">
                 <div class="note-title">MORNING CALL & AGENDA</div>
-                <div class="note-content">{v_global["notas_mural"].replace('\\n', '<br>').replace
+                <div class="note-content">{v_global["notas_mural"].replace('\\n', '<br>').replace('\n', '<br>')}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            def f_tk(d, n):
+                v, p = d["var"], d["last"]
+                c = "#00aa55" if v >= 0 else "#aa3333"
+                pf = f"{p:.4f}" if n == "SPOT" else f"{p:.2f}"
+                return f"<span class='tk-item'><b>{n}</b> {pf} <span style='color:{c}'>({v:+.2f}%)</span></span>"
+
+            btk = f"{f_tk(s_m,'SPOT')} {f_tk(d_m,'DXY')} {f_tk(e_m,'EWZ')} {f_tk(eu_m,'EURUSD')} <span class='tk-item'><b>SPREAD</b> {spr:+.2f}%</span>"
+            st.markdown(f'<div class="f-bar"><div class="f-notes">{v_global["notas"]}</div><div class="f-notes2">{v_global["notas2"]}</div><div class="f-line"></div><div class="f-arrows" style="color:{clr}">{arr}</div><div class="f-line"></div><div class="tk-wrap"><div class="tk-move">{btk} {btk} {btk}</div></div></div>', unsafe_allow_html=True)
+            
+    time.sleep(2)
