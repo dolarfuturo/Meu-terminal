@@ -104,10 +104,7 @@ while True:
     eu_m = get_clean_data("EURUSD=X")
     
     if d_m["last"] > 0:
-        # ARREDONDAMENTOS SOLICITADOS (0.5 pts)
-        spot = round(s_m["last"] * 200) / 200
-        prev_disc = (s_m["prev"] * 200 // 1) / 200
-        
+        spot = s_m["last"]
         spr = d_m["var"] - e_m["var"]
         justo = round((spot + 0.0310) * 2000) / 2000
         equilibrio = round((v_global["ref"] + 0.0220) * 2000) / 2000
@@ -131,13 +128,13 @@ while True:
 
             st.markdown(f'<div class="t-header"><div class="t-title">TERMINAL <span class="t-bold">DOLAR</span></div></div>', unsafe_allow_html=True)
             
-            # CABEÇALHO COM SPOT E FECHAMENTO ANTERIOR (FONTE MENOR)
+            # CABEÇALHO ALTERADO: PREÇO SPOT + VARIAÇÃO E FECHAMENTO ANTERIOR ABAIXO
             st.markdown(f"""
             <div class="s-container" style="border-bottom: 2px solid {clr}77">
                 <div class="s-text" style="color:#fff">
                     SPOT {spot:.4f} <span style="color:{clr}; margin-left:10px;">({s_m['var']:+.2f}%)</span>
                 </div>
-                <div class="s-subtext">FECH. ANTERIOR: {prev_disc:.4f}</div>
+                <div class="s-subtext">FECH. ANTERIOR: {s_m['prev']:.4f}</div>
             </div>
             """, unsafe_allow_html=True)
             
@@ -146,6 +143,7 @@ while True:
             st.markdown(f'<div class="d-row"><div class="d-label">PREÇO JUSTO</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((spot+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{justo:.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((spot+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="d-row"><div class="d-label">REF. INSTITUCIONAL</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((v_global["ref"]+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{(round((v_global["ref"]+0.0310)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((v_global["ref"]+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
 
+            # REGIÃO DE CORREÇÃO
             st.markdown(f"""
             <div class="d-row" style="padding-top:10px; border-bottom: none; align-items: flex-start;">
                 <div class="d-label" style="opacity:0.6; margin-top:5px;">REGIÃO DE CORREÇÃO</div>
@@ -162,6 +160,7 @@ while True:
             </div>
             """, unsafe_allow_html=True)
 
+            # BLOCO DE NOTAS
             st.markdown(f"""
             <div class="note-box">
                 <div class="note-title">MORNING CALL & AGENDA</div>
