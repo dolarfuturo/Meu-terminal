@@ -55,6 +55,7 @@ st.markdown("""
     .s-container { text-align: center; padding: 10px 0; margin-bottom: 5px; }
     .s-text { font-size: 18px; font-weight: 700; letter-spacing: 1px; font-family: 'Chakra Petch'; }
     .s-subtext { font-size: 10px; color: #666; font-weight: 400; letter-spacing: 1px; margin-top: 2px; }
+    .vies-indicator { font-size: 14px; font-weight: 900; letter-spacing: 3px; margin-top: 8px; font-family: 'Orbitron'; }
     .d-row { display: flex; justify-content: space-between; align-items: center; padding: 18px 15px; border-bottom: 1px solid #111; }
     .d-label { font-size: 11px; color: #FFFFFF; font-weight: 900; width: 40%; }
     .sub-grid { display: flex; gap: 15px; justify-content: flex-end; width: 60%; }
@@ -104,10 +105,19 @@ while True:
     eu_m = get_clean_data("EURUSD=X")
     
     if d_m["last"] > 0:
-        spot = s_m["last"]
+        # ARREDONDAMENTOS 0.5 pts
+        spot = round(s_m["last"] * 200) / 200
+        prev_disc = (s_m["prev"] * 200 // 1) / 200
+        
         spr = d_m["var"] - e_m["var"]
+        paridade_global = v_global["ajuste"]*(1+(spr/100))
         justo = round((spot + 0.0310) * 2000) / 2000
         equilibrio = round((v_global["ref"] + 0.0220) * 2000) / 2000
+
+        # INDICADOR VISUAL DO FUTURO (SETA)
+        if spot < (paridade_global - 0.0030): fut_seta, fut_clr = "▲▲ FUTURO", "#00cc66"
+        elif spot > (paridade_global + 0.0030): fut_seta, fut_clr = "▼▼ FUTURO", "#cc3333"
+        else: fut_seta, fut_clr = "●● NEUTRO", "#444"
         
         diff = spot - justo
         if diff < -0.0015: clr, arr = "#00aa55", "▲ ▲ ▲ ▲ ▲"
@@ -126,55 +136,4 @@ while True:
                         v_global["notas2"] = st.text_input("RODAPÉ 2", value=v_global["notas2"])
                         if st.form_submit_button("SALVAR"): st.rerun()
 
-            st.markdown(f'<div class="t-header"><div class="t-title">TERMINAL <span class="t-bold">DOLAR</span></div></div>', unsafe_allow_html=True)
-            
-            # CABEÇALHO ALTERADO: PREÇO SPOT + VARIAÇÃO E FECHAMENTO ANTERIOR ABAIXO
-            st.markdown(f"""
-            <div class="s-container" style="border-bottom: 2px solid {clr}77">
-                <div class="s-text" style="color:#fff">
-                    SPOT {spot:.4f} <span style="color:{clr}; margin-left:10px;">({s_m['var']:+.2f}%)</span>
-                </div>
-                <div class="s-subtext">FECH. ANTERIOR: {s_m['prev']:.4f}</div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value c-pari">{(v_global["ajuste"]*(1+(spr/100))):.4f}</div></div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value c-equi">{equilibrio:.4f}</div></div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="d-row"><div class="d-label">PREÇO JUSTO</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((spot+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{justo:.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((spot+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="d-row"><div class="d-label">REF. INSTITUCIONAL</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((v_global["ref"]+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{(round((v_global["ref"]+0.0310)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((v_global["ref"]+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
-
-            # REGIÃO DE CORREÇÃO
-            st.markdown(f"""
-            <div class="d-row" style="padding-top:10px; border-bottom: none; align-items: flex-start;">
-                <div class="d-label" style="opacity:0.6; margin-top:5px;">REGIÃO DE CORREÇÃO</div>
-                <div class="sub-grid">
-                    <div class="sub-item">
-                        <span class="v-peq">{(equilibrio - 0.0110):.4f}</span>
-                        <span class="v-extra">{(equilibrio - 0.0220):.4f}</span>
-                    </div>
-                    <div class="sub-item">
-                        <span class="v-peq">{(equilibrio + 0.0110):.4f}</span>
-                        <span class="v-extra">{(equilibrio + 0.0220):.4f}</span>
-                    </div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-            # BLOCO DE NOTAS
-            st.markdown(f"""
-            <div class="note-box">
-                <div class="note-title">MORNING CALL & AGENDA</div>
-                <div class="note-content">{v_global["notas_mural"].replace('\\n', '<br>').replace('\n', '<br>')}</div>
-            </div>
-            """, unsafe_allow_html=True)
-
-            def f_tk(d, n):
-                v, p = d["var"], d["last"]
-                c = "#00aa55" if v >= 0 else "#aa3333"
-                pf = f"{p:.4f}" if n == "SPOT" else f"{p:.2f}"
-                return f"<span class='tk-item'><b>{n}</b> {pf} <span style='color:{c}'>({v:+.2f}%)</span></span>"
-
-            btk = f"{f_tk(s_m,'SPOT')} {f_tk(d_m,'DXY')} {f_tk(e_m,'EWZ')} {f_tk(eu_m,'EURUSD')} <span class='tk-item'><b>SPREAD</b> {spr:+.2f}%</span>"
-            st.markdown(f'<div class="f-bar"><div class="f-notes">{v_global["notas"]}</div><div class="f-notes2">{v_global["notas2"]}</div><div class="f-line"></div><div class="f-arrows" style="color:{clr}">{arr}</div><div class="f-line"></div><div class="tk-wrap"><div class="tk-move">{btk} {btk} {btk}</div></div></div>', unsafe_allow_html=True)
-            
-    time.sleep(2)
+            st.markdown(f'<div class="t-header"><div class="t-title">TERMINAL <span
