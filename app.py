@@ -42,7 +42,7 @@ if not st.session_state.auth:
                 st.rerun()
     st.stop()
 
-# 4. CSS DO TERMINAL (ADICIONADO ANIMAÇÃO DE PULSAR)
+# 4. CSS DO TERMINAL
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;700&family=Orbitron:wght@400;900&display=swap');
@@ -50,9 +50,9 @@ st.markdown("""
     .stApp { background-color: #000; color: #fff; font-family: 'Orbitron', sans-serif; }
     .block-container { padding: 0rem !important; max-width: 100% !important; }
     
-    /* ANIMAÇÃO PULSANTE */
-    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
-    .pulsing-dot { color: #ffff00; animation: pulse 1s infinite; margin-right: 10px; }
+    /* ANIMAÇÃO DO SINAL PULSANTE */
+    @keyframes blinker { 50% { opacity: 0; } }
+    .pulse { animation: blinker 1s linear infinite; color: #ffff00; margin-right: 8px; font-size: 14px; }
 
     .t-header { text-align: center; padding: 20px 0 10px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
     .t-title { color: #555; font-size: 13px; letter-spacing: 4px; }
@@ -113,8 +113,8 @@ while True:
         spot = s_m["last"]
         prev_close = s_m["prev"]
         
-        # VARIAÇÃO DE COR DINÂMICA
-        cor_spot_var = "#00cc66" if s_m['var'] >= 0 else "#cc3333"
+        # DEFINIÇÃO DA COR DO SPOT (VERDE/VERMELHO)
+        cor_spot = "#00cc66" if s_m["var"] >= 0 else "#cc3333"
         
         spr = d_m["var"] - e_m["var"]
         paridade_global = v_global["ajuste"]*(1+(spr/100))
@@ -142,22 +142,59 @@ while True:
                         v_global["notas2"] = st.text_input("RODAPÉ 2", value=v_global["notas2"])
                         if st.form_submit_button("SALVAR"): st.rerun()
 
-            # TÍTULO COM SINAL PULSANTE
-            st.markdown(f'<div class="t-header"><div class="t-title"><span class="pulsing-dot">●</span>TERMINAL <span class="t-bold">DOLAR</span></div></div>', unsafe_allow_html=True)
+            # HEADER COM SINAL PULSANTE
+            st.markdown(f'<div class="t-header"><div class="t-title"><span class="pulse">●</span>TERMINAL <span class="t-bold">DOLAR</span></div></div>', unsafe_allow_html=True)
             
-            # CABEÇALHO COM COR DINÂMICA NA VARIAÇÃO
+            # SPOT COM VARIAÇÃO COLORIDA
             st.markdown(f"""
             <div class="s-container" style="border-bottom: 2px solid {clr}77">
                 <div class="s-text" style="color:#fff">
-                    SPOT {spot:.4f} <span style="color:{cor_spot_var}; margin-left:10px;">({s_m['var']:+.2f}%)</span>
+                    SPOT {spot:.4f} <span style="color:{cor_spot}; margin-left:10px;">({s_m['var']:+.2f}%)</span>
                 </div>
                 <div class="s-subtext">FECH. ANTERIOR: {prev_close:.4f}</div>
                 <div class="vies-indicator" style="color:{fut_clr}">{fut_seta}</div>
             </div>
             """, unsafe_allow_html=True)
             
-            # (Restante do layout mantido conforme original)
             st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value c-pari">{paridade_global:.4f}</div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value c-equi">{equilibrio:.4f}</div></div>', unsafe_allow_html=True)
+            
+            # PREÇO JUSTO
             st.markdown(f'<div class="d-row"><div class="d-label">PREÇO JUSTO</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((spot+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{justo:.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((spot+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="d-row"><div class="d-label">REF. INSTITUCIONAL</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((v_global["ref"]+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="
+            
+            # REF INSTITUCIONAL (LINHA QUE CAUSOU O ERRO CORRIGIDA)
+            st.markdown(f'<div class="d-row"><div class="d-label">REF. INSTITUCIONAL</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((v_global["ref"]+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{(round((v_global["ref"]+0.0310)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((v_global["ref"]+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
+
+            st.markdown(f"""
+            <div class="d-row" style="padding-top:10px; border-bottom: none; align-items: flex-start;">
+                <div class="d-label" style="opacity:0.6; margin-top:5px;">REGIÃO DE CORREÇÃO</div>
+                <div class="sub-grid">
+                    <div class="sub-item">
+                        <span class="v-peq">{(equilibrio - 0.0110):.4f}</span>
+                        <span class="v-extra">{(equilibrio - 0.0220):.4f}</span>
+                    </div>
+                    <div class="sub-item">
+                        <span class="v-peq">{(equilibrio + 0.0110):.4f}</span>
+                        <span class="v-extra">{(equilibrio + 0.0220):.4f}</span>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            st.markdown(f"""
+            <div class="note-box">
+                <div class="note-title">MORNING CALL & AGENDA</div>
+                <div class="note-content">{v_global["notas_mural"].replace('\\n', '<br>').replace('\n', '<br>')}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            def f_tk(d, n):
+                v, p = d["var"], d["last"]
+                c = "#00aa55" if v >= 0 else "#aa3333"
+                pf = f"{p:.4f}" if n == "SPOT" else f"{p:.2f}"
+                return f"<span class='tk-item'><b>{n}</b> {pf} <span style='color:{c}'>({v:+.2f}%)</span></span>"
+
+            btk = f"{f_tk(s_m,'SPOT')} {f_tk(d_m,'DXY')} {f_tk(e_m,'EWZ')} {f_tk(eu_m,'EURUSD')} <span class='tk-item'><b>SPREAD</b> {spr:+.2f}%</span>"
+            st.markdown(f'<div class="f-bar"><div class="f-notes">{v_global["notas"]}</div><div class="f-notes2">{v_global["notas2"]}</div><div class="f-line"></div><div class="f-arrows" style="color:{clr}">{arr}</div><div class="f-line"></div><div class="tk-wrap"><div class="tk-move">{btk} {btk} {btk}</div></div></div>', unsafe_allow_html=True)
+            
+    time.sleep(1) # ATUALIZAÇÃO DE 1 SEGUNDO
