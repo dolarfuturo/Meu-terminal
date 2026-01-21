@@ -7,7 +7,7 @@ import pytz
 # 1. CONFIGURAÇÃO DE PÁGINA
 st.set_page_config(page_title="TERMINAL FINANCEIRO", layout="wide", initial_sidebar_state="collapsed")
 
-# 2. ESTADO GLOBAL (CACHE DE LONGA DURAÇÃO)
+# 2. ESTADO GLOBAL
 @st.cache_resource
 def get_global_vars():
     return {
@@ -67,9 +67,11 @@ st.markdown("""
     .d-value { font-size: 26px; text-align: right; font-family: 'Chakra Petch'; font-weight: 700; }
     .c-pari { color: #cc9900; } .c-equi { color: #00cccc; } 
     .c-max { color: #00cc66; } .c-min { color: #cc3333; } .c-jus { color: #0066cc; }
+    
     .note-box { background: #050505; border-top: 1px solid #111; padding: 15px 20px; margin-top: 5px; min-height: 120px; }
     .note-title { font-size: 9px; color: #444; letter-spacing: 2px; margin-bottom: 8px; font-weight: 900; border-bottom: 1px solid #111; padding-bottom: 4px; }
     .note-content { font-family: 'Chakra Petch'; font-size: 13px; color: #999; line-height: 1.5; text-transform: none !important; }
+
     .f-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: 130px; background: #050505; border-top: 1px solid #222; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
     .f-notes { font-family: 'Chakra Petch'; font-size: 11px; color: #ffff99; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px; }
     .f-notes2 { font-family: 'Chakra Petch'; font-size: 10px; color: #aaaaaa; margin-bottom: 8px; }
@@ -81,51 +83,37 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 5. MOTOR DE DADOS OTIMIZADO (SEM CACHE PARA 1S)
-def fetch_ticker(ticker):
+# 5. MOTOR DE DADOS COM TRATAMENTO DE ERROS (EVITA TELA PRETA)
+def get_clean_data(ticker):
     try:
-        # Puxamos apenas o último minuto para ser ultra rápido
         data = yf.download(ticker, period="1d", interval="1m", progress=False, prepost=True)
         if not data.empty:
             last = float(data['Close'].iloc[-1])
-            prev = float(yf.Ticker(ticker).fast_info.previous_close)
+            t = yf.Ticker(ticker)
+            prev = t.info.get('previousClose', last)
             var = ((last - prev) / prev * 100) if prev != 0 else 0
             return {"last": last, "prev": prev, "var": var}
     except:
         pass
-    return None
+    return {"last": 1.0, "prev": 1.0, "var": 0.0} # Retorna valores base para não quebrar o cálculo
 
-# Inicialização de valores para evitar erros no primeiro loop
-last_s = {"last": v_global["ajuste"], "prev": v_global["ajuste"], "var": 0.0}
-last_d = {"last": 100.0, "prev": 100.0, "var": 0.0}
-last_e = {"last": 30.0, "prev": 30.0, "var": 0.0}
-last_eu = {"last": 1.08, "prev": 1.08, "var": 0.0}
-
-# 6. LOOP DE EXECUÇÃO ULTRA RÁPIDO (1 SEGUNDO)
+# 6. LOOP DE EXECUÇÃO
 ui_area = st.empty()
 while True:
-    # Tenta atualizar, se falhar mantém o último (evita tela preta)
-    new_s = fetch_ticker("BRL=X")
-    if new_s: last_s = new_s
+    d_m = get_clean_data("DX-Y.NYB")
+    e_m = get_clean_data("EWZ")
+    s_m = get_clean_data("BRL=X")
+    eu_m = get_clean_data("EURUSD=X")
     
-    new_d = fetch_ticker("DX-Y.NYB")
-    if new_d: last_d = new_d
+    # Se os dados falharem, o script usa os valores globais para preencher a tela
+    spot = s_m["last"] if s_m["last"] > 1.0 else v_global["ajuste"]
+    prev_close = s_m["prev"] if s_m["prev"] > 1.0 else v_global["ajuste"]
     
-    new_e = fetch_ticker("EWZ")
-    if new_e: last_e = new_e
-    
-    new_eu = fetch_ticker("EURUSD=X")
-    if new_eu: last_eu = new_eu
-
-    # Cálculos com os dados mais recentes disponíveis
-    spot = last_s["last"]
-    prev_close = last_s["prev"]
-    spr = last_d["var"] - last_e["var"]
+    spr = d_m["var"] - e_m["var"]
     paridade_global = v_global["ajuste"]*(1+(spr/100))
     justo = round((spot + 0.0310) * 2000) / 2000
     equilibrio = round((v_global["ref"] + 0.0220) * 2000) / 2000
 
-    # Sinal do Futuro
     if spot < (paridade_global - 0.0030): fut_seta, fut_clr = "▲▲ FUTURO", "#00cc66"
     elif spot > (paridade_global + 0.0030): fut_seta, fut_clr = "▼▼ FUTURO", "#cc3333"
     else: fut_seta, fut_clr = "● ESTÁVEL", "#444"
@@ -150,7 +138,7 @@ while True:
         st.markdown(f"""
         <div class="s-container" style="border-bottom: 2px solid {clr}77">
             <div class="s-text" style="color:#fff">
-                SPOT {spot:.4f} <span style="color:{clr}; margin-left:10px;">({last_s['var']:+.2f}%)</span>
+                SPOT {spot:.4f} <span style="color:{clr}; margin-left:10px;">({s_m['var']:+.2f}%)</span>
             </div>
             <div class="s-subtext">FECH. ANTERIOR: {prev_close:.4f}</div>
             <div class="vies-indicator" style="color:{fut_clr}">{fut_seta}</div>
@@ -175,7 +163,7 @@ while True:
             pf = f"{p:.4f}" if n == "SPOT" else f"{p:.2f}"
             return f"<span class='tk-item'><b>{n}</b> {pf} <span style='color:{c}'>({v:+.2f}%)</span></span>"
 
-        btk = f"{f_tk(last_s,'SPOT')} {f_tk(last_d,'DXY')} {f_tk(last_e,'EWZ')} {f_tk(last_eu,'EURUSD')} <span class='tk-item'><b>SPREAD</b> {spr:+.2f}%</span>"
+        btk = f"{f_tk(s_m,'SPOT')} {f_tk(d_m,'DXY')} {f_tk(e_m,'EWZ')} {f_tk(eu_m,'EURUSD')} <span class='tk-item'><b>SPREAD</b> {spr:+.2f}%</span>"
         st.markdown(f"""
         <div class="f-bar">
             <div class="f-notes">{v_global["notas"]}</div>
@@ -187,5 +175,4 @@ while True:
         </div>
         """, unsafe_allow_html=True)
     
-    # ATUALIZAÇÃO A CADA 1 SEGUNDO
-    time.sleep(1)
+    time.sleep(5)
