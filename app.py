@@ -52,10 +52,10 @@ st.markdown("""
     
     @keyframes pulse_update {
         0% { transform: scale(1); opacity: 1; }
-        50% { transform: scale(1.002); opacity: 0.9; }
+        50% { transform: scale(1.002); opacity: 0.95; }
         100% { transform: scale(1); opacity: 1; }
     }
-    .update-anim { animation: pulse_update 0.6s ease-in-out; }
+    .update-anim { animation: pulse_update 0.5s ease-in-out; }
 
     .t-header { text-align: center; padding: 10px 0 5px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
     .t-title { color: #555; font-size: 13px; letter-spacing: 4px; }
@@ -92,7 +92,8 @@ def get_clean_data(ticker):
         data = yf.download(ticker, period="1d", interval="1m", progress=False, prepost=True)
         if not data.empty:
             last = float(data['Close'].iloc[-1])
-            prev = yf.Ticker(ticker).info.get('previousClose', last)
+            t = yf.Ticker(ticker)
+            prev = t.info.get('previousClose', last)
             var = ((last - prev) / prev * 100) if prev != 0 else 0
             return {"last": last, "prev": prev, "var": var}
     except: pass
@@ -119,10 +120,10 @@ while True:
         else: clr, arr = "#aaaa00", "◄ ◄ ◄ ► ► ►"
             
         with ui_area.container():
-            # BOTÃO DE VARIÁVEIS (ADM) ACIMA DO NOME
+            # 1. PAINEL ADM NO TOPO
             if st.session_state.user_type == "ADM":
-                with st.expander("⚙️ AJUSTAR VARIÁVEIS"):
-                    with st.form("adm"):
+                with st.expander("⚙️ PAINEL DE CONTROLE"):
+                    with st.form("adm_form"):
                         c1, c2 = st.columns(2)
                         v_global["ajuste"] = c1.number_input("PARIDADE", value=v_global["ajuste"], format="%.4f")
                         v_global["ref"] = c2.number_input("REF INST", value=v_global["ref"], format="%.4f")
@@ -132,7 +133,7 @@ while True:
             st.markdown('<div class="update-anim">', unsafe_allow_html=True)
             st.markdown(f'<div class="t-header"><div class="t-title">TERMINAL <span class="t-bold">DOLAR</span></div></div>', unsafe_allow_html=True)
             
-            # SPOT BRANCO + VARIAÇÃO VERDE/VERMELHA SEM PARÊNTESES
+            # SPOT BRANCO + VAR COLORIDA SEM ()
             st.markdown(f"""
             <div class="s-container" style="border-bottom: 2px solid {clr}77">
                 <div class="s-text">
