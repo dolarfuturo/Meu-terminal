@@ -50,13 +50,12 @@ st.markdown("""
     .stApp { background-color: #000; color: #fff; font-family: 'Orbitron', sans-serif; }
     .block-container { padding: 0rem !important; max-width: 100% !important; }
     
-    /* ANIMAÇÃO DOS BONECOS SE MEXENDO (SINAL DE ATUALIZAÇÃO) */
-    @keyframes pulse_update {
-        0% { transform: scale(1); opacity: 1; }
-        50% { transform: scale(1.002); opacity: 0.9; }
-        100% { transform: scale(1); opacity: 1; }
+    @keyframes pulse_dot {
+        0% { opacity: 1; }
+        50% { opacity: 0.3; }
+        100% { opacity: 1; }
     }
-    .update-anim { animation: pulse_update 0.6s ease-in-out; }
+    .update-dot { color: #00ff00; animation: pulse_dot 1s infinite; margin-right: 5px; }
 
     .t-header { text-align: center; padding: 20px 0 10px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
     .t-title { color: #555; font-size: 13px; letter-spacing: 4px; }
@@ -112,6 +111,9 @@ while True:
         justo = round((spot + 0.0310) * 2000) / 2000
         equilibrio = round((v_global["ref"] + 0.0220) * 2000) / 2000
 
+        # Cores para variação do SPOT
+        v_clr = "#00cc66" if s_m['var'] >= 0 else "#cc3333"
+
         if spot < (paridade_global - 0.0030): fut_seta, fut_clr = "▲ FUTURO", "#00cc66"
         elif spot > (paridade_global + 0.0030): fut_seta, fut_clr = "▼ FUTURO", "#cc3333"
         else: fut_seta, fut_clr = "● ESTÁVEL", "#444"
@@ -122,15 +124,24 @@ while True:
         else: clr, arr = "#aaaa00", "◄ ◄ ◄ ► ► ►"
             
         with ui_area.container():
-            st.markdown('<div class="update-anim">', unsafe_allow_html=True) # INÍCIO ANIMAÇÃO
-            st.markdown(f'<div class="t-header"><div class="t-title">TERMINAL <span class="t-bold">DOLAR</span></div></div>', unsafe_allow_html=True)
+            # PAINEL ADM ACIMA DO NOME
+            if st.session_state.user_type == "ADM":
+                with st.expander("⚙️ VARIÁVEIS DO SISTEMA"):
+                    with st.form("adm_vars"):
+                        c1, c2 = st.columns(2)
+                        v_global["ajuste"] = c1.number_input("PARIDADE", value=v_global["ajuste"], format="%.4f")
+                        v_global["ref"] = c2.number_input("REF INST", value=v_global["ref"], format="%.4f")
+                        v_global["notas_mural"] = st.text_area("MORNING CALL", value=v_global["notas_mural"])
+                        if st.form_submit_button("SALVAR ALTERAÇÕES"): st.rerun()
+
+            st.markdown(f'<div class="t-header"><div class="t-title"><span class="update-dot">●</span>TERMINAL <span class="t-bold">DOLAR</span></div></div>', unsafe_allow_html=True)
             
-            # SPOT BRANCO + VARIAÇÃO COLORIDA
+            # SPOT BRANCO + VARIAÇÃO COLORIDA SEM ()
             st.markdown(f"""
             <div class="s-container" style="border-bottom: 2px solid {clr}77">
                 <div class="s-text">
                     SPOT <span style="color:#fff">{spot:.4f}</span> 
-                    <span style="color:{clr}; margin-left:10px;">({s_m['var']:+.2f}%)</span>
+                    <span style="color:{v_clr}; margin-left:10px;">{s_m['var']:+.2f}%</span>
                 </div>
                 <div class="s-subtext">FECH. ANTERIOR: {prev_close:.4f}</div>
                 <div class="vies-indicator" style="color:{fut_clr}">{fut_seta}</div>
@@ -152,6 +163,5 @@ while True:
 
             btk = f"{f_tk(s_m,'SPOT')} {f_tk(d_m,'DXY')} {f_tk(e_m,'EWZ')} {f_tk(eu_m,'EURUSD')} <span class='tk-item'><b>SPREAD</b> {spr:+.2f}%</span>"
             st.markdown(f'<div class="f-bar"><div class="f-notes">{v_global["notas"]}</div><div class="f-notes2">{v_global["notas2"]}</div><div class="f-line"></div><div class="f-arrows" style="color:{clr}">{arr}</div><div class="f-line"></div><div class="tk-wrap"><div class="tk-move">{btk} {btk} {btk}</div></div></div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True) # FIM ANIMAÇÃO
     
     time.sleep(1)
