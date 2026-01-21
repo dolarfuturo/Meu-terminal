@@ -87,6 +87,7 @@ st.markdown("""
 # 5. MOTOR DE DATA
 def get_clean_data(ticker):
     try:
+        # Puxa os dados forçando a menor janela possível
         df = yf.download(ticker, period="1d", interval="1m", progress=False, prepost=True)
         t = yf.Ticker(ticker)
         prev = float(t.fast_info.previous_close)
@@ -105,7 +106,6 @@ while True:
     eu_m = get_clean_data("EURUSD=X")
     
     if d_m["last"] > 0:
-        # --- VALORES SPOT NORMAIS (SEM ARREDONDAMENTO) ---
         spot = s_m["last"]
         prev_close = s_m["prev"]
         
@@ -114,7 +114,6 @@ while True:
         justo = round((spot + 0.0310) * 2000) / 2000
         equilibrio = round((v_global["ref"] + 0.0220) * 2000) / 2000
 
-        # --- SINAL DO FUTURO ---
         if spot < (paridade_global - 0.0030): fut_seta, fut_clr = "▲ FUTURO", "#00cc66"
         elif spot > (paridade_global + 0.0030): fut_seta, fut_clr = "▼ FUTURO", "#cc3333"
         else: fut_seta, fut_clr = "● ESTÁVEL", "#444"
@@ -138,7 +137,6 @@ while True:
 
             st.markdown(f'<div class="t-header"><div class="t-title">TERMINAL <span class="t-bold">DOLAR</span></div></div>', unsafe_allow_html=True)
             
-            # CABEÇALHO COM SPOT NORMAL E SETA
             st.markdown(f"""
             <div class="s-container" style="border-bottom: 2px solid {clr}77">
                 <div class="s-text" style="color:#fff">
@@ -186,4 +184,4 @@ while True:
             btk = f"{f_tk(s_m,'SPOT')} {f_tk(d_m,'DXY')} {f_tk(e_m,'EWZ')} {f_tk(eu_m,'EURUSD')} <span class='tk-item'><b>SPREAD</b> {spr:+.2f}%</span>"
             st.markdown(f'<div class="f-bar"><div class="f-notes">{v_global["notas"]}</div><div class="f-notes2">{v_global["notas2"]}</div><div class="f-line"></div><div class="f-arrows" style="color:{clr}">{arr}</div><div class="f-line"></div><div class="tk-wrap"><div class="tk-move">{btk} {btk} {btk}</div></div></div>', unsafe_allow_html=True)
             
-    time.sleep(1)
+    time.sleep(1) # Atualização a cada 1 segundo
