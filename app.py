@@ -50,14 +50,9 @@ st.markdown("""
     .stApp { background-color: #000; color: #fff; font-family: 'Orbitron', sans-serif; }
     .block-container { padding: 0rem !important; max-width: 100% !important; }
     
-    @keyframes pulse_update {
-        0% { transform: scale(1); opacity: 1; }
-        50% { transform: scale(1.002); opacity: 0.9; }
-        100% { transform: scale(1); opacity: 1; }
-    }
-    .update-anim { animation: pulse_update 0.6s ease-in-out; }
-    
-    .update-dot { color: #00ff00; margin-right: 8px; }
+    /* ANIMAÇÃO DO PONTO PISCANDO */
+    @keyframes blinker { 50% { opacity: 0; } }
+    .update-dot { color: #00ff00; margin-right: 8px; animation: blinker 1s linear infinite; }
 
     .t-header { text-align: center; padding: 20px 0 10px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
     .t-title { color: #555; font-size: 13px; letter-spacing: 4px; }
@@ -92,6 +87,7 @@ st.markdown("""
 
 def get_clean_data(ticker):
     try:
+        # Puxando apenas o último minuto para ser mais rápido (1s)
         data = yf.download(ticker, period="1d", interval="1m", progress=False, prepost=True)
         if not data.empty:
             last = float(data['Close'].iloc[-1])
@@ -113,7 +109,6 @@ while True:
         justo = round((spot + 0.0310) * 2000) / 2000
         equilibrio = round((v_global["ref"] + 0.0220) * 2000) / 2000
 
-        # Cor da variação do SPOT
         v_clr = "#00cc66" if s_m['var'] >= 0 else "#cc3333"
 
         if spot < (paridade_global - 0.0030): fut_seta, fut_clr = "▲ FUTURO", "#00cc66"
@@ -136,9 +131,7 @@ while True:
                         v_global["notas_mural"] = st.text_area("MORNING CALL", value=v_global["notas_mural"])
                         if st.form_submit_button("SALVAR"): st.rerun()
 
-            st.markdown('<div class="update-anim">', unsafe_allow_html=True) # INÍCIO ANIMAÇÃO
-            
-            # TÍTULO COM PONTO VERDE AO LADO DO T
+            # TÍTULO COM PONTO PISCANDO AO LADO DO T
             st.markdown(f'<div class="t-header"><div class="t-title"><span class="update-dot">●</span>TERMINAL <span class="t-bold">DOLAR</span></div></div>', unsafe_allow_html=True)
             
             # SPOT BRANCO + VARIAÇÃO COLORIDA SEM ()
@@ -168,6 +161,5 @@ while True:
 
             btk = f"{f_tk(s_m,'SPOT')} {f_tk(d_m,'DXY')} {f_tk(e_m,'EWZ')} {f_tk(eu_m,'EURUSD')} <span class='tk-item'><b>SPREAD</b> {spr:+.2f}%</span>"
             st.markdown(f'<div class="f-bar"><div class="f-notes">{v_global["notas"]}</div><div class="f-notes2">{v_global["notas2"]}</div><div class="f-line"></div><div class="f-arrows" style="color:{clr}">{arr}</div><div class="f-line"></div><div class="tk-wrap"><div class="tk-move">{btk} {btk} {btk}</div></div></div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True) # FIM ANIMAÇÃO
     
-    time.sleep(1)
+    time.sleep(1) # ATUALIZAÇÃO EM 1 SEGUNDO
