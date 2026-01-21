@@ -49,6 +49,15 @@ st.markdown("""
     [data-testid="stHeader"], .stAppDeployButton, [data-testid="stToolbar"], footer, [data-testid="stSidebar"], label { display: none !important; }
     .stApp { background-color: #000; color: #fff; font-family: 'Orbitron', sans-serif; }
     .block-container { padding: 0rem !important; max-width: 100% !important; }
+    
+    /* ANIMAÇÃO DE ATUALIZAÇÃO (BONECOS SE MEXENDO) */
+    @keyframes pulse {
+        0% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.002); opacity: 0.9; }
+        100% { transform: scale(1); opacity: 1; }
+    }
+    .update-pulse { animation: pulse 0.5s ease-in-out; }
+
     .t-header { text-align: center; padding: 20px 0 10px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
     .t-title { color: #555; font-size: 13px; letter-spacing: 4px; }
     .t-bold { color: #fff; font-weight: 900; }
@@ -62,8 +71,6 @@ st.markdown("""
     .sub-item { text-align: center; min-width: 70px; display: flex; flex-direction: column; }
     .sub-l { font-size: 8px; color: #888; display: block; margin-bottom: 2px; font-weight: 400; }
     .sub-v { font-size: 18px; font-family: 'Chakra Petch'; font-weight: 700; }
-    .v-peq { font-size: 15px; font-family: 'Chakra Petch'; font-weight: 700; color: #ffff00; }
-    .v-extra { font-size: 12px; font-family: 'Chakra Petch'; font-weight: 400; color: #ffff00; opacity: 0.6; margin-top: 2px; }
     .d-value { font-size: 26px; text-align: right; font-family: 'Chakra Petch'; font-weight: 700; }
     .c-pari { color: #cc9900; } .c-equi { color: #00cccc; } 
     .c-max { color: #00cc66; } .c-min { color: #cc3333; } .c-jus { color: #0066cc; }
@@ -72,10 +79,9 @@ st.markdown("""
     .note-title { font-size: 9px; color: #444; letter-spacing: 2px; margin-bottom: 8px; font-weight: 900; border-bottom: 1px solid #111; padding-bottom: 4px; }
     .note-content { font-family: 'Chakra Petch'; font-size: 13px; color: #999; line-height: 1.5; text-transform: none !important; }
 
-    .f-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: 160px; background: #050505; border-top: 1px solid #222; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
+    .f-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: 130px; background: #050505; border-top: 1px solid #222; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
     .f-notes { font-family: 'Chakra Petch'; font-size: 11px; color: #ffff99; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px; }
     .f-notes2 { font-family: 'Chakra Petch'; font-size: 10px; color: #aaaaaa; margin-bottom: 8px; }
-    .f-arrows { font-size: 16px; margin: 5px 0; letter-spacing: 8px; }
     .f-line { width: 85%; height: 1px; background: rgba(255,255,255,0.1); }
     .tk-wrap { width: 100%; overflow: hidden; white-space: nowrap; display: flex; margin-top: 8px; }
     .tk-move { display: inline-block; animation: slide 40s linear infinite; }
@@ -84,88 +90,102 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 5. MOTOR DE DATA REVISADO (FORÇANDO ATUALIZAÇÃO)
+# 5. MOTOR DE DATA
 def get_clean_data(ticker):
     try:
-        # Usamos period=1d e ignoramos cache interno
         data = yf.download(ticker, period="1d", interval="1m", progress=False, prepost=True)
         if not data.empty:
             last = float(data['Close'].iloc[-1])
-            # Tenta pegar o fechamento anterior de forma mais robusta
             t = yf.Ticker(ticker)
             prev = t.info.get('previousClose', last)
             var = ((last - prev) / prev * 100) if prev != 0 else 0
             return {"last": last, "prev": prev, "var": var}
-    except Exception as e:
+    except:
         pass
-    return {"last": 0.0, "prev": 0.0, "var": 0.0}
+    return None
 
-# 6. LOOP DE EXECUÇÃO
+# Valores de Cache para evitar tela preta em falha de sinal
+last_s = {"last": 5.4000, "prev": 5.4000, "var": 0.0}
+last_d = {"var": 0.0}
+last_e = {"var": 0.0}
+
+# 6. LOOP DE EXECUÇÃO (1 SEGUNDO)
 ui_area = st.empty()
 while True:
-    # Coleta de dados
-    d_m = get_clean_data("DX-Y.NYB")
-    e_m = get_clean_data("EWZ")
-    s_m = get_clean_data("BRL=X")
-    eu_m = get_clean_data("EURUSD=X")
+    # Coleta
+    res_s = get_clean_data("BRL=X")
+    if res_s: last_s = res_s
     
-    if s_m["last"] > 0:
-        spot = s_m["last"]
-        prev_close = s_m["prev"]
-        
-        spr = d_m["var"] - e_m["var"]
-        paridade_global = v_global["ajuste"]*(1+(spr/100))
-        justo = round((spot + 0.0310) * 2000) / 2000
-        equilibrio = round((v_global["ref"] + 0.0220) * 2000) / 2000
-
-        if spot < (paridade_global - 0.0030): fut_seta, fut_clr = "▲ FUTURO", "#00cc66"
-        elif spot > (paridade_global + 0.0030): fut_seta, fut_clr = "▼ FUTURO", "#cc3333"
-        else: fut_seta, fut_clr = "● ESTÁVEL", "#444"
-        
-        diff = spot - justo
-        if diff < -0.0015: clr, arr = "#00aa55", "▲ ▲ ▲ ▲ ▲"
-        elif diff > 0.0015: clr, arr = "#aa3333", "▼ ▼ ▼ ▼ ▼"
-        else: clr, arr = "#aaaa00", "◄ ◄ ◄ ► ► ►"
-            
-        with ui_area.container():
-            # Cabeçalho Principal
-            st.markdown(f'<div class="t-header"><div class="t-title">TERMINAL <span class="t-bold">DOLAR</span></div></div>', unsafe_allow_html=True)
-            
-            st.markdown(f"""
-            <div class="s-container" style="border-bottom: 2px solid {clr}77">
-                <div class="s-text" style="color:#fff">
-                    SPOT {spot:.4f} <span style="color:{clr}; margin-left:10px;">({s_m['var']:+.2f}%)</span>
-                </div>
-                <div class="s-subtext">FECH. ANTERIOR: {prev_close:.4f}</div>
-                <div class="vies-indicator" style="color:{fut_clr}">{fut_seta}</div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Dados de Paridade e Equilíbrio
-            st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value c-pari">{paridade_global:.4f}</div></div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value c-equi">{equilibrio:.4f}</div></div>', unsafe_allow_html=True)
-            
-            # Preço Justo e Ref Institucional
-            st.markdown(f'<div class="d-row"><div class="d-label">PREÇO JUSTO</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((spot+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{justo:.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((spot+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="d-row"><div class="d-label">REF. INSTITUCIONAL</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((v_global["ref"]+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{(round((v_global["ref"]+0.0310)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((v_global["ref"]+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
-
-            # Mural e Rodapé
-            st.markdown(f"""
-            <div class="note-box">
-                <div class="note-title">MORNING CALL & AGENDA</div>
-                <div class="note-content">{v_global["notas_mural"].replace('\\n', '<br>').replace('\n', '<br>')}</div>
-            </div>
-            """, unsafe_allow_html=True)
-
-            # Ticket Inferior
-            def f_tk(d, n):
-                v, p = d["var"], d["last"]
-                c = "#00aa55" if v >= 0 else "#aa3333"
-                pf = f"{p:.4f}" if n == "SPOT" else f"{p:.2f}"
-                return f"<span class='tk-item'><b>{n}</b> {pf} <span style='color:{c}'>({v:+.2f}%)</span></span>"
-
-            btk = f"{f_tk(s_m,'SPOT')} {f_tk(d_m,'DXY')} {f_tk(e_m,'EWZ')} {f_tk(eu_m,'EURUSD')} <span class='tk-item'><b>SPREAD</b> {spr:+.2f}%</span>"
-            st.markdown(f'<div class="f-bar"><div class="f-notes">{v_global["notas"]}</div><div class="f-notes2">{v_global["notas2"]}</div><div class="f-line"></div><div class="f-arrows" style="color:{clr}">{arr}</div><div class="f-line"></div><div class="tk-wrap"><div class="tk-move">{btk} {btk} {btk}</div></div></div>', unsafe_allow_html=True)
+    res_d = get_clean_data("DX-Y.NYB")
+    if res_d: last_d = res_d
     
-    # Pausa curta para não sobrecarregar a API
-    time.sleep(5)
+    res_e = get_clean_data("EWZ")
+    if res_e: last_e = res_e
+    
+    # Cálculos
+    spot = last_s["last"]
+    prev_close = last_s["prev"]
+    spr = last_d["var"] - last_e["var"]
+    paridade_global = v_global["ajuste"]*(1+(spr/100))
+    justo = round((spot + 0.0310) * 2000) / 2000
+    
+    # Cor da Variação do Spot
+    var_clr = "#00cc66" if last_s["var"] >= 0 else "#cc3333"
+
+    # Sinal Futuro
+    if spot < (paridade_global - 0.0030): fut_seta, fut_clr = "▲▲ FUTURO", "#00cc66"
+    elif spot > (paridade_global + 0.0030): fut_seta, fut_clr = "▼▼ FUTURO", "#cc3333"
+    else: fut_seta, fut_clr = "● ESTÁVEL", "#444"
+            
+    with ui_area.container():
+        # DIV DE ANIMAÇÃO (BONECOS SE MEXENDO)
+        st.markdown('<div class="update-pulse">', unsafe_allow_html=True)
+        
+        st.markdown(f'<div class="t-header"><div class="t-title">TERMINAL <span class="t-bold">DOLAR</span></div></div>', unsafe_allow_html=True)
+        
+        # SPOT BRANCO + VARIAÇÃO COLORIDA
+        st.markdown(f"""
+        <div class="s-container">
+            <div class="s-text">
+                SPOT <span style="color:#fff">{spot:.4f}</span> 
+                <span style="color:{var_clr}; margin-left:10px;">({last_s['var']:+.2f}%)</span>
+            </div>
+            <div class="s-subtext">FECH. ANTERIOR: {prev_close:.4f}</div>
+            <div class="vies-indicator" style="color:{fut_clr}">{fut_seta}</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value c-pari">{paridade_global:.4f}</div></div>', unsafe_allow_html=True)
+        
+        st.markdown(f"""
+        <div class="d-row">
+            <div class="d-label">PREÇO JUSTO</div>
+            <div class="sub-grid">
+                <div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((spot+0.0220)*2000)/2000):.4f}</span></div>
+                <div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{justo:.4f}</span></div>
+                <div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((spot+0.0420)*2000)/2000):.4f}</span></div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown(f"""
+        <div class="note-box">
+            <div class="note-title">MORNING CALL & AGENDA</div>
+            <div class="note-content">{v_global["notas_mural"]}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Rodapé sem setas gigantes
+        btk = f"<span class='tk-item'><b>SPOT</b> {spot:.4f}</span> <span class='tk-item'><b>DXY</b> {last_d.get('last',0):.2f}</span> <span class='tk-item'><b>SPREAD</b> {spr:+.2f}%</span>"
+        st.markdown(f"""
+        <div class="f-bar">
+            <div class="f-notes">{v_global["notas"]}</div>
+            <div class="f-notes2">{v_global["notas2"]}</div>
+            <div class="f-line"></div>
+            <div class="tk-wrap"><div class="tk-move">{btk} {btk} {btk}</div></div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown('</div>', unsafe_allow_html=True) # Fim da Div de Animação
+    
+    time.sleep(1)
