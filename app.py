@@ -50,7 +50,6 @@ st.markdown("""
     .stApp { background-color: #000; color: #fff; font-family: 'Orbitron', sans-serif; }
     .block-container { padding: 0rem !important; max-width: 100% !important; }
     
-    /* ANIMAÇÃO DOS BONECOS SE MEXENDO (SINAL DE ATUALIZAÇÃO) */
     @keyframes pulse_update {
         0% { transform: scale(1); opacity: 1; }
         50% { transform: scale(1.002); opacity: 0.9; }
@@ -58,7 +57,7 @@ st.markdown("""
     }
     .update-anim { animation: pulse_update 0.6s ease-in-out; }
 
-    .t-header { text-align: center; padding: 20px 0 10px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    .t-header { text-align: center; padding: 10px 0 5px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
     .t-title { color: #555; font-size: 13px; letter-spacing: 4px; }
     .t-bold { color: #fff; font-weight: 900; }
     .s-container { text-align: center; padding: 10px 0; margin-bottom: 5px; }
@@ -75,8 +74,7 @@ st.markdown("""
     .c-pari { color: #cc9900; } .c-equi { color: #00cccc; } 
     .c-max { color: #00cc66; } .c-min { color: #cc3333; } .c-jus { color: #0066cc; }
     .note-box { background: #050505; border-top: 1px solid #111; padding: 15px 20px; margin-top: 5px; min-height: 120px; }
-    .note-title { font-size: 9px; color: #444; letter-spacing: 2px; margin-bottom: 8px; font-weight: 900; border-bottom: 1px solid #111; padding-bottom: 4px; }
-    .note-content { font-family: 'Chakra Petch'; font-size: 13px; color: #999; line-height: 1.5; text-transform: none !important; }
+    .note-content { font-family: 'Chakra Petch'; font-size: 13px; color: #999; line-height: 1.5; }
     .f-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: 160px; background: #050505; border-top: 1px solid #222; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
     .f-notes { font-family: 'Chakra Petch'; font-size: 11px; color: #ffff99; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px; }
     .f-notes2 { font-family: 'Chakra Petch'; font-size: 10px; color: #aaaaaa; margin-bottom: 8px; }
@@ -94,8 +92,7 @@ def get_clean_data(ticker):
         data = yf.download(ticker, period="1d", interval="1m", progress=False, prepost=True)
         if not data.empty:
             last = float(data['Close'].iloc[-1])
-            t = yf.Ticker(ticker)
-            prev = t.info.get('previousClose', last)
+            prev = yf.Ticker(ticker).info.get('previousClose', last)
             var = ((last - prev) / prev * 100) if prev != 0 else 0
             return {"last": last, "prev": prev, "var": var}
     except: pass
@@ -122,15 +119,25 @@ while True:
         else: clr, arr = "#aaaa00", "◄ ◄ ◄ ► ► ►"
             
         with ui_area.container():
-            st.markdown('<div class="update-anim">', unsafe_allow_html=True) # INÍCIO ANIMAÇÃO
+            # BOTÃO DE VARIÁVEIS (ADM) ACIMA DO NOME
+            if st.session_state.user_type == "ADM":
+                with st.expander("⚙️ AJUSTAR VARIÁVEIS"):
+                    with st.form("adm"):
+                        c1, c2 = st.columns(2)
+                        v_global["ajuste"] = c1.number_input("PARIDADE", value=v_global["ajuste"], format="%.4f")
+                        v_global["ref"] = c2.number_input("REF INST", value=v_global["ref"], format="%.4f")
+                        v_global["notas_mural"] = st.text_area("MORNING CALL", value=v_global["notas_mural"])
+                        if st.form_submit_button("SALVAR"): st.rerun()
+
+            st.markdown('<div class="update-anim">', unsafe_allow_html=True)
             st.markdown(f'<div class="t-header"><div class="t-title">TERMINAL <span class="t-bold">DOLAR</span></div></div>', unsafe_allow_html=True)
             
-            # SPOT BRANCO + VARIAÇÃO COLORIDA
+            # SPOT BRANCO + VARIAÇÃO VERDE/VERMELHA SEM PARÊNTESES
             st.markdown(f"""
             <div class="s-container" style="border-bottom: 2px solid {clr}77">
                 <div class="s-text">
                     SPOT <span style="color:#fff">{spot:.4f}</span> 
-                    <span style="color:{clr}; margin-left:10px;">({s_m['var']:+.2f}%)</span>
+                    <span style="color:{clr}; margin-left:10px;">{s_m['var']:+.2f}%</span>
                 </div>
                 <div class="s-subtext">FECH. ANTERIOR: {prev_close:.4f}</div>
                 <div class="vies-indicator" style="color:{fut_clr}">{fut_seta}</div>
@@ -142,16 +149,16 @@ while True:
             st.markdown(f'<div class="d-row"><div class="d-label">PREÇO JUSTO</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((spot+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{justo:.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((spot+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="d-row"><div class="d-label">REF. INSTITUCIONAL</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((v_global["ref"]+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{(round((v_global["ref"]+0.0310)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((v_global["ref"]+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
 
-            st.markdown(f'<div class="note-box"><div class="note-title">MORNING CALL & AGENDA</div><div class="note-content">{v_global["notas_mural"]}</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="note-box"><div class="note-content">{v_global["notas_mural"].replace("\\n","<br>")}</div></div>', unsafe_allow_html=True)
 
             def f_tk(d, n):
                 v, p = d["var"], d["last"]
                 c = "#00aa55" if v >= 0 else "#aa3333"
                 pf = f"{p:.4f}" if n == "SPOT" else f"{p:.2f}"
-                return f"<span class='tk-item'><b>{n}</b> {pf} <span style='color:{c}'>({v:+.2f}%)</span></span>"
+                return f"<span class='tk-item'><b>{n}</b> {pf} <span style='color:{c}'>{v:+.2f}%</span></span>"
 
             btk = f"{f_tk(s_m,'SPOT')} {f_tk(d_m,'DXY')} {f_tk(e_m,'EWZ')} {f_tk(eu_m,'EURUSD')} <span class='tk-item'><b>SPREAD</b> {spr:+.2f}%</span>"
             st.markdown(f'<div class="f-bar"><div class="f-notes">{v_global["notas"]}</div><div class="f-notes2">{v_global["notas2"]}</div><div class="f-line"></div><div class="f-arrows" style="color:{clr}">{arr}</div><div class="f-line"></div><div class="tk-wrap"><div class="tk-move">{btk} {btk} {btk}</div></div></div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True) # FIM ANIMAÇÃO
+            st.markdown('</div>', unsafe_allow_html=True)
     
     time.sleep(1)
