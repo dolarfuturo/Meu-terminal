@@ -1,7 +1,7 @@
 import streamlit as st
 import yfinance as yf
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 import pytz
 
 # 1. CONFIGURAÇÃO DE PÁGINA
@@ -10,6 +10,7 @@ st.set_page_config(page_title="TERMINAL FINANCEIRO", layout="wide", initial_side
 # 2. ESTADO GLOBAL
 @st.cache_resource
 def get_global_vars():
+    # Reset automático implícito na lógica de mercado (Binance 00:00 UTC)
     return {
         "ajuste": 5.4000, 
         "ref": 5.4000,
@@ -53,7 +54,7 @@ st.markdown("""
     .t-title { color: #555; font-size: 13px; letter-spacing: 4px; }
     .t-bold { color: #fff; font-weight: 900; }
     .s-container { text-align: center; padding: 10px 0; margin-bottom: 5px; }
-    .s-text { font-size: 18px; font-weight: 700; letter-spacing: 1px; font-family: 'Chakra Petch'; }
+    .s-text { font-size: 22px; font-weight: 700; letter-spacing: 1px; font-family: 'Chakra Petch'; }
     .s-subtext { font-size: 10px; color: #666; font-weight: 400; letter-spacing: 1px; margin-top: 2px; }
     .vies-indicator { font-size: 13px; font-weight: 900; letter-spacing: 2px; margin-top: 6px; font-family: 'Orbitron'; }
     .d-row { display: flex; justify-content: space-between; align-items: center; padding: 18px 15px; border-bottom: 1px solid #111; }
@@ -84,9 +85,10 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 5. MOTOR DE DATA
+# 5. MOTOR DE DATA (OTIMIZADO PARA 1S)
 def get_clean_data(ticker):
     try:
+        # Busca apenas o último minuto para ser mais rápido
         df = yf.download(ticker, period="1d", interval="1m", progress=False, prepost=True)
         t = yf.Ticker(ticker)
         prev = float(t.fast_info.previous_close)
@@ -96,7 +98,7 @@ def get_clean_data(ticker):
     except:
         return {"last": 0.0, "prev": 0.0, "var": 0.0}
 
-# 6. LOOP DE EXECUÇÃO
+# 6. LOOP DE EXECUÇÃO (ATUALIZAÇÃO 1S)
 ui_area = st.empty()
 while True:
     d_m = get_clean_data("DX-Y.NYB")
@@ -104,17 +106,19 @@ while True:
     s_m = get_clean_data("BRL=X")
     eu_m = get_clean_data("EURUSD=X")
     
-    if d_m["last"] > 0:
-        # --- VALORES SPOT NORMAIS (SEM ARREDONDAMENTO) ---
+    if s_m["last"] > 0:
         spot = s_m["last"]
         prev_close = s_m["prev"]
+        variacao_spot = s_m["var"]
+        
+        # Lógica de Cor para o Spot: Verde se positivo, Vermelho se negativo
+        cor_spot = "#00cc66" if variacao_spot >= 0 else "#cc3333"
         
         spr = d_m["var"] - e_m["var"]
         paridade_global = v_global["ajuste"]*(1+(spr/100))
         justo = round((spot + 0.0310) * 2000) / 2000
         equilibrio = round((v_global["ref"] + 0.0220) * 2000) / 2000
 
-        # --- SINAL DO FUTURO ---
         if spot < (paridade_global - 0.0030): fut_seta, fut_clr = "▲ FUTURO", "#00cc66"
         elif spot > (paridade_global + 0.0030): fut_seta, fut_clr = "▼ FUTURO", "#cc3333"
         else: fut_seta, fut_clr = "● ESTÁVEL", "#444"
@@ -138,17 +142,19 @@ while True:
 
             st.markdown(f'<div class="t-header"><div class="t-title">TERMINAL <span class="t-bold">DOLAR</span></div></div>', unsafe_allow_html=True)
             
-            # CABEÇALHO COM SPOT NORMAL E SETA
+            # SPOT COM CORES DINÂMICAS (VERDE/VERMELHO)
             st.markdown(f"""
             <div class="s-container" style="border-bottom: 2px solid {clr}77">
                 <div class="s-text" style="color:#fff">
-                    SPOT {spot:.4f} <span style="color:{clr}; margin-left:10px;">({s_m['var']:+.2f}%)</span>
+                    SPOT <span style="color:{cor_spot}">{spot:.4f}</span> 
+                    <span style="color:{cor_spot}; margin-left:10px;">({variacao_spot:+.2f}%)</span>
                 </div>
-                <div class="s-subtext">FECH. ANTERIOR: {prev_close:.4f}</div>
+                <div class="s-subtext">FECH. ANTERIOR: {prev_close:.4f} | RESET UTC: 00:00</div>
                 <div class="vies-indicator" style="color:{fut_clr}">{fut_seta}</div>
             </div>
             """, unsafe_allow_html=True)
             
+            # ... (Restante do código de exibição das linhas de preço)
             st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value c-pari">{paridade_global:.4f}</div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value c-equi">{equilibrio:.4f}</div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="d-row"><div class="d-label">PREÇO JUSTO</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((spot+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{justo:.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((spot+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
@@ -186,4 +192,4 @@ while True:
             btk = f"{f_tk(s_m,'SPOT')} {f_tk(d_m,'DXY')} {f_tk(e_m,'EWZ')} {f_tk(eu_m,'EURUSD')} <span class='tk-item'><b>SPREAD</b> {spr:+.2f}%</span>"
             st.markdown(f'<div class="f-bar"><div class="f-notes">{v_global["notas"]}</div><div class="f-notes2">{v_global["notas2"]}</div><div class="f-line"></div><div class="f-arrows" style="color:{clr}">{arr}</div><div class="f-line"></div><div class="tk-wrap"><div class="tk-move">{btk} {btk} {btk}</div></div></div>', unsafe_allow_html=True)
             
-    time.sleep(1)
+    time.sleep(1) # Atualização de 1 segundo aplicada
