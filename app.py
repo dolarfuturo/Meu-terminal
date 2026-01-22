@@ -68,9 +68,9 @@ st.markdown("""
     .s-container { text-align: center; padding: 10px 0; margin-bottom: 5px; }
     .s-text { font-size: 32px; font-weight: 700; letter-spacing: 1px; font-family: 'Chakra Petch'; color: #ffffff; }
     .var-style { font-size: 20px; margin-left: 12px; font-weight: 400; }
-    
     .s-subtext { font-size: 10px; color: #666; font-weight: 400; letter-spacing: 1px; margin-top: 2px; }
     .vies-indicator { font-size: 13px; font-weight: 900; letter-spacing: 2px; margin-top: 6px; font-family: 'Orbitron'; }
+    
     .d-row { display: flex; justify-content: space-between; align-items: center; padding: 18px 15px; border-bottom: 1px solid #111; }
     .d-label { font-size: 11px; color: #FFFFFF; font-weight: 900; width: 40%; }
     .sub-grid { display: flex; gap: 15px; justify-content: flex-end; width: 60%; }
@@ -110,7 +110,7 @@ def get_clean_data(ticker):
     except:
         return {"last": 0.0, "prev": 0.0, "var": 0.0}
 
-# 6. FRAGMENTO DE ATUALIZAÇÃO AUTOMÁTICA (AUTO-MOVE)
+# 6. FRAGMENTO DE ATUALIZAÇÃO AUTOMÁTICA
 @st.fragment(run_every=1)
 def monitor_terminal():
     d_m = get_clean_data("DX-Y.NYB")
@@ -118,7 +118,7 @@ def monitor_terminal():
     s_m = get_clean_data("BRL=X")
     eu_m = get_clean_data("EURUSD=X")
     
-    if d_m["last"] > 0:
+    if s_m["last"] > 0:
         spot = s_m["last"]
         prev_close = s_m["prev"]
         v_spot = s_m["var"]
@@ -130,29 +130,4 @@ def monitor_terminal():
         equilibrio = round((v_global["ref"] + 0.0220) * 2000) / 2000
 
         if spot < (paridade_global - 0.0030): fut_seta, fut_clr = "▲ FUTURO", "#00cc66"
-        elif spot > (paridade_global + 0.0030): fut_seta, fut_clr = "▼ FUTURO", "#cc3333"
-        else: fut_seta, fut_clr = "● ESTÁVEL", "#444"
-        
-        diff = spot - justo
-        if diff < -0.0015: clr, arr = "#00aa55", "▲ ▲ ▲ ▲ ▲"
-        elif diff > 0.0015: clr, arr = "#aa3333", "▼ ▼ ▼ ▼ ▼"
-        else: clr, arr = "#aaaa00", "◄ ◄ ◄ ► ► ►"
-
-        # CABEÇALHO COM PONTO VERDE À ESQUERDA
-        st.markdown(f'<div class="t-header"><div class="pulse-green"></div><div class="t-title">TERMINAL <span class="t-bold">DOLAR</span></div></div>', unsafe_allow_html=True)
-        
-        # SPOT BRANCO E VAR COLORIDA
-        st.markdown(f"""
-        <div class="s-container" style="border-bottom: 2px solid {clr}77">
-            <div class="s-text">
-                {spot:.4f} <span class="var-style" style="color:{cor_v_spot}">{v_spot:+.2f}%</span>
-            </div>
-            <div class="s-subtext">FECH. ANTERIOR: {prev_close:.4f}</div>
-            <div class="vies-indicator" style="color:{fut_clr}">{fut_seta}</div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value c-pari">{paridade_global:.4f}</div></div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value c-equi">{equilibrio:.4f}</div></div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="d-row"><div class="d-label">PREÇO JUSTO</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((spot+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{justo:.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((spot+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="d-row"><div class="d-label">REF. INSTITUCIONAL</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((v_global["ref"]+0
+        elif spot > (paridade_global + 0.0030): fut_seta,
