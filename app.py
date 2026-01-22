@@ -16,7 +16,7 @@ if 'v_global' not in st.session_state:
         "notas2": "INFORMATIVO: OPERACIONAL ATIVO"
     }
 
-# 4. CSS DO TERMINAL (COM ANIMAÇÃO PULSANTE)
+# 4. CSS DO TERMINAL
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;700&family=Orbitron:wght@400;900&display=swap');
@@ -24,39 +24,52 @@ st.markdown("""
     .stApp { background-color: #000; color: #fff; font-family: 'Orbitron', sans-serif; }
     .block-container { padding: 0rem !important; max-width: 100% !important; }
     
-    /* TÍTULO E SINAL PULSANTE */
-    .t-header { text-align: center; padding: 20px 0 10px 0; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: center; align-items: center; gap: 10px; }
+    .t-header { text-align: center; padding: 20px 0 10px 0; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: center; align-items: center; gap: 15px; }
     .t-title { color: #555; font-size: 13px; letter-spacing: 4px; }
     .t-bold { color: #fff; font-weight: 900; }
     
-    .pulse {
-        width: 10px; height: 10px; background: #ff0000; border-radius: 50%;
-        box-shadow: 0 0 0 rgba(255, 0, 0, 0.4);
-        animation: pulse-animation 1.2s infinite;
+    .pulse-green {
+        width: 8px; height: 8px; background: #00ff00; border-radius: 50%;
+        box-shadow: 0 0 0 rgba(0, 255, 0, 0.4);
+        animation: pulse-green-animation 1.2s infinite;
+    }
+    @keyframes pulse-green-animation {
+        0% { box-shadow: 0 0 0 0px rgba(0, 255, 0, 0.7); }
+        70% { box-shadow: 0 0 0 10px rgba(0, 255, 0, 0); }
+        100% { box-shadow: 0 0 0 0px rgba(0, 255, 0, 0); }
     }
 
-    @keyframes pulse-animation {
-        0% { box-shadow: 0 0 0 0px rgba(255, 0, 0, 0.7); }
-        70% { box-shadow: 0 0 0 10px rgba(255, 0, 0, 0); }
-        100% { box-shadow: 0 0 0 0px rgba(255, 0, 0, 0); }
-    }
-
-    .s-container { text-align: center; padding: 15px 0; margin-bottom: 5px; }
+    .s-container { text-align: center; padding: 10px 0; margin-bottom: 5px; }
     .s-text { font-size: 38px; font-weight: 700; letter-spacing: 2px; font-family: 'Chakra Petch'; color: #ffffff; }
     .var-style { font-size: 22px; margin-left: 15px; font-weight: 400; }
     
     .d-row { display: flex; justify-content: space-between; align-items: center; padding: 18px 15px; border-bottom: 1px solid #111; }
     .d-label { font-size: 11px; color: #FFFFFF; font-weight: 900; width: 40%; }
+    .sub-grid { display: flex; gap: 15px; justify-content: flex-end; width: 60%; }
+    .sub-item { text-align: center; min-width: 70px; display: flex; flex-direction: column; }
+    .sub-l { font-size: 8px; color: #888; display: block; margin-bottom: 2px; font-weight: 400; }
+    .sub-v { font-size: 18px; font-family: 'Chakra Petch'; font-weight: 700; }
+    .v-peq { font-size: 15px; font-family: 'Chakra Petch'; font-weight: 700; color: #ffff00; }
+    .v-extra { font-size: 12px; font-family: 'Chakra Petch'; font-weight: 400; color: #ffff00; opacity: 0.6; margin-top: 2px; }
     .d-value { font-size: 26px; text-align: right; font-family: 'Chakra Petch'; font-weight: 700; }
     .c-pari { color: #cc9900; } .c-equi { color: #00cccc; } 
     .c-max { color: #00cc66; } .c-min { color: #cc3333; } .c-jus { color: #0066cc; }
+    
+    .note-box { background: #050505; border-top: 1px solid #111; padding: 15px 20px; margin-top: 5px; min-height: 120px; }
+    .note-title { font-size: 9px; color: #444; letter-spacing: 2px; margin-bottom: 8px; font-weight: 900; border-bottom: 1px solid #111; padding-bottom: 4px; }
+    .note-content { font-family: 'Chakra Petch'; font-size: 13px; color: #999; line-height: 1.5; text-transform: none !important; }
+
+    .f-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: 160px; background: #050505; border-top: 1px solid #222; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
+    .tk-wrap { width: 100%; overflow: hidden; white-space: nowrap; display: flex; margin-top: 8px; }
+    .tk-move { display: inline-block; animation: slide 40s linear infinite; }
+    .tk-item { padding-right: 50px; display: inline-block; font-family: 'Chakra Petch'; font-size: 13px; color: #fff; }
+    @keyframes slide { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 </style>
 """, unsafe_allow_html=True)
 
 def get_clean_data(ticker):
     try:
         t = yf.Ticker(ticker)
-        # fast_info é o método mais leve para atualizações frequentes
         last = t.fast_info.last_price
         prev = t.fast_info.previous_close
         var = ((last - prev) / prev * 100) if prev != 0 else 0
@@ -71,40 +84,45 @@ while True:
     s_m = get_clean_data("BRL=X")
     d_m = get_clean_data("DX-Y.NYB")
     e_m = get_clean_data("EWZ")
+    eu_m = get_clean_data("EURUSD=X")
     
     if s_m["last"] > 0:
         spot = s_m["last"]
-        variacao_spot = s_m["var"]
-        cor_var = "#00cc66" if variacao_spot >= 0 else "#cc3333"
+        var_s = s_m["var"]
+        cor_var = "#00cc66" if var_s >= 0 else "#cc3333"
         
-        # Cálculos baseados no seu ajuste ADM
         spr = d_m["var"] - e_m["var"]
         paridade_global = st.session_state.v_global["ajuste"]*(1+(spr/100))
         justo = round((spot + 0.0310) * 2000) / 2000
+        equilibrio = round((st.session_state.v_global["ref"] + 0.0220) * 2000) / 2000
 
         with ui_area.container():
-            # Cabeçalho com o Sinal Pulsando ao lado do T de TERMINAL
-            st.markdown(f"""
-            <div class="t-header">
-                <div class="t-title">TERMINAL <span class="t-bold">DOLAR</span></div>
-                <div class="pulse"></div>
-            </div>
-            """, unsafe_allow_html=True)
+            # Cabeçalho com o Ponto Verde Pulsando à Direita
+            st.markdown(f'<div class="t-header"><div class="t-title">TERMINAL <span class="t-bold">DOLAR</span></div><div class="pulse-green"></div></div>', unsafe_allow_html=True)
 
-            # Preço Branco e VAR Colorida
-            st.markdown(f"""
-            <div class="s-container">
-                <div class="s-text">
-                    {spot:.4f} <span class="var-style" style="color:{cor_var}">({variacao_spot:+.2f}%)</span>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+            # Spot Branco e Var Colorida
+            st.markdown(f'<div class="s-container"><div class="s-text">{spot:.4f} <span class="var-style" style="color:{cor_var}">({var_s:+.2f}%)</span></div></div>', unsafe_allow_html=True)
             
-            # Linhas de Dados
+            # Recuperação das Linhas de Dados Originais
             st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value c-pari">{paridade_global:.4f}</div></div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="d-row"><div class="d-label">PREÇO JUSTO</div><div class="d-value c-jus">{justo:.4f}</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value c-equi">{equilibrio:.4f}</div></div>', unsafe_allow_html=True)
             
-            # Info de Reset (Conforme sua preferência de 00:00 UTC)
-            st.markdown(f'<div style="text-align:center; color:#333; font-size:10px; margin-top:10px;">BINANCE RESET: 00:00 UTC | {datetime.now().strftime("%H:%M:%S")}</div>', unsafe_allow_html=True)
+            # Preço Justo (Min / Justo / Max)
+            st.markdown(f'<div class="d-row"><div class="d-label">PREÇO JUSTO</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((spot+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{justo:.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((spot+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
+            
+            # Região de Correção
+            st.markdown(f'<div class="d-row" style="padding-top:10px; border-bottom: none; align-items: flex-start;"><div class="d-label" style="opacity:0.6; margin-top:5px;">REGIÃO DE CORREÇÃO</div><div class="sub-grid"><div class="sub-item"><span class="v-peq">{(equilibrio - 0.0110):.4f}</span><span class="v-extra">{(equilibrio - 0.0220):.4f}</span></div><div class="sub-item"><span class="v-peq">{(equilibrio + 0.0110):.4f}</span><span class="v-extra">{(equilibrio + 0.0220):.4f}</span></div></div></div>', unsafe_allow_html=True)
 
+            # Mural Morning Call
+            st.markdown(f'<div class="note-box"><div class="note-title">MORNING CALL & AGENDA</div><div class="note-content">{st.session_state.v_global["notas_mural"].replace(chr(10), "<br>")}</div></div>', unsafe_allow_html=True)
+
+            # Rodapé Ticker
+            def f_tk(d, n):
+                v, p = d["var"], d["last"]
+                c = "#00aa55" if v >= 0 else "#aa3333"
+                return f"<span class='tk-item'><b>{n}</b> {p:.4f} <span style='color:{c}'>({v:+.2f}%)</span></span>"
+
+            btk = f"{f_tk(s_m,'SPOT')} {f_tk(d_m,'DXY')} {f_tk(e_m,'EWZ')} {f_tk(eu_m,'EURUSD')}"
+            st.markdown(f'<div class="f-bar"><div class="tk-wrap"><div class="tk-move">{btk} {btk}</div></div></div>', unsafe_allow_html=True)
+            
     time.sleep(1)
