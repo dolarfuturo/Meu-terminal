@@ -5,7 +5,7 @@ import time
 # 1. CONFIGURAÇÃO DE PÁGINA
 st.set_page_config(page_title="TERMINAL FINANCEIRO", layout="wide", initial_sidebar_state="collapsed")
 
-# 2. ESTADO GLOBAL (Focado em Variações)
+# 2. ESTADO GLOBAL (Multiplicadores de Variação)
 @st.cache_resource
 def get_global_vars():
     return {
@@ -73,7 +73,6 @@ st.markdown("""
     .f-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: 140px; background: #050505; border-top: 1px solid #222; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
     .f-notes { font-family: 'Chakra Petch'; font-size: 11px; color: #ffff99; margin-bottom: 3px; text-transform: uppercase; }
     .f-notes2 { font-family: 'Chakra Petch'; font-size: 10px; color: #aaaaaa; margin-bottom: 10px; }
-    .f-line { width: 90%; height: 1px; background: rgba(255,255,255,0.08); }
     .tk-wrap { width: 100%; overflow: hidden; white-space: nowrap; margin-top: 12px; display: flex; }
     .tk-move { display: inline-block; animation: slide 40s linear infinite; }
     .tk-item { padding-right: 50px; display: inline-block; font-family: 'Chakra Petch'; font-size: 13px; color: #fff; }
@@ -106,7 +105,7 @@ def monitor_terminal():
         spr = d_m["var"] - e_m["var"]
         paridade_global = v_global["ajuste"]*(1+(spr/100))
         
-        # OPERAÇÕES POR VARIAÇÃO DECIMAL
+        # CÁLCULOS DINÂMICOS POR MULTIPLICAÇÃO
         justo = round((spot * v_global["v_jus"]) * 2000) / 2000
         equilibrio = round((v_global["ref"] * v_global["v_min"]) * 2000) / 2000
         
@@ -117,51 +116,4 @@ def monitor_terminal():
         st.markdown(f'<div class="t-header"><div class="pulse-green"></div><div class="t-title">TERMINAL <span class="t-bold">DOLAR</span></div></div>', unsafe_allow_html=True)
         st.markdown(f'<div class="s-container"><div class="s-text">{spot:.4f} <span class="var-style" style="color:{cor_v_spot}">{v_spot:+.2f}%</span></div><div class="s-subtext">FECH. ANTERIOR: {prev_close:.4f}</div><div class="vies-indicator" style="color:{fut_clr}">{fut_seta}</div></div>', unsafe_allow_html=True)
         st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value c-pari">{paridade_global:.4f}</div></div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value c-equi">{equilibrio:.4f}</div></div>', unsafe_allow_html=True)
-        
-        # PREÇO JUSTO LIMPO
-        st.markdown(f'<div class="d-row"><div class="d-label">PREÇO JUSTO</div><div class="d-value c-jus">{justo:.4f}</div></div>', unsafe_allow_html=True)
-        
-        # REF INSTITUCIONAL BASEADA NAS VARIAÇÕES
-        st.markdown(f'<div class="d-row"><div class="d-label">REF. INSTITUCIONAL</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">VAR MIN</span><span class="sub-v c-min">{(round((v_global["ref"]*v_global["v_min"])*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">VAR JUSTO</span><span class="sub-v c-jus">{(round((v_global["ref"]*v_global["v_jus"])*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">VAR MAX</span><span class="sub-v c-max">{(round((v_global["ref"]*v_global["v_max"])*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
-
-        st.markdown(f"""
-        <div class="d-row" style="padding-top:10px; border-bottom: none; align-items: flex-start;">
-            <div class="d-label" style="opacity:0.6; margin-top:5px;">REGIÃO DE CORREÇÃO</div>
-            <div class="sub-grid">
-                <div class="sub-item"><span class="v-peq">{(equilibrio * 0.9980):.4f}</span></div>
-                <div class="sub-item"><span class="v-peq">{(equilibrio * 1.0020):.4f}</span></div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        def f_tk(d, n):
-            v, p = d["var"], d["last"]
-            c = "#00aa55" if v >= 0 else "#aa3333"
-            pf = f"{p:.4f}" if n == "SPOT" else f"{p:.2f}"
-            return f"<span class='tk-item'><b>{n}</b> {pf} <span style='color:{c}'>{v:+.2f}%</span></span>"
-
-        btk = f"{f_tk(s_m,'SPOT')} {f_tk(d_m,'DXY')} {f_tk(e_m,'EWZ')} {f_tk(eu_m,'EURUSD')} <span class='tk-item'><b>SPREAD</b> {spr:+.2f}%</span>"
-        st.markdown(f'<div class="f-bar"><div class="f-notes">{v_global["notas"]}</div><div class="f-notes2">{v_global["notas2"]}</div><div class="f-line"></div><div class="tk-wrap"><div class="tk-move">{btk} {btk} {btk}</div></div></div>', unsafe_allow_html=True)
-
-# PAINEL ADM (CONTROLE DE VARIAÇÕES)
-if st.session_state.user_type == "ADM":
-    with st.expander("PAINEL ADM"):
-        with st.form("adm_panel"):
-            c1, c2 = st.columns(2)
-            v_global["ajuste"] = c1.number_input("PARIDADE", value=v_global["ajuste"], format="%.4f")
-            v_global["ref"] = c2.number_input("REF INST", value=v_global["ref"], format="%.4f")
-            
-            st.markdown("---")
-            st.markdown("**DEFINIÇÃO DE POLARIDADE (VARIAÇÕES)**")
-            col_v1, col_v2, col_v3 = st.columns(3)
-            v_global["v_min"] = col_v1.number_input("Variação 1.002", value=v_global["v_min"], format="%.4f")
-            v_global["v_jus"] = col_v2.number_input("Variação 1.004", value=v_global["v_jus"], format="%.4f")
-            v_global["v_max"] = col_v3.number_input("Variação 1.01", value=v_global["v_max"], format="%.4f")
-            
-            v_global["notas_mural"] = st.text_area("MORNING CALL", value=v_global["notas_mural"])
-            v_global["notas"] = st.text_input("RODAPÉ 1", value=v_global["notas"])
-            v_global["notas2"] = st.text_input("RODAPÉ 2", value=v_global["notas2"])
-            if st.form_submit_button("SALVAR"): st.rerun()
-
-monitor_terminal()
+        st.markdown(f'<div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value c-equi">{equilibrio:.4f}</div></div>', unsafe_allow_html
