@@ -5,7 +5,7 @@ import time
 # 1. CONFIGURAÇÃO DE PÁGINA
 st.set_page_config(page_title="TERMINAL FINANCEIRO", layout="wide", initial_sidebar_state="collapsed")
 
-# 2. ESTADO GLOBAL (Multiplicadores em Variáveis)
+# 2. ESTADO GLOBAL
 @st.cache_resource
 def get_global_vars():
     return {
@@ -60,13 +60,10 @@ st.markdown("""
     .var-style { font-size: 20px; margin-left: 12px; font-weight: 400; }
     .s-subtext { font-size: 10px; color: #666; margin-top: 2px; }
     .vies-indicator { font-size: 14px; font-weight: 900; margin-top: 6px; font-family: 'Orbitron'; display: flex; justify-content: center; align-items: center; gap: 15px; }
-    
-    /* PREÇO AO LADO DA SETA - TAMANHO REDUZIDO */
     .media-azul-val { color: #0066cc; font-family: 'Chakra Petch'; font-size: 20px; font-weight: 700; }
-    
     .d-row { display: flex; justify-content: space-between; align-items: center; padding: 18px 15px; border-bottom: 1px solid #111; }
     
-    /* LABEL SEM NEGRITO */
+    /* NOMES SEM NEGRITO */
     .d-label { font-size: 15px; color: #FFFFFF; font-weight: 400; width: 40%; letter-spacing: 1px; }
     
     .sub-grid { display: flex; gap: 15px; justify-content: flex-end; width: 60%; }
@@ -100,32 +97,24 @@ def get_clean_data(ticker):
         prev = t.fast_info.previous_close
         var = ((last - prev) / prev * 100) if prev != 0 else 0
         return {"last": last, "prev": prev, "var": var}
-    except:
-        return {"last": 0.0, "prev": 0.0, "var": 0.0}
+    except: return {"last": 0.0, "prev": 0.0, "var": 0.0}
 
-# 6. ATUALIZAÇÃO AUTOMÁTICA
+# 6. RENDERIZAÇÃO
 @st.fragment(run_every=1)
 def monitor_terminal():
-    d_m = get_clean_data("DX-Y.NYB")
-    e_m = get_clean_data("EWZ")
-    s_m = get_clean_data("BRL=X")
-    eu_m = get_clean_data("EURUSD=X")
+    d_m, e_m, s_m, eu_m = get_clean_data("DX-Y.NYB"), get_clean_data("EWZ"), get_clean_data("BRL=X"), get_clean_data("EURUSD=X")
     
     if s_m["last"] > 0:
-        spot, prev_close, v_spot = s_m["last"], s_m["prev"], s_m["var"]
-        cor_v_spot = "#00cc66" if v_spot >= 0 else "#cc3333"
-        spr = d_m["var"] - e_m["var"]
+        spot, spr = s_m["last"], d_m["var"] - e_m["var"]
         paridade_global = v_global["ajuste"]*(1+(spr/100))
         justo = round((spot * v_global["v_jus"]) * 2000) / 2000
         equilibrio = round((v_global["ref"] * v_global["v_min"]) * 2000) / 2000
         media_azul = (spot + justo + paridade_global) / 3
         
-        if spot < (paridade_global - 0.0030): fut_seta, fut_clr = "▲ FUTURO", "#00cc66"
-        elif spot > (paridade_global + 0.0030): fut_seta, fut_clr = "▼ FUTURO", "#cc3333"
-        else: fut_seta, fut_clr = "● ESTÁVEL", "#444"
+        fut_seta, fut_clr = ("▲ FUTURO", "#00cc66") if spot < (paridade_global - 0.0030) else (("▼ FUTURO", "#cc3333") if spot > (paridade_global + 0.0030) else ("● ESTÁVEL", "#444"))
 
         st.markdown(f'<div class="t-header"><div class="pulse-green"></div><div class="t-title">TERMINAL <span class="t-bold">DOLAR</span></div></div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="s-container"><div class="s-text">{spot:.4f} <span class="var-style" style="color:{cor_v_spot}">{v_spot:+.2f}%</span></div><div class="s-subtext">FECH. ANTERIOR: {prev_close:.4f}</div><div class="vies-indicator" style="color:{fut_clr}">{fut_seta} <span class="media-azul-val">{media_azul:.4f}</span></div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="s-container"><div class="s-text">{spot:.4f} <span class="var-style" style="color:{"#00cc66" if s_m["var"]>=0 else "#cc3333"}">{s_m["var"]:+.2f}%</span></div><div class="s-subtext">FECH. ANTERIOR: {s_m["prev"]:.4f}</div><div class="vies-indicator" style="color:{fut_clr}">{fut_seta} <span class="media-azul-val">{media_azul:.4f}</span></div></div>', unsafe_allow_html=True)
         
         st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value c-pari">{paridade_global:.4f}</div></div>', unsafe_allow_html=True)
         st.markdown(f'<div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value c-equi">{equilibrio:.4f}</div></div>', unsafe_allow_html=True)
@@ -134,18 +123,21 @@ def monitor_terminal():
 
         st.markdown(f'<div class="note-box"><div class="note-title">MORNING CALL & AGENDA</div><div class="note-content">{v_global["notas_mural"].replace(chr(10), "<br>")}</div></div>', unsafe_allow_html=True)
 
-        btk = f"SPOT {spot:.4f} | DXY {d_m['last']:.2f} | EWZ {e_m['last']:.2f} | SPREAD {spr:+.2f}%"
-        st.markdown(f'<div class="f-bar"><div class="f-notes">{v_global["notas"]}</div><div class="f-notes2">{v_global["notas2"]}</div><div class="f-line"></div><div class="tk-wrap"><div class="tk-move">{btk} {btk}</div></div></div>', unsafe_allow_html=True)
+        def f_tk(d, n):
+            c = "#00aa55" if d["var"] >= 0 else "#aa3333"
+            return f"<span class='tk-item'><b>{n}</b> {d['last']:.4f if n=='SPOT' else d['last']:.2f} <span style='color:{c}'>{d['var']:+.2f}%</span></span>"
+
+        btk = f"{f_tk(s_m,'SPOT')} {f_tk(d_m,'DXY')} {f_tk(e_m,'EWZ')} {f_tk(eu_m,'EURUSD')} <span class='tk-item'><b>SPREAD</b> {spr:+.2f}%</span>"
+        st.markdown(f'<div class="f-bar"><div class="f-notes">{v_global["notas"]}</div><div class="f-notes2">{v_global["notas2"]}</div><div class="f-line"></div><div class="tk-wrap"><div class="tk-move">{btk} {btk} {btk}</div></div></div>', unsafe_allow_html=True)
 
 # PAINEL ADM
 if st.session_state.user_type == "ADM":
     with st.expander("PAINEL ADM"):
-        with st.form("adm_panel"):
+        with st.form("adm"):
             c1, c2 = st.columns(2)
             v_global["ajuste"] = c1.number_input("PARIDADE", value=v_global["ajuste"], format="%.4f")
             v_global["ref"] = c2.number_input("REF INST", value=v_global["ref"], format="%.4f")
-            st.markdown("---")
-            v_global["notas_mural"] = st.text_area("MORNING CALL / AGENDA", value=v_global["notas_mural"], height=250)
+            v_global["notas_mural"] = st.text_area("MORNING CALL", value=v_global["notas_mural"], height=150)
             if st.form_submit_button("SALVAR"): st.rerun()
 
 monitor_terminal()
