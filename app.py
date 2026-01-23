@@ -5,7 +5,7 @@ import time
 # 1. CONFIGURAÇÃO DE PÁGINA
 st.set_page_config(page_title="TERMINAL FINANCEIRO", layout="wide", initial_sidebar_state="collapsed")
 
-# 2. ESTADO GLOBAL
+# 2. ESTADO GLOBAL (Multiplicadores em Variáveis)
 @st.cache_resource
 def get_global_vars():
     return {
@@ -60,9 +60,15 @@ st.markdown("""
     .var-style { font-size: 20px; margin-left: 12px; font-weight: 400; }
     .s-subtext { font-size: 10px; color: #666; margin-top: 2px; }
     .vies-indicator { font-size: 14px; font-weight: 900; margin-top: 6px; font-family: 'Orbitron'; display: flex; justify-content: center; align-items: center; gap: 15px; }
+    
+    /* PREÇO AO LADO DA SETA - TAMANHO REDUZIDO */
     .media-azul-val { color: #0066cc; font-family: 'Chakra Petch'; font-size: 20px; font-weight: 700; }
+    
     .d-row { display: flex; justify-content: space-between; align-items: center; padding: 18px 15px; border-bottom: 1px solid #111; }
-    .d-label { font-size: 15px; color: #FFFFFF; font-weight: 900; width: 40%; letter-spacing: 1px; }
+    
+    /* LABEL SEM NEGRITO */
+    .d-label { font-size: 15px; color: #FFFFFF; font-weight: 400; width: 40%; letter-spacing: 1px; }
+    
     .sub-grid { display: flex; gap: 15px; justify-content: flex-end; width: 60%; }
     .sub-item { text-align: center; min-width: 70px; display: flex; flex-direction: column; }
     .sub-l { font-size: 9px; color: #888; margin-bottom: 2px; font-weight: 700; }
@@ -94,9 +100,10 @@ def get_clean_data(ticker):
         prev = t.fast_info.previous_close
         var = ((last - prev) / prev * 100) if prev != 0 else 0
         return {"last": last, "prev": prev, "var": var}
-    except: return {"last": 0.0, "prev": 0.0, "var": 0.0}
+    except:
+        return {"last": 0.0, "prev": 0.0, "var": 0.0}
 
-# 6. RENDERIZAÇÃO
+# 6. ATUALIZAÇÃO AUTOMÁTICA
 @st.fragment(run_every=1)
 def monitor_terminal():
     d_m = get_clean_data("DX-Y.NYB")
@@ -133,12 +140,12 @@ def monitor_terminal():
 # PAINEL ADM
 if st.session_state.user_type == "ADM":
     with st.expander("PAINEL ADM"):
-        with st.form("adm"):
+        with st.form("adm_panel"):
             c1, c2 = st.columns(2)
             v_global["ajuste"] = c1.number_input("PARIDADE", value=v_global["ajuste"], format="%.4f")
             v_global["ref"] = c2.number_input("REF INST", value=v_global["ref"], format="%.4f")
             st.markdown("---")
-            v_global["notas_mural"] = st.text_area("MORNING CALL / AGENDA", value=v_global["notas_mural"], height=200)
+            v_global["notas_mural"] = st.text_area("MORNING CALL / AGENDA", value=v_global["notas_mural"], height=250)
             if st.form_submit_button("SALVAR"): st.rerun()
 
 monitor_terminal()
