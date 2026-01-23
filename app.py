@@ -67,6 +67,8 @@ st.markdown("""
     .sub-item { text-align: center; min-width: 70px; display: flex; flex-direction: column; }
     .sub-l { font-size: 9px; color: #888; margin-bottom: 2px; font-weight: 700; }
     .sub-v { font-size: 20px; font-family: 'Chakra Petch'; font-weight: 700; }
+    .v-peq { font-size: 18px; font-family: 'Chakra Petch'; font-weight: 700; color: #ffff00; }
+    .v-extra { font-size: 12px; font-family: 'Chakra Petch'; color: #ffff00; opacity: 0.5; margin-top: 1px; }
     .d-value { font-size: 28px; text-align: right; font-family: 'Chakra Petch'; font-weight: 700; }
     .c-pari { color: #cc9900; } .c-equi { color: #00cccc; } 
     .c-max { color: #00cc66; } .c-min { color: #cc3333; } .c-jus { color: #0066cc; }
@@ -118,6 +120,17 @@ def monitor_terminal():
         st.markdown(f'<div class="d-row"><div class="d-label">PREÇO JUSTO</div><div class="d-value c-jus">{justo:.4f}</div></div>', unsafe_allow_html=True)
         st.markdown(f'<div class="d-row"><div class="d-label">REF. INSTITUCIONAL</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((v_global["ref"]*v_global["v_min"])*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{(round((v_global["ref"]*v_global["v_jus"])*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((v_global["ref"]*v_global["v_max"])*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
 
+        # REGIÃO DE CORREÇÃO (ADICIONADO)
+        st.markdown(f"""
+        <div class="d-row" style="padding-top:10px; border-bottom: none; align-items: flex-start;">
+            <div class="d-label" style="opacity:0.6; margin-top:5px;">REGIÃO DE CORREÇÃO</div>
+            <div class="sub-grid">
+                <div class="sub-item"><span class="v-peq">{(equilibrio * 0.9980):.4f}</span><span class="v-extra">{(equilibrio * 0.9960):.4f}</span></div>
+                <div class="sub-item"><span class="v-peq">{(equilibrio * 1.0020):.4f}</span><span class="v-extra">{(equilibrio * 1.0040):.4f}</span></div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
         st.markdown(f'<div class="note-box"><div class="note-title">MORNING CALL & AGENDA</div><div class="note-content">{v_global["notas_mural"].replace(chr(10), "<br>")}</div></div>', unsafe_allow_html=True)
 
         def f_tk(d, n):
@@ -127,7 +140,17 @@ def monitor_terminal():
             return f"<span class='tk-item'><b>{n}</b> {pf} <span style='color:{c}'>{v:+.2f}%</span></span>"
 
         btk = f"{f_tk(s_m,'SPOT')} {f_tk(d_m,'DXY')} {f_tk(e_m,'EWZ')} {f_tk(eu_m,'EURUSD')} <span class='tk-item'><b>SPREAD</b> {spr:+.2f}%</span>"
-        st.markdown(f'<div class="f-bar"><div class="f-notes">{v_global["notas"]}</div><div class="f-notes2">{v_global["notas2"]}</div><div class="f-line"></div><div class="tk-wrap"><div class="tk-move">{btk} {btk} {btk}</div></div></div>', unsafe_allow_html=True)
+        
+        st.markdown(f"""
+            <div class="f-bar">
+                <div class="f-notes">{v_global['notas']}</div>
+                <div class="f-notes2">{v_global['notas2']}</div>
+                <div class="f-line"></div>
+                <div class="tk-wrap">
+                    <div class="tk-move">{btk} {btk} {btk}</div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
 
 # PAINEL ADM
 if st.session_state.user_type == "ADM":
