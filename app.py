@@ -110,26 +110,27 @@ def monitor_terminal():
         spr = d_m["var"] - e_m["var"]
         paridade_global = v_global["ajuste"]*(1+(spr/100))
         
-        # CÁLCULOS USANDO MULTIPLICADORES VARIÁVEIS (*)
+        # CÁLCULOS
         justo = round((spot * v_global["v_jus"]) * 2000) / 2000
         equilibrio = round((v_global["ref"] * v_global["v_min"]) * 2000) / 2000
+        
+        # AJUSTE SOLICITADO: MÉDIA (SPOT + JUSTO + PARIDADE) / 3
+        media_azul = (spot + justo + paridade_global) / 3
         
         if spot < (paridade_global - 0.0030): fut_seta, fut_clr = "▲ FUTURO", "#00cc66"
         elif spot > (paridade_global + 0.0030): fut_seta, fut_clr = "▼ FUTURO", "#cc3333"
         else: fut_seta, fut_clr = "● ESTÁVEL", "#444"
 
         st.markdown(f'<div class="t-header"><div class="pulse-green"></div><div class="t-title">TERMINAL <span class="t-bold">DOLAR</span></div></div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="s-container"><div class="s-text">{spot:.4f} <span class="var-style" style="color:{cor_v_spot}">{v_spot:+.2f}%</span></div><div class="s-subtext">FECH. ANTERIOR: {prev_close:.4f}</div><div class="vies-indicator" style="color:{fut_clr}">{fut_seta}</div></div>', unsafe_allow_html=True)
+        
+        # LINHA ALTERADA: INCLUSÃO DA MÉDIA AO LADO DA SETA
+        st.markdown(f'<div class="s-container"><div class="s-text">{spot:.4f} <span class="var-style" style="color:{cor_v_spot}">{v_spot:+.2f}%</span></div><div class="s-subtext">FECH. ANTERIOR: {prev_close:.4f}</div><div class="vies-indicator" style="color:{fut_clr}">{fut_seta} <span style="color:#0066cc; margin-left:12px;">{media_azul:.4f}</span></div></div>', unsafe_allow_html=True)
+        
         st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value c-pari">{paridade_global:.4f}</div></div>', unsafe_allow_html=True)
         st.markdown(f'<div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value c-equi">{equilibrio:.4f}</div></div>', unsafe_allow_html=True)
-        
-        # PREÇO JUSTO SIMPLIFICADO (APENAS 1.0041)
         st.markdown(f'<div class="d-row"><div class="d-label">PREÇO JUSTO</div><div class="d-value c-jus">{justo:.4f}</div></div>', unsafe_allow_html=True)
-        
-        # REF INSTITUCIONAL COM VARIÁVEIS DO ADM
         st.markdown(f'<div class="d-row"><div class="d-label">REF. INSTITUCIONAL</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((v_global["ref"]*v_global["v_min"])*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{(round((v_global["ref"]*v_global["v_jus"])*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((v_global["ref"]*v_global["v_max"])*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
 
-        # REGIÃO DE CORREÇÃO BASEADA NOS MULTIPLICADORES
         st.markdown(f"""
         <div class="d-row" style="padding-top:10px; border-bottom: none; align-items: flex-start;">
             <div class="d-label" style="opacity:0.6; margin-top:5px;">REGIÃO DE CORREÇÃO</div>
@@ -151,21 +152,19 @@ def monitor_terminal():
         btk = f"{f_tk(s_m,'SPOT')} {f_tk(d_m,'DXY')} {f_tk(e_m,'EWZ')} {f_tk(eu_m,'EURUSD')} <span class='tk-item'><b>SPREAD</b> {spr:+.2f}%</span>"
         st.markdown(f'<div class="f-bar"><div class="f-notes">{v_global["notas"]}</div><div class="f-notes2">{v_global["notas2"]}</div><div class="f-line"></div><div class="tk-wrap"><div class="tk-move">{btk} {btk} {btk}</div></div></div>', unsafe_allow_html=True)
 
-# PAINEL ADM (Ajustado com os multiplicadores configuráveis)
+# PAINEL ADM
 if st.session_state.user_type == "ADM":
     with st.expander("PAINEL ADM"):
         with st.form("adm_panel"):
             c1, c2 = st.columns(2)
             v_global["ajuste"] = c1.number_input("PARIDADE", value=v_global["ajuste"], format="%.4f")
             v_global["ref"] = c2.number_input("REF INST", value=v_global["ref"], format="%.4f")
-            
             st.markdown("---")
             st.markdown("**MULTIPLICADORES DE VARIAÇÃO**")
             col_v1, col_v2, col_v3 = st.columns(3)
             v_global["v_min"] = col_v1.number_input("Variação 1.002", value=v_global["v_min"], format="%.4f")
             v_global["v_jus"] = col_v2.number_input("Variação 1.0041", value=v_global["v_jus"], format="%.4f")
             v_global["v_max"] = col_v3.number_input("Variação 1.01", value=v_global["v_max"], format="%.4f")
-            
             v_global["notas_mural"] = st.text_area("MORNING CALL", value=v_global["notas_mural"])
             v_global["notas"] = st.text_input("RODAPÉ 1", value=v_global["notas"])
             v_global["notas2"] = st.text_input("RODAPÉ 2", value=v_global["notas2"])
