@@ -43,7 +43,7 @@ if not st.session_state.auth:
                 st.rerun()
     st.stop()
 
-# 4. CSS DO TERMINAL (COM ANIMAÇÃO DO LED RECUPERADA)
+# 4. CSS DO TERMINAL
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;700&family=Orbitron:wght@400;900&display=swap');
@@ -73,12 +73,74 @@ st.markdown("""
     .note-box { background: #050505; border-top: 1px solid #111; padding: 15px 20px; min-height: 120px; }
     .note-title { font-size: 9px; color: #444; letter-spacing: 2px; margin-bottom: 8px; font-weight: 900; border-bottom: 1px solid #111; }
     .note-content { font-family: 'Chakra Petch'; font-size: 13px; color: #999; line-height: 1.5; }
-    
-    /* RODAPÉ FIXO COM LED */
     .f-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: 140px; background: #050505; border-top: 1px solid #222; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
     .f-notes { font-family: 'Chakra Petch'; font-size: 11px; color: #ffff99; margin-bottom: 3px; text-transform: uppercase; }
     .f-notes2 { font-family: 'Chakra Petch'; font-size: 10px; color: #aaaaaa; margin-bottom: 10px; }
     .f-line { width: 90%; height: 1px; background: rgba(255,255,255,0.08); }
     .tk-wrap { width: 100%; overflow: hidden; white-space: nowrap; margin-top: 12px; display: flex; }
     .tk-move { display: inline-block; animation: slide 40s linear infinite; }
-    .tk-item { padding-right: 50px; display: inline-block; font-family: 'Chakra Petch'; font-size: 13px; color: #fff
+    .tk-item { padding-right: 50px; display: inline-block; font-family: 'Chakra Petch'; font-size: 13px; color: #fff; }
+    @keyframes slide { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+</style>
+""", unsafe_allow_html=True)
+
+# 5. MOTOR DE DATA
+def get_clean_data(ticker):
+    try:
+        t = yf.Ticker(ticker)
+        last = t.fast_info.last_price
+        prev = t.fast_info.previous_close
+        var = ((last - prev) / prev * 100) if prev != 0 else 0
+        return {"last": last, "prev": prev, "var": var}
+    except: return {"last": 0.0, "prev": 0.0, "var": 0.0}
+
+# 6. RENDERIZAÇÃO
+@st.fragment(run_every=1)
+def monitor_terminal():
+    d_m, e_m, s_m, eu_m = get_clean_data("DX-Y.NYB"), get_clean_data("EWZ"), get_clean_data("BRL=X"), get_clean_data("EURUSD=X")
+    
+    if s_m["last"] > 0:
+        spot, prev_close, v_spot = s_m["last"], s_m["prev"], s_m["var"]
+        cor_v_spot = '#00cc66' if v_spot >= 0 else '#cc3333'
+        spr = d_m["var"] - e_m["var"]
+        paridade_global = v_global["ajuste"]*(1+(spr/100))
+        justo = round((spot * v_global["v_jus"]) * 2000) / 2000
+        equilibrio = round((v_global["ref"] * v_global["v_min"]) * 2000) / 2000
+        media_azul = (spot + justo + paridade_global) / 3
+        
+        fut_seta, fut_clr = ("▲ FUTURO", "#00cc66") if spot < (paridade_global - 0.0030) else (("▼ FUTURO", "#cc3333") if spot > (paridade_global + 0.0030) else ("● ESTÁVEL", "#444"))
+
+        st.markdown(f'<div class="t-header"><div class="pulse-green"></div><div class="t-title">TERMINAL <span class="t-bold">DOLAR</span></div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="s-container"><div class="s-text">{spot:.4f} <span class="var-style" style="color:{cor_v_spot}">{v_spot:+.2f}%</span></div><div class="s-subtext">FECH. ANTERIOR: {prev_close:.4f}</div><div class="vies-indicator" style="color:{fut_clr}">{fut_seta} <span class="media-azul-val">{media_azul:.4f}</span></div></div>', unsafe_allow_html=True)
+        
+        st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value c-pari">{paridade_global:.4f}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value c-equi">{equilibrio:.4f}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="d-row"><div class="d-label">PREÇO JUSTO</div><div class="d-value c-jus">{justo:.4f}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="d-row"><div class="d-label">REF. INSTITUCIONAL</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((v_global["ref"]*v_global["v_min"])*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{(round((v_global["ref"]*v_global["v_jus"])*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((v_global["ref"]*v_global["v_max"])*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
+
+        st.markdown(f'<div class="note-box"><div class="note-title">MORNING CALL & AGENDA</div><div class="note-content">{v_global["notas_mural"].replace(chr(10), "<br>")}</div></div>', unsafe_allow_html=True)
+
+        def f_tk(d, n):
+            v, p = d["var"], d["last"]
+            c = "#00aa55" if v >= 0 else "#aa3333"
+            pf = f"{p:.4f}" if n == "SPOT" else f"{p:.2f}"
+            return f"<span class='tk-item'><b>{n}</b> {pf} <span style='color:{c}'>{v:+.2f}%</span></span>"
+
+        btk = f"{f_tk(s_m,'SPOT')} {f_tk(d_m,'DXY')} {f_tk(e_m,'EWZ')} {f_tk(eu_m,'EURUSD')} <span class='tk-item'><b>SPREAD</b> {spr:+.2f}%</span>"
+        st.markdown(f'<div class="f-bar"><div class="f-notes">{v_global["notas"]}</div><div class="f-notes2">{v_global["notas2"]}</div><div class="f-line"></div><div class="tk-wrap"><div class="tk-move">{btk} {btk} {btk}</div></div></div>', unsafe_allow_html=True)
+
+# PAINEL ADM
+if st.session_state.user_type == "ADM":
+    with st.expander("PAINEL ADM"):
+        with st.form("adm"):
+            c1, c2 = st.columns(2)
+            v_global["ajuste"] = c1.number_input("PARIDADE", value=v_global["ajuste"], format="%.4f")
+            v_global["ref"] = c2.number_input("REF INST", value=v_global["ref"], format="%.4f")
+            cv1, cv2, cv3 = st.columns(3)
+            v_global["v_min"] = cv1.number_input("Variação 1.002", value=v_global["v_min"], format="%.4f")
+            v_global["v_jus"] = cv2.number_input("Variação 1.0041", value=v_global["v_jus"], format="%.4f")
+            v_global["v_max"] = cv3.number_input("Variação 1.01", value=v_global["v_max"], format="%.4f")
+            v_global["notas_mural"] = st.text_area("MORNING CALL", value=v_global["notas_mural"], height=150)
+            if st.form_submit_button("SALVAR"): st.rerun()
+
+monitor_terminal()
