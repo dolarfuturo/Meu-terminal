@@ -5,7 +5,7 @@ import time
 # 1. CONFIGURAÇÃO DE PÁGINA
 st.set_page_config(page_title="TERMINAL FINANCEIRO", layout="wide", initial_sidebar_state="collapsed")
 
-# 2. ESTADO GLOBAL (Multiplicadores em Variáveis)
+# 2. ESTADO GLOBAL
 @st.cache_resource
 def get_global_vars():
     return {
@@ -59,9 +59,7 @@ st.markdown("""
     .s-text { font-size: 32px; font-weight: 700; font-family: 'Chakra Petch'; color: #ffffff; }
     .var-style { font-size: 20px; margin-left: 12px; font-weight: 400; }
     .s-subtext { font-size: 10px; color: #666; margin-top: 2px; }
-    .indicator-row { display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 6px; }
-    .vies-indicator { font-size: 13px; font-weight: 900; font-family: 'Orbitron'; }
-    .media-azul { font-size: 16px; font-weight: 700; font-family: 'Chakra Petch'; color: #0066cc; }
+    .vies-indicator { font-size: 13px; font-weight: 900; margin-top: 6px; font-family: 'Orbitron'; }
     .d-row { display: flex; justify-content: space-between; align-items: center; padding: 18px 15px; border-bottom: 1px solid #111; }
     .d-label { font-size: 11px; color: #FFFFFF; font-weight: 900; width: 40%; }
     .sub-grid { display: flex; gap: 15px; justify-content: flex-end; width: 60%; }
@@ -102,26 +100,31 @@ def monitor_terminal():
         cor_v_spot = "#00cc66" if v_spot >= 0 else "#cc3333"
         spr = d_m["var"] - e_m["var"]
         paridade_global = v_global["ajuste"]*(1+(spr/100))
-        
-        # CÁLCULOS
         justo = round((spot * v_global["v_jus"]) * 2000) / 2000
         equilibrio = round((v_global["ref"] * v_global["v_min"]) * 2000) / 2000
         
-        # NOVA MÉDIA (AJUSTE SOLICITADO)
-        media_azul = (spot + justo + paridade_global) / 3
+        # AJUSTE SOLICITADO: MÉDIA AZUL
+        media_calc = (spot + justo + paridade_global) / 3
 
         if spot < (paridade_global - 0.0030): fut_seta, fut_clr = "▲ FUTURO", "#00cc66"
         elif spot > (paridade_global + 0.0030): fut_seta, fut_clr = "▼ FUTURO", "#cc3333"
         else: fut_seta, fut_clr = "● ESTÁVEL", "#444"
 
         st.markdown(f'<div class="t-header"><div class="pulse-green"></div><div class="t-title">TERMINAL <span class="t-bold">DOLAR</span></div></div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="s-container"><div class="s-text">{spot:.4f} <span class="var-style" style="color:{cor_v_spot}">{v_spot:+.2f}%</span></div><div class="s-subtext">FECH. ANTERIOR: {prev_close:.4f}</div><div class="indicator-row"><span class="vies-indicator" style="color:{fut_clr}">{fut_seta}</span><span class="media-azul">{media_azul:.4f}</span></div></div>', unsafe_allow_html=True)
+        
+        # MANTIDO LAYOUT ORIGINAL - APENAS INSERIDA A MÉDIA EM AZUL AO LADO DA SETA
+        st.markdown(f"""
+            <div class="s-container">
+                <div class="s-text">{spot:.4f} <span class="var-style" style="color:{cor_v_spot}">{v_spot:+.2f}%</span></div>
+                <div class="s-subtext">FECH. ANTERIOR: {prev_close:.4f}</div>
+                <div class="vies-indicator" style="color:{fut_clr}">{fut_seta} <span style="color:#0066cc; margin-left:10px;">{media_calc:.4f}</span></div>
+            </div>
+        """, unsafe_allow_html=True)
         
         st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value c-pari">{paridade_global:.4f}</div></div>', unsafe_allow_html=True)
         st.markdown(f'<div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value c-equi">{equilibrio:.4f}</div></div>', unsafe_allow_html=True)
         st.markdown(f'<div class="d-row"><div class="d-label">PREÇO JUSTO</div><div class="d-value c-jus">{justo:.4f}</div></div>', unsafe_allow_html=True)
         
-        # REF INSTITUCIONAL
         st.markdown(f'<div class="d-row"><div class="d-label">REF. INSTITUCIONAL</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((v_global["ref"]*v_global["v_min"])*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{(round((v_global["ref"]*v_global["v_jus"])*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((v_global["ref"]*v_global["v_max"])*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
 
         btk = f"SPOT {spot:.4f} | DXY {d_m['last']:.2f} | EWZ {e_m['last']:.2f} | SPREAD {spr:+.2f}%"
@@ -131,13 +134,12 @@ def monitor_terminal():
 if st.session_state.user_type == "ADM":
     with st.expander("PAINEL ADM"):
         with st.form("adm"):
-            c1, c2 = st.columns(2)
-            v_global["ajuste"] = c1.number_input("PARIDADE", value=v_global["ajuste"], format="%.4f")
-            v_global["ref"] = c2.number_input("REF INST", value=v_global["ref"], format="%.4f")
-            col_v1, col_v2, col_v3 = st.columns(3)
-            v_global["v_min"] = col_v1.number_input("Var 1.002", value=v_global["v_min"], format="%.4f")
-            v_global["v_jus"] = col_v2.number_input("Var 1.0041", value=v_global["v_jus"], format="%.4f")
-            v_global["v_max"] = col_v3.number_input("Var 1.01", value=v_global["v_max"], format="%.4f")
+            v_global["ajuste"] = st.number_input("PARIDADE", value=v_global["ajuste"], format="%.4f")
+            v_global["ref"] = st.number_input("REF INST", value=v_global["ref"], format="%.4f")
+            c1, c2, c3 = st.columns(3)
+            v_global["v_min"] = c1.number_input("Var 1.002", value=v_global["v_min"], format="%.4f")
+            v_global["v_jus"] = c2.number_input("Var 1.0041", value=v_global["v_jus"], format="%.4f")
+            v_global["v_max"] = c3.number_input("Var 1.01", value=v_global["v_max"], format="%.4f")
             if st.form_submit_button("SALVAR"): st.rerun()
 
 monitor_terminal()
