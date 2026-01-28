@@ -13,7 +13,7 @@ def get_global_vars():
         "ref": 5.4000,
         "v_min": 1.0020,
         "v_jus": 1.0041,
-        "v_max": 1.0100,
+        "v_max": 1.0060,
         "notas_mural": "RESUMO DA ABERTURA E AGENDA: AGUARDANDO ATUALIZAÇÃO...",
         "notas": "MURAL: AGUARDANDO...",
         "notas2": "INFORMATIVO: OPERACIONAL ATIVO"
