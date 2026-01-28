@@ -97,7 +97,7 @@ def get_clean_data(ticker):
     except: return {"last": 0.0, "prev": 0.0, "var": 0.0}
 
 # 6. RENDERIZAÇÃO
-@st.fragment(run_every=1)
+@st.fragment(run_every=2)
 def monitor_terminal():
     d_m, e_m, s_m, eu_m = get_clean_data("DX-Y.NYB"), get_clean_data("EWZ"), get_clean_data("BRL=X"), get_clean_data("EURUSD=X")
     
