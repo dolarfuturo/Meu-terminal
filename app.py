@@ -102,7 +102,7 @@ def monitor_terminal():
     d_m, e_m, s_m, eu_m = get_clean_data("DX-Y.NYB"), get_clean_data("EWZ"), get_clean_data("BRL=X"), get_clean_data("EURUSD=X")
     
     from datetime import datetime
-        import pytz
+    import pytz
         
         # 1. Ajusta o fuso horário para Brasília
         fuso = pytz.timezone('America/Sao_Paulo')
