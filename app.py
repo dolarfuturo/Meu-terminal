@@ -115,7 +115,7 @@ def monitor_terminal():
         # Se passar das 18:30 OU se o preço estiver absurdamente longe do ajuste
     if (agora.hour > 18 or (agora.hour == 18 and agora.minute >= 30)) or (abs(raw_spot - v_global["ajuste"]) > 0.15):
             spot = prev_close
-        else:
+    else:
             spot = raw_spot
             
         # 3. Recalcula a variação real para o painel
