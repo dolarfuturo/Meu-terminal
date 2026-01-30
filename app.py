@@ -106,11 +106,11 @@ def monitor_terminal():
         
         # 1. Ajusta o fuso horário para Brasília
     fuso = pytz.timezone('America/Sao_Paulo')
-        agora = datetime.now(fuso)
+    agora = datetime.now(fuso)
         
         # 2. Define o Spot com base no horário ou erro de sinal
-        prev_close = s_m["prev"]
-        raw_spot = s_m["last"]
+    prev_close = s_m["prev"]
+    raw_spot = s_m["last"]
         
         # Se passar das 18:30 OU se o preço estiver absurdamente longe do ajuste
         if (agora.hour > 18 or (agora.hour == 18 and agora.minute >= 30)) or (abs(raw_spot - v_global["ajuste"]) > 0.15):
