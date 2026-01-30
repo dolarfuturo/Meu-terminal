@@ -122,7 +122,7 @@ def monitor_terminal():
     v_spot = ((spot - prev_close) / prev_close * 100) if prev_close != 0 else 0
 
 
-        cor_v_spot = '#00cc66' if v_spot >= 0 else '#cc3333'
+    cor_v_spot = '#00cc66' if v_spot >= 0 else '#cc3333'
         spr = d_m["var"] - e_m["var"]
         paridade_global = v_global["ajuste"]*(1+(spr/100))
         justo = round((spot * v_global["v_jus"]) * 2000) / 2000
