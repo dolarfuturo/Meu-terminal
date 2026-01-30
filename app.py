@@ -102,7 +102,14 @@ def monitor_terminal():
     d_m, e_m, s_m, eu_m = get_clean_data("DX-Y.NYB"), get_clean_data("EWZ"), get_clean_data("BRL=X"), get_clean_data("EURUSD=X")
     
     if s_m["last"] > 0:
-        spot, prev_close, v_spot = s_m["last"], s_m["prev"], s_m["var"]
+        from datetime import datetime
+        agora = datetime.now()
+        if agora.hour > 18 or (agora.hour == 18 and agora.minute >= 30):
+            spot = s_m["prev"]
+        else:
+            spot = s_m["last"]
+        prev_close, v_spot = s_m["prev"], s_m["var"]
+
         cor_v_spot = '#00cc66' if v_spot >= 0 else '#cc3333'
         spr = d_m["var"] - e_m["var"]
         paridade_global = v_global["ajuste"]*(1+(spr/100))
