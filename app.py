@@ -101,7 +101,7 @@ def get_clean_data(ticker):
 def monitor_terminal():
     d_m, e_m, s_m, eu_m = get_clean_data("DX-Y.NYB"), get_clean_data("EWZ"), get_clean_data("BRL=X"), get_clean_data("EURUSD=X")
     
-        from datetime import datetime
+                from datetime import datetime
         import pytz
         # Garante que o robô use o horário de Brasília, não o de Londres
         fuso = pytz.timezone('America/Sao_Paulo')
@@ -110,6 +110,12 @@ def monitor_terminal():
         if agora.hour > 18 or (agora.hour == 18 and agora.minute >= 30):
             spot = s_m["prev"]
         else:
+            spot = s_m["last"]
+            
+        # CORREÇÃO CRUCIAL: Recalcula a variação baseada no spot que escolhemos
+        prev_close = s_m["prev"]
+        v_spot = ((spot - prev_close) / prev_close * 100) if prev_close != 0 else 0
+
             spot = s_m["last"]
             
         # CORREÇÃO CRUCIAL: Recalcula a variação baseada no spot que escolhemos
