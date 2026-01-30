@@ -105,7 +105,7 @@ def monitor_terminal():
     import pytz
         
         # 1. Ajusta o fuso horário para Brasília
-        fuso = pytz.timezone('America/Sao_Paulo')
+    fuso = pytz.timezone('America/Sao_Paulo')
         agora = datetime.now(fuso)
         
         # 2. Define o Spot com base no horário ou erro de sinal
