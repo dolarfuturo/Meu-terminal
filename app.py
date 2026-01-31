@@ -101,26 +101,18 @@ def get_clean_data(ticker):
 def monitor_terminal():
     d_m, e_m, s_m, eu_m = get_clean_data("DX-Y.NYB"), get_clean_data("EWZ"), get_clean_data("BRL=X"), get_clean_data("EURUSD=X")
     
-    from datetime import datetime
-    import pytz
-        
-        # 1. Ajusta o fuso horário para Brasília
-    fuso = pytz.timezone('America/Sao_Paulo')
-    agora = datetime.now(fuso)
-        
-        # 2. Define o Spot com base no horário ou erro de sinal
-    prev_close = s_m["prev"]
-    raw_spot = s_m["last"]
-        
-        # Se passar das 18:30 OU se o preço estiver absurdamente longe do ajuste
-    if (agora.hour > 18 or (agora.hour == 18 and agora.minute >= 30)) or (abs(raw_spot - v_global["ajuste"]) > 0.15):
+from datetime import datetime
+import pytz
+fuso = pytz.timezone('America/Sao_Paulo')
+agora = datetime.now(fuso)
+prev_close = s_m["prev"]
+raw_spot = s_m["last"]
+if (agora.hour > 18 or (agora.hour == 18 and agora.minute >= 30)) or (abs(raw_spot - v_global["ajuste"]) > 0.15):
             spot = prev_close
     else:
             spot = raw_spot
-            
-        # 3. Recalcula a variação real para o painel
     v_spot = ((spot - prev_close) / prev_close * 100) if prev_close != 0 else 0
-
+    cor_v_spot = '#00cc66' if v_spot >= 0 else '#cc3333'
 
         cor_v_spot = '#00cc66' if v_spot >= 0 else '#cc3333'
         spr = d_m["var"] - e_m["var"]
