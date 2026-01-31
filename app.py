@@ -108,9 +108,9 @@ agora = datetime.now(fuso)
 prev_close = s_m["prev"]
 raw_spot = s_m["last"]
 if (agora.hour > 18 or (agora.hour == 18 and agora.minute >= 30)) or (abs(raw_spot - v_global["ajuste"]) > 0.15):
-            spot = prev_close
-    else:
-            spot = raw_spot
+    spot = prev_close
+else:
+    spot = raw_spot
     v_spot = ((spot - prev_close) / prev_close * 100) if prev_close != 0 else 0
     cor_v_spot = '#00cc66' if v_spot >= 0 else '#cc3333'
 
