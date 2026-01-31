@@ -11,9 +11,6 @@ def get_global_vars():
     return {
         "ajuste": 5.4000, 
         "ref": 5.4000,
-        "v_min": 1.0020,
-        "v_jus": 1.0041,
-        "v_max": 1.0060,
         "notas_mural": "RESUMO DA ABERTURA E AGENDA: AGUARDANDO ATUALIZAÇÃO...",
         "notas": "MURAL: AGUARDANDO...",
         "notas2": "INFORMATIVO: OPERACIONAL ATIVO"
@@ -59,17 +56,16 @@ st.markdown("""
     .s-text { font-size: 32px; font-weight: 700; font-family: 'Chakra Petch'; color: #ffffff; }
     .var-style { font-size: 20px; margin-left: 12px; font-weight: 400; }
     .s-subtext { font-size: 10px; color: #666; margin-top: 2px; }
-    .vies-indicator { font-size: 14px; font-weight: 900; margin-top: 6px; font-family: 'Orbitron'; display: flex; justify-content: center; align-items: center; gap: 15px; }
-    .media-azul-val { color: #0066cc; font-family: 'Chakra Petch'; font-size: 20px; font-weight: 700; }
+    .vies-indicator { font-size: 13px; font-weight: 900; margin-top: 6px; font-family: 'Orbitron'; }
     .d-row { display: flex; justify-content: space-between; align-items: center; padding: 18px 15px; border-bottom: 1px solid #111; }
-    .d-label { font-size: 15px; color: #FFFFFF; font-weight: 400; width: 40%; letter-spacing: 1px; }
+    .d-label { font-size: 11px; color: #FFFFFF; font-weight: 900; width: 40%; }
     .sub-grid { display: flex; gap: 15px; justify-content: flex-end; width: 60%; }
     .sub-item { text-align: center; min-width: 70px; display: flex; flex-direction: column; }
-    .sub-l { font-size: 9px; color: #888; margin-bottom: 2px; font-weight: 700; }
-    .sub-v { font-size: 20px; font-family: 'Chakra Petch'; font-weight: 700; }
-    .v-peq { font-size: 18px; font-family: 'Chakra Petch'; font-weight: 700; color: #ffff00; }
+    .sub-l { font-size: 8px; color: #888; margin-bottom: 2px; }
+    .sub-v { font-size: 18px; font-family: 'Chakra Petch'; font-weight: 700; }
+    .v-peq { font-size: 16px; font-family: 'Chakra Petch'; font-weight: 700; color: #ffff00; }
     .v-extra { font-size: 12px; font-family: 'Chakra Petch'; color: #ffff00; opacity: 0.5; margin-top: 1px; }
-    .d-value { font-size: 28px; text-align: right; font-family: 'Chakra Petch'; font-weight: 700; }
+    .d-value { font-size: 26px; text-align: right; font-family: 'Chakra Petch'; font-weight: 700; }
     .c-pari { color: #cc9900; } .c-equi { color: #00cccc; } 
     .c-max { color: #00cc66; } .c-min { color: #cc3333; } .c-jus { color: #0066cc; }
     .note-box { background: #050505; border-top: 1px solid #111; padding: 15px 20px; min-height: 120px; }
@@ -94,53 +90,42 @@ def get_clean_data(ticker):
         prev = t.fast_info.previous_close
         var = ((last - prev) / prev * 100) if prev != 0 else 0
         return {"last": last, "prev": prev, "var": var}
-    except: return {"last": 0.0, "prev": 0.0, "var": 0.0}
+    except:
+        return {"last": 0.0, "prev": 0.0, "var": 0.0}
 
-# 6. RENDERIZAÇÃO
-@st.fragment(run_every=2)
+# 6. FRAGMENTO DE ATUALIZAÇÃO AUTOMÁTICA
+@st.fragment(run_every=1)
 def monitor_terminal():
-    d_m, e_m, s_m, eu_m = get_clean_data("DX-Y.NYB"), get_clean_data("EWZ"), get_clean_data("BRL=X"), get_clean_data("EURUSD=X")
+    d_m = get_clean_data("DX-Y.NYB")
+    e_m = get_clean_data("EWZ")
+    s_m = get_clean_data("BRL=X")
+    eu_m = get_clean_data("EURUSD=X")
     
-        from datetime import datetime
-        import pytz
-        # Garante que o robô use o horário de Brasília, não o de Londres
-        fuso = pytz.timezone('America/Sao_Paulo')
-        agora = datetime.now(fuso)
-        
-        if agora.hour > 18 or (agora.hour == 18 and agora.minute >= 30):
-            spot = s_m["prev"]
-        else:
-            spot = s_m["last"]
-            
-        # CORREÇÃO CRUCIAL: Recalcula a variação baseada no spot que escolhemos
-        prev_close = s_m["prev"]
-        v_spot = ((spot - prev_close) / prev_close * 100) if prev_close != 0 else 0
-
-
-        cor_v_spot = '#00cc66' if v_spot >= 0 else '#cc3333'
+    if s_m["last"] > 0:
+        spot, prev_close, v_spot = s_m["last"], s_m["prev"], s_m["var"]
+        cor_v_spot = "#00cc66" if v_spot >= 0 else "#cc3333"
         spr = d_m["var"] - e_m["var"]
         paridade_global = v_global["ajuste"]*(1+(spr/100))
-        justo = round((spot * v_global["v_jus"]) * 2000) / 2000
-        equilibrio = round((v_global["ref"] * v_global["v_min"]) * 2000) / 2000
-        media_azul = (spot + justo + paridade_global) / 3
+        justo = round((spot + 0.0310) * 2000) / 2000
+        equilibrio = round((v_global["ref"] + 0.0220) * 2000) / 2000
         
-        fut_seta, fut_clr = ("▲ FUTURO", "#00cc66") if spot < (paridade_global - 0.0030) else (("▼ FUTURO", "#cc3333") if spot > (paridade_global + 0.0030) else ("● ESTÁVEL", "#444"))
+        if spot < (paridade_global - 0.0030): fut_seta, fut_clr = "▲ FUTURO", "#00cc66"
+        elif spot > (paridade_global + 0.0030): fut_seta, fut_clr = "▼ FUTURO", "#cc3333"
+        else: fut_seta, fut_clr = "● ESTÁVEL", "#444"
 
         st.markdown(f'<div class="t-header"><div class="pulse-green"></div><div class="t-title">TERMINAL <span class="t-bold">DOLAR</span></div></div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="s-container"><div class="s-text">{spot:.4f} <span class="var-style" style="color:{cor_v_spot}">{v_spot:+.2f}%</span></div><div class="s-subtext">FECH. ANTERIOR: {prev_close:.4f}</div><div class="vies-indicator" style="color:{fut_clr}">{fut_seta} <span class="media-azul-val">{media_azul:.4f}</span></div></div>', unsafe_allow_html=True)
-        
+        st.markdown(f'<div class="s-container"><div class="s-text">{spot:.4f} <span class="var-style" style="color:{cor_v_spot}">{v_spot:+.2f}%</span></div><div class="s-subtext">FECH. ANTERIOR: {prev_close:.4f}</div><div class="vies-indicator" style="color:{fut_clr}">{fut_seta}</div></div>', unsafe_allow_html=True)
         st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value c-pari">{paridade_global:.4f}</div></div>', unsafe_allow_html=True)
         st.markdown(f'<div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value c-equi">{equilibrio:.4f}</div></div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="d-row"><div class="d-label">PREÇO JUSTO</div><div class="d-value c-jus">{justo:.4f}</div></div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="d-row"><div class="d-label">REF. INSTITUCIONAL</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((v_global["ref"]*v_global["v_min"])*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{(round((v_global["ref"]*v_global["v_jus"])*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((v_global["ref"]*v_global["v_max"])*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="d-row"><div class="d-label">PREÇO JUSTO</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((spot+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{justo:.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((spot+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="d-row"><div class="d-label">REF. INSTITUCIONAL</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((v_global["ref"]+0.0220)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{(round((v_global["ref"]+0.0310)*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((v_global["ref"]+0.0420)*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
 
-        # REGIÃO DE CORREÇÃO (ADICIONADO)
         st.markdown(f"""
         <div class="d-row" style="padding-top:10px; border-bottom: none; align-items: flex-start;">
             <div class="d-label" style="opacity:0.6; margin-top:5px;">REGIÃO DE CORREÇÃO</div>
             <div class="sub-grid">
-                <div class="sub-item"><span class="v-peq">{(equilibrio * 0.9980):.4f}</span><span class="v-extra">{(equilibrio * 0.9960):.4f}</span></div>
-                <div class="sub-item"><span class="v-peq">{(equilibrio * 1.0020):.4f}</span><span class="v-extra">{(equilibrio * 1.0040):.4f}</span></div>
+                <div class="sub-item"><span class="v-peq">{(equilibrio - 0.0110):.4f}</span><span class="v-extra">{(equilibrio - 0.0220):.4f}</span></div>
+                <div class="sub-item"><span class="v-peq">{(equilibrio + 0.0110):.4f}</span><span class="v-extra">{(equilibrio + 0.0220):.4f}</span></div>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -154,30 +139,18 @@ def monitor_terminal():
             return f"<span class='tk-item'><b>{n}</b> {pf} <span style='color:{c}'>{v:+.2f}%</span></span>"
 
         btk = f"{f_tk(s_m,'SPOT')} {f_tk(d_m,'DXY')} {f_tk(e_m,'EWZ')} {f_tk(eu_m,'EURUSD')} <span class='tk-item'><b>SPREAD</b> {spr:+.2f}%</span>"
-        
-        st.markdown(f"""
-            <div class="f-bar">
-                <div class="f-notes">{v_global['notas']}</div>
-                <div class="f-notes2">{v_global['notas2']}</div>
-                <div class="f-line"></div>
-                <div class="tk-wrap">
-                    <div class="tk-move">{btk} {btk} {btk}</div>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f'<div class="f-bar"><div class="f-notes">{v_global["notas"]}</div><div class="f-notes2">{v_global["notas2"]}</div><div class="f-line"></div><div class="tk-wrap"><div class="tk-move">{btk} {btk} {btk}</div></div></div>', unsafe_allow_html=True)
 
 # PAINEL ADM
 if st.session_state.user_type == "ADM":
     with st.expander("PAINEL ADM"):
-        with st.form("adm"):
+        with st.form("adm_panel"):
             c1, c2 = st.columns(2)
             v_global["ajuste"] = c1.number_input("PARIDADE", value=v_global["ajuste"], format="%.4f")
             v_global["ref"] = c2.number_input("REF INST", value=v_global["ref"], format="%.4f")
-            cv1, cv2, cv3 = st.columns(3)
-            v_global["v_min"] = cv1.number_input("Variação 1.002", value=v_global["v_min"], format="%.4f")
-            v_global["v_jus"] = cv2.number_input("Variação 1.0041", value=v_global["v_jus"], format="%.4f")
-            v_global["v_max"] = cv3.number_input("Variação 1.01", value=v_global["v_max"], format="%.4f")
-            v_global["notas_mural"] = st.text_area("MORNING CALL", value=v_global["notas_mural"], height=150)
+            v_global["notas_mural"] = st.text_area("MORNING CALL", value=v_global["notas_mural"])
+            v_global["notas"] = st.text_input("RODAPÉ 1", value=v_global["notas"])
+            v_global["notas2"] = st.text_input("RODAPÉ 2", value=v_global["notas2"])
             if st.form_submit_button("SALVAR"): st.rerun()
 
 monitor_terminal()
