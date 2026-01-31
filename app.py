@@ -1,6 +1,8 @@
 import streamlit as st
 import yfinance as yf
 import time
+from datetime import datetime
+import pytz
 
 # 1. CONFIGURAÇÃO DE PÁGINA
 st.set_page_config(page_title="TERMINAL FINANCEIRO", layout="wide", initial_sidebar_state="collapsed")
@@ -86,7 +88,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 5. MOTOR DE DATA
+# 5. MOTOR DE DADOS
 def get_clean_data(ticker):
     try:
         t = yf.Ticker(ticker)
@@ -99,83 +101,76 @@ def get_clean_data(ticker):
 # 6. RENDERIZAÇÃO
 @st.fragment(run_every=2)
 def monitor_terminal():
-    d_m, e_m, s_m, eu_m = get_clean_data("DX-Y.NYB"), get_clean_data("EWZ"), get_clean_data("BRL=X"), get_clean_data("EURUSD=X")
+    # Coleta
+    d_m = get_clean_data("DX-Y.NYB")
+    e_m = get_clean_data("EWZ")
+    s_m = get_clean_data("BRL=X")
+    eu_m = get_clean_data("EURUSD=X")
     
-            from datetime import datetime
-        import pytz
-        fuso = pytz.timezone('America/Sao_Paulo')
-        agora = datetime.now(fuso)
-        prev_close = s_m["prev"]
-        raw_spot = s_m["last"]
-        # Se passar das 18:30 OU se o preço divergir mais de 0.15 do ajuste
-        if (agora.hour > 18 or (agora.hour == 18 and agora.minute >= 30)) or (abs(raw_spot - v_global["ajuste"]) > 0.15):
-            spot = prev_close
-        else:
-            spot = raw_spot
-        v_spot = ((spot - prev_close) / prev_close * 100) if prev_close != 0 else 0
-
-
-        cor_v_spot = '#00cc66' if v_spot >= 0 else '#cc3333'
-        spr = d_m["var"] - e_m["var"]
-        paridade_global = v_global["ajuste"]*(1+(spr/100))
-        justo = round((spot * v_global["v_jus"]) * 2000) / 2000
-        equilibrio = round((v_global["ref"] * v_global["v_min"]) * 2000) / 2000
-        media_azul = (spot + justo + paridade_global) / 3
+    # Tratamento de Horário e Erro do Yahoo
+    fuso = pytz.timezone('America/Sao_Paulo')
+    agora = datetime.now(fuso)
+    prev_close = s_m["prev"]
+    raw_spot = s_m["last"]
+    
+    # Trava de Segurança: Se preço divergir +0.15 do ajuste (Erro 5.1604) ou for noite
+    if (agora.hour > 18 or (agora.hour == 18 and agora.minute >= 30)) or (abs(raw_spot - v_global["ajuste"]) > 0.15):
+        spot = prev_close
+    else:
+        spot = raw_spot
         
-        fut_seta, fut_clr = ("▲ FUTURO", "#00cc66") if spot < (paridade_global - 0.0030) else (("▼ FUTURO", "#cc3333") if spot > (paridade_global + 0.0030) else ("● ESTÁVEL", "#444"))
+    v_spot = ((spot - prev_close) / prev_close * 100) if prev_close != 0 else 0
+    cor_v_spot = '#00cc66' if v_spot >= 0 else '#cc3333'
+    
+    # Cálculos Derivados
+    spr = d_m["var"] - e_m["var"]
+    paridade_global = v_global["ajuste"]*(1+(spr/100))
+    justo = round((spot * v_global["v_jus"]) * 2000) / 2000
+    equilibrio = round((v_global["ref"] * v_global["v_min"]) * 2000) / 2000
+    media_azul = (spot + justo + paridade_global) / 3
+    
+    fut_seta, fut_clr = ("▲ FUTURO", "#00cc66") if spot < (paridade_global - 0.0030) else (("▼ FUTURO", "#cc3333") if spot > (paridade_global + 0.0030) else ("● ESTÁVEL", "#444"))
 
-        st.markdown(f'<div class="t-header"><div class="pulse-green"></div><div class="t-title">TERMINAL <span class="t-bold">DOLAR</span></div></div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="s-container"><div class="s-text">{spot:.4f} <span class="var-style" style="color:{cor_v_spot}">{v_spot:+.2f}%</span></div><div class="s-subtext">FECH. ANTERIOR: {prev_close:.4f}</div><div class="vies-indicator" style="color:{fut_clr}">{fut_seta} <span class="media-azul-val">{media_azul:.4f}</span></div></div>', unsafe_allow_html=True)
-        
-        st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value c-pari">{paridade_global:.4f}</div></div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value c-equi">{equilibrio:.4f}</div></div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="d-row"><div class="d-label">PREÇO JUSTO</div><div class="d-value c-jus">{justo:.4f}</div></div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="d-row"><div class="d-label">REF. INSTITUCIONAL</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((v_global["ref"]*v_global["v_min"])*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{(round((v_global["ref"]*v_global["v_jus"])*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((v_global["ref"]*v_global["v_max"])*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
+    # Interface
+    st.markdown(f'<div class="t-header"><div class="pulse-green"></div><div class="t-title">TERMINAL <span class="t-bold">DOLAR</span></div></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="s-container"><div class="s-text">{spot:.4f} <span class="var-style" style="color:{cor_v_spot}">{v_spot:+.2f}%</span></div><div class="s-subtext">FECH. ANTERIOR: {prev_close:.4f}</div><div class="vies-indicator" style="color:{fut_clr}">{fut_seta} <span class="media-azul-val">{media_azul:.4f}</span></div></div>', unsafe_allow_html=True)
+    
+    st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value c-pari">{paridade_global:.4f}</div></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value c-equi">{equilibrio:.4f}</div></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="d-row"><div class="d-label">PREÇO JUSTO</div><div class="d-value c-jus">{justo:.4f}</div></div>', unsafe_allow_html=True)
+    
+    st.markdown(f'<div class="d-row"><div class="d-label">REF. INSTITUCIONAL</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((v_global["ref"]*v_global["v_min"])*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{(round((v_global["ref"]*v_global["v_jus"])*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((v_global["ref"]*v_global["v_max"])*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
 
-        # REGIÃO DE CORREÇÃO (ADICIONADO)
-        st.markdown(f"""
-        <div class="d-row" style="padding-top:10px; border-bottom: none; align-items: flex-start;">
-            <div class="d-label" style="opacity:0.6; margin-top:5px;">REGIÃO DE CORREÇÃO</div>
-            <div class="sub-grid">
-                <div class="sub-item"><span class="v-peq">{(equilibrio * 0.9980):.4f}</span><span class="v-extra">{(equilibrio * 0.9960):.4f}</span></div>
-                <div class="sub-item"><span class="v-peq">{(equilibrio * 1.0020):.4f}</span><span class="v-extra">{(equilibrio * 1.0040):.4f}</span></div>
+    st.markdown(f"""
+    <div class="d-row" style="padding-top:10px; border-bottom: none; align-items: flex-start;">
+        <div class="d-label" style="opacity:0.6; margin-top:5px;">REGIÃO DE CORREÇÃO</div>
+        <div class="sub-grid">
+            <div class="sub-item"><span class="v-peq">{(equilibrio * 0.9980):.4f}</span><span class="v-extra">{(equilibrio * 0.9960):.4f}</span></div>
+            <div class="sub-item"><span class="v-peq">{(equilibrio * 1.0020):.4f}</span><span class="v-extra">{(equilibrio * 1.0040):.4f}</span></div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown(f'<div class="note-box"><div class="note-title">MORNING CALL & AGENDA</div><div class="note-content">{v_global["notas_mural"].replace(chr(10), "<br>")}</div></div>', unsafe_allow_html=True)
+
+    def f_tk(d, n):
+        v, p = d["var"], d["last"]
+        c = "#00aa55" if v >= 0 else "#aa3333"
+        pf = f"{p:.4f}" if n == "SPOT" else f"{p:.2f}"
+        return f"<span class='tk-item'><b>{n}</b> {pf} <span style='color:{c}'>{v:+.2f}%</span></span>"
+
+    btk = f"{f_tk(s_m,'SPOT')} {f_tk(d_m,'DXY')} {f_tk(e_m,'EWZ')} {f_tk(eu_m,'EURUSD')} <span class='tk-item'><b>SPREAD</b> {spr:+.2f}%</span>"
+    
+    st.markdown(f"""
+        <div class="f-bar">
+            <div class="f-notes">{v_global['notas']}</div>
+            <div class="f-notes2">{v_global['notas2']}</div>
+            <div class="f-line"></div>
+            <div class="tk-wrap">
+                <div class="tk-move">{btk} {btk} {btk}</div>
             </div>
         </div>
-        """, unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
-        st.markdown(f'<div class="note-box"><div class="note-title">MORNING CALL & AGENDA</div><div class="note-content">{v_global["notas_mural"].replace(chr(10), "<br>")}</div></div>', unsafe_allow_html=True)
-
-        def f_tk(d, n):
-            v, p = d["var"], d["last"]
-            c = "#00aa55" if v >= 0 else "#aa3333"
-            pf = f"{p:.4f}" if n == "SPOT" else f"{p:.2f}"
-            return f"<span class='tk-item'><b>{n}</b> {pf} <span style='color:{c}'>{v:+.2f}%</span></span>"
-
-        btk = f"{f_tk(s_m,'SPOT')} {f_tk(d_m,'DXY')} {f_tk(e_m,'EWZ')} {f_tk(eu_m,'EURUSD')} <span class='tk-item'><b>SPREAD</b> {spr:+.2f}%</span>"
-        
-        st.markdown(f"""
-            <div class="f-bar">
-                <div class="f-notes">{v_global['notas']}</div>
-                <div class="f-notes2">{v_global['notas2']}</div>
-                <div class="f-line"></div>
-                <div class="tk-wrap">
-                    <div class="tk-move">{btk} {btk} {btk}</div>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-
-# PAINEL ADM
-if st.session_state.user_type == "ADM":
-    with st.expander("PAINEL ADM"):
-        with st.form("adm"):
-            c1, c2 = st.columns(2)
-            v_global["ajuste"] = c1.number_input("PARIDADE", value=v_global["ajuste"], format="%.4f")
-            v_global["ref"] = c2.number_input("REF INST", value=v_global["ref"], format="%.4f")
-            cv1, cv2, cv3 = st.columns(3)
-            v_global["v_min"] = cv1.number_input("Variação 1.002", value=v_global["v_min"], format="%.4f")
-            v_global["v_jus"] = cv2.number_input("Variação 1.0041", value=v_global["v_jus"], format="%.4f")
-            v_global["v_max"] = cv3.number_input("Variação 1.01", value=v_global["v_max"], format="%.4f")
-            v_global["notas_mural"] = st.text_area("MORNING CALL", value=v_global["notas_mural"], height=150)
-            if st.form_submit_button("SALVAR"): st.rerun()
-
-monitor_terminal()
+# 7. PAINEL ADM
+if st.session
