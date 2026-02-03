@@ -104,7 +104,7 @@ def monitor_terminal():
     if s_m["last"] > 0:
         from datetime import datetime
         agora = datetime.now()
-        if agora.hour > 18 or (agora.hour == 18 and agora.minute >= 30):
+        if agora.hour > 18 or (agora.hour == 18 and agora.minute >= 00):
             spot = s_m["prev"]
         else:
             spot = s_m["last"]
