@@ -1,1 +1,101 @@
+import streamlit as st
+import yfinance as yf
 
+# 1. SETUP TERMINAL
+st.set_page_config(page_title="SHARK VISION | DATA ONLY", layout="wide", initial_sidebar_state="collapsed")
+
+@st.cache_resource
+def get_global_vars():
+    return {
+        "ajuste": 5.4850, "ref": 5.4720, "v_min": 0.9950, "v_jus": 1.0000, "v_max": 1.0050,
+        "dif_arb": 0.00, "vol_imp": 0.00, "notas_mural": "SISTEMA OPERACIONAL ATIVO"
+    }
+v_global = get_global_vars()
+
+# 2. CSS BLOOMBERG PURE DATA (SEM GRÁFICOS)
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@500;700&display=swap');
+    [data-testid="stHeader"], footer, [data-testid="stSidebar"] { display: none !important; }
+    .stApp { background-color: #000; color: #fff; font-family: 'Roboto Mono', monospace; }
+    .block-container { padding: 0rem !important; }
+
+    .header-box { background: #111; padding: 20px 40px; border-bottom: 2px solid #333; display: flex; justify-content: space-between; align-items: center; }
+    .spot-big { font-size: 50px; font-weight: 700; color: #ffff00; line-height: 1; }
+    
+    .row-data { display: flex; width: 100%; border-bottom: 1px solid #222; background: #000; }
+    .cell { flex: 1; padding: 15px 25px; border-right: 1px solid #111; }
+    .label { font-size: 10px; color: #666; text-transform: uppercase; margin-bottom: 5px; }
+    .value { font-size: 22px; font-weight: 700; }
+    
+    .up { color: #00ff00; } .down { color: #ff3333; } .cyan { color: #00ffff; } .gold { color: #ffcc00; }
+</style>
+""", unsafe_allow_html=True)
+
+# 3. ENGINE DE DADOS
+def fetch_data(ticker):
+    try:
+        t = yf.Ticker(ticker)
+        i = t.info
+        last = i.get('regularMarketPrice') or i.get('previousClose', 0)
+        return {
+            "last": last, "open": i.get('open', 0), "high": i.get('dayHigh', 0),
+            "low": i.get('dayLow', 0), "vol": i.get('volume', 0), 
+            "prev": i.get('previousClose', 0), "var": ((last - i.get('previousClose', 1)) / i.get('previousClose', 1)) * 100
+        }
+    except: return {"last":0, "open":0, "high":0, "low":0, "vol":0, "prev":0, "var":0}
+
+# 4. MONITOR DE DADOS PUROS
+@st.fragment(run_every=2)
+def data_terminal():
+    s = fetch_data("BRL=X")
+    justo = round((s["last"] * v_global["v_jus"]) * 2000) / 2000
+    eq = round((v_global["ref"] * v_global["v_min"]) * 2000) / 2000
+    
+    # HEADER: SPOT E VARIAÇÃO
+    st.markdown(f"""
+    <div class="header-box">
+        <div><span style="font-size:12px; color:#888;">USD/BRL SPOT</span><br><span class="spot-big">{s['last']:.4f}</span></div>
+        <div style="text-align:right;">
+            <span style="font-size:12px; color:#888;">VARIAÇÃO DIA</span><br>
+            <span class="spot-big {'up' if s['var']>=0 else 'down'}" style="font-size:35px;">{s['var']:+.2f}%</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # LINHA 1: MERCADO BRUTO
+    st.markdown(f"""
+    <div class="row-data">
+        <div class="cell"><div class="label">Abertura</div><div class="value">{s['open']:.4f}</div></div>
+        <div class="cell"><div class="label">Máxima</div><div class="value up">{s['high']:.4f}</div></div>
+        <div class="cell"><div class="label">Mínima</div><div class="value down">{s['low']:.4f}</div></div>
+        <div class="cell"><div class="label">Volume</div><div class="value gold">{s['vol']:,}</div></div>
+        <div class="cell" style="border:none;"><div class="label">Fech. Ant.</div><div class="value">{s['prev']:.4f}</div></div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # LINHA 2: INSTITUCIONAL & ARBITRAGEM
+    st.markdown(f"""
+    <div class="row-data" style="background:#0a0a0a;">
+        <div class="cell"><div class="label">Paridade Global</div><div class="value gold">{v_global['ajuste']:.4f}</div></div>
+        <div class="cell"><div class="label">Equilíbrio B3</div><div class="value cyan">{eq:.4f}</div></div>
+        <div class="cell"><div class="label">DIF Arbitragem</div><div class="value">{v_global['dif_arb']:+.2f}%</div></div>
+        <div class="cell" style="border:none;"><div class="label">Vol Implícita</div><div class="value" style="color:#ff00ff">{v_global['vol_imp']:.2f}%</div></div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # LINHA 3: NÍVEIS DE PREÇO (ORIGINAIS)
+    st.markdown(f"""
+    <div class="row-data">
+        <div class="cell"><div class="label">Ref Mínima</div><div class="value down">{(v_global['ref']*v_global['v_min']):.4f}</div></div>
+        <div class="cell"><div class="label">Ref Justo</div><div class="value cyan">{(v_global['ref']*v_global['v_jus']):.4f}</div></div>
+        <div class="cell"><div class="label">Ref Máxima</div><div class="value up">{(v_global['ref']*v_global['v_max']):.4f}</div></div>
+        <div class="cell" style="border:none;"><div class="label">Região de Correção</div><div class="value" style="color:#ffff00">{eq*0.998:.4f} ⬌ {eq*1.002:.4f}</div></div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # NOTAS MURAL
+    st.markdown(f'<div style="padding:20px 40px; font-size:14px; color:#666; background:#000;">{v_global["notas_mural"]}</div>', unsafe_allow_html=True)
+
+data_terminal()
+  
