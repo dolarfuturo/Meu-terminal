@@ -1,19 +1,14 @@
 import streamlit as st
 import pandas as pd
-import time
-import yfinance as yf
-from datetime import datetime, timedelta
-import pytz
-import hashlib  # Necessário para a segurança
+import hashlib
 
-# 1. SETUP ALPHA
+# 1. SETUP DO TERMINAL K97 (SHAKE VISION)
 st.set_page_config(page_title="ALPHA VISION LIVE", layout="wide", initial_sidebar_state="collapsed")
 
-# --- SISTEMA DE GESTÃO DE ALUGUEL (GOOGLE SHEETS) ---
+# --- SISTEMA DE GESTÃO DE ACESSO ---
 def verificar_acesso():
-    # URL DO SEU CSV (Substitua pelo link que você vai gerar no Google Sheets)
-    URL_SISTEMA = "URL_SISTEMA = "https://docs.google.com/spreadsheets/d/1m86_Lj5p7tV9U4sNIKudbU1DVWFgAfaSXSIRATo6G70/export?format=csv"
-"
+    # LINK DA SUA PLANILHA JÁ CONFIGURADO PARA EXPORTAÇÃO
+    URL_SISTEMA = "https://docs.google.com/spreadsheets/d/1m86_Lj5p7tV9U4sNIKudbU1DVWFgAfaSXSIRATo6G70/export?format=csv"
     
     if "autenticado" not in st.session_state:
         st.markdown("""
@@ -22,64 +17,44 @@ def verificar_acesso():
                 background-color: #080808;
                 padding: 40px;
                 border-radius: 10px;
-                border: 1px solid #D4AF37;
+                border: 2px solid #D4AF37;
                 text-align: center;
             }
             </style>
             <div class="login-box">
                 <h1 style='color: #D4AF37;'>ALPHA VISION LOGIN</h1>
-                <p style='color: white;'>Terminal de Dados Cripto - Acesso Restrito</p>
+                <p style='color: white;'>Terminal K97 - Shake Vision</p>
             </div>
         """, unsafe_allow_html=True)
         
-        chave = st.text_input("Insira sua Chave de Licença:", type="password")
+        _, col2, _ = st.columns([1,2,1])
+        with col2:
+            chave = st.text_input("Insira sua Chave de Licença:", type="password")
         
         if chave:
             try:
-                # Lê a planilha de controle
+                # O Python lê a planilha em tempo real
                 df = pd.read_csv(URL_SISTEMA)
+                
+                # Criptografa a senha digitada para comparar
                 hash_tentativa = hashlib.sha256(chave.encode()).hexdigest()
                 
-                # Valida se o Hash existe e se o Status é ATIVO
-                valido = df[(df['Hash_Senha'] == hash_tentativa) & (df['Status'] == 'ATIVO')]
+                # Validação nas colunas MAIÚSCULAS: CLIENTE, HASH_SENHA, STATUS
+                valido = df[(df['HASH_SENHA'] == hash_tentativa) & (df['STATUS'] == 'ATIVO')]
                 
                 if not valido.empty:
                     st.session_state["autenticado"] = True
-                    st.session_state["usuario"] = valido.iloc[0]['Cliente']
+                    st.session_state["usuario"] = valido.iloc[0]['CLIENTE']
                     st.rerun()
                 else:
-                    st.error("❌ Licença Inválida ou Mensalidade em Atraso.")
+                    st.error("❌ Acesso Negado: Verifique sua licença ou pendências de amortização.")
             except Exception as e:
-                st.error("Erro ao conectar com o servidor de licenças. Verifique o link do banco de dados.")
+                st.error("Erro de conexão. Certifique-se de que a planilha está como 'Qualquer pessoa com o link'.")
         
-        st.stop() # Interrompe o script se não estiver logado
+        st.stop()
 
-# Executa a trava antes de carregar o terminal
+# Executa a trava
 verificar_acesso()
 
-# --- DAQUI PARA BAIXO SEGUE O SEU CÓDIGO ORIGINAL ---
-
-COINS_CONFIG = {
-    "BTC-USD": {"label": "BTC/USDT", "dec": 0},
-    "ETH-USD": {"label": "ETH/USDT", "dec": 0},
-    "SOL-USD": {"label": "SOL/USDT", "dec": 2},
-    "XRP-USD": {"label": "XRP/USDT", "dec": 2},
-    "BNB-USD": {"label": "BNB/USDT", "dec": 4},
-    "DOGE-USD": {"label": "DOGE/USDT", "dec": 4},
-    "LINK-USD": {"label": "LINK/USDT", "dec": 4},
-    "ADA-USD": {"label": "ADA/USDT", "dec": 2},
-    "AVAX-USD": {"label": "AVAX/USDT", "dec": 2},
-    "DOT-USD": {"label": "DOT/USDT", "dec": 2},
-    "MATIC-USD": {"label": "MATIC/USDT", "dec": 4},
-    "PEPE-USD": {"label": "PEPE/USDT", "dec": 4},
-    "SUI-USD": {"label": "SUI/USDT", "dec": 2},
-    "NEAR-USD": {"label": "NEAR/USDT", "dec": 2},
-    "APT-USD": {"label": "APT/USDT", "dec": 6},
-    "OP-USD": {"label": "OP/USDT", "dec": 3},
-    "ARB-USD": {"label": "ARB/USDT", "dec": 2},
-    "INJ-USD": {"label": "INJ/USDT", "dec": 2},
-    "RNDR-USD": {"label": "RNDR/USDT", "dec": 3},
-    "HYPE-USD": {"label": "HYPE/USDT", "dec": 4}
-}
-
-# ... (Continue com suas funções get_calculation_date, get_alpha_midpoint e o Loop While True)
+# --- ABAIXO SEGUE O RESTANTE DO SEU CÓDIGO (MOEDAS, GRÁFICOS E VWAP) ---
+st.success(f"Bem-vindo, {st.session_state['usuario']}! Conectado ao Terminal K97.")
