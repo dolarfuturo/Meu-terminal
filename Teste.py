@@ -1,61 +1,54 @@
 import streamlit as st
 import pandas as pd
-import hashlib
+import time
+import yfinance as yf
+from datetime import datetime, timedelta
+import pytz
+import hashlib # Necessário para a segurança
 
-# Configuração do Terminal K97
-st.set_page_config(page_title="ALPHA VISION", layout="wide")
+# 1. SETUP ALPHA & TRAVA DE SEGURANÇA K97
+st.set_page_config(page_title="ALPHA VISION LIVE", layout="wide", initial_sidebar_state="collapsed")
 
 def verificar_acesso():
-    # ID EXTRAÍDO DA SUA IMAGEM 1000030168.png
-    ID_PLANILHA = "1m86_Lj5p7tV9U4sNIKudbU1DVWFgAfaSXSIRATo6G70"
-    # Link de exportação direta que evita o erro 404
-    URL_SISTEMA = f"https://docs.google.com/spreadsheets/d/{ID_PLANILHA}/export?format=csv"
+    # LINK DA SUA PUBLICAÇÃO (Extraído da sua imagem anterior)
+    URL_SISTEMA = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSGR5bx-l2wuOzwfOdQK1OD42lB-oG2zhfCe4p_wfM5v76U-vf5JEpqochREiGF4NIAC3t7P6eKPSa/pub?output=csv"
     
     if "autenticado" not in st.session_state:
-        st.markdown("<h1 style='color:#D4AF37; text-align:center;'>SHAKE VISION LOGIN</h1>", unsafe_allow_html=True)
+        st.markdown("<h1 style='text-align:center; color:#D4AF37; font-family:monospace;'>SHAKE VISION LOGIN</h1>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align:center; color:white;'>Terminal K97 - Insira sua Chave de Licença</p>", unsafe_allow_html=True)
         
-        chave = st.text_input("Chave de Licença:", type="password")
+        col1, col2, col3 = st.columns([1,2,1])
+        with col2:
+            chave = st.text_input("", type="password", placeholder="Digite a Chave...")
         
         if chave:
             try:
-                # O parâmetro storage_options ajuda a evitar bloqueios de conexão
+                # Lendo os dados da planilha publicada
                 df = pd.read_csv(URL_SISTEMA)
-                
-                # Gera o Hash da senha digitada
                 hash_tentativa = hashlib.sha256(chave.encode()).hexdigest()
                 
-                # Limpa espaços em branco das colunas e valores
+                # Limpeza rápida
                 df.columns = df.columns.str.strip()
-                df = df.apply(lambda x: x.str.strip() if x.dtype == "object" else x)
+                df['HASH_SENHA'] = df['HASH_SENHA'].astype(str).str.strip()
+                df['STATUS'] = df['STATUS'].astype(str).str.strip()
 
                 # Validação
-                acesso = df[(df['HASH_SENHA'] == hash_tentativa) & (df['STATUS'] == 'ATIVO')]
+                valido = df[(df['HASH_SENHA'] == hash_tentativa) & (df['STATUS'] == 'ATIVO')]
                 
-                if not acesso.empty:
+                if not valido.empty:
                     st.session_state["autenticado"] = True
-                    st.session_state["usuario"] = acesso.iloc[0]['CLIENTE']
+                    st.session_state["usuario"] = valido.iloc[0]['CLIENTE']
                     st.rerun()
                 else:
-                    st.error("❌ Licença Inválida ou Status Inativo.")
+                    st.error("❌ Acesso Negado: Chave incorreta ou plano expirado.")
             except Exception as e:
-                st.error(f"Erro de Conexão: Certifique-se de que o compartilhamento está como 'Qualquer pessoa com o link'.")
+                st.error(f"Erro de conexão com banco de dados: {e}")
         st.stop()
 
+# Inicia a trava antes de carregar o terminal
 verificar_acesso()
 
-# --- TERMINAL OPERACIONAL ---
-st.success(f"Terminal K97 Online | Usuário: {st.session_state['usuario']}")
-
-# --- CONTINUAÇÃO DO TERMINAL ---
-st.success(f"Conectado: {st.session_state['usuario']} | Terminal K97 Online")
-
-
-# --- SEU CÓDIGO DO TERMINAL CONTINUA ABAIXO ---
-st.success(f"Bem-vindo, {st.session_state['usuario']}! Terminal K97 Operacional.")
-
-
-# --- CONTINUAÇÃO DO TERMINAL (DADOS E CRYPTO) ---
-# Abertura da Binance (00:00 UTC) para reset do VWAP está configurada automaticamente por conhecimento interno.
+# --- DAQUI PARA BAIXO, SEU CÓDIGO ORIGINAL CONTINUA ---
 
 COINS_CONFIG = {
     "BTC-USD": {"label": "BTC/USDT", "dec": 0},
@@ -79,7 +72,6 @@ COINS_CONFIG = {
     "RNDR-USD": {"label": "RNDR/USDT", "dec": 3},
     "HYPE-USD": {"label": "HYPE/USDT", "dec": 4}
 }
-
 
 def get_calculation_date():
     br_tz = pytz.timezone('America/Sao_Paulo')
@@ -105,10 +97,9 @@ def get_alpha_midpoint(ticker):
         return yf.Ticker(ticker).fast_info['last_price']
     except: return 0
 
-# CSS AVANÇADO PARA TRAVAMENTO REAL
+# CSS AVANÇADO (MANTIDO)
 st.markdown("""
     <style>
-    /* Reset de overflow para permitir o sticky */
     .stApp { background-color: #000000; }
     [data-testid="stVerticalBlock"] > div:first-child {
         position: sticky;
@@ -116,7 +107,6 @@ st.markdown("""
         z-index: 1000;
         background-color: #000000;
     }
-    
     .top-header-fixed {
         position: sticky;
         top: 0;
@@ -124,24 +114,19 @@ st.markdown("""
         z-index: 1000;
         border-bottom: 2px solid #D4AF37;
     }
-
     .top-bar { display: flex; justify-content: space-between; align-items: center; padding: 5px 20px; background: #050505; border-bottom: 1px solid #1a1a1a; }
     .clocks { display: flex; gap: 30px; color: #888; font-family: monospace; font-size: 12px; }
     .clock-item b { color: #FFF; }
     .live-indicator { display: flex; align-items: center; gap: 8px; color: #FFF; font-size: 12px; font-weight: bold; }
     .dot { height: 8px; width: 8px; background-color: #00FF00; border-radius: 50%; animation: pulse 1.5s infinite; }
     @keyframes pulse { 0% { transform: scale(0.9); opacity: 1; box-shadow: 0 0 0 0 rgba(0, 255, 0, 0.7); } 70% { transform: scale(1); opacity: 0.6; box-shadow: 0 0 0 10px rgba(0, 255, 0, 0); } 100% { transform: scale(0.9); opacity: 1; } }
-    
     .title-gold { color: #D4AF37; font-size: 28px; font-weight: 900; text-align: center; margin-top: 5px; }
     .subtitle-white { color: #FFFFFF; font-size: 12px; text-align: center; letter-spacing: 4px; text-transform: lowercase; margin-bottom: 5px; }
-    
     .header-grid { display: grid; grid-template-columns: 1.5fr 1.2fr 1fr 1fr 1fr 1fr 1fr 1fr; width: 100%; padding: 10px 0; background: #080808; }
     .h-col { font-size: 10px; color: #FFF; text-align: center; font-weight: 800; }
-    
     .row-container { display: grid; grid-template-columns: 1.5fr 1.2fr 1fr 1fr 1fr 1fr 1fr 1fr; width: 100%; align-items: center; padding: 12px 0 2px 0; }
     .w-col { text-align: center; font-family: 'monospace'; font-size: 17px; font-weight: 800; color: #FFF; }
     .vision-block { display: flex; justify-content: center; gap: 60px; padding: 2px 0 12px 0; border-bottom: 3px solid #333; margin-bottom: 2px; }
-    
     @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.2; } 100% { opacity: 1; } }
     </style>
     """, unsafe_allow_html=True)
@@ -160,11 +145,10 @@ while True:
         now_br, now_ny, now_ld = datetime.now(tz_br), datetime.now(tz_ny), datetime.now(tz_ld)
 
         with placeholder.container():
-            # CABEÇALHO TRAVADO (SÓ APARECE UMA VEZ NO TOPO DO CONTAINER)
             st.markdown(f"""
                 <div class="top-header-fixed">
                     <div class="top-bar">
-                        <div class="live-indicator"><span class="dot"></span> LIVESTREAM</div>
+                        <div class="live-indicator"><span class="dot"></span> {st.session_state['usuario']} | K97 ONLINE</div>
                         <div class="clocks">
                             <div class="clock-item">BRASÍLIA: <b>{now_br.strftime('%H:%M:%S')}</b></div>
                             <div class="clock-item">NEW YORK: <b>{now_ny.strftime('%H:%M:%S')}</b></div>
@@ -221,6 +205,4 @@ while True:
                 """, unsafe_allow_html=True)
         time.sleep(1)
     except Exception as e:
-    st.error(f"Erro na atualização: {e}")
-    time.sleep(5) # Agora o 'time' vai funcionar
-    st.rerun()
+        time.sleep(5)
