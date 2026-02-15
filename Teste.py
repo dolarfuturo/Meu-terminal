@@ -7,7 +7,7 @@ import pytz
 import hashlib # Necessário para a segurança
 
 # 1. SETUP ALPHA & TRAVA DE SEGURANÇA 
-st.set_page_config(page_title="ALPHA VISION LIVE", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="SHARK VISION LIVE", layout="wide", initial_sidebar_state="collapsed")
 
 def verificar_acesso():
     # LINK DA SUA PUBLICAÇÃO (Extraído da sua imagem anterior)
