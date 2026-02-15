@@ -6,26 +6,30 @@ import hashlib
 st.set_page_config(page_title="ALPHA VISION LIVE", layout="wide", initial_sidebar_state="collapsed")
 
 def verificar_acesso():
-    # LINK DA SUA PUBLICAÇÃO (Copiado da imagem 1000030168.png)
+    # LINK EXTRAÍDO DA SUA IMAGEM 1000030168.png
     URL_SISTEMA = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSGR5bx-l2wuOzwfOdQK1OD42lB-oG2zhfCe4p_wfM5v76U-vf5JEpqochREiGF4NIAC3t7P6eKPSa/pub?output=csv"
     
     if "autenticado" not in st.session_state:
         st.markdown("<h1 style='text-align:center; color:#D4AF37;'>ALPHA VISION LOGIN</h1>", unsafe_allow_html=True)
         
+        # Campo de senha
         chave = st.text_input("Insira sua Chave de Licença:", type="password")
         
         if chave:
             try:
-                # Carrega os dados da planilha publicada
+                # Lendo os dados publicados
                 df = pd.read_csv(URL_SISTEMA)
                 
-                # Criptografa a senha digitada
+                # Criptografando a tentativa (SHAKE2026)
                 hash_tentativa = hashlib.sha256(chave.encode()).hexdigest()
                 
-                # Validação corrigida (sem o erro .upper)
-                # O código verifica se o HASH_SENHA e o STATUS batem com a planilha
-                valido = df[(df['HASH_SENHA'].astype(str).str.strip() == hash_tentativa) & 
-                            (df['STATUS'].astype(str).str.strip() == 'ATIVO')]
+                # Limpeza de dados para evitar erros de comparação
+                df.columns = df.columns.str.strip()
+                df['HASH_SENHA'] = df['HASH_SENHA'].astype(str).str.strip()
+                df['STATUS'] = df['STATUS'].astype(str).str.strip()
+
+                # Busca o usuário ativo
+                valido = df[(df['HASH_SENHA'] == hash_tentativa) & (df['STATUS'] == 'ATIVO')]
                 
                 if not valido.empty:
                     st.session_state["autenticado"] = True
@@ -34,11 +38,16 @@ def verificar_acesso():
                 else:
                     st.error("❌ Acesso Negado: Chave incorreta ou plano expirado.")
             except Exception as e:
+                # Se der 404 aqui, o link acima ainda está com erro de digitação
                 st.error(f"Erro de conexão com o servidor: {e}")
         st.stop()
 
-# Inicia a trava de segurança
+# Chama a trava
 verificar_acesso()
+
+# --- CONTINUAÇÃO DO TERMINAL ---
+st.success(f"Conectado: {st.session_state['usuario']} | Terminal K97 Online")
+
 
 # --- SEU CÓDIGO DO TERMINAL CONTINUA ABAIXO ---
 st.success(f"Bem-vindo, {st.session_state['usuario']}! Terminal K97 Operacional.")
