@@ -1,67 +1,48 @@
 import streamlit as st
 import pandas as pd
-import time
-import yfinance as yf
-from datetime import datetime, timedelta
-import pytz
 import hashlib
 
 # 1. SETUP DO TERMINAL K97
 st.set_page_config(page_title="ALPHA VISION LIVE", layout="wide", initial_sidebar_state="collapsed")
 
-# --- SISTEMA DE GESTÃO DE ACESSO (SHAKE VISION) ---
 def verificar_acesso():
-    # URL DO SEU CSV PUBLICADO NO GOOGLE SHEETS
-    URL_SISTEMA = "https://docs.google.com/spreadsheets/d/1m86_Lj5p7tV9U4sNIKudbU1DVWFgAfaSXSIRATo6G70/gviz/tq?tqx=out:csv"
-
+    # LINK DA SUA PUBLICAÇÃO (Copiado da imagem 1000030168.png)
+    URL_SISTEMA = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSGR5bx-l2wuOzwfOdQK1OD42lB-oG2zhfCe4p_wfM5v76U-vf5JEpqochREiGF4NIAC3t7P6eKPSa/pub?output=csv"
     
     if "autenticado" not in st.session_state:
-        st.markdown("""
-            <style>
-            .login-box {
-                background-color: #080808;
-                padding: 40px;
-                border-radius: 10px;
-                border: 2px solid #D4AF37;
-                text-align: center;
-            }
-            </style>
-            <div class="login-box">
-                <h1 style='color: #D4AF37;'>ALPHA VISION LOGIN</h1>
-                <p style='color: white;'>Terminal de Dados Financeiros - K97</p>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown("<h1 style='text-align:center; color:#D4AF37;'>ALPHA VISION LOGIN</h1>", unsafe_allow_html=True)
         
-        # Centralizando o campo de texto
-        _, col2, _ = st.columns([1,2,1])
-        with col2:
-            chave = st.text_input("Chave de Licença:", type="password")
+        chave = st.text_input("Insira sua Chave de Licença:", type="password")
         
         if chave:
             try:
-                # Carrega os dados da planilha
+                # Carrega os dados da planilha publicada
                 df = pd.read_csv(URL_SISTEMA)
                 
-                # Gera o Hash da senha digitada
+                # Criptografa a senha digitada
                 hash_tentativa = hashlib.sha256(chave.encode()).hexdigest()
                 
-                # BUSCA NAS COLUNAS EM MAIÚSCULAS (Conforme sua planilha)
-                # Verifica HASH_SENHA e STATUS
-                valido = df[(df['HASH_SENHA'] == hash_tentativa) & (df['STATUS'] == 'ATIVO')]
+                # Validação corrigida (sem o erro .upper)
+                # O código verifica se o HASH_SENHA e o STATUS batem com a planilha
+                valido = df[(df['HASH_SENHA'].astype(str).str.strip() == hash_tentativa) & 
+                            (df['STATUS'].astype(str).str.strip() == 'ATIVO')]
                 
                 if not valido.empty:
                     st.session_state["autenticado"] = True
                     st.session_state["usuario"] = valido.iloc[0]['CLIENTE']
                     st.rerun()
                 else:
-                    st.error("❌ Acesso Negado: Licença inválida ou pendência de amortização.")
+                    st.error("❌ Acesso Negado: Chave incorreta ou plano expirado.")
             except Exception as e:
-                st.error("Erro na conexão com o servidor de dados. Verifique o link do CSV.")
-        
-        st.stop() # Bloqueia o carregamento do restante do código
+                st.error(f"Erro de conexão com o servidor: {e}")
+        st.stop()
 
-# EXECUÇÃO DA TRAVA
+# Inicia a trava de segurança
 verificar_acesso()
+
+# --- SEU CÓDIGO DO TERMINAL CONTINUA ABAIXO ---
+st.success(f"Bem-vindo, {st.session_state['usuario']}! Terminal K97 Operacional.")
+
 
 # --- CONTINUAÇÃO DO TERMINAL (DADOS E CRYPTO) ---
 # Abertura da Binance (00:00 UTC) para reset do VWAP está configurada automaticamente por conhecimento interno.
