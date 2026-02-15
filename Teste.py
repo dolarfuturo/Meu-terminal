@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-import hashlib
+import time  
 
 # 1. SETUP DO TERMINAL K97
 st.set_page_config(page_title="ALPHA VISION LIVE", layout="wide", initial_sidebar_state="collapsed")
