@@ -11,7 +11,8 @@ st.set_page_config(page_title="ALPHA VISION LIVE", layout="wide", initial_sideba
 
 def verificar_acesso():
     # LINK DA SUA PUBLICAÇÃO (Extraído da sua imagem anterior)
-    URL_SISTEMA = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSGR5bx-l2wuOzwfOdQK1OD42lB-oG2zhfCe4p_wfM5v76U-vf5JEpqochREiGF4NIAC3t7P6eKPSa/pub?output=csv"
+    URL_SISTEMA = "https://docs.google.com/spreadsheets/d/1m86_Lj5p7tV9U4sNIKudbU1DVWFgAfaSXSIRATo6G70/export?format=csv"
+
     
     if "autenticado" not in st.session_state:
         st.markdown("<h1 style='text-align:center; color:#D4AF37; font-family:monospace;'>SHAKE VISION LOGIN</h1>", unsafe_allow_html=True)
