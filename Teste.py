@@ -7,9 +7,8 @@ st.set_page_config(page_title="ALPHA VISION LIVE", layout="wide", initial_sideba
 
 # --- SISTEMA DE GESTÃO DE ACESSO ---
 def verificar_acesso():
-    # LINK DA SUA PLANILHA JÁ CONFIGURADO PARA EXPORTAÇÃO
-    URL_SISTEMA = "URL_SISTEMA = "https://docs.google.com/spreadsheets/d/1m86_Lj5p7tV9U4sNIKudbU1DVWFgAfaSXSIRATo6G70/gviz/tq?tqx=out:csv"
-"
+    # LINK OTIMIZADO PARA GOOGLE SHEETS MOBILE
+    URL_SISTEMA = "https://docs.google.com/spreadsheets/d/1m86_Lj5p7tV9U4sNIKudbU1DVWFgAfaSXSIRATo6G70/gviz/tq?tqx=out:csv"
     
     if "autenticado" not in st.session_state:
         st.markdown("""
@@ -34,13 +33,15 @@ def verificar_acesso():
         
         if chave:
             try:
-                # O Python lê a planilha em tempo real
+                # Carrega a planilha e remove espaços extras dos nomes das colunas
                 df = pd.read_csv(URL_SISTEMA)
+                df.columns = df.columns.str.strip()
                 
-                # Criptografa a senha digitada para comparar
+                # Criptografa a senha digitada
                 hash_tentativa = hashlib.sha256(chave.encode()).hexdigest()
                 
                 # Validação nas colunas MAIÚSCULAS: CLIENTE, HASH_SENHA, STATUS
+                # A condição verifica se o Status é ATIVO
                 valido = df[(df['HASH_SENHA'] == hash_tentativa) & (df['STATUS'] == 'ATIVO')]
                 
                 if not valido.empty:
@@ -50,12 +51,14 @@ def verificar_acesso():
                 else:
                     st.error("❌ Acesso Negado: Verifique sua licença ou pendências de amortização.")
             except Exception as e:
-                st.error("Erro de conexão. Certifique-se de que a planilha está como 'Qualquer pessoa com o link'.")
+                st.error(f"Erro de conexão: Certifique-se de que a planilha está como 'Qualquer pessoa com o link'.")
         
         st.stop()
 
-# Executa a trava
+# Executa a trava de segurança
 verificar_acesso()
 
-# --- ABAIXO SEGUE O RESTANTE DO SEU CÓDIGO (MOEDAS, GRÁFICOS E VWAP) ---
+# --- ABAIXO SEGUE O RESTANTE DO SEU CÓDIGO ---
 st.success(f"Bem-vindo, {st.session_state['usuario']}! Conectado ao Terminal K97.")
+
+# Lembrete: O reset do VWAP está configurado para 00:00 UTC (Abertura Binance)
