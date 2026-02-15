@@ -8,7 +8,8 @@ st.set_page_config(page_title="ALPHA VISION LIVE", layout="wide", initial_sideba
 # --- SISTEMA DE GESTÃO DE ACESSO ---
 def verificar_acesso():
     # LINK DA SUA PLANILHA JÁ CONFIGURADO PARA EXPORTAÇÃO
-    URL_SISTEMA = "https://docs.google.com/spreadsheets/d/1m86_Lj5p7tV9U4sNIKudbU1DVWFgAfaSXSIRATo6G70/export?format=csv"
+    URL_SISTEMA = "URL_SISTEMA = "https://docs.google.com/spreadsheets/d/1m86_Lj5p7tV9U4sNIKudbU1DVWFgAfaSXSIRATo6G70/gviz/tq?tqx=out:csv"
+"
     
     if "autenticado" not in st.session_state:
         st.markdown("""
