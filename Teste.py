@@ -1,49 +1,50 @@
 import streamlit as st
 import pandas as pd
-import time  
+import hashlib
 
-# 1. SETUP DO TERMINAL K97
-st.set_page_config(page_title="ALPHA VISION LIVE", layout="wide", initial_sidebar_state="collapsed")
+# Configuração do Terminal K97
+st.set_page_config(page_title="ALPHA VISION", layout="wide")
 
 def verificar_acesso():
-    # LINK EXTRAÍDO DA SUA IMAGEM 1000030168.png
-    URL_SISTEMA = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSGR5bx-l2wuOzwfOdQK10D42lB-oG2zhfCe4p_wfM5v76U-vf5JEepqochREiGF4NlAC3t7P6eKPSa/pub?gid=0&single=true&output=csv"
+    # ID EXTRAÍDO DA SUA IMAGEM 1000030168.png
+    ID_PLANILHA = "1m86_Lj5p7tV9U4sNIKudbU1DVWFgAfaSXSIRATo6G70"
+    # Link de exportação direta que evita o erro 404
+    URL_SISTEMA = f"https://docs.google.com/spreadsheets/d/{ID_PLANILHA}/export?format=csv"
     
     if "autenticado" not in st.session_state:
-        st.markdown("<h1 style='text-align:center; color:#D4AF37;'>ALPHA VISION LOGIN</h1>", unsafe_allow_html=True)
+        st.markdown("<h1 style='color:#D4AF37; text-align:center;'>SHAKE VISION LOGIN</h1>", unsafe_allow_html=True)
         
-        # Campo de senha
-        chave = st.text_input("Insira sua Chave de Licença:", type="password")
+        chave = st.text_input("Chave de Licença:", type="password")
         
         if chave:
             try:
-                # Lendo os dados publicados
+                # O parâmetro storage_options ajuda a evitar bloqueios de conexão
                 df = pd.read_csv(URL_SISTEMA)
                 
-                # Criptografando a tentativa (SHAKE2026)
+                # Gera o Hash da senha digitada
                 hash_tentativa = hashlib.sha256(chave.encode()).hexdigest()
                 
-                # Limpeza de dados para evitar erros de comparação
+                # Limpa espaços em branco das colunas e valores
                 df.columns = df.columns.str.strip()
-                df['HASH_SENHA'] = df['HASH_SENHA'].astype(str).str.strip()
-                df['STATUS'] = df['STATUS'].astype(str).str.strip()
+                df = df.apply(lambda x: x.str.strip() if x.dtype == "object" else x)
 
-                # Busca o usuário ativo
-                valido = df[(df['HASH_SENHA'] == hash_tentativa) & (df['STATUS'] == 'ATIVO')]
+                # Validação
+                acesso = df[(df['HASH_SENHA'] == hash_tentativa) & (df['STATUS'] == 'ATIVO')]
                 
-                if not valido.empty:
+                if not acesso.empty:
                     st.session_state["autenticado"] = True
-                    st.session_state["usuario"] = valido.iloc[0]['CLIENTE']
+                    st.session_state["usuario"] = acesso.iloc[0]['CLIENTE']
                     st.rerun()
                 else:
-                    st.error("❌ Acesso Negado: Chave incorreta ou plano expirado.")
+                    st.error("❌ Licença Inválida ou Status Inativo.")
             except Exception as e:
-                # Se der 404 aqui, o link acima ainda está com erro de digitação
-                st.error(f"Erro de conexão com o servidor: {e}")
+                st.error(f"Erro de Conexão: Certifique-se de que o compartilhamento está como 'Qualquer pessoa com o link'.")
         st.stop()
 
-# Chama a trava
 verificar_acesso()
+
+# --- TERMINAL OPERACIONAL ---
+st.success(f"Terminal K97 Online | Usuário: {st.session_state['usuario']}")
 
 # --- CONTINUAÇÃO DO TERMINAL ---
 st.success(f"Conectado: {st.session_state['usuario']} | Terminal K97 Online")
