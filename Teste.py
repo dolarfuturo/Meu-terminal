@@ -7,7 +7,7 @@ st.set_page_config(page_title="ALPHA VISION LIVE", layout="wide", initial_sideba
 
 def verificar_acesso():
     # LINK EXTRAÍDO DA SUA IMAGEM 1000030168.png
-    URL_SISTEMA = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSGR5bx-l2wuOzwfOdQK1OD42lB-oG2zhfCe4p_wfM5v76U-vf5JEpqochREiGF4NIAC3t7P6eKPSa/pub?output=csv"
+    URL_SISTEMA = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSGR5bx-l2wuOzwfOdQK10D42lB-oG2zhfCe4p_wfM5v76U-vf5JEepqochREiGF4NlAC3t7P6eKPSa/pub?gid=0&single=true&output=csv"
     
     if "autenticado" not in st.session_state:
         st.markdown("<h1 style='text-align:center; color:#D4AF37;'>ALPHA VISION LOGIN</h1>", unsafe_allow_html=True)
