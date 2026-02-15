@@ -149,7 +149,7 @@ while True:
             st.markdown(f"""
                 <div class="top-header-fixed">
                     <div class="top-bar">
-                        <div class="live-indicator"><span class="dot"></span> {st.session_state['usuario']} | K97 ONLINE</div>
+                        <div class="live-indicator"><span class="dot"></span> {st.session_state['usuario']} |  ONLINE</div>
                         <div class="clocks">
                             <div class="clock-item">BRASÍLIA: <b>{now_br.strftime('%H:%M:%S')}</b></div>
                             <div class="clock-item">NEW YORK: <b>{now_ny.strftime('%H:%M:%S')}</b></div>
