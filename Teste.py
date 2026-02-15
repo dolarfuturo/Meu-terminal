@@ -12,7 +12,7 @@ st.set_page_config(page_title="ALPHA VISION LIVE", layout="wide", initial_sideba
 # --- SISTEMA DE GESTÃO DE ACESSO (SHAKE VISION) ---
 def verificar_acesso():
     # URL DO SEU CSV PUBLICADO NO GOOGLE SHEETS
-    URL_SISTEMA = "https://docs.google.com/spreadsheets/d/1m86_Lj5p7tV9U4sNIKudbU1DVWFgAfaSXSIRATo6G70/export?format=csv"
+    URL_SISTEMA = "https://docs.google.com/spreadsheets/d/1m86_Lj5p7tV9U4sNIKudbU1DVWFgAfaSXSIRATo6G70/gviz/tq?tqx=out:csv"
 
     
     if "autenticado" not in st.session_state:
