@@ -220,4 +220,7 @@ while True:
                     </div>
                 """, unsafe_allow_html=True)
         time.sleep(1)
-    except: time.sleep(5)
+    except Exception as e:
+    st.error(f"Erro na atualização: {e}")
+    time.sleep(5) # Agora o 'time' vai funcionar
+    st.rerun()
