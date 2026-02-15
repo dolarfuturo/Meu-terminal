@@ -12,7 +12,8 @@ st.set_page_config(page_title="ALPHA VISION LIVE", layout="wide", initial_sideba
 # --- SISTEMA DE GESTÃO DE ALUGUEL (GOOGLE SHEETS) ---
 def verificar_acesso():
     # URL DO SEU CSV (Substitua pelo link que você vai gerar no Google Sheets)
-    URL_SISTEMA = "COLE_AQUI_O_LINK_DO_SEU_CSV_PUBLICO"
+    URL_SISTEMA = "URL_SISTEMA = "https://docs.google.com/spreadsheets/d/1m86_Lj5p7tV9U4sNIKudbU1DVWFgAfaSXSIRATo6G70/export?format=csv"
+"
     
     if "autenticado" not in st.session_state:
         st.markdown("""
