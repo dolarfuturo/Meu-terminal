@@ -156,7 +156,7 @@ while True:
                             <div class="clock-item">LONDON: <b>{now_ld.strftime('%H:%M:%S')}</b></div>
                         </div>
                     </div>
-                    <div class="title-gold">ALPHA VISION CRYPTO</div>
+                    <div class="title-gold">SHARK VISION CRYPTO</div>
                     <div class="subtitle-white">visão de tubarão</div>
                     <div class="header-grid">
                         <div class="h-col">CÓDIGO</div><div class="h-col">PREÇO ATUAL</div>
