@@ -172,12 +172,17 @@ while True:
                 mp, rv = st.session_state[f'mp_{t}'], st.session_state[f'rv_{t}']
                 
                 if t in ["BTC-USD", "ETH-USD"]: 
-    # Variações: 0.40%, 0.61%, 1.22% | Rompimento: 1.35%
-    g_ex, g_mov, g_dec, g_res, label_regua = 1.35, 1.0122, 1.0061, 1.0040, "1.22%"
-else: 
-    # Variações: 0.80%, 1.22%, 2.44% | Rompimento: 2.70%
-    # (Dobrei os valores para as Altcoins seguirem a escala de 2.44%)
-    g_ex, g_mov, g_dec, g_res, label_regua = 2.70, 1.0244, 1.0122, 1.0080, "2.44%"
+                    # Regra 1.22% (BTC/ETH)
+                    g_ex, g_mov, g_dec, g_res = 1.35, 1.0122, 1.0061, 1.0040
+                    # Cálculo dos negativos (Fundo)
+                    g_mov_f, g_ex_f = 0.9878, 0.9865 
+                    label_regua = "1.22%"
+                else: 
+                    # Regra 2.44% (ALTCOINS)
+                    g_ex, g_mov, g_dec, g_res = 2.70, 1.0244, 1.0122, 1.0080
+                    # Cálculo dos negativos (Fundo)
+                    g_mov_f, g_ex_f = 0.9756, 0.9730
+                    label_regua = "2.44%"
 
                 
                 var_escada = ((price / mp) - 1) * 100
