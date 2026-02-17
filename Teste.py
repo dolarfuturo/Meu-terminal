@@ -171,7 +171,7 @@ while True:
                 price = yf.Ticker(t).fast_info['last_price']
                 mp, rv = st.session_state[f'mp_{t}'], st.session_state[f'rv_{t}']
                 
-                               if t in ["BTC-USD", "ETH-USD"]: 
+                if t in ["BTC-USD", "ETH-USD"]: 
                     # Regra 1.22% (BTC/ETH)
                     g_ex, g_mov, g_dec, g_res = 1.35, 1.0122, 1.0061, 1.0040
                     # Multiplicadores Negativos (Fundo)
