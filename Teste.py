@@ -174,23 +174,31 @@ while True:
                 if t in ["BTC-USD", "ETH-USD"]: 
                     # Regra 1.22% (BTC/ETH)
                     g_ex, g_mov, g_dec, g_res = 1.35, 1.0122, 1.0061, 1.0040
-                    # Cálculo dos negativos (Fundo)
+                    # Multiplicadores Negativos (Fundo)
                     g_mov_f, g_ex_f = 0.9878, 0.9865 
                     label_regua = "1.22%"
                 else: 
                     # Regra 2.44% (ALTCOINS)
                     g_ex, g_mov, g_dec, g_res = 2.70, 1.0244, 1.0122, 1.0080
-                    # Cálculo dos negativos (Fundo)
+                    # Multiplicadores Negativos (Fundo)
                     g_mov_f, g_ex_f = 0.9756, 0.9730
                     label_regua = "2.44%"
-
                 
                 var_escada = ((price / mp) - 1) * 100
-                if var_escada >= g_ex: st.session_state[f'mp_{t}'] = mp * g_mov
-                elif var_escada <= -g_ex: st.session_state[f'mp_{t}'] = mp * (2 - g_mov)
                 
+                # --- LÓGICA DE RESET (ÂNCOVISION) ---
+                if var_escada >= g_ex: 
+                    st.session_state[f'mp_{t}'] = price
+                    mp = price
+                elif var_escada <= -g_ex: 
+                    st.session_state[f'mp_{t}'] = price
+                    mp = price
+                
+                # Recalcula para o visual
+                var_escada = ((price / mp) - 1) * 100
                 var_reset = ((price / rv) - 1) * 100
                 cor_v, seta_v = ("#00FF00", "▲") if var_reset >= 0 else ("#FF4444", "▼")
+                
                 abs_v = abs(var_escada)
                 fundo_d = "background: rgba(255, 255, 0, 0.15);" if (g_ex*0.44 <= abs_v <= g_ex*0.48) else ""
                 blink_t = "animation: blink 0.4s infinite;" if (g_ex*0.88 <= var_escada < g_ex) else ""
@@ -207,14 +215,4 @@ while True:
                         <div class="w-col" style="color:#FFA500;">{f"{(mp * g_mov):,.{info['dec']}f}"}</div>
                         <div class="w-col" style="{fundo_d} color:#FFFF00;">{f"{(mp * g_dec):,.{info['dec']}f}"}</div>
                         <div class="w-col" style="color:#00CED1;">{f"{(mp * g_res):,.{info['dec']}f}"}</div>
-                        <div class="w-col" style="color:#FFA500;">{f"{(mp * (2 - g_mov)):,.{info['dec']}f}"}</div>
-                        <div class="w-col" style="color:#00FF00; {blink_f}">{f"{(mp * (1 - (g_ex/100))):,.{info['dec']}f}"}</div>
-                    </div>
-                    <div class="vision-block">
-                        <div class="v-item"><div style="color:#666; font-size:8px;">RESETVISION</div><div style="color:#BBB; font-size:14px; font-weight:bold;">{f"{rv:,.{info['dec']}f}"}</div></div>
-                        <div class="v-item"><div style="color:#666; font-size:8px;">ÂNCOVISION ({label_regua})</div><div style="color:#00e6ff; font-size:14px; font-weight:bold;">{f"{mp:,.{info['dec']}f}"}</div></div>
-                    </div>
-                """, unsafe_allow_html=True)
-        time.sleep(1)
-    except Exception as e:
-        time.sleep(5)
+                        
