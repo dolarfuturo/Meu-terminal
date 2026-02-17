@@ -146,7 +146,6 @@ while True:
         now_br, now_ny, now_ld = datetime.now(tz_br), datetime.now(tz_ny), datetime.now(tz_ld)
 
         with placeholder.container():
-            # Cabeçalho Fixo
             st.markdown(f"""
                 <div class="top-header-fixed">
                     <div class="top-bar">
@@ -168,69 +167,46 @@ while True:
                 </div>
             """, unsafe_allow_html=True)
 
-                
             for t, info in COINS_CONFIG.items():
                 price = yf.Ticker(t).fast_info['last_price']
-                mp = st.session_state[f'mp_{t}']
-                rv = st.session_state[f'rv_{t}']
+                mp, rv = st.session_state[f'mp_{t}'], st.session_state[f'rv_{t}']
                 
-                # --- CONFIGURAÇÃO K97 (ÂNCORA É O EIXO) ---
-                if t in ["BTC-USD", "ETH-USD"]:
-                    # Regra BTC: 0.40 / 0.61 / 1.22
-                    p1, p2, p3 = 0.40, 0.61, 1.22
-                    label_regua = "1.22%"
-                else:
-                    # Regra ALTS (Dobrada): 0.80 / 1.22 / 2.44
-                    p1, p2, p3 = 0.80, 1.22, 2.44
-                    label_regua = "2.44%"
+                if t in ["BTC-USD", "ETH-USD"]: 
+                    g_ex, g_mov, g_dec, g_res, g_ex_f, g_mov_f, g_dec_f, g_res_f, label_regua = 1.0122, 1.0061, 1.0061, 1.0040, 0.9878, 0.9939, 0.9939, 0.9960, "1.22%"
+                else: 
+                    g_ex, g_mov, g_dec, g_res, g_ex_f, g_mov_f, g_dec_f, g_res_f, label_regua = 1.0244, 1.0122, 1.0122, 1.0080, 0.9756, 0.9878, 0.9878, 0.9920, "2.44%"
 
-                # Variação em relação ao EIXO
+                
                 var_escada = ((price / mp) - 1) * 100
+                if var_escada >= g_ex: st.session_state[f'mp_{t}'] = mp * g_mov
+                elif var_escada <= -g_ex: st.session_state[f'mp_{t}'] = mp * (2 - g_mov)
                 
-                # RESET: Se bater na exaustão (p3), o eixo pula para o preço atual
-                if abs(var_escada) >= p3: 
-                    st.session_state[f'mp_{t}'] = price
-                    mp = price
-                    var_escada = 0 
-
-                # Cores do Preço Atual (ResetVision)
-                cor_v = "#00FF00" if price >= rv else "#FF4444"
-                seta_v = "▲" if price >= rv else "▼"
                 var_reset = ((price / rv) - 1) * 100
+                cor_v, seta_v = ("#00FF00", "▲") if var_reset >= 0 else ("#FF4444", "▼")
+                abs_v = abs(var_escada)
+                fundo_d = "background: rgba(255, 255, 0, 0.15);" if (g_ex*0.44 <= abs_v <= g_ex*0.48) else ""
+                blink_t = "animation: blink 0.4s infinite;" if (g_ex*0.88 <= var_escada < g_ex) else ""
+                blink_f = "animation: blink 0.4s infinite;" if (-g_ex < var_escada <= -g_ex*0.88) else ""
 
-                # Pisca (Blink) quando rompe o Próx. Topo/Fundo
-                blink_t = "animation: blink 0.4s infinite;" if (var_escada >= p2) else ""
-                blink_f = "animation: blink 0.4s infinite;" if (var_escada <= -p2) else ""
-
-                # --- RENDERIZAÇÃO DA TABELA (AJUSTADA) ---
                 st.markdown(f"""
-                <div class="row-container">
-                    <div class="w-col" style="color:#D4AF37;">{info['label']}</div>
-                    <div class="w-col">
-                        <div style="font-weight: bold;">{price:,.{info['dec']}f}</div>
-                        <div style="color:{cor_v}; font-size:10px;">{seta_v} {var_reset:+.2f}%</div>
+                    <div class="row-container">
+                        <div class="w-col" style="color:#D4AF37;">{info['label']}</div>
+                        <div class="w-col">
+                            <div style="font-weight: bold;">{f"{price:,.{info['dec']}f}"}</div>
+                            <div style="color:{cor_v}; font-size:10px;">{seta_v} {var_reset:+.2f}%</div>
+                        </div>
+                        <div class="w-col" style="color:#FF4444; {blink_t}">{f"{(mp * (1 + (g_ex/100))):,.{info['dec']}f}"}</div>
+                        <div class="w-col" style="color:#FFA500;">{f"{(mp * g_mov):,.{info['dec']}f}"}</div>
+                        <div class="w-col" style="{fundo_d} color:#FFFF00;">{f"{(mp * g_dec):,.{info['dec']}f}"}</div>
+                        <div class="w-col" style="color:#00CED1;">{f"{(mp * g_res):,.{info['dec']}f}"}</div>
+                        <div class="w-col" style="color:#FFA500;">{f"{(mp * (2 - g_mov)):,.{info['dec']}f}"}</div>
+                        <div class="w-col" style="color:#00FF00; {blink_f}">{f"{(mp * (1 - (g_ex/100))):,.{info['dec']}f}"}</div>
                     </div>
-                    
-                    <div class="w-col" style="color:#FF4444; {blink_t}">{(mp * (1 + p3/100)):,.{info['dec']}f}</div>
-                    <div class="w-col" style="color:#FFA500;">{(mp * (1 + p2/100)):,.{info['dec']}f}</div>
-                    <div class="w-col" style="color:#FFFF00;">{(mp * (1 + p1/100)):,.{info['dec']}f}</div>
-                    
-                    <div class="w-col" style="color:#00CED1;">{(mp * (1 - p1/100)):,.{info['dec']}f}</div>
-                    <div class="w-col" style="color:#FFA500;">{(mp * (1 - p2/100)):,.{info['dec']}f}</div>
-                    <div class="w-col" style="color:#00FF00; {blink_f}">{(mp * (1 - p3/100)):,.{info['dec']}f}</div>
-                </div>
-                <div class="vision-block">
-                    <div class="v-item">
-                        <div style="color:#666; font-size:8px;">RESETVISION (BINANCE)</div>
-                        <div style="color:#BBB; font-size:14px; font-weight:bold;">{rv:,.{info['dec']}f}</div>
+                    <div class="vision-block">
+                        <div class="v-item"><div style="color:#666; font-size:8px;">RESETVISION</div><div style="color:#BBB; font-size:14px; font-weight:bold;">{f"{rv:,.{info['dec']}f}"}</div></div>
+                        <div class="v-item"><div style="color:#666; font-size:8px;">ÂNCOVISION ({label_regua})</div><div style="color:#00e6ff; font-size:14px; font-weight:bold;">{f"{mp:,.{info['dec']}f}"}</div></div>
                     </div>
-                    <div class="v-item">
-                        <div style="color:#666; font-size:8px;">EIXO / ÂNCOVISION ({label_regua})</div>
-                        <div style="color:#00e6ff; font-size:14px; font-weight:bold;">{mp:,.{info['dec']}f}</div>
-                    </div>
-                </div>
                 """, unsafe_allow_html=True)
-
         time.sleep(1)
     except Exception as e:
         time.sleep(5)
