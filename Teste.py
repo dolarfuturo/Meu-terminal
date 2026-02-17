@@ -146,6 +146,7 @@ while True:
         now_br, now_ny, now_ld = datetime.now(tz_br), datetime.now(tz_ny), datetime.now(tz_ld)
 
         with placeholder.container():
+            # Cabeçalho Fixo
             st.markdown(f"""
                 <div class="top-header-fixed">
                     <div class="top-bar">
@@ -170,64 +171,54 @@ while True:
             for t, info in COINS_CONFIG.items():
                 price = yf.Ticker(t).fast_info['last_price']
                 mp, rv = st.session_state[f'mp_{t}'], st.session_state[f'rv_{t}']
-                                                          # --- PARÂMETROS SHAKE VISION K97 (EIXO É A BASE) ---
+                
+                # --- PARÂMETROS DO EIXO (ÂNCORA) ---
                 if t in ["BTC-USD", "ETH-USD"]:
-                    # Regra BTC: 1.22% | Decisão: 0.61% | Respiro: 0.40% | Exaustão: 1.35%
                     g_ex = 1.35
                     p_mov, p_dec, p_res = 1.22, 0.61, 0.40
                     label_regua = "1.22%"
                 else:
-                    # Regra ALTS: 2.44% | Decisão: 1.22% | Respiro: 0.80% | Exaustão: 2.70%
                     g_ex = 2.70
                     p_mov, p_dec, p_res = 2.44, 1.22, 0.80
                     label_regua = "2.44%"
 
-                # Cálculo de variação em relação ao EIXO (mp)
+                # Variação em relação ao EIXO
                 var_escada = ((price / mp) - 1) * 100
                 
-                # RESET DO EIXO: Se bater na exaustão, o eixo pula para o preço atual
+                # Reset do Eixo no Rompimento (1.35% / 2.70%)
                 if abs(var_escada) >= g_ex: 
                     st.session_state[f'mp_{t}'] = price
                     mp = price
                     var_escada = 0 
-                
+
                 var_reset = ((price / rv) - 1) * 100
                 cor_v, seta_v = ("#00FF00", "▲") if var_reset >= 0 else ("#FF4444", "▼")
                 
-                # PISCA (BLINK): Ativa entre o alvo de 1.22% e a exaustão de 1.35%
+                # Lógica do Pisca
                 blink_t = "animation: blink 0.4s infinite;" if (p_mov <= var_escada < g_ex) else ""
                 blink_f = "animation: blink 0.4s infinite;" if (-g_ex < var_escada <= -p_mov) else ""
 
-                # --- RENDERIZAÇÃO DA TABELA (SEM ERRO DE TAGS) ---
-                st.markdown(f"""
+                # --- LINHA DA TABELA ---
+                html_row = f"""
                     <div class="row-container">
                         <div class="w-col" style="color:#D4AF37;">{info['label']}</div>
                         <div class="w-col">
-                            <div style="font-weight: bold;">{f"{price:,.{info['dec']}f}"}</div>
+                            <div style="font-weight: bold;">{price:,.{info['dec']}f}</div>
                             <div style="color:{cor_v}; font-size:10px;">{seta_v} {var_reset:+.2f}%</div>
                         </div>
-                        
-                        <div class="w-col" style="color:#FF4444; {blink_t}">{f"{(mp * (1 + g_ex/100)):,.{info['dec']}f}"}</div>
-                        <div class="w-col" style="color:#FFA500;">{f"{(mp * (1 + p_mov/100)):,.{info['dec']}f}"}</div>
-                        <div class="w-col" style="color:#FFFF00;">{f"{(mp * (1 + p_dec/100)):,.{info['dec']}f}"}</div>
-                        
-                        <div class="w-col" style="color:#00CED1;">{f"{(mp * (1 - p_res/100)):,.{info['dec']}f}"}</div>
-                        <div class="w-col" style="color:#FFA500;">{f"{(mp * (1 - p_mov/100)):,.{info['dec']}f}"}</div>
-                        <div class="w-col" style="color:#00FF00; {blink_f}">{f"{(mp * (1 - g_ex/100)):,.{info['dec']}f}"}</div>
+                        <div class="w-col" style="color:#FF4444; {blink_t}">{(mp * (1 + g_ex/100)):,.{info['dec']}f}</div>
+                        <div class="w-col" style="color:#FFA500;">{(mp * (1 + p_mov/100)):,.{info['dec']}f}</div>
+                        <div class="w-col" style="color:#FFFF00;">{(mp * (1 + p_dec/100)):,.{info['dec']}f}</div>
+                        <div class="w-col" style="color:#00CED1;">{(mp * (1 - p_res/100)):,.{info['dec']}f}</div>
+                        <div class="w-col" style="color:#FFA500;">{(mp * (1 - p_mov/100)):,.{info['dec']}f}</div>
+                        <div class="w-col" style="color:#00FF00; {blink_f}">{(mp * (1 - g_ex/100)):,.{info['dec']}f}</div>
                     </div>
                     <div class="vision-block">
-                        <div class="v-item">
-                            <div style="color:#666; font-size:8px;">RESETVISION</div>
-                            <div style="color:#BBB; font-size:14px; font-weight:bold;">{f"{rv:,.{info['dec']}f}"}</div>
-                        </div>
-                        <div class="v-item">
-                            <div style="color:#666; font-size:8px;">EIXO / ÂNCOVISION ({label_regua})</div>
-                            <div style="color:#00e6ff; font-size:14px; font-weight:bold;">{f"{mp:,.{info['dec']}f}"}</div>
-                        </div>
+                        <div class="v-item"><div style="color:#666; font-size:8px;">RESETVISION</div><div style="color:#BBB; font-size:14px; font-weight:bold;">{rv:,.{info['dec']}f}</div></div>
+                        <div class="v-item"><div style="color:#666; font-size:8px;">EIXO / ÂNCOVISION ({label_regua})</div><div style="color:#00e6ff; font-size:14px; font-weight:bold;">{mp:,.{info['dec']}f}</div></div>
                     </div>
-                """, unsafe_allow_html=True)
-
-
+                """
+                st.markdown(html_row, unsafe_allow_html=True)
 
         time.sleep(1)
     except Exception as e:
