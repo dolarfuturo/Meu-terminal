@@ -168,63 +168,66 @@ while True:
                 </div>
             """, unsafe_allow_html=True)
 
-            for t, info in COINS_CONFIG.items():
+                       for t, info in COINS_CONFIG.items():
                 price = yf.Ticker(t).fast_info['last_price']
-                mp, rv = st.session_state[f'mp_{t}'], st.session_state[f'rv_{t}']
+                mp = st.session_state[f'mp_{t}']
+                rv = st.session_state[f'rv_{t}']
                 
-                                # --- LÓGICA DE CÁLCULO SHAKE VISION (K97) ---
+                # --- CONFIGURAÇÃO K97 (ÂNCORA É O EIXO) ---
                 if t in ["BTC-USD", "ETH-USD"]:
-                    # Regra: 0.40 | 0.61 | 1.22
+                    # Regra BTC: 0.40 / 0.61 / 1.22
                     p1, p2, p3 = 0.40, 0.61, 1.22
                     label_regua = "1.22%"
                 else:
-                    # Regra ALTS (Dobrada): 0.80 | 1.22 | 2.44
+                    # Regra ALTS (Dobrada): 0.80 / 1.22 / 2.44
                     p1, p2, p3 = 0.80, 1.22, 2.44
                     label_regua = "2.44%"
 
-                # --- CÁLCULO DOS ALVOS PARTINDO DA ÂNCORA (mp) ---
-                # Para Cima
-                v_decisao_t = mp * (1 + p1/100)
-                v_proxtopo_t = mp * (1 + p2/100)
-                v_exaust_t   = mp * (1 + p3/100)
-                
-                # Para Baixo
-                v_respiro_f  = mp * (1 - p1/100)
-                v_proxfundo_f = mp * (1 - p2/100)
-                v_exaust_f   = mp * (1 - p3/100)
-
-                # Lógica de Reset (Se o preço ultrapassar a Exaustão, o Eixo pula)
+                # Variação em relação ao EIXO
                 var_escada = ((price / mp) - 1) * 100
+                
+                # RESET: Se bater na exaustão (p3), o eixo pula para o preço atual
                 if abs(var_escada) >= p3: 
                     st.session_state[f'mp_{t}'] = price
                     mp = price
-                
-                # Alertas Visuais (Pisca quando chega perto da Exaustão)
+                    var_escada = 0 
+
+                # Cores do Preço Atual (ResetVision)
+                cor_v = "#00FF00" if price >= rv else "#FF4444"
+                seta_v = "▲" if price >= rv else "▼"
+                var_reset = ((price / rv) - 1) * 100
+
+                # Pisca (Blink) quando rompe o Próx. Topo/Fundo
                 blink_t = "animation: blink 0.4s infinite;" if (var_escada >= p2) else ""
                 blink_f = "animation: blink 0.4s infinite;" if (var_escada <= -p2) else ""
 
+                # --- RENDERIZAÇÃO DA TABELA (AJUSTADA) ---
                 st.markdown(f"""
-                    <div class="row-container">
-                        <div class="w-col" style="color:#D4AF37;">{info['label']}</div>
-                        <div class="w-col">
-                            <div style="font-weight: bold;">{price:,.{info['dec']}f}</div>
-                            <div style="color:{("#00FF00" if price >= rv else "#FF4444")}; font-size:10px;">
-                                {("▲" if price >= rv else "▼")} {(((price/rv)-1)*100):+.2f}%
-                            </div>
-                        </div>
-                        
-                        <div class="w-col" style="color:#FF4444; {blink_t}">{v_exaust_t:,.{info['dec']}f}</div>
-                        <div class="w-col" style="color:#FFA500;">{v_proxtopo_t:,.{info['dec']}f}</div>
-                        <div class="w-col" style="color:#FFFF00;">{v_decisao_t:,.{info['dec']}f}</div>
-                        
-                        <div class="w-col" style="color:#00CED1;">{v_respiro_f:,.{info['dec']}f}</div>
-                        <div class="w-col" style="color:#FFA500;">{v_proxfundo_f:,.{info['dec']}f}</div>
-                        <div class="w-col" style="color:#00FF00; {blink_f}">{v_exaust_f:,.{info['dec']}f}</div>
+                <div class="row-container">
+                    <div class="w-col" style="color:#D4AF37;">{info['label']}</div>
+                    <div class="w-col">
+                        <div style="font-weight: bold;">{price:,.{info['dec']}f}</div>
+                        <div style="color:{cor_v}; font-size:10px;">{seta_v} {var_reset:+.2f}%</div>
                     </div>
-                    <div class="vision-block">
-                        <div class="v-item"><div style="color:#666; font-size:8px;">RESETVISION</div><div style="color:#BBB; font-size:14px; font-weight:bold;">{rv:,.{info['dec']}f}</div></div>
-                        <div class="v-item"><div style="color:#666; font-size:8px;">EIXO / ÂNCOVISION ({label_regua})</div><div style="color:#00e6ff; font-size:14px; font-weight:bold;">{mp:,.{info['dec']}f}</div></div>
+                    
+                    <div class="w-col" style="color:#FF4444; {blink_t}">{(mp * (1 + p3/100)):,.{info['dec']}f}</div>
+                    <div class="w-col" style="color:#FFA500;">{(mp * (1 + p2/100)):,.{info['dec']}f}</div>
+                    <div class="w-col" style="color:#FFFF00;">{(mp * (1 + p1/100)):,.{info['dec']}f}</div>
+                    
+                    <div class="w-col" style="color:#00CED1;">{(mp * (1 - p1/100)):,.{info['dec']}f}</div>
+                    <div class="w-col" style="color:#FFA500;">{(mp * (1 - p2/100)):,.{info['dec']}f}</div>
+                    <div class="w-col" style="color:#00FF00; {blink_f}">{(mp * (1 - p3/100)):,.{info['dec']}f}</div>
+                </div>
+                <div class="vision-block">
+                    <div class="v-item">
+                        <div style="color:#666; font-size:8px;">RESETVISION (BINANCE)</div>
+                        <div style="color:#BBB; font-size:14px; font-weight:bold;">{rv:,.{info['dec']}f}</div>
                     </div>
+                    <div class="v-item">
+                        <div style="color:#666; font-size:8px;">EIXO / ÂNCOVISION ({label_regua})</div>
+                        <div style="color:#00e6ff; font-size:14px; font-weight:bold;">{mp:,.{info['dec']}f}</div>
+                    </div>
+                </div>
                 """, unsafe_allow_html=True)
 
         time.sleep(1)
