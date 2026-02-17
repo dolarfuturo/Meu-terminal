@@ -171,7 +171,7 @@ while True:
                 price = yf.Ticker(t).fast_info['last_price']
                 mp, rv = st.session_state[f'mp_{t}'], st.session_state[f'rv_{t}']
                 
-                if t in ["BTC-USD", "ETH-USD"]: 
+                               if t in ["BTC-USD", "ETH-USD"]: 
                     # Regra 1.22% (BTC/ETH)
                     g_ex, g_mov, g_dec, g_res = 1.35, 1.0122, 1.0061, 1.0040
                     # Multiplicadores Negativos (Fundo)
@@ -215,4 +215,15 @@ while True:
                         <div class="w-col" style="color:#FFA500;">{f"{(mp * g_mov):,.{info['dec']}f}"}</div>
                         <div class="w-col" style="{fundo_d} color:#FFFF00;">{f"{(mp * g_dec):,.{info['dec']}f}"}</div>
                         <div class="w-col" style="color:#00CED1;">{f"{(mp * g_res):,.{info['dec']}f}"}</div>
-                        
+                        <div class="w-col" style="color:#FFA500;">{f"{(mp * g_mov_f):,.{info['dec']}f}"}</div>
+                        <div class="w-col" style="color:#00FF00; {blink_f}">{f"{(mp * g_ex_f):,.{info['dec']}f}"}</div>
+                    </div>
+                    <div class="vision-block">
+                        <div class="v-item"><div style="color:#666; font-size:8px;">RESETVISION</div><div style="color:#BBB; font-size:14px; font-weight:bold;">{f"{rv:,.{info['dec']}f}"}</div></div>
+                        <div class="v-item"><div style="color:#666; font-size:8px;">ÂNCOVISION ({label_regua})</div><div style="color:#00e6ff; font-size:14px; font-weight:bold;">{f"{mp:,.{info['dec']}f}"}</div></div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+        time.sleep(1)
+    except Exception as e:
+        time.sleep(5)
