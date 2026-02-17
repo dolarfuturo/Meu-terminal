@@ -172,12 +172,12 @@ while True:
                 mp, rv = st.session_state[f'mp_{t}'], st.session_state[f'rv_{t}']
                 
                 if t in ["BTC-USD", "ETH-USD"]: 
-            g_ex, g_exausto, g_topo, g_dec, g_res, label_regua = 1.22, 1.0122, 1.0082, 1.0061, 1.0040, "1.22%"
-        else: 
-            g_ex, g_exausto, g_topo, g_dec, g_res, label_regua = 2.44, 1.0244, 1.0164, 1.0122, 1.0080, "2.44%"
+                g_ex, g_exausto, g_topo, g_dec, g_res, label_regua = 1.22, 1.0122, 1.0082, 1.0061, 1.0040, "1.22%"
+             else: 
+                g_ex, g_exausto, g_topo, g_dec, g_res, label_regua = 2.44, 1.0244, 1.0164, 1.0122, 1.0080, "2.44%"
 
-            g_fundo = (2 - g_topo)
-            g_exausto_f = (2 - g_exausto)
+                g_fundo = (2 - g_topo)
+                g_exausto_f = (2 - g_exausto)
 
                 
                 var_escada = ((price / mp) - 1) * 100
