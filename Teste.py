@@ -170,7 +170,7 @@ while True:
             for t, info in COINS_CONFIG.items():
                 price = yf.Ticker(t).fast_info['last_price']
                 mp, rv = st.session_state[f'mp_{t}'], st.session_state[f'rv_{t}']
-                                                # --- PARÂMETROS K97 (ÂNCORA É O EIXO) ---
+                                                          # --- PARÂMETROS SHAKE VISION K97 (EIXO É A BASE) ---
                 if t in ["BTC-USD", "ETH-USD"]:
                     # Regra BTC: 1.22% | Decisão: 0.61% | Respiro: 0.40% | Exaustão: 1.35%
                     g_ex = 1.35
@@ -182,8 +182,10 @@ while True:
                     p_mov, p_dec, p_res = 2.44, 1.22, 0.80
                     label_regua = "2.44%"
 
-                # Lógica de movimentação da Âncora (Eixo)
+                # Cálculo de variação em relação ao EIXO (mp)
                 var_escada = ((price / mp) - 1) * 100
+                
+                # RESET DO EIXO: Se bater na exaustão, o eixo pula para o preço atual
                 if abs(var_escada) >= g_ex: 
                     st.session_state[f'mp_{t}'] = price
                     mp = price
@@ -192,11 +194,11 @@ while True:
                 var_reset = ((price / rv) - 1) * 100
                 cor_v, seta_v = ("#00FF00", "▲") if var_reset >= 0 else ("#FF4444", "▼")
                 
-                # Alertas Visuais (Pisca)
+                # PISCA (BLINK): Ativa entre o alvo de 1.22% e a exaustão de 1.35%
                 blink_t = "animation: blink 0.4s infinite;" if (p_mov <= var_escada < g_ex) else ""
                 blink_f = "animation: blink 0.4s infinite;" if (-g_ex < var_escada <= -p_mov) else ""
 
-                # RENDERIZAÇÃO DA TABELA (RENDERIZAÇÃO CORRIGIDA)
+                # --- RENDERIZAÇÃO DA TABELA (SEM ERRO DE TAGS) ---
                 st.markdown(f"""
                     <div class="row-container">
                         <div class="w-col" style="color:#D4AF37;">{info['label']}</div>
@@ -214,10 +216,17 @@ while True:
                         <div class="w-col" style="color:#00FF00; {blink_f}">{f"{(mp * (1 - g_ex/100)):,.{info['dec']}f}"}</div>
                     </div>
                     <div class="vision-block">
-                        <div class="v-item"><div style="color:#666; font-size:8px;">RESETVISION</div><div style="color:#BBB; font-size:14px; font-weight:bold;">{f"{rv:,.{info['dec']}f}"}</div></div>
-                        <div class="v-item"><div style="color:#666; font-size:8px;">EIXO / ÂNCOVISION ({label_regua})</div><div style="color:#00e6ff; font-size:14px; font-weight:bold;">{f"{mp:,.{info['dec']}f}"}</div></div>
+                        <div class="v-item">
+                            <div style="color:#666; font-size:8px;">RESETVISION</div>
+                            <div style="color:#BBB; font-size:14px; font-weight:bold;">{f"{rv:,.{info['dec']}f}"}</div>
+                        </div>
+                        <div class="v-item">
+                            <div style="color:#666; font-size:8px;">EIXO / ÂNCOVISION ({label_regua})</div>
+                            <div style="color:#00e6ff; font-size:14px; font-weight:bold;">{f"{mp:,.{info['dec']}f}"}</div>
+                        </div>
                     </div>
                 """, unsafe_allow_html=True)
+
 
 
         time.sleep(1)
