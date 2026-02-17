@@ -22,17 +22,13 @@ def verificar_acesso():
                 df = pd.read_csv(URL_SISTEMA)
                 hash_tentativa = hashlib.sha256(chave.encode()).hexdigest()
                 df.columns = df.columns.str.strip()
-                df['HASH_SENHA'] = df['HASH_SENHA'].astype(str).str.strip()
-                df['STATUS'] = df['STATUS'].astype(str).str.strip()
                 valido = df[(df['HASH_SENHA'] == hash_tentativa) & (df['STATUS'] == 'ATIVO')]
                 if not valido.empty:
                     st.session_state["autenticado"] = True
                     st.session_state["usuario"] = valido.iloc[0]['CLIENTE']
                     st.rerun()
-                else:
-                    st.error("❌ Acesso Negado.")
-            except Exception as e:
-                st.error(f"Erro de conexão: {e}")
+                else: st.error("❌ Acesso Negado.")
+            except: st.error("Erro de conexão.")
         st.stop()
 
 verificar_acesso()
@@ -76,17 +72,14 @@ st.markdown("""
     <style>
     .stApp { background-color: #000000; }
     .top-header-fixed { position: sticky; top: 0; background: #000000; z-index: 1000; border-bottom: 2px solid #D4AF37; }
-    .top-bar { display: flex; justify-content: space-between; align-items: center; padding: 5px 20px; background: #050505; border-bottom: 1px solid #1a1a1a; }
+    .top-bar { display: flex; justify-content: space-between; align-items: center; padding: 5px 20px; background: #050505; }
     .clocks { display: flex; gap: 30px; color: #888; font-family: monospace; font-size: 11px; }
-    .live-indicator { display: flex; align-items: center; gap: 8px; color: #FFF; font-size: 11px; font-weight: bold; }
-    .dot { height: 8px; width: 8px; background-color: #00FF00; border-radius: 50%; animation: pulse 1.5s infinite; }
-    @keyframes pulse { 0% { transform: scale(0.9); opacity: 1; } 70% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(0.9); opacity: 1; } }
     .title-gold { color: #D4AF37; font-size: 24px; font-weight: 900; text-align: center; margin-top: 5px; }
     .header-grid { display: grid; grid-template-columns: 1.2fr 1fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr; width: 100%; padding: 10px 0; background: #080808; }
     .h-col { font-size: 9px; color: #FFF; text-align: center; font-weight: 800; }
     .row-container { display: grid; grid-template-columns: 1.2fr 1fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr; width: 100%; align-items: center; padding: 10px 0; }
     .w-col { text-align: center; font-family: 'monospace'; font-size: 15px; font-weight: 800; color: #FFF; }
-    .vision-block { display: flex; justify-content: center; gap: 40px; padding: 5px 0; border-bottom: 2px solid #333; }
+    .vision-block { display: flex; justify-content: center; gap: 40px; padding: 10px 0; border-bottom: 2px solid #333; }
     @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.2; } 100% { opacity: 1; } }
     </style>
     """, unsafe_allow_html=True)
@@ -102,26 +95,25 @@ placeholder = st.empty()
 while True:
     try:
         tz_br, tz_ny, tz_ld = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London')
-        now_br, now_ny, now_ld = datetime.now(tz_br), datetime.now(tz_ny), datetime.now(tz_ld)
+        now_br = datetime.now(tz_br)
 
         with placeholder.container():
             st.markdown(f"""
                 <div class="top-header-fixed">
                     <div class="top-bar">
-                        <div class="live-indicator"><span class="dot"></span> {st.session_state['usuario']} |  ONLINE</div>
+                        <div style="color:white; font-size:11px; font-weight:bold;">{st.session_state['usuario']} | ONLINE</div>
                         <div class="clocks">
-                            <div class="clock-item">BRASÍLIA: <b>{now_br.strftime('%H:%M:%S')}</b></div>
-                            <div class="clock-item">NEW YORK: <b>{now_ny.strftime('%H:%M:%S')}</b></div>
-                            <div class="clock-item">LONDON: <b>{now_ld.strftime('%H:%M:%S')}</b></div>
+                            <div>BRASÍLIA: <b>{now_br.strftime('%H:%M:%S')}</b></div>
+                            <div>NEW YORK: <b>{datetime.now(tz_ny).strftime('%H:%M:%S')}</b></div>
                         </div>
                     </div>
                     <div class="title-gold">SHARK VISION CRYPTO</div>
                     <div class="header-grid">
                         <div class="h-col">CÓDIGO</div><div class="h-col">PREÇO</div>
-                        <div class="h-col" style="color:#FF4444;">EXAUST. T.</div><div class="h-col" style="color:#FFA500;">TOPO</div>
-                        <div class="h-col" style="color:#FFFF00;">DECISÃO</div><div class="h-col" style="color:#00CED1;">RESPIRO</div>
-                        <div class="h-col" style="color:#00CED1;">RESP. F.</div><div class="h-col" style="color:#FFFF00;">DECIS. F.</div>
-                        <div class="h-col" style="color:#FFA500;">FUNDO</div><div class="h-col" style="color:#00FF00;">EXAUST. F.</div>
+                        <div class="h-col" style="color:#FF4444;">EXAUST. T.</div><div class="h-col" style="color:#FF8C00;">TOPO</div>
+                        <div class="h-col" style="color:#FFA500;">DECISÃO</div><div class="h-col" style="color:#FFFF00;">RESPIRO</div>
+                        <div class="h-col" style="color:#00CED1;">RESP. F.</div><div class="h-col" style="color:#20B2AA;">DECIS. F.</div>
+                        <div class="h-col" style="color:#3CB371;">FUNDO</div><div class="h-col" style="color:#00FF00;">EXAUST. F.</div>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
@@ -130,21 +122,21 @@ while True:
                 price = yf.Ticker(t).fast_info['last_price']
                 mp, rv = st.session_state[f'mp_{t}'], st.session_state[f'rv_{t}']
                 
+                # VARIAÇÕES K97
                 if t in ["BTC-USD", "ETH-USD"]:
-                    g_ex, g_top, g_dec, g_res = 1.0122, 1.0082, 1.0061, 1.0040
-                    label_regua = "1.22%"
+                    v_ex, v_top, v_dec, v_res = 1.0122, 1.0082, 1.0061, 1.0040
                     trigger = 1.22
                 else:
-                    g_ex, g_top, g_dec, g_res = 1.0244, 1.0164, 1.0122, 1.0080
-                    label_regua = "2.44%"
+                    v_ex, v_top, v_dec, v_res = 1.0244, 1.0164, 1.0122, 1.0080
                     trigger = 2.44
                 
+                # ÂNCORA VISION - GATILHO DE ESCADA
                 var_escada = ((price / mp) - 1) * 100
-                if var_escada >= trigger: st.session_state[f'mp_{t}'] = mp * g_ex
-                elif var_escada <= -trigger: st.session_state[f'mp_{t}'] = mp * (2 - g_ex)
+                if var_escada >= trigger: st.session_state[f'mp_{t}'] = mp * v_ex
+                elif var_escada <= -trigger: st.session_state[f'mp_{t}'] = mp * (2 - v_ex)
                 
                 var_reset = ((price / rv) - 1) * 100
-                cor_v, seta_v = ("#00FF00", "▲") if var_reset >= 0 else ("#FF4444", "▼")
+                cor_v = "#00FF00" if var_reset >= 0 else "#FF4444"
                 blink_t = "animation: blink 0.4s infinite;" if (var_escada >= trigger*0.9) else ""
                 blink_f = "animation: blink 0.4s infinite;" if (var_escada <= -trigger*0.9) else ""
 
@@ -153,22 +145,25 @@ while True:
                         <div class="w-col" style="color:#D4AF37; font-size:13px;">{info['label']}</div>
                         <div class="w-col">
                             <div style="font-size:14px;">{price:,.{info['dec']}f}</div>
-                            <div style="color:{cor_v}; font-size:9px;">{seta_v} {var_reset:+.2f}%</div>
+                            <div style="color:{cor_v}; font-size:9px;">{var_reset:+.2f}%</div>
                         </div>
-                        <div class="w-col" style="color:#FF4444; {blink_t}">{(mp * g_ex):,.{info['dec']}f}</div>
-                        <div class="w-col" style="color:#FFA500;">{(mp * g_top):,.{info['dec']}f}</div>
-                        <div class="w-col" style="color:#FFFF00;">{(mp * g_dec):,.{info['dec']}f}</div>
-                        <div class="w-col" style="color:#00CED1;">{(mp * g_res):,.{info['dec']}f}</div>
-                        <div class="w-col" style="color:#00CED1;">{(mp * (2-g_res)):,.{info['dec']}f}</div>
-                        <div class="w-col" style="color:#FFFF00;">{(mp * (2-g_dec)):,.{info['dec']}f}</div>
-                        <div class="w-col" style="color:#FFA500;">{(mp * (2-g_top)):,.{info['dec']}f}</div>
-                        <div class="w-col" style="color:#00FF00; {blink_f}">{(mp * (2-g_ex)):,.{info['dec']}f}</div>
-                    </div>
-                    <div class="vision-block">
-                        <div style="color:#666; font-size:9px;">RESET: <b style="color:#BBB;">{rv:,.{info['dec']}f}</b></div>
-                        <div style="color:#666; font-size:9px;">ÂNCOVISION ({label_regua}): <b style="color:#00e6ff;">{mp:,.{info['dec']}f}</b></div>
+                        <div class="w-col" style="color:#FF4444; {blink_t}">{(mp * v_ex):,.{info['dec']}f}</div>
+                        <div class="w-col" style="color:#FF8C00;">{(mp * v_top):,.{info['dec']}f}</div>
+                        <div class="w-col" style="color:#FFA500;">{(mp * v_dec):,.{info['dec']}f}</div>
+                        <div class="w-col" style="color:#FFFF00;">{(mp * v_res):,.{info['dec']}f}</div>
+                        <div class="w-col" style="color:#00CED1;">{(mp * (2-v_res)):,.{info['dec']}f}</div>
+                        <div class="w-col" style="color:#20B2AA;">{(mp * (2-v_dec)):,.{info['dec']}f}</div>
+                        <div class="w-col" style="color:#3CB371;">{(mp * (2-v_top)):,.{info['dec']}f}</div>
+                        <div class="w-col" style="color:#00FF00; {blink_f}">{(mp * (2-v_ex)):,.{info['dec']}f}</div>
                     </div>
                 """, unsafe_allow_html=True)
+
+            st.markdown(f"""
+                <div class="vision-block">
+                    <div style="color:#BBB; font-size:12px;">RESETVISION: <b>{rv:,.0f}</b></div>
+                    <div style="color:#00e6ff; font-size:12px;">ÂNCOVISION: <b>{mp:,.0f}</b></div>
+                </div>
+            """, unsafe_allow_html=True)
+            
         time.sleep(1)
-    except Exception as e:
-        time.sleep(5)
+    except: time.sleep(5)
