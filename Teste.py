@@ -170,7 +170,7 @@ while True:
     </div>
 """, unsafe_allow_html=True)
 
-for t, info in COINS_CONFIG.items():
+    for t, info in COINS_CONFIG.items():
     price = yf.Ticker(t).fast_info['last_price']
     mp, rv = st.session_state[f'mp_{t}'], st.session_state[f'rv_{t}']
     
