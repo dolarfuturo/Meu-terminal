@@ -171,16 +171,8 @@ while True:
                 price = yf.Ticker(t).fast_info['last_price']
                 mp, rv = st.session_state[f'mp_{t}'], st.session_state[f'rv_{t}']
                 
-                if t in ["BTC-USD", "ETH-USD"]:
-                    # Regra BTC: 0.40 / 0.61 / 1.22 (Exaustão)
-                    g_res, g_dec, g_mov, g_ex = 0.40, 0.61, 1.22, 1.22
-                    label_regua = "1.22%"
-                else:
-                    # Regra ALTS: 0.80 / 1.22 / 2.44 (Exaustão)
-                    g_res, g_dec, g_mov, g_ex = 0.80, 1.22, 2.44, 2.44
-                    label_regua = "2.44%"
-
-
+                if t in ["BTC-USD", "ETH-USD"]: g_ex, g_mov, g_dec, g_res, label_regua = 1.35, 1.0122, 1.0061, 1.0040, "1.22%"
+                else: g_ex, g_mov, g_dec, g_res, label_regua = 1.0270, 1.244, 1.0122, 1.0080, "2.44%"
                 
                 var_escada = ((price / mp) - 1) * 100
                 if var_escada >= g_ex: st.session_state[f'mp_{t}'] = mp * g_mov
