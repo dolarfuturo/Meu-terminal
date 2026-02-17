@@ -89,9 +89,9 @@ while True:
                     <div class="title-gold">SHARK VISION CRYPTO</div>
                     <div class="header-grid">
                         <div class="h-col">CÓDIGO</div><div class="h-col">PREÇO</div>
-                        <div class="h-col" style="color:#FF4444;">EXAUSTÃO T.</div><div class="h-col" style="color:#FFA500;">PRÓX. TOPO</div>
-                        <div class="h-col" style="color:#FFFF00;">DECISÃO</div><div class="h-col" style="color:#00CED1;">RESPIRO</div>
-                        <div class="h-col" style="color:#FFA500;">PRÓX. FUNDO</div><div class="h-col" style="color:#00FF00;">EXAUSTÃO F.</div>
+                        <div class="h-col" style="color:#FF4444;">EXAUSTÃO T.</div><div class="h-col" style="color:#FFA500;">DECISÃO</div>
+                        <div class="h-col" style="color:#FFFF00;">RESPIRO</div><div class="h-col" style="color:#00CED1;">RESPIRO F.</div>
+                        <div class="h-col" style="color:#FFA500;">DECISÃO F.</div><div class="h-col" style="color:#00FF00;">EXAUSTÃO F.</div>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
@@ -100,19 +100,22 @@ while True:
                 price = yf.Ticker(t).fast_info['last_price']
                 mp, rv = st.session_state[f'mp_{t}'], st.session_state[f'rv_{t}']
                 
-                # PARÂMETROS SIMÉTRICOS K97
+                # PARÂMETROS TÉCNICOS K97 - SIMETRIA TOTAL
                 if t in ["BTC-USD", "ETH-USD"]:
-                    ex, top, dec, res, label = 1.0122, 1.0061, 1.0050, 1.0040, "1.22%"
-                    f_res, f_dec, f_top, f_ex = 0.9960, 0.9950, 0.9939, 0.9878
+                    # Multiplicadores: 1.22% (Ex), 0.61% (Dec), 0.40% (Res)
+                    m_ex, m_dec, m_res = 1.0122, 1.0061, 1.0040
+                    label = "1.22%"
                     g_trigger = 1.22
                 else:
-                    ex, top, dec, res, label = 1.0244, 1.0122, 1.0100, 1.0080, "2.44%"
-                    f_res, f_dec, f_top, f_ex = 0.9920, 0.9900, 0.9878, 0.9756
+                    # Multiplicadores Alts (Dobro): 2.44% (Ex), 1.22% (Dec), 0.80% (Res)
+                    m_ex, m_dec, m_res = 1.0244, 1.0122, 1.0080
+                    label = "2.44%"
                     g_trigger = 2.44
 
+                # Lógica de Escada (ÂncoVision)
                 var_escada = ((price / mp) - 1) * 100
-                if var_escada >= g_trigger: st.session_state[f'mp_{t}'] = mp * ex
-                elif var_escada <= -g_trigger: st.session_state[f'mp_{t}'] = mp * f_ex
+                if var_escada >= g_trigger: st.session_state[f'mp_{t}'] = mp * m_ex
+                elif var_escada <= -g_trigger: st.session_state[f'mp_{t}'] = mp * (2 - m_ex)
                 
                 var_reset = ((price / rv) - 1) * 100
                 cor_v = "#00FF00" if var_reset >= 0 else "#FF4444"
@@ -126,12 +129,12 @@ while True:
                             <div>{price:,.{info['dec']}f}</div>
                             <div style="color:{cor_v}; font-size:10px;">{var_reset:+.2f}%</div>
                         </div>
-                        <div class="w-col" style="color:#FF4444; {blink_t}">{(mp * ex):,.{info['dec']}f}</div>
-                        <div class="w-col" style="color:#FFA500;">{(mp * top):,.{info['dec']}f}</div>
-                        <div class="w-col" style="color:#FFFF00;">{(mp * dec):,.{info['dec']}f}</div>
-                        <div class="w-col" style="color:#00CED1;">{(mp * res):,.{info['dec']}f}</div>
-                        <div class="w-col" style="color:#FFA500;">{(mp * f_top):,.{info['dec']}f}</div>
-                        <div class="w-col" style="color:#00FF00; {blink_f}">{(mp * f_ex):,.{info['dec']}f}</div>
+                        <div class="w-col" style="color:#FF4444; {blink_t}">{(mp * m_ex):,.{info['dec']}f}</div>
+                        <div class="w-col" style="color:#FFA500;">{(mp * m_dec):,.{info['dec']}f}</div>
+                        <div class="w-col" style="color:#FFFF00;">{(mp * m_res):,.{info['dec']}f}</div>
+                        <div class="w-col" style="color:#00CED1;">{(mp * (2-m_res)):,.{info['dec']}f}</div>
+                        <div class="w-col" style="color:#FFA500;">{(mp * (2-m_dec)):,.{info['dec']}f}</div>
+                        <div class="w-col" style="color:#00FF00; {blink_f}">{(mp * (2-m_ex)):,.{info['dec']}f}</div>
                     </div>
                     <div class="vision-block">
                         <div style="color:#BBB; font-size:12px;">RESET: <b>{rv:,.{info['dec']}f}</b></div>
