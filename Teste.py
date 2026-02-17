@@ -29,10 +29,8 @@ def verificar_acesso():
                     st.session_state["autenticado"] = True
                     st.session_state["usuario"] = valido.iloc[0]['CLIENTE']
                     st.rerun()
-                else:
-                    st.error("❌ Acesso Negado.")
-            except Exception as e:
-                st.error(f"Erro de conexão: {e}")
+                else: st.error("❌ Acesso Negado.")
+            except: st.error("Erro de conexão.")
         st.stop()
 
 verificar_acesso()
@@ -82,6 +80,7 @@ st.markdown("""
     .dot { height: 8px; width: 8px; background-color: #00FF00; border-radius: 50%; animation: pulse 1.5s infinite; }
     @keyframes pulse { 0% { transform: scale(0.9); opacity: 1; } 70% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(0.9); opacity: 1; } }
     .title-gold { color: #D4AF37; font-size: 24px; font-weight: 900; text-align: center; margin-top: 5px; }
+    .subtitle-white { color: #FFFFFF; font-size: 12px; text-align: center; letter-spacing: 4px; text-transform: lowercase; margin-bottom: 5px; }
     .header-grid { display: grid; grid-template-columns: 1.2fr 1fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr; width: 100%; padding: 10px 0; background: #080808; }
     .h-col { font-size: 9px; color: #FFF; text-align: center; font-weight: 800; }
     .row-container { display: grid; grid-template-columns: 1.2fr 1fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr; width: 100%; align-items: center; padding: 10px 0; }
@@ -116,6 +115,7 @@ while True:
                         </div>
                     </div>
                     <div class="title-gold">SHARK VISION CRYPTO</div>
+                    <div class="subtitle-white">visão de tubarão</div>
                     <div class="header-grid">
                         <div class="h-col">CÓDIGO</div><div class="h-col">PREÇO</div>
                         <div class="h-col" style="color:#FF4444;">EXAUST. T.</div><div class="h-col" style="color:#FFA500;">TOPO</div>
