@@ -145,7 +145,7 @@ while True:
         tz_br, tz_ny, tz_ld = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London')
         now_br, now_ny, now_ld = datetime.now(tz_br), datetime.now(tz_ny), datetime.now(tz_ld)
 
-       st.markdown(f"""
+        st.markdown(f"""
     <div class="top-header-fixed">
         <div class="top-bar">
             <div class="live-indicator"><span class="dot"></span> {st.session_state['usuario']} |  ONLINE</div>
