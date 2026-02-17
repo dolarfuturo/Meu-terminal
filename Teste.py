@@ -171,19 +171,32 @@ while True:
                 price = yf.Ticker(t).fast_info['last_price']
                 mp, rv = st.session_state[f'mp_{t}'], st.session_state[f'rv_{t}']
                 
-                if t in ["BTC-USD", "ETH-USD"]: g_ex, g_mov, g_dec, g_res, label_regua = 1.35, 1.0122, 1.0061, 1.0040, "1.22%"
-                else: g_ex, g_mov, g_dec, g_res, label_regua = 1.0270, 1.244, 1.0122, 1.0080, "2.44%"
+                # --- CONFIGURAÇÃO DA RÉGUA K97 (UNIFICADA PARA TODOS OS ATIVOS) ---
+                v_res = 0.40 / 100
+                v_dec = 0.61 / 100
+                v_topo = 1.22 / 100
+                v_rompimento = 1.35  # % para resetar a Âncovision
                 
+                # Cálculo da variação atual em relação à Âncovision
                 var_escada = ((price / mp) - 1) * 100
-                if var_escada >= g_ex: st.session_state[f'mp_{t}'] = mp * g_mov
-                elif var_escada <= -g_ex: st.session_state[f'mp_{t}'] = mp * (2 - g_mov)
                 
+                # LÓGICA DE ROMPIMENTO: Se bater 1.35%, o degrau reseta e PARA de piscar
+                if var_escada >= v_rompimento or var_escada <= -v_rompimento:
+                    st.session_state[f'mp_{t}'] = price
+                    mp = price # Atualiza a variável local para o cálculo abaixo ser imediato
+                
+                # Recalcula variação para o visual
+                var_escada = ((price / mp) - 1) * 100
                 var_reset = ((price / rv) - 1) * 100
+                
                 cor_v, seta_v = ("#00FF00", "▲") if var_reset >= 0 else ("#FF4444", "▼")
-                abs_v = abs(var_escada)
-                fundo_d = "background: rgba(255, 255, 0, 0.15);" if (g_ex*0.44 <= abs_v <= g_ex*0.48) else ""
-                blink_t = "animation: blink 0.4s infinite;" if (g_ex*0.88 <= var_escada < g_ex) else ""
-                blink_f = "animation: blink 0.4s infinite;" if (-g_ex < var_escada <= -g_ex*0.88) else ""
+                
+                # PISCA (Blink): Ativa em 1.22% e desliga em 1.35% (pelo reset acima)
+                blink_t = "animation: blink 0.4s infinite;" if (1.22 <= var_escada < v_rompimento) else ""
+                blink_f = "animation: blink 0.4s infinite;" if (-v_rompimento < var_escada <= -1.22) else ""
+                
+                # Destaque de Decisão (Fundo amarelo quando o preço está na zona de 0.61%)
+                fundo_d = "background: rgba(255, 255, 0, 0.15);" if (0.58 <= abs(var_escada) <= 0.64) else ""
 
                 st.markdown(f"""
                     <div class="row-container">
@@ -192,16 +205,16 @@ while True:
                             <div style="font-weight: bold;">{f"{price:,.{info['dec']}f}"}</div>
                             <div style="color:{cor_v}; font-size:10px;">{seta_v} {var_reset:+.2f}%</div>
                         </div>
-                        <div class="w-col" style="color:#FF4444; {blink_t}">{f"{(mp * (1 + (g_ex/100))):,.{info['dec']}f}"}</div>
-                        <div class="w-col" style="color:#FFA500;">{f"{(mp * g_mov):,.{info['dec']}f}"}</div>
-                        <div class="w-col" style="{fundo_d} color:#FFFF00;">{f"{(mp * g_dec):,.{info['dec']}f}"}</div>
-                        <div class="w-col" style="color:#00CED1;">{f"{(mp * g_res):,.{info['dec']}f}"}</div>
-                        <div class="w-col" style="color:#FFA500;">{f"{(mp * (2 - g_mov)):,.{info['dec']}f}"}</div>
-                        <div class="w-col" style="color:#00FF00; {blink_f}">{f"{(mp * (1 - (g_ex/100))):,.{info['dec']}f}"}</div>
+                        <div class="w-col" style="color:#FF4444; {blink_t}">{f"{(mp * 1.0135):,.{info['dec']}f}"}</div>
+                        <div class="w-col" style="color:#FFA500;">{f"{(mp * 1.0122):,.{info['dec']}f}"}</div>
+                        <div class="w-col" style="{fundo_d} color:#FFFF00;">{f"{(mp * 1.0061):,.{info['dec']}f}"}</div>
+                        <div class="w-col" style="color:#00CED1;">{f"{(mp * 1.0040):,.{info['dec']}f}"}</div>
+                        <div class="w-col" style="color:#FFA500;">{f"{(mp * 0.9878):,.{info['dec']}f}"}</div>
+                        <div class="w-col" style="color:#00FF00; {blink_f}">{f"{(mp * 0.9865):,.{info['dec']}f}"}</div>
                     </div>
                     <div class="vision-block">
                         <div class="v-item"><div style="color:#666; font-size:8px;">RESETVISION</div><div style="color:#BBB; font-size:14px; font-weight:bold;">{f"{rv:,.{info['dec']}f}"}</div></div>
-                        <div class="v-item"><div style="color:#666; font-size:8px;">ÂNCOVISION ({label_regua})</div><div style="color:#00e6ff; font-size:14px; font-weight:bold;">{f"{mp:,.{info['dec']}f}"}</div></div>
+                        <div class="v-item"><div style="color:#666; font-size:8px;">ÂNCOVISION (1.22%)</div><div style="color:#00e6ff; font-size:14px; font-weight:bold;">{f"{mp:,.{info['dec']}f}"}</div></div>
                     </div>
                 """, unsafe_allow_html=True)
         time.sleep(1)
