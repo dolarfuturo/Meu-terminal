@@ -170,34 +170,33 @@ while True:
             for t, info in COINS_CONFIG.items():
                 price = yf.Ticker(t).fast_info['last_price']
                 mp, rv = st.session_state[f'mp_{t}'], st.session_state[f'rv_{t}']
-                                # --- PARÂMETROS SHAKE VISION (K97) ---
+                                                # --- PARÂMETROS K97 (ÂNCORA É O EIXO) ---
                 if t in ["BTC-USD", "ETH-USD"]:
-                    # Regra BTC: 0.40% | 0.61% | 1.22% | Exaustão: 1.35%
+                    # Regra BTC: 1.22% | Decisão: 0.61% | Respiro: 0.40% | Exaustão: 1.35%
                     g_ex = 1.35
                     p_mov, p_dec, p_res = 1.22, 0.61, 0.40
                     label_regua = "1.22%"
                 else:
-                    # Regra ALTS: 0.80% | 1.22% | 2.44% | Exaustão: 2.70%
+                    # Regra ALTS: 2.44% | Decisão: 1.22% | Respiro: 0.80% | Exaustão: 2.70%
                     g_ex = 2.70
                     p_mov, p_dec, p_res = 2.44, 1.22, 0.80
                     label_regua = "2.44%"
 
-                # Variação atual em relação ao EIXO (Âncovision)
+                # Lógica de movimentação da Âncora (Eixo)
                 var_escada = ((price / mp) - 1) * 100
-                
-                # RESET DO EIXO: Se bater na Exaustão (1.35% ou 2.70%), o Eixo assume o preço atual
                 if abs(var_escada) >= g_ex: 
                     st.session_state[f'mp_{t}'] = price
                     mp = price
                     var_escada = 0 
-
+                
                 var_reset = ((price / rv) - 1) * 100
                 cor_v, seta_v = ("#00FF00", "▲") if var_reset >= 0 else ("#FF4444", "▼")
                 
-                # LÓGICA DO PISCA (BLINK): Entre o Alvo Final (1.22%) e a Exaustão (1.35%)
+                # Alertas Visuais (Pisca)
                 blink_t = "animation: blink 0.4s infinite;" if (p_mov <= var_escada < g_ex) else ""
                 blink_f = "animation: blink 0.4s infinite;" if (-g_ex < var_escada <= -p_mov) else ""
 
+                # RENDERIZAÇÃO DA TABELA (RENDERIZAÇÃO CORRIGIDA)
                 st.markdown(f"""
                     <div class="row-container">
                         <div class="w-col" style="color:#D4AF37;">{info['label']}</div>
@@ -219,6 +218,7 @@ while True:
                         <div class="v-item"><div style="color:#666; font-size:8px;">EIXO / ÂNCOVISION ({label_regua})</div><div style="color:#00e6ff; font-size:14px; font-weight:bold;">{f"{mp:,.{info['dec']}f}"}</div></div>
                     </div>
                 """, unsafe_allow_html=True)
+
 
         time.sleep(1)
     except Exception as e:
