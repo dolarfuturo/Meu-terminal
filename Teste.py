@@ -57,10 +57,10 @@ st.markdown("""
     .top-bar { display: flex; justify-content: space-between; align-items: center; padding: 5px 20px; background: #050505; }
     .clocks { display: flex; gap: 30px; color: #888; font-family: monospace; font-size: 12px; }
     .title-gold { color: #D4AF37; font-size: 28px; font-weight: 900; text-align: center; }
-    .header-grid { display: grid; grid-template-columns: 1.5fr 1.2fr 1fr 1fr 1fr 1fr 1fr 1fr; width: 100%; padding: 10px 0; background: #080808; }
-    .h-col { font-size: 10px; color: #FFF; text-align: center; font-weight: 800; }
-    .row-container { display: grid; grid-template-columns: 1.5fr 1.2fr 1fr 1fr 1fr 1fr 1fr 1fr; width: 100%; align-items: center; padding: 12px 0; }
-    .w-col { text-align: center; font-family: 'monospace'; font-size: 17px; font-weight: 800; color: #FFF; }
+    .header-grid { display: grid; grid-template-columns: 1.2fr 1fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr; width: 100%; padding: 10px 0; background: #080808; }
+    .h-col { font-size: 9px; color: #FFF; text-align: center; font-weight: 800; }
+    .row-container { display: grid; grid-template-columns: 1.2fr 1fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr; width: 100%; align-items: center; padding: 10px 0; }
+    .w-col { text-align: center; font-family: 'monospace'; font-size: 15px; font-weight: 800; color: #FFF; }
     .vision-block { display: flex; justify-content: center; gap: 60px; padding: 5px 0 15px 0; border-bottom: 2px solid #333; }
     @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.2; } 100% { opacity: 1; } }
     </style>
@@ -89,9 +89,10 @@ while True:
                     <div class="title-gold">SHARK VISION CRYPTO</div>
                     <div class="header-grid">
                         <div class="h-col">CÓDIGO</div><div class="h-col">PREÇO</div>
-                        <div class="h-col" style="color:#FF4444;">EXAUSTÃO T.</div><div class="h-col" style="color:#FFA500;">DECISÃO</div>
-                        <div class="h-col" style="color:#FFFF00;">RESPIRO</div><div class="h-col" style="color:#00CED1;">RESPIRO F.</div>
-                        <div class="h-col" style="color:#FFA500;">DECISÃO F.</div><div class="h-col" style="color:#00FF00;">EXAUSTÃO F.</div>
+                        <div class="h-col" style="color:#FF4444;">EXAUST. T</div><div class="h-col" style="color:#FF8C00;">TOPO</div>
+                        <div class="h-col" style="color:#FFA500;">DECISÃO</div><div class="h-col" style="color:#FFFF00;">RESPIRO</div>
+                        <div class="h-col" style="color:#00CED1;">RESP. F</div><div class="h-col" style="color:#20B2AA;">DECIS. F</div>
+                        <div class="h-col" style="color:#3CB371;">FUNDO</div><div class="h-col" style="color:#00FF00;">EXAUST. F</div>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
@@ -100,19 +101,16 @@ while True:
                 price = yf.Ticker(t).fast_info['last_price']
                 mp, rv = st.session_state[f'mp_{t}'], st.session_state[f'rv_{t}']
                 
-                # PARÂMETROS TÉCNICOS K97 - SIMETRIA TOTAL
+                # PARÂMETROS TÉCNICOS K97 - GRADE COMPLETA
                 if t in ["BTC-USD", "ETH-USD"]:
-                    # Multiplicadores: 1.22% (Ex), 0.61% (Dec), 0.40% (Res)
-                    m_ex, m_dec, m_res = 1.0122, 1.0061, 1.0040
-                    label = "1.22%"
+                    # 1.22 (Ex) | 0.82 (Topo) | 0.61 (Dec) | 0.40 (Res)
+                    m_ex, m_top, m_dec, m_res = 1.0122, 1.0082, 1.0061, 1.0040
                     g_trigger = 1.22
                 else:
-                    # Multiplicadores Alts (Dobro): 2.44% (Ex), 1.22% (Dec), 0.80% (Res)
-                    m_ex, m_dec, m_res = 1.0244, 1.0122, 1.0080
-                    label = "2.44%"
+                    # Alts (Dobro): 2.44 | 1.64 | 1.22 | 0.80
+                    m_ex, m_top, m_dec, m_res = 1.0244, 1.0164, 1.0122, 1.0080
                     g_trigger = 2.44
 
-                # Lógica de Escada (ÂncoVision)
                 var_escada = ((price / mp) - 1) * 100
                 if var_escada >= g_trigger: st.session_state[f'mp_{t}'] = mp * m_ex
                 elif var_escada <= -g_trigger: st.session_state[f'mp_{t}'] = mp * (2 - m_ex)
@@ -124,22 +122,29 @@ while True:
 
                 st.markdown(f"""
                     <div class="row-container">
-                        <div class="w-col" style="color:#D4AF37;">{info['label']}</div>
+                        <div class="w-col" style="color:#D4AF37; font-size:13px;">{info['label']}</div>
                         <div class="w-col">
-                            <div>{price:,.{info['dec']}f}</div>
-                            <div style="color:{cor_v}; font-size:10px;">{var_reset:+.2f}%</div>
+                            <div style="font-size:14px;">{price:,.{info['dec']}f}</div>
+                            <div style="color:{cor_v}; font-size:9px;">{var_reset:+.2f}%</div>
                         </div>
                         <div class="w-col" style="color:#FF4444; {blink_t}">{(mp * m_ex):,.{info['dec']}f}</div>
+                        <div class="w-col" style="color:#FF8C00;">{(mp * m_top):,.{info['dec']}f}</div>
                         <div class="w-col" style="color:#FFA500;">{(mp * m_dec):,.{info['dec']}f}</div>
                         <div class="w-col" style="color:#FFFF00;">{(mp * m_res):,.{info['dec']}f}</div>
                         <div class="w-col" style="color:#00CED1;">{(mp * (2-m_res)):,.{info['dec']}f}</div>
-                        <div class="w-col" style="color:#FFA500;">{(mp * (2-m_dec)):,.{info['dec']}f}</div>
+                        <div class="w-col" style="color:#20B2AA;">{(mp * (2-m_dec)):,.{info['dec']}f}</div>
+                        <div class="w-col" style="color:#3CB371;">{(mp * (2-m_top)):,.{info['dec']}f}</div>
                         <div class="w-col" style="color:#00FF00; {blink_f}">{(mp * (2-m_ex)):,.{info['dec']}f}</div>
                     </div>
-                    <div class="vision-block">
-                        <div style="color:#BBB; font-size:12px;">RESET: <b>{rv:,.{info['dec']}f}</b></div>
-                        <div style="color:#00e6ff; font-size:12px;">ÂNCOVISION ({label}): <b>{mp:,.{info['dec']}f}</b></div>
-                    </div>
                 """, unsafe_allow_html=True)
+            
+            # Rodapé Vision
+            st.markdown(f"""
+                <div class="vision-block">
+                    <div style="color:#BBB; font-size:12px;">STATUS: <b>PROCESSANDO FLUXO K97</b></div>
+                    <div style="color:#00e6ff; font-size:12px;">ESTRATÉGIA: <b>AMORTIZAÇÃO RECORRENTE (R$ 125)</b></div>
+                </div>
+            """, unsafe_allow_html=True)
+            
         time.sleep(1)
     except: time.sleep(2)
