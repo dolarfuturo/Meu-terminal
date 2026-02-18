@@ -31,20 +31,20 @@ st.markdown("""
         border-bottom: 2px solid #D4AF37;
     }
 
-    /* PONTO VERDE PISCANDO (GLOW) */
-    .dot-live { 
-        height: 12px; 
-        width: 12px; 
-        background-color: #00FF00; 
-        border-radius: 50%; 
-        display: inline-block;
-        box-shadow: 0 0 10px #00FF00;
-        animation: pulse-glow 1s infinite alternate;
-        margin-right: 8px;
+    /* PONTO VERDE PISCANDO (GLOW) CORRIGIDO */
+    .dot { 
+        height: 12px !important; 
+        width: 12px !important; 
+        background-color: #00FF00 !important; 
+        border-radius: 50% !important; 
+        display: inline-block !important;
+        box-shadow: 0 0 10px #00FF00 !important;
+        animation: pulse-glow 1s infinite alternate !important;
+        margin-right: 8px !important;
     }
     @keyframes pulse-glow {
         from { opacity: 1; transform: scale(1); }
-        to { opacity: 0.3; transform: scale(0.8); }
+        to { opacity: 0.2; transform: scale(0.8); }
     }
 
     .title-gold { color: #D4AF37; font-size: 26px; font-weight: 900; text-align: center; margin: 5px 0; }
@@ -136,7 +136,7 @@ def get_alpha_midpoint(ticker):
         return yf.Ticker(ticker).fast_info['last_price']
     except: return 0
 
-# CSS DO TERMINAL
+# CSS DO TERMINAL (SEGUNDO BLOCO PARA GARANTIR ESTILOS ADICIONAIS)
 st.markdown("""
     <style>
     .stApp { background-color: #000000; }
@@ -144,7 +144,6 @@ st.markdown("""
     .top-bar { display: flex; justify-content: space-between; align-items: center; padding: 5px 20px; background: #050505; border-bottom: 1px solid #1a1a1a; }
     .clocks { display: flex; gap: 30px; color: #888; font-family: monospace; font-size: 11px; }
     .live-indicator { display: flex; align-items: center; gap: 8px; color: #FFF; font-size: 11px; font-weight: bold; }
-    .dot { height: 8px; width: 8px; background-color: #00FF00; border-radius: 50%; animation: pulse 1.5s infinite; }
     .title-gold { color: #D4AF37; font-size: 24px; font-weight: 900; text-align: center; margin-top: 5px; }
     .subtitle-white { color: #FFFFFF; font-size: 12px; text-align: center; letter-spacing: 4px; text-transform: lowercase; margin-bottom: 5px; }
     .header-grid { display: grid; grid-template-columns: 1.2fr 1fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr; width: 100%; padding: 10px 0; background: #080808; }
