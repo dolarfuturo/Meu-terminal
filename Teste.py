@@ -96,7 +96,7 @@ def verificar_acesso():
                 else:
                     st.error("❌ Chave Inválida ou Expirada.")
             except:
-                st.error("Aguarde conexão. CLIC novamente.")
+                st.error("Aguarde conexão... CLIC acessar.")
         st.stop()
 
 verificar_acesso()
@@ -180,8 +180,8 @@ while True:
                             <div class="clock-item">LONDON: <b>{datetime.now(tz_ld).strftime('%H:%M:%S')}</b></div>
                         </div>
                     </div>
-                    <div class="title-gold">SHARK VISION CRYPTO</div>
-                    <div class="subtitle-white">visão de tubarão</div>
+                    <div class="title-gold">TERMINAL NEXUS CRYPTO</div>
+                    <div class="subtitle-white">Visão de Tubarão</div>
                     <div class="header-grid">
                         <div class="h-col">CÓDIGO</div><div class="h-col">PREÇO</div>
                         <div class="h-col" style="color:#FF4444;">EXAUST. T.</div><div class="h-col" style="color:#FFA500;">TOPO</div>
@@ -230,7 +230,7 @@ while True:
                     </div>
                     <div class="vision-block">
                         <div style="color:#666; font-size:9px;">RESET: <b style="color:#BBB;">{rv:,.{info['dec']}f}</b></div>
-                        <div style="color:#666; font-size:9px;">ÂNCOVISION: <b style="color:#00e6ff;">{mp:,.{info['dec']}f}</b></div>
+                        <div style="color:#666; font-size:9px;">ÂNCORAVISION: <b style="color:#00e6ff;">{mp:,.{info['dec']}f}</b></div>
                     </div>
                 """, unsafe_allow_html=True)
         time.sleep(1)
