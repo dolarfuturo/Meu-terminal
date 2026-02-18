@@ -6,11 +6,14 @@ from datetime import datetime, timedelta
 import pytz
 import hashlib
 
+# 1. SETUP ALPHA & TRAVA DE SEGURANÇA 
 st.set_page_config(page_title="SHARK VISION LIVE", layout="wide", initial_sidebar_state="collapsed")
 
 def verificar_acesso():
     URL_SISTEMA = "https://docs.google.com/spreadsheets/d/1m86_Lj5p7tV9U4sNIKudbU1DVWFgAfaSXSIRATo6G70/export?format=csv"
-    CHAVE_MESTRA_ADM = "SHARK_ADM_2026"
+    
+    # CHAVE MESTRA DO DONO (Fica apenas no código)
+    CHAVE_MESTRA_ADM = "SHARK_ADM_2026" 
     
     if "autenticado" not in st.session_state:
         st.markdown("<h1 style='text-align:center; color:#D4AF37; font-family:monospace;'>SHAKE VISION LOGIN</h1>", unsafe_allow_html=True)
@@ -18,12 +21,16 @@ def verificar_acesso():
         col1, col2, col3 = st.columns([1,2,1])
         with col2:
             chave = st.text_input("", type="password", placeholder="Digite a Chave...")
+        
         if chave:
+            # VERIFICAÇÃO 1: ADMINISTRADOR
             if chave == CHAVE_MESTRA_ADM:
                 st.session_state["autenticado"] = True
                 st.session_state["usuario"] = "ADMINISTRADOR"
                 st.session_state["role"] = "admin"
                 st.rerun()
+            
+            # VERIFICAÇÃO 2: ASSINANTE (PLANILHA)
             try:
                 df = pd.read_csv(URL_SISTEMA)
                 hash_tentativa = hashlib.sha256(chave.encode()).hexdigest()
@@ -31,20 +38,32 @@ def verificar_acesso():
                 df['HASH_SENHA'] = df['HASH_SENHA'].astype(str).str.strip()
                 df['STATUS'] = df['STATUS'].astype(str).str.strip()
                 valido = df[(df['HASH_SENHA'] == hash_tentativa) & (df['STATUS'] == 'ATIVO')]
+                
                 if not valido.empty:
                     st.session_state["autenticado"] = True
                     st.session_state["usuario"] = valido.iloc[0]['CLIENTE']
                     st.session_state["role"] = "user"
                     st.rerun()
-                else: st.error("❌ Acesso Negado.")
-            except: st.error("Erro de conexão.")
+                else:
+                    st.error("❌ Acesso Negado: Chave incorreta ou expirada.")
+            except:
+                st.error("Erro de conexão com banco de dados.")
         st.stop()
 
 verificar_acesso()
 
+# BLOQUEIO DE INTERFACE PARA CLIENTES (Esconde Manage App e Menu)
 if st.session_state.get("role") == "user":
-    st.markdown("<style>#MainMenu {visibility: hidden;} header {visibility: hidden;} .stDeployButton {display:none;}</style>", unsafe_allow_html=True)
+    st.markdown("""
+        <style>
+        #MainMenu {visibility: hidden;}
+        header {visibility: hidden;}
+        footer {visibility: hidden;}
+        .stDeployButton {display:none;}
+        </style>
+        """, unsafe_allow_html=True)
 
+# --- CONFIGURAÇÃO DE MOEDAS E CÁLCULOS ---
 COINS_CONFIG = {
     "BTC-USD": {"label": "BTC/USDT", "dec": 0}, "ETH-USD": {"label": "ETH/USDT", "dec": 0},
     "SOL-USD": {"label": "SOL/USDT", "dec": 2}, "XRP-USD": {"label": "XRP/USDT", "dec": 2},
@@ -80,6 +99,7 @@ def get_alpha_midpoint(ticker):
         return yf.Ticker(ticker).fast_info['last_price']
     except: return 0
 
+# CSS DO TERMINAL
 st.markdown("""
     <style>
     .stApp { background-color: #000000; }
@@ -110,7 +130,8 @@ placeholder = st.empty()
 while True:
     try:
         tz_br, tz_ny, tz_ld = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London')
-        now_br, now_ny, now_ld = datetime.now(tz_br), datetime.now(tz_ny), datetime.now(tz_ld)
+        now_br = datetime.now(tz_br)
+
         with placeholder.container():
             st.markdown(f"""
                 <div class="top-header-fixed">
@@ -118,8 +139,8 @@ while True:
                         <div class="live-indicator"><span class="dot"></span> {st.session_state['usuario']} |  ONLINE</div>
                         <div class="clocks">
                             <div class="clock-item">BRASÍLIA: <b>{now_br.strftime('%H:%M:%S')}</b></div>
-                            <div class="clock-item">NEW YORK: <b>{now_ny.strftime('%H:%M:%S')}</b></div>
-                            <div class="clock-item">LONDON: <b>{now_ld.strftime('%H:%M:%S')}</b></div>
+                            <div class="clock-item">NEW YORK: <b>{datetime.now(tz_ny).strftime('%H:%M:%S')}</b></div>
+                            <div class="clock-item">LONDON: <b>{datetime.now(tz_ld).strftime('%H:%M:%S')}</b></div>
                         </div>
                     </div>
                     <div class="title-gold">SHARK VISION CRYPTO</div>
@@ -133,22 +154,27 @@ while True:
                     </div>
                 </div>
             """, unsafe_allow_html=True)
+
             for t, info in COINS_CONFIG.items():
                 price = yf.Ticker(t).fast_info['last_price']
                 mp, rv = st.session_state[f'mp_{t}'], st.session_state[f'rv_{t}']
+                
                 if t in ["BTC-USD", "ETH-USD"]:
                     g_ex, g_top, g_dec, g_res = 1.0122, 1.0082, 1.0061, 1.0040
-                    label_regua, trigger = "1.22%", 1.22
+                    trigger = 1.22
                 else:
                     g_ex, g_top, g_dec, g_res = 1.0244, 1.0164, 1.0122, 1.0080
-                    label_regua, trigger = "2.44%", 2.44
+                    trigger = 2.44
+                
                 var_escada = ((price / mp) - 1) * 100
                 if var_escada >= trigger: st.session_state[f'mp_{t}'] = mp * g_ex
                 elif var_escada <= -trigger: st.session_state[f'mp_{t}'] = mp * (2 - g_ex)
+                
                 var_reset = ((price / rv) - 1) * 100
                 cor_v, seta_v = ("#00FF00", "▲") if var_reset >= 0 else ("#FF4444", "▼")
                 blink_t = "animation: blink 0.4s infinite;" if (var_escada >= trigger*0.9) else ""
                 blink_f = "animation: blink 0.4s infinite;" if (var_escada <= -trigger*0.9) else ""
+
                 st.markdown(f"""
                     <div class="row-container">
                         <div class="w-col" style="color:#D4AF37; font-size:13px;">{info['label']}</div>
@@ -167,8 +193,9 @@ while True:
                     </div>
                     <div class="vision-block">
                         <div style="color:#666; font-size:9px;">RESET: <b style="color:#BBB;">{rv:,.{info['dec']}f}</b></div>
-                        <div style="color:#666; font-size:9px;">ÂNCOVISION ({label_regua}): <b style="color:#00e6ff;">{mp:,.{info['dec']}f}</b></div>
+                        <div style="color:#666; font-size:9px;">ÂNCOVISION: <b style="color:#00e6ff;">{mp:,.{info['dec']}f}</b></div>
                     </div>
                 """, unsafe_allow_html=True)
         time.sleep(1)
-    except: time.sleep(5)
+    except:
+        time.sleep(5)
