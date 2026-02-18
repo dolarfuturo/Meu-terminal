@@ -67,14 +67,14 @@ if st.session_state.get("role") == "user":
 COINS_CONFIG = {
     "BTC-USD": {"label": "BTC/USDT", "dec": 0}, "ETH-USD": {"label": "ETH/USDT", "dec": 0},
     "SOL-USD": {"label": "SOL/USDT", "dec": 2}, "XRP-USD": {"label": "XRP/USDT", "dec": 2},
-    "BNB-USD": {"label": "BNB/USDT", "dec": 4}, "DOGE-USD": {"label": "DOGE/USDT", "dec": 4},
-    "LINK-USD": {"label": "LINK/USDT", "dec": 4}, "ADA-USD": {"label": "ADA/USDT", "dec": 2},
+    "BNB-USD": {"label": "BNB/USDT", "dec": 2}, "DOGE-USD": {"label": "DOGE/USDT", "dec": 2},
+    "LINK-USD": {"label": "LINK/USDT", "dec": 2    }, "ADA-USD": {"label": "ADA/USDT", "dec": 2},
     "AVAX-USD": {"label": "AVAX/USDT", "dec": 2}, "DOT-USD": {"label": "DOT/USDT", "dec": 2},
-    "MATIC-USD": {"label": "MATIC/USDT", "dec": 4}, "PEPE-USD": {"label": "PEPE/USDT", "dec": 4},
+    "MATIC-USD": {"label": "MATIC/USDT", "dec": 2}, "PEPE-USD": {"label": "PEPE/USDT", "dec": 2},
     "SUI-USD": {"label": "SUI/USDT", "dec": 2}, "NEAR-USD": {"label": "NEAR/USDT", "dec": 2},
-    "APT-USD": {"label": "APT/USDT", "dec": 6}, "OP-USD": {"label": "OP/USDT", "dec": 3},
+    "APT-USD": {"label": "APT/USDT", "dec": 2}, "OP-USD": {"label": "OP/USDT", "dec": 3},
     "ARB-USD": {"label": "ARB/USDT", "dec": 2}, "INJ-USD": {"label": "INJ/USDT", "dec": 2},
-    "RNDR-USD": {"label": "RNDR/USDT", "dec": 3}, "HYPE-USD": {"label": "HYPE/USDT", "dec": 4}
+    "RNDR-USD": {"label": "RNDR/USDT", "dec": 3}, "HYPE-USD": {"label": "HYPE/USDT", "dec": 2}
 }
 
 def get_calculation_date():
