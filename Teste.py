@@ -95,8 +95,7 @@ def verificar_acesso():
                     st.rerun()
                 else:
                     st.error("❌ Chave Inválida ou Expirada.")
-            except:
-                st.error("Aguarde conexão... CLIC acessar.")
+
         st.stop()
 
 verificar_acesso()
