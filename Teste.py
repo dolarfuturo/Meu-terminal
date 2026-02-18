@@ -9,60 +9,97 @@ import hashlib
 # 1. SETUP ALPHA & TRAVA DE SEGURANÇA 
 st.set_page_config(page_title="SHARK VISION LIVE", layout="wide", initial_sidebar_state="collapsed")
 
+# CSS PARA TRAVAR O TOPO, PONTO PISCANDO E ESTILO DO BOTÃO
+st.markdown("""
+    <style>
+    #MainMenu {visibility: hidden;}
+    header {visibility: hidden;}
+    footer {visibility: hidden;}
+    .stDeployButton {display:none;}
+    
+    .block-container {
+        padding-top: 0rem !important;
+        padding-bottom: 0rem !important;
+    }
+
+    /* TRAVA O CABEÇALHO NO TOPO */
+    [data-testid="stVerticalBlock"] > div:first-child {
+        position: sticky;
+        top: 0;
+        z-index: 999999;
+        background-color: #000000;
+        border-bottom: 2px solid #D4AF37;
+    }
+
+    /* PONTO VERDE PISCANDO (GLOW) */
+    .dot-live { 
+        height: 12px; 
+        width: 12px; 
+        background-color: #00FF00; 
+        border-radius: 50%; 
+        display: inline-block;
+        box-shadow: 0 0 10px #00FF00;
+        animation: pulse-glow 1s infinite alternate;
+        margin-right: 8px;
+    }
+    @keyframes pulse-glow {
+        from { opacity: 1; transform: scale(1); }
+        to { opacity: 0.3; transform: scale(0.8); }
+    }
+
+    .title-gold { color: #D4AF37; font-size: 26px; font-weight: 900; text-align: center; margin: 5px 0; }
+    .header-grid { display: grid; grid-template-columns: 1.2fr 1fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr; background: #080808; padding: 10px 0; }
+    .h-col { font-size: 9px; color: #FFF; text-align: center; font-weight: bold; }
+    .row-container { display: grid; grid-template-columns: 1.2fr 1fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr; align-items: center; padding: 12px 0; border-bottom: 1px solid #222; }
+    .w-col { text-align: center; font-family: monospace; font-size: 15px; font-weight: bold; color: #FFF; }
+    .vision-block { display: flex; justify-content: center; gap: 30px; padding: 5px 0; background: #050505; border-bottom: 2px solid #333; }
+    
+    /* BOTÃO CUSTOMIZADO */
+    div.stButton > button {
+        background-color: #D4AF37;
+        color: black;
+        font-weight: bold;
+        width: 100%;
+        border-radius: 5px;
+        border: none;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
 def verificar_acesso():
     URL_SISTEMA = "https://docs.google.com/spreadsheets/d/1m86_Lj5p7tV9U4sNIKudbU1DVWFgAfaSXSIRATo6G70/export?format=csv"
-    
-    # CHAVE MESTRA DO DONO (Fica apenas no código)
     CHAVE_MESTRA_ADM = "SHARK_ADM_2026" 
     
     if "autenticado" not in st.session_state:
         st.markdown("<h1 style='text-align:center; color:#D4AF37; font-family:monospace;'>SHAKE VISION LOGIN</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align:center; color:white;'>Terminal K97 - Insira sua Chave de Licença</p>", unsafe_allow_html=True)
         col1, col2, col3 = st.columns([1,2,1])
         with col2:
             chave = st.text_input("", type="password", placeholder="Digite a Chave...")
+            btn = st.button("ACESSAR TERMINAL K97")
         
-        if chave:
-            # VERIFICAÇÃO 1: ADMINISTRADOR
+        if btn and chave:
+            # ADM entra direto
             if chave == CHAVE_MESTRA_ADM:
-                st.session_state["autenticado"] = True
-                st.session_state["usuario"] = "ADMINISTRADOR"
-                st.session_state["role"] = "admin"
+                st.session_state["autenticado"], st.session_state["usuario"], st.session_state["role"] = True, "ADMINISTRADOR", "admin"
                 st.rerun()
             
-            # VERIFICAÇÃO 2: ASSINANTE (PLANILHA)
+            # Validação Planilha
             try:
                 df = pd.read_csv(URL_SISTEMA)
-                hash_tentativa = hashlib.sha256(chave.encode()).hexdigest()
+                hash_t = hashlib.sha256(chave.encode()).hexdigest()
                 df.columns = df.columns.str.strip()
-                df['HASH_SENHA'] = df['HASH_SENHA'].astype(str).str.strip()
-                df['STATUS'] = df['STATUS'].astype(str).str.strip()
-                valido = df[(df['HASH_SENHA'] == hash_tentativa) & (df['STATUS'] == 'ATIVO')]
+                valido = df[(df['HASH_SENHA'].astype(str).str.strip() == hash_t) & (df['STATUS'].str.strip() == 'ATIVO')]
                 
                 if not valido.empty:
-                    st.session_state["autenticado"] = True
-                    st.session_state["usuario"] = valido.iloc[0]['CLIENTE']
-                    st.session_state["role"] = "user"
+                    st.session_state["autenticado"], st.session_state["usuario"], st.session_state["role"] = True, valido.iloc[0]['CLIENTE'], "user"
                     st.rerun()
                 else:
-                    st.error("❌ Acesso Negado: Chave incorreta ou expirada.")
+                    st.error("❌ Chave Inválida ou Expirada.")
             except:
-                st.error("Erro de conexão com banco de dados.")
+                st.error("Erro de conexão. Tente novamente.")
         st.stop()
 
 verificar_acesso()
-
-# BLOQUEIO DE INTERFACE PARA CLIENTES (Esconde Manage App e Menu)
-if st.session_state.get("role") == "user":
-    st.markdown("""
-        <style>
-        #MainMenu {visibility: hidden;}
-        header {visibility: hidden;}
-        footer {visibility: hidden;}
-        .stDeployButton {display:none;}
-        </style>
-        """, unsafe_allow_html=True)
-
 # --- CONFIGURAÇÃO DE MOEDAS E CÁLCULOS ---
 COINS_CONFIG = {
     "BTC-USD": {"label": "BTC/USDT", "dec": 0}, "ETH-USD": {"label": "ETH/USDT", "dec": 0},
