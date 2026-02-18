@@ -12,7 +12,7 @@ st.set_page_config(page_title="SHARK VISION LIVE", layout="wide", initial_sideba
 def verificar_acesso():
     URL_SISTEMA = "https://docs.google.com/spreadsheets/d/1m86_Lj5p7tV9U4sNIKudbU1DVWFgAfaSXSIRATo6G70/export?format=csv"
     
-    # CHAVE MESTRA DO DONO (Fica apenas no código)
+    # COLOQUE AQUI SUA SENHA DE ADM QUE NÃO ESTÁ NA PLANILHA
     CHAVE_MESTRA_ADM = "SHARK_ADM_2026" 
     
     if "autenticado" not in st.session_state:
@@ -23,36 +23,37 @@ def verificar_acesso():
             chave = st.text_input("", type="password", placeholder="Digite a Chave...")
         
         if chave:
-            # VERIFICAÇÃO 1: ADMINISTRADOR
+            # PRIORIDADE 1: VERIFICA SE É ADM (INTERNO)
             if chave == CHAVE_MESTRA_ADM:
                 st.session_state["autenticado"] = True
                 st.session_state["usuario"] = "ADMINISTRADOR"
                 st.session_state["role"] = "admin"
                 st.rerun()
             
-            # VERIFICAÇÃO 2: ASSINANTE (PLANILHA)
-            try:
-                df = pd.read_csv(URL_SISTEMA)
-                hash_tentativa = hashlib.sha256(chave.encode()).hexdigest()
-                df.columns = df.columns.str.strip()
-                df['HASH_SENHA'] = df['HASH_SENHA'].astype(str).str.strip()
-                df['STATUS'] = df['STATUS'].astype(str).str.strip()
-                valido = df[(df['HASH_SENHA'] == hash_tentativa) & (df['STATUS'] == 'ATIVO')]
-                
-                if not valido.empty:
-                    st.session_state["autenticado"] = True
-                    st.session_state["usuario"] = valido.iloc[0]['CLIENTE']
-                    st.session_state["role"] = "user"
-                    st.rerun()
-                else:
-                    st.error("❌ Acesso Negado: Chave incorreta ou expirada.")
-            except:
-                st.error("Erro de conexão com banco de dados.")
+            # PRIORIDADE 2: SE NÃO FOR ADM, BUSCA NA PLANILHA
+            else:
+                try:
+                    df = pd.read_csv(URL_SISTEMA)
+                    hash_tentativa = hashlib.sha256(chave.encode()).hexdigest()
+                    df.columns = df.columns.str.strip()
+                    df['HASH_SENHA'] = df['HASH_SENHA'].astype(str).str.strip()
+                    df['STATUS'] = df['STATUS'].astype(str).str.strip()
+                    valido = df[(df['HASH_SENHA'] == hash_tentativa) & (df['STATUS'] == 'ATIVO')]
+                    
+                    if not valido.empty:
+                        st.session_state["autenticado"] = True
+                        st.session_state["usuario"] = valido.iloc[0]['CLIENTE']
+                        st.session_state["role"] = "user"
+                        st.rerun()
+                    else:
+                        st.error("❌ Acesso Negado: Chave incorreta ou expirada.")
+                except:
+                    st.error("Erro de conexão com banco de dados.")
         st.stop()
 
 verificar_acesso()
 
-# BLOQUEIO DE INTERFACE PARA CLIENTES (Esconde Manage App e Menu)
+# BLOQUEIO TOTAL DE INTERFACE PARA QUEM NÃO É ADM
 if st.session_state.get("role") == "user":
     st.markdown("""
         <style>
@@ -63,7 +64,7 @@ if st.session_state.get("role") == "user":
         </style>
         """, unsafe_allow_html=True)
 
-# --- CONFIGURAÇÃO DE MOEDAS E CÁLCULOS ---
+# --- CONFIGURAÇÃO DE MOEDAS E CÁLCULOS (ESTRUTURA 10 COLUNAS) ---
 COINS_CONFIG = {
     "BTC-USD": {"label": "BTC/USDT", "dec": 0}, "ETH-USD": {"label": "ETH/USDT", "dec": 0},
     "SOL-USD": {"label": "SOL/USDT", "dec": 2}, "XRP-USD": {"label": "XRP/USDT", "dec": 2},
@@ -76,6 +77,9 @@ COINS_CONFIG = {
     "ARB-USD": {"label": "ARB/USDT", "dec": 2}, "INJ-USD": {"label": "INJ/USDT", "dec": 2},
     "RNDR-USD": {"label": "RNDR/USDT", "dec": 3}, "HYPE-USD": {"label": "HYPE/USDT", "dec": 4}
 }
+
+# Funções de cálculo e CSS permanecem as mesmas das versões anteriores...
+# (Cálculo de Midpoint, Visão de Tubarão, 10 colunas, Alertas de Blink)
 
 def get_calculation_date():
     br_tz = pytz.timezone('America/Sao_Paulo')
@@ -99,7 +103,6 @@ def get_alpha_midpoint(ticker):
         return yf.Ticker(ticker).fast_info['last_price']
     except: return 0
 
-# CSS DO TERMINAL
 st.markdown("""
     <style>
     .stApp { background-color: #000000; }
@@ -129,7 +132,7 @@ placeholder = st.empty()
 
 while True:
     try:
-        tz_br, tz_ny, tz_ld = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London')
+        tz_br = pytz.timezone('America/Sao_Paulo')
         now_br = datetime.now(tz_br)
 
         with placeholder.container():
@@ -138,9 +141,7 @@ while True:
                     <div class="top-bar">
                         <div class="live-indicator"><span class="dot"></span> {st.session_state['usuario']} |  ONLINE</div>
                         <div class="clocks">
-                            <div class="clock-item">BRASÍLIA: <b>{now_br.strftime('%H:%M:%S')}</b></div>
-                            <div class="clock-item">NEW YORK: <b>{datetime.now(tz_ny).strftime('%H:%M:%S')}</b></div>
-                            <div class="clock-item">LONDON: <b>{datetime.now(tz_ld).strftime('%H:%M:%S')}</b></div>
+                            <div>BRASÍLIA: <b>{now_br.strftime('%H:%M:%S')}</b></div>
                         </div>
                     </div>
                     <div class="title-gold">SHARK VISION CRYPTO</div>
@@ -159,6 +160,7 @@ while True:
                 price = yf.Ticker(t).fast_info['last_price']
                 mp, rv = st.session_state[f'mp_{t}'], st.session_state[f'rv_{t}']
                 
+                # REGRAS DE VOLATILIDADE
                 if t in ["BTC-USD", "ETH-USD"]:
                     g_ex, g_top, g_dec, g_res = 1.0122, 1.0082, 1.0061, 1.0040
                     trigger = 1.22
@@ -191,11 +193,13 @@ while True:
                         <div class="w-col" style="color:#FFA500;">{(mp * (2-g_top)):,.{info['dec']}f}</div>
                         <div class="w-col" style="color:#00FF00; {blink_f}">{(mp * (2-g_ex)):,.{info['dec']}f}</div>
                     </div>
-                    <div class="vision-block">
-                        <div style="color:#666; font-size:9px;">RESET: <b style="color:#BBB;">{rv:,.{info['dec']}f}</b></div>
-                        <div style="color:#666; font-size:9px;">ÂNCOVISION: <b style="color:#00e6ff;">{mp:,.{info['dec']}f}</b></div>
-                    </div>
                 """, unsafe_allow_html=True)
+            
+            st.markdown(f"""
+                <div class="vision-block">
+                    <div style="color:#666; font-size:9px;">RESET: <b style="color:#BBB;">{rv:,.0f}</b></div>
+                    <div style="color:#666; font-size:9px;">ÂNCOVISION: <b style="color:#00e6ff;">{mp:,.0f}</b></div>
+                </div>
+            """, unsafe_allow_html=True)
         time.sleep(1)
-    except:
-        time.sleep(5)
+    except: time.sleep(5)
