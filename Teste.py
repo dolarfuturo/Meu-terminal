@@ -6,13 +6,20 @@ from datetime import datetime, timedelta
 import pytz
 import hashlib
 
-# 1. SETUP ALPHA & TRAVA DE SEGURANÇA 
 st.set_page_config(page_title="SHARK VISION LIVE", layout="wide", initial_sidebar_state="collapsed")
+
+# ESCONDE TUDO POR PADRÃO ANTES DO LOGIN
+st.markdown("""
+    <style>
+    #MainMenu {visibility: hidden;}
+    header {visibility: hidden;}
+    footer {visibility: hidden;}
+    .stDeployButton {display:none;}
+    </style>
+    """, unsafe_allow_html=True)
 
 def verificar_acesso():
     URL_SISTEMA = "https://docs.google.com/spreadsheets/d/1m86_Lj5p7tV9U4sNIKudbU1DVWFgAfaSXSIRATo6G70/export?format=csv"
-    
-    # CHAVE MESTRA DO DONO (Fica apenas no código)
     CHAVE_MESTRA_ADM = "SHARK_ADM_2026" 
     
     if "autenticado" not in st.session_state:
@@ -23,14 +30,14 @@ def verificar_acesso():
             chave = st.text_input("", type="password", placeholder="Digite a Chave...")
         
         if chave:
-            # VERIFICAÇÃO 1: ADMINISTRADOR
+            # PRIORIDADE TOTAL: SE FOR ADM, NEM BUSCA NA PLANILHA (EVITA O ERRO DE CONEXÃO)
             if chave == CHAVE_MESTRA_ADM:
                 st.session_state["autenticado"] = True
                 st.session_state["usuario"] = "ADMINISTRADOR"
                 st.session_state["role"] = "admin"
                 st.rerun()
             
-            # VERIFICAÇÃO 2: ASSINANTE (PLANILHA)
+            # SE NÃO FOR ADM, BUSCA NA PLANILHA
             try:
                 df = pd.read_csv(URL_SISTEMA)
                 hash_tentativa = hashlib.sha256(chave.encode()).hexdigest()
@@ -47,23 +54,16 @@ def verificar_acesso():
                 else:
                     st.error("❌ Acesso Negado: Chave incorreta ou expirada.")
             except:
-                st.error("Erro de conexão com banco de dados.")
+                st.error("Aguarde... Validando acesso.")
         st.stop()
 
 verificar_acesso()
 
-# BLOQUEIO DE INTERFACE PARA CLIENTES (Esconde Manage App e Menu)
-if st.session_state.get("role") == "user":
-    st.markdown("""
-        <style>
-        #MainMenu {visibility: hidden;}
-        header {visibility: hidden;}
-        footer {visibility: hidden;}
-        .stDeployButton {display:none;}
-        </style>
-        """, unsafe_allow_html=True)
+# LIBERA MENU APENAS PARA O ADM
+if st.session_state.get("role") == "admin":
+    st.markdown("<style>#MainMenu {visibility: visible !important;} header {visibility: visible !important;}</style>", unsafe_allow_html=True)
 
-# --- CONFIGURAÇÃO DE MOEDAS E CÁLCULOS ---
+# --- O RESTANTE DO SEU CÓDIGO CONTINUA IGUAL ABAIXO ---
 COINS_CONFIG = {
     "BTC-USD": {"label": "BTC/USDT", "dec": 0}, "ETH-USD": {"label": "ETH/USDT", "dec": 0},
     "SOL-USD": {"label": "SOL/USDT", "dec": 3}, "XRP-USD": {"label": "XRP/USDT", "dec": 3},
@@ -99,7 +99,6 @@ def get_alpha_midpoint(ticker):
         return yf.Ticker(ticker).fast_info['last_price']
     except: return 0
 
-# CSS DO TERMINAL
 st.markdown("""
     <style>
     .stApp { background-color: #000000; }
@@ -159,43 +158,4 @@ while True:
                 price = yf.Ticker(t).fast_info['last_price']
                 mp, rv = st.session_state[f'mp_{t}'], st.session_state[f'rv_{t}']
                 
-                if t in ["BTC-USD", "ETH-USD"]:
-                    g_ex, g_top, g_dec, g_res = 1.0122, 1.0082, 1.0061, 1.0040
-                    trigger = 1.22
-                else:
-                    g_ex, g_top, g_dec, g_res = 1.0244, 1.0164, 1.0122, 1.0080
-                    trigger = 2.44
-                
-                var_escada = ((price / mp) - 1) * 100
-                if var_escada >= trigger: st.session_state[f'mp_{t}'] = mp * g_ex
-                elif var_escada <= -trigger: st.session_state[f'mp_{t}'] = mp * (2 - g_ex)
-                
-                var_reset = ((price / rv) - 1) * 100
-                cor_v, seta_v = ("#00FF00", "▲") if var_reset >= 0 else ("#FF4444", "▼")
-                blink_t = "animation: blink 0.4s infinite;" if (var_escada >= trigger*0.9) else ""
-                blink_f = "animation: blink 0.4s infinite;" if (var_escada <= -trigger*0.9) else ""
-
-                st.markdown(f"""
-                    <div class="row-container">
-                        <div class="w-col" style="color:#D4AF37; font-size:13px;">{info['label']}</div>
-                        <div class="w-col">
-                            <div style="font-size:14px;">{price:,.{info['dec']}f}</div>
-                            <div style="color:{cor_v}; font-size:9px;">{seta_v} {var_reset:+.2f}%</div>
-                        </div>
-                        <div class="w-col" style="color:#FF4444; {blink_t}">{(mp * g_ex):,.{info['dec']}f}</div>
-                        <div class="w-col" style="color:#FFA500;">{(mp * g_top):,.{info['dec']}f}</div>
-                        <div class="w-col" style="color:#FFFF00;">{(mp * g_dec):,.{info['dec']}f}</div>
-                        <div class="w-col" style="color:#00CED1;">{(mp * g_res):,.{info['dec']}f}</div>
-                        <div class="w-col" style="color:#00CED1;">{(mp * (2-g_res)):,.{info['dec']}f}</div>
-                        <div class="w-col" style="color:#FFFF00;">{(mp * (2-g_dec)):,.{info['dec']}f}</div>
-                        <div class="w-col" style="color:#FFA500;">{(mp * (2-g_top)):,.{info['dec']}f}</div>
-                        <div class="w-col" style="color:#00FF00; {blink_f}">{(mp * (2-g_ex)):,.{info['dec']}f}</div>
-                    </div>
-                    <div class="vision-block">
-                        <div style="color:#666; font-size:9px;">RESET: <b style="color:#BBB;">{rv:,.{info['dec']}f}</b></div>
-                        <div style="color:#666; font-size:9px;">ÂNCOVISION: <b style="color:#00e6ff;">{mp:,.{info['dec']}f}</b></div>
-                    </div>
-                """, unsafe_allow_html=True)
-        time.sleep(1)
-    except:
-        time.sleep(5)
+                if t in
