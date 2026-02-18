@@ -75,7 +75,7 @@ def verificar_acesso():
         col1, col2, col3 = st.columns([1,2,1])
         with col2:
             chave = st.text_input("", type="password", placeholder="Digite a Chave...")
-            btn = st.button("ACESSAR TERMINAL K97")
+            btn = st.button("ACESSAR TERMINAL CRYPTO")
         
         if btn and chave:
             # ADM entra direto
@@ -96,7 +96,7 @@ def verificar_acesso():
                 else:
                     st.error("❌ Chave Inválida ou Expirada.")
             except:
-                st.error("Erro de conexão. Tente novamente.")
+                st.error("Aguarde conexão. CLIC novamente.")
         st.stop()
 
 verificar_acesso()
