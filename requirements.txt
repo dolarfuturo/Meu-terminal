@@ -6,3 +6,8 @@ streamlit
 yfinance
 pandas
 st-gsheets-connection
+streamlit
+pandas
+yfinance
+pytz
+st-gsheets-connection
