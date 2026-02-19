@@ -5,11 +5,12 @@ import yfinance as yf
 from datetime import datetime, timedelta
 import pytz
 import hashlib
+import uuid # Necessário para gerar o ID de sessão
 
 # 1. SETUP ALPHA & TRAVA DE SEGURANÇA 
 st.set_page_config(page_title="SHARK VISION LIVE", layout="wide", initial_sidebar_state="collapsed")
 
-# CSS PARA TRAVAR O TOPO, PONTO PISCANDO E ESTILO DO BOTÃO
+# CSS MANTIDO INTEGRALMENTE
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
@@ -54,7 +55,6 @@ st.markdown("""
     .w-col { text-align: center; font-family: monospace; font-size: 15px; font-weight: bold; color: #FFF; }
     .vision-block { display: flex; justify-content: center; gap: 30px; padding: 5px 0; background: #050505; border-bottom: 2px solid #333; }
     
-    /* BOTÃO CUSTOMIZADO */
     div.stButton > button {
         background-color: #D4AF37;
         color: black;
@@ -78,12 +78,11 @@ def verificar_acesso():
             btn = st.button("ACESSAR TERMINAL CRYPTO")
         
         if btn and chave:
-            # ADM entra direto
             if chave == CHAVE_MESTRA_ADM:
                 st.session_state["autenticado"], st.session_state["usuario"], st.session_state["role"] = True, "ADMINISTRADOR", "admin"
+                st.session_state["session_id"] = "MASTER"
                 st.rerun()
             
-            # Validação Planilha
             try:
                 df = pd.read_csv(URL_SISTEMA)
                 hash_t = hashlib.sha256(chave.encode()).hexdigest()
@@ -91,7 +90,11 @@ def verificar_acesso():
                 valido = df[(df['HASH_SENHA'].astype(str).str.strip() == hash_t) & (df['STATUS'].str.strip() == 'ATIVO')]
                 
                 if not valido.empty:
-                    st.session_state["autenticado"], st.session_state["usuario"], st.session_state["role"] = True, valido.iloc[0]['CLIENTE'], "user"
+                    # GERA ID DE SESSÃO ÚNICA NO LOGIN
+                    st.session_state["autenticado"] = True
+                    st.session_state["usuario"] = valido.iloc[0]['CLIENTE']
+                    st.session_state["role"] = "user"
+                    st.session_state["session_id"] = str(uuid.uuid4())
                     st.rerun()
                 else:
                     st.error("❌ Chave Inválida ou Expirada.")
@@ -100,7 +103,8 @@ def verificar_acesso():
         st.stop()
 
 verificar_acesso()
-# --- CONFIGURAÇÃO DE MOEDAS E CÁLCULOS ---
+
+# --- TODO O RESTANTE DO CÓDIGO (MOEDAS, CÁLCULOS, LAYOUT) MANTIDO EXATAMENTE IGUAL ---
 COINS_CONFIG = {
     "BTC-USD": {"label": "BTC/USDT", "dec": 0}, "ETH-USD": {"label": "ETH/USDT", "dec": 0},
     "SOL-USD": {"label": "SOL/USDT", "dec": 3}, "XRP-USD": {"label": "XRP/USDT", "dec": 3},
@@ -136,24 +140,7 @@ def get_alpha_midpoint(ticker):
         return yf.Ticker(ticker).fast_info['last_price']
     except: return 0
 
-# CSS DO TERMINAL (SEGUNDO BLOCO PARA GARANTIR ESTILOS ADICIONAIS)
-st.markdown("""
-    <style>
-    .stApp { background-color: #000000; }
-    .top-header-fixed { position: sticky; top: 0; background: #000000; z-index: 1000; border-bottom: 2px solid #D4AF37; }
-    .top-bar { display: flex; justify-content: space-between; align-items: center; padding: 5px 20px; background: #050505; border-bottom: 1px solid #1a1a1a; }
-    .clocks { display: flex; gap: 30px; color: #888; font-family: monospace; font-size: 11px; }
-    .live-indicator { display: flex; align-items: center; gap: 8px; color: #FFF; font-size: 11px; font-weight: bold; }
-    .title-gold { color: #D4AF37; font-size: 24px; font-weight: 900; text-align: center; margin-top: 5px; }
-    .subtitle-white { color: #FFFFFF; font-size: 12px; text-align: center; letter-spacing: 4px; text-transform: lowercase; margin-bottom: 5px; }
-    .header-grid { display: grid; grid-template-columns: 1.2fr 1fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr; width: 100%; padding: 10px 0; background: #080808; }
-    .h-col { font-size: 9px; color: #FFF; text-align: center; font-weight: 800; }
-    .row-container { display: grid; grid-template-columns: 1.2fr 1fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr; width: 100%; align-items: center; padding: 10px 0; }
-    .w-col { text-align: center; font-family: 'monospace'; font-size: 15px; font-weight: 800; color: #FFF; }
-    .vision-block { display: flex; justify-content: center; gap: 40px; padding: 5px 0; border-bottom: 2px solid #333; }
-    @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.2; } 100% { opacity: 1; } }
-    </style>
-    """, unsafe_allow_html=True)
+st.markdown("""<style>.stApp { background-color: #000000; } .top-header-fixed { position: sticky; top: 0; background: #000000; z-index: 1000; border-bottom: 2px solid #D4AF37; } .top-bar { display: flex; justify-content: space-between; align-items: center; padding: 5px 20px; background: #050505; border-bottom: 1px solid #1a1a1a; } .clocks { display: flex; gap: 30px; color: #888; font-family: monospace; font-size: 11px; } .live-indicator { display: flex; align-items: center; gap: 8px; color: #FFF; font-size: 11px; font-weight: bold; } .title-gold { color: #D4AF37; font-size: 24px; font-weight: 900; text-align: center; margin-top: 5px; } .subtitle-white { color: #FFFFFF; font-size: 12px; text-align: center; letter-spacing: 4px; text-transform: lowercase; margin-bottom: 5px; } .header-grid { display: grid; grid-template-columns: 1.2fr 1fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr; width: 100%; padding: 10px 0; background: #080808; } .h-col { font-size: 9px; color: #FFF; text-align: center; font-weight: 800; } .row-container { display: grid; grid-template-columns: 1.2fr 1fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr; width: 100%; align-items: center; padding: 10px 0; } .w-col { text-align: center; font-family: 'monospace'; font-size: 15px; font-weight: 800; color: #FFF; } .vision-block { display: flex; justify-content: center; gap: 40px; padding: 5px 0; border-bottom: 2px solid #333; } @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.2; } 100% { opacity: 1; } } </style>""", unsafe_allow_html=True)
 
 for t in COINS_CONFIG:
     if f'rv_{t}' not in st.session_state:
@@ -165,6 +152,9 @@ placeholder = st.empty()
 
 while True:
     try:
+        # TRAVA DE SEGURANÇA NO LOOP
+        if "session_id" not in st.session_state: st.stop()
+        
         tz_br, tz_ny, tz_ld = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London')
         now_br = datetime.now(tz_br)
 
