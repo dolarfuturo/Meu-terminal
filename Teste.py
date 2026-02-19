@@ -5,7 +5,7 @@ import yfinance as yf
 from datetime import datetime, timedelta
 import pytz
 import hashlib
-import uuid # Necessário para gerar o ID de sessão
+import uuid
 
 # 1. SETUP ALPHA & TRAVA DE SEGURANÇA 
 st.set_page_config(page_title="SHARK VISION LIVE", layout="wide", initial_sidebar_state="collapsed")
@@ -90,10 +90,10 @@ def verificar_acesso():
                 valido = df[(df['HASH_SENHA'].astype(str).str.strip() == hash_t) & (df['STATUS'].str.strip() == 'ATIVO')]
                 
                 if not valido.empty:
-                    # GERA ID DE SESSÃO ÚNICA NO LOGIN
                     st.session_state["autenticado"] = True
                     st.session_state["usuario"] = valido.iloc[0]['CLIENTE']
                     st.session_state["role"] = "user"
+                    # GERA ID ÚNICO DE DISPOSITIVO
                     st.session_state["session_id"] = str(uuid.uuid4())
                     st.rerun()
                 else:
@@ -104,7 +104,6 @@ def verificar_acesso():
 
 verificar_acesso()
 
-# --- TODO O RESTANTE DO CÓDIGO (MOEDAS, CÁLCULOS, LAYOUT) MANTIDO EXATAMENTE IGUAL ---
 COINS_CONFIG = {
     "BTC-USD": {"label": "BTC/USDT", "dec": 0}, "ETH-USD": {"label": "ETH/USDT", "dec": 0},
     "SOL-USD": {"label": "SOL/USDT", "dec": 3}, "XRP-USD": {"label": "XRP/USDT", "dec": 3},
@@ -152,9 +151,21 @@ placeholder = st.empty()
 
 while True:
     try:
-        # TRAVA DE SEGURANÇA NO LOOP
-        if "session_id" not in st.session_state: st.stop()
-        
+        # VERIFICA SE A SESSÃO AINDA É A MESMA NA PLANILHA
+        if st.session_state.get("role") == "user":
+            URL_CONFERENCIA = "https://docs.google.com/spreadsheets/d/1m86_Lj5p7tV9U4sNIKudbU1DVWFgAfaSXSIRATo6G70/export?format=csv"
+            check_df = pd.read_csv(URL_CONFERENCIA)
+            check_df.columns = check_df.columns.str.strip()
+            # Filtra pelo cliente logado
+            user_row = check_df[check_df['CLIENTE'] == st.session_state['usuario']]
+            
+            # Se a coluna SESSAO (E) tiver um ID diferente do atual, bloqueia.
+            if not user_row.empty and 'SESSAO' in user_row.columns:
+                sessao_planilha = str(user_row.iloc[0]['SESSAO']).strip()
+                if sessao_planilha != "nan" and sessao_planilha != st.session_state["session_id"]:
+                    st.error("⚠️ ACESSO BLOQUEADO: Esta conta foi conectada em outro dispositivo.")
+                    st.stop()
+
         tz_br, tz_ny, tz_ld = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London')
         now_br = datetime.now(tz_br)
 
