@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import pytz
 import hashlib
 import uuid
+from streamlit_gsheets import GSheetsConnection  # BIBLIOTECA DE CONEXÃO
 
 # 1. SETUP ALPHA & TRAVA DE SEGURANÇA 
 st.set_page_config(page_title="SHARK VISION LIVE", layout="wide", initial_sidebar_state="collapsed")
@@ -67,8 +68,10 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 def verificar_acesso():
-    URL_SISTEMA = "https://docs.google.com/spreadsheets/d/1m86_Lj5p7tV9U4sNIKudbU1DVWFgAfaSXSIRATo6G70/export?format=csv"
+    # Inicializa a conexão com Google Sheets (usa os secrets)
+    conn = st.connection("gsheets", type=GSheetsConnection)
     CHAVE_MESTRA_ADM = "SHARK_ADM_2026" 
+    URL_SISTEMA = "https://docs.google.com/spreadsheets/d/1m86_Lj5p7tV9U4sNIKudbU1DVWFgAfaSXSIRATo6G70/export?format=csv"
     
     if "autenticado" not in st.session_state:
         st.markdown("<h1 style='text-align:center; color:#D4AF37; font-family:monospace;'>SHAKE VISION LOGIN</h1>", unsafe_allow_html=True)
@@ -84,26 +87,35 @@ def verificar_acesso():
                 st.rerun()
             
             try:
-                df = pd.read_csv(URL_SISTEMA)
+                # Lê a planilha usando a conexão oficial (ttl=0 para dados frescos)
+                df = conn.read(spreadsheet=URL_SISTEMA, ttl=0)
                 hash_t = hashlib.sha256(chave.encode()).hexdigest()
                 df.columns = df.columns.str.strip()
-                valido = df[(df['HASH_SENHA'].astype(str).str.strip() == hash_t) & (df['STATUS'].str.strip() == 'ATIVO')]
                 
-                if not valido.empty:
+                # Acha a linha do usuário
+                idx_lista = df.index[(df['HASH_SENHA'].astype(str).str.strip() == hash_t) & (df['STATUS'].str.strip() == 'ATIVO')].tolist()
+                
+                if idx_lista:
+                    idx = idx_lista[0]
+                    novo_id = str(uuid.uuid4())[:8] # ID Único
+                    
+                    # GRAVA O ID NA COLUNA E (SESSAO) - O índice no Sheets é idx + 2 (1 do header + 1 do 0-index)
+                    conn.update(spreadsheet=URL_SISTEMA, data=[[novo_id]], range=f"E{idx+2}")
+                    
                     st.session_state["autenticado"] = True
-                    st.session_state["usuario"] = valido.iloc[0]['CLIENTE']
+                    st.session_state["usuario"] = df.loc[idx, 'CLIENTE']
                     st.session_state["role"] = "user"
-                    # GERA ID ÚNICO DE DISPOSITIVO
-                    st.session_state["session_id"] = str(uuid.uuid4())
+                    st.session_state["session_id"] = novo_id
                     st.rerun()
                 else:
                     st.error("❌ Chave Inválida ou Expirada.")
-            except:
-                st.error("Aguarde conexão... CLIC acessar.")
+            except Exception as e:
+                st.error("Erro de conexão. Tente novamente.")
         st.stop()
 
 verificar_acesso()
 
+# --- CONFIGURAÇÃO DE MOEDAS MANTIDA ---
 COINS_CONFIG = {
     "BTC-USD": {"label": "BTC/USDT", "dec": 0}, "ETH-USD": {"label": "ETH/USDT", "dec": 0},
     "SOL-USD": {"label": "SOL/USDT", "dec": 3}, "XRP-USD": {"label": "XRP/USDT", "dec": 3},
@@ -149,23 +161,26 @@ for t in COINS_CONFIG:
 
 placeholder = st.empty()
 
+# --- LOOP PRINCIPAL COM TRAVA AUTOMÁTICA ---
 while True:
     try:
-        # VERIFICA SE A SESSÃO AINDA É A MESMA NA PLANILHA
         if st.session_state.get("role") == "user":
-            URL_CONFERENCIA = "https://docs.google.com/spreadsheets/d/1m86_Lj5p7tV9U4sNIKudbU1DVWFgAfaSXSIRATo6G70/export?format=csv"
-            check_df = pd.read_csv(URL_CONFERENCIA)
+            # RELÊ A PLANILHA PARA CONFERIR A SESSÃO ATIVA
+            conn = st.connection("gsheets", type=GSheetsConnection)
+            URL_SISTEMA = "https://docs.google.com/spreadsheets/d/1m86_Lj5p7tV9U4sNIKudbU1DVWFgAfaSXSIRATo6G70/export?format=csv"
+            check_df = conn.read(spreadsheet=URL_SISTEMA, ttl=0)
             check_df.columns = check_df.columns.str.strip()
-            # Filtra pelo cliente logado
+            
             user_row = check_df[check_df['CLIENTE'] == st.session_state['usuario']]
             
-            # Se a coluna SESSAO (E) tiver um ID diferente do atual, bloqueia.
             if not user_row.empty and 'SESSAO' in user_row.columns:
-                sessao_planilha = str(user_row.iloc[0]['SESSAO']).strip()
-                if sessao_planilha != "nan" and sessao_planilha != st.session_state["session_id"]:
-                    st.error("⚠️ ACESSO BLOQUEADO: Esta conta foi conectada em outro dispositivo.")
+                id_atual = str(user_row.iloc[0]['SESSAO']).strip()
+                # SE O ID MUDOU, ALGUÉM LOGOU EM OUTRO LUGAR
+                if id_atual != st.session_state["session_id"]:
+                    st.error("⚠️ ACESSO BLOQUEADO: Sua conta foi conectada em outro dispositivo.")
                     st.stop()
 
+        # MANUTENÇÃO DOS RELÓGIOS E LAYOUT
         tz_br, tz_ny, tz_ld = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London')
         now_br = datetime.now(tz_br)
 
@@ -196,6 +211,7 @@ while True:
                 price = yf.Ticker(t).fast_info['last_price']
                 mp, rv = st.session_state[f'mp_{t}'], st.session_state[f'rv_{t}']
                 
+                # CÁLCULOS TÉCNICOS MANTIDOS
                 if t in ["BTC-USD", "ETH-USD"]:
                     g_ex, g_top, g_dec, g_res = 1.0122, 1.0082, 1.0061, 1.0040
                     trigger = 1.22
