@@ -5,30 +5,64 @@ import yfinance as yf
 from datetime import datetime, timedelta
 import pytz
 import hashlib
-import uuid
 
 # 1. SETUP ALPHA & TRAVA DE SEGURANÇA 
 st.set_page_config(page_title="SHARK VISION LIVE", layout="wide", initial_sidebar_state="collapsed")
 
-# CSS PARA TRAVAR O TOPO E ESTILOS (MANTIDO INTEGRALMENTE)
+# CSS MANTIDO INTEGRALMENTE
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
     header {visibility: hidden;}
     footer {visibility: hidden;}
     .stDeployButton {display:none;}
-    .block-container { padding-top: 0rem !important; padding-bottom: 0rem !important; }
-    [data-testid="stVerticalBlock"] > div:first-child { position: sticky; top: 0; z-index: 999999; background-color: #000000; border-bottom: 2px solid #D4AF37; }
-    .dot { height: 12px !important; width: 12px !important; background-color: #00FF00 !important; border-radius: 50% !important; display: inline-block !important; box-shadow: 0 0 10px #00FF00 !important; animation: pulse-glow 1s infinite alternate !important; margin-right: 8px !important; }
-    @keyframes pulse-glow { from { opacity: 1; transform: scale(1); } to { opacity: 0.2; transform: scale(0.8); } }
+    
+    .block-container {
+        padding-top: 0rem !important;
+        padding-bottom: 0rem !important;
+    }
+
+    /* TRAVA O CABEÇALHO NO TOPO */
+    [data-testid="stVerticalBlock"] > div:first-child {
+        position: sticky;
+        top: 0;
+        z-index: 999999;
+        background-color: #000000;
+        border-bottom: 2px solid #D4AF37;
+    }
+
+    /* PONTO VERDE PISCANDO (GLOW) CORRIGIDO */
+    .dot { 
+        height: 12px !important; 
+        width: 12px !important; 
+        background-color: #00FF00 !important; 
+        border-radius: 50% !important; 
+        display: inline-block !important;
+        box-shadow: 0 0 10px #00FF00 !important;
+        animation: pulse-glow 1s infinite alternate !important;
+        margin-right: 8px !important;
+    }
+    @keyframes pulse-glow {
+        from { opacity: 1; transform: scale(1); }
+        to { opacity: 0.2; transform: scale(0.8); }
+    }
+
     .title-gold { color: #D4AF37; font-size: 26px; font-weight: 900; text-align: center; margin: 5px 0; }
     .header-grid { display: grid; grid-template-columns: 1.2fr 1fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr; background: #080808; padding: 10px 0; }
     .h-col { font-size: 9px; color: #FFF; text-align: center; font-weight: bold; }
     .row-container { display: grid; grid-template-columns: 1.2fr 1fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr; align-items: center; padding: 12px 0; border-bottom: 1px solid #222; }
     .w-col { text-align: center; font-family: monospace; font-size: 15px; font-weight: bold; color: #FFF; }
     .vision-block { display: flex; justify-content: center; gap: 30px; padding: 5px 0; background: #050505; border-bottom: 2px solid #333; }
-    div.stButton > button { background-color: #D4AF37; color: black; font-weight: bold; width: 100%; border-radius: 5px; border: none; }
-    @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.2; } 100% { opacity: 1; } }
+    
+    /* BOTÃO CUSTOMIZADO */
+    div.stButton > button {
+        background-color: #D4AF37;
+        color: black;
+        font-weight: bold;
+        width: 100%;
+        border-radius: 5px;
+        border: none;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -46,7 +80,6 @@ def verificar_acesso():
         if btn and chave:
             if chave == CHAVE_MESTRA_ADM:
                 st.session_state["autenticado"], st.session_state["usuario"], st.session_state["role"] = True, "ADMINISTRADOR", "admin"
-                st.session_state["session_id"] = "MASTER"
                 st.rerun()
             try:
                 df = pd.read_csv(URL_SISTEMA)
@@ -55,12 +88,7 @@ def verificar_acesso():
                 valido = df[(df['HASH_SENHA'].astype(str).str.strip() == hash_t) & (df['STATUS'].str.strip() == 'ATIVO')]
                 
                 if not valido.empty:
-                    # GERA TOKEN ÚNICO PARA ESTA SESSÃO
-                    novo_id = str(uuid.uuid4())
-                    st.session_state["autenticado"] = True
-                    st.session_state["usuario"] = valido.iloc[0]['CLIENTE']
-                    st.session_state["session_id"] = novo_id
-                    # Aqui você deveria salvar o novo_id na sua planilha para travar.
+                    st.session_state["autenticado"], st.session_state["usuario"], st.session_state["role"] = True, valido.iloc[0]['CLIENTE'], "user"
                     st.rerun()
                 else:
                     st.error("❌ Chave Inválida ou Expirada.")
@@ -70,7 +98,6 @@ def verificar_acesso():
 
 verificar_acesso()
 
-# --- CONFIGURAÇÃO DE MOEDAS ---
 COINS_CONFIG = {
     "BTC-USD": {"label": "BTC/USDT", "dec": 0}, "ETH-USD": {"label": "ETH/USDT", "dec": 0},
     "SOL-USD": {"label": "SOL/USDT", "dec": 3}, "XRP-USD": {"label": "XRP/USDT", "dec": 3},
@@ -84,7 +111,6 @@ COINS_CONFIG = {
     "RNDR-USD": {"label": "RNDR/USDT", "dec": 3}, "HYPE-USD": {"label": "HYPE/USDT", "dec": 2}
 }
 
-# Funções de data e midpoint mantidas integralmente
 def get_calculation_date():
     br_tz = pytz.timezone('America/Sao_Paulo')
     now = datetime.now(br_tz)
@@ -107,93 +133,7 @@ def get_alpha_midpoint(ticker):
         return yf.Ticker(ticker).fast_info['last_price']
     except: return 0
 
-for t in COINS_CONFIG:
-    if f'rv_{t}' not in st.session_state:
-        val = get_alpha_midpoint(t)
-        st.session_state[f'rv_{t}'] = val
-        st.session_state[f'mp_{t}'] = val
-
-placeholder = st.empty()
-
-# --- LOOP PRINCIPAL NEXUS ---
-while True:
-    try:
-        # VERIFICAÇÃO DE SESSÃO ÚNICA (OPCIONAL: INTEGRAR COM DATABASE PARA VALIDAR SESSION_ID)
-        
-        tz_br = pytz.timezone('America/Sao_Paulo')
-        tz_ny, tz_ld = pytz.timezone('America/New_York'), pytz.timezone('Europe/London')
-        now_br = datetime.now(tz_br)
-
-        with placeholder.container():
-            st.markdown(f"""
-                <div class="top-header-fixed">
-                    <div class="top-bar">
-                        <div class="live-indicator"><span class="dot"></span> {st.session_state['usuario']} | ONLINE</div>
-                        <div class="clocks">
-                            <div class="clock-item">BRASÍLIA: <b>{now_br.strftime('%H:%M:%S')}</b></div>
-                            <div class="clock-item">NEW YORK: <b>{datetime.now(tz_ny).strftime('%H:%M:%S')}</b></div>
-                            <div class="clock-item">LONDON: <b>{datetime.now(tz_ld).strftime('%H:%M:%S')}</b></div>
-                        </div>
-                    </div>
-                    <div class="title-gold">TERMINAL NEXUS CRYPTO</div>
-                    <div class="subtitle-white">Visão de Tubarão</div>
-                    <div class="header-grid">
-                        <div class="h-col">CÓDIGO</div><div class="h-col">PREÇO</div>
-                        <div class="h-col" style="color:#FF4444;">EXAUST. T.</div><div class="h-col" style="color:#FFA500;">TOPO</div>
-                        <div class="h-col" style="color:#FFFF00;">DECISÃO</div><div class="h-col" style="color:#00CED1;">RESPIRO</div>
-                        <div class="h-col" style="color:#00CED1;">RESP. F.</div><div class="h-col" style="color:#FFFF00;">DECIS. F.</div>
-                        <div class="h-col" style="color:#FFA500;">FUNDO</div><div class="h-col" style="color:#00FF00;">EXAUST. F.</div>
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
-
-            for t, info in COINS_CONFIG.items():
-                price = yf.Ticker(t).fast_info['last_price']
-                mp, rv = st.session_state[f'mp_{t}'], st.session_state[f'rv_{t}']
-                
-                # --- PARÂMETROS FRAÇÃO (AJUSTADO PARA ELIMINAR O ERRO DE 1.35) ---
-                if t in ["BTC-USD", "ETH-USD"]:
-                    # ALTA: 1.22% | 0.82% | 0.61% | 0.40%
-                    g_ex_t, g_top_t, g_dec_t, g_res_t = 1.0122, 1.0082, 1.0061, 1.0040
-                    # BAIXA (FRAÇÃO): 1 - valor/100
-                    g_ex_f, g_top_f, g_dec_f, g_res_f = 0.9878, 0.9918, 0.9939, 0.9960
-                    trigger = 1.22
-                else:
-                    # ALTS: 2.44% | 1.64% | 1.22% | 0.80%
-                    g_ex_t, g_top_t, g_dec_t, g_res_t = 1.0244, 1.0164, 1.0122, 1.0080
-                    g_ex_f, g_top_f, g_dec_f, g_res_f = 0.9756, 0.9836, 0.9878, 0.9920
-                    trigger = 2.44
-                
-                var_escada = ((price / mp) - 1) * 100
-                if var_escada >= trigger: st.session_state[f'mp_{t}'] = price
-                elif var_escada <= -trigger: st.session_state[f'mp_{t}'] = price
-                
-                var_reset = ((price / rv) - 1) * 100
-                cor_v, seta_v = ("#00FF00", "▲") if var_reset >= 0 else ("#FF4444", "▼")
-                blink_t = "animation: blink 0.4s infinite;" if (var_escada >= trigger*0.9) else ""
-                blink_f = "animation: blink 0.4s infinite;" if (var_escada <= -trigger*0.9) else ""
-
-                st.markdown(f"""
-                    <div class="row-container">
-                        <div class="w-col" style="color:#D4AF37; font-size:13px;">{info['label']}</div>
-                        <div class="w-col">
-                            <div style="font-size:14px;">{price:,.{info['dec']}f}</div>
-                            <div style="color:{cor_v}; font-size:9px;">{seta_v} {var_reset:+.2f}%</div>
-                        </div>
-                        <div class="w-col" style="color:#FF4444; {blink_t}">{(mp * g_ex_t):,.{info['dec']}f}</div>
-                        <div class="w-col" style="color:#FFA500;">{(mp * g_top_t):,.{info['dec']}f}</div>
-                        <div class="w-col" style="color:#FFFF00;">{(mp * g_dec_t):,.{info['dec']}f}</div>
-                        <div class="w-col" style="color:#00CED1;">{(mp * g_res_t):,.{info['dec']}f}</div>
-                        <div class="w-col" style="color:#00CED1;">{(mp * g_res_f):,.{info['dec']}f}</div>
-                        <div class="w-col" style="color:#FFFF00;">{(mp * g_dec_f):,.{info['dec']}f}</div>
-                        <div class="w-col" style="color:#FFA500;">{(mp * g_top_f):,.{info['dec']}f}</div>
-                        <div class="w-col" style="color:#00FF00; {blink_f}">{(mp * g_ex_f):,.{info['dec']}f}</div>
-                    </div>
-                    <div class="vision-block">
-                        <div style="color:#666; font-size:9px;">RESET: <b style="color:#BBB;">{rv:,.{info['dec']}f}</b></div>
-                        <div style="color:#666; font-size:9px;">ÂNCORAVISION: <b style="color:#00e6ff;">{mp:,.{info['dec']}f}</b></div>
-                    </div>
-                """, unsafe_allow_html=True)
-        time.sleep(1)
-    except Exception as e:
-        time.sleep(5)
+st.markdown("""
+    <style>
+    .stApp { background-color: #000000; }
+    .top-header-fixed { position: sticky; top: 0; background: #
