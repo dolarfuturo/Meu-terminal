@@ -8,10 +8,9 @@ import hashlib
 import uuid
 from streamlit_gsheets import GSheetsConnection
 
-# 1. SETUP ALPHA & TRAVA DE SEGURANÇA 
+# 1. SETUP & CONFIGURAÇÃO VISUAL SHARK
 st.set_page_config(page_title="SHARK VISION LIVE", layout="wide", initial_sidebar_state="collapsed")
 
-# CSS MANTIDO INTEGRALMENTE CONFORME SOLICITADO
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
@@ -42,6 +41,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 def verificar_acesso():
+    # Conexão com o Google Sheets via Secrets
     conn = st.connection("gsheets", type=GSheetsConnection)
     CHAVE_MESTRA_ADM = "SHARK_ADM_2026" 
     
@@ -58,11 +58,118 @@ def verificar_acesso():
                 st.rerun()
             
             try:
+                # Lendo a base de clientes
                 df = conn.read(ttl=0)
                 hash_t = hashlib.sha256(chave.encode()).hexdigest()
                 df.columns = df.columns.str.strip()
+                
+                # Busca o usuário ativo
                 idx_list = df.index[(df['HASH_SENHA'].astype(str).str.strip() == hash_t) & (df['STATUS'].str.strip() == 'ATIVO')].tolist()
                 
                 if idx_list:
                     row_idx = idx_list[0]
-                    novo_id = str(uuid.uuid4())[:8
+                    # CORREÇÃO DA LINHA 68: Adicionado os colchetes []
+                    novo_id = str(uuid.uuid4())[:8]
+                    
+                    # Grava o novo ID de sessão na coluna E (SESSAO)
+                    conn.update(data=[[novo_id]], range=f"E{row_idx + 2}")
+                    
+                    st.session_state.update({
+                        "autenticado": True, 
+                        "usuario": df.loc[row_idx, 'CLIENTE'],
+                        "session_id": novo_id, 
+                        "role": "user"
+                    })
+                    st.rerun()
+                else:
+                    st.error("❌ Chave Inválida ou Expirada.")
+            except Exception as e:
+                st.error(f"Erro ao conectar: {e}")
+        st.stop()
+
+verificar_acesso()
+
+# CONFIGURAÇÕES DE MOEDAS
+COINS_CONFIG = {
+    "BTC-USD": {"label": "BTC/USDT", "dec": 0}, "ETH-USD": {"label": "ETH/USDT", "dec": 0},
+    "SOL-USD": {"label": "SOL/USDT", "dec": 2}, "XRP-USD": {"label": "XRP/USDT", "dec": 4},
+    "BNB-USD": {"label": "BNB/USDT", "dec": 2}, "DOGE-USD": {"label": "DOGE/USDT", "dec": 4},
+    "LINK-USD": {"label": "LINK/USDT", "dec": 2}, "ADA-USD": {"label": "ADA/USDT", "dec": 4}
+}
+
+def get_alpha_midpoint(ticker):
+    try:
+        data = yf.download(ticker, period="2d", interval="1m", progress=False)
+        return (data['High'].max() + data['Low'].min()) / 2
+    except: return 0
+
+# Inicialização de preços âncora
+for t in COINS_CONFIG:
+    if f'mp_{t}' not in st.session_state:
+        val = get_alpha_midpoint(t)
+        st.session_state[f'rv_{t}'] = val
+        st.session_state[f'mp_{t}'] = val
+
+placeholder = st.empty()
+
+# LOOP DE ATUALIZAÇÃO COM TRAVA DE SESSÃO
+while True:
+    try:
+        # VERIFICAÇÃO DE DISPOSITIVO DUPLICADO
+        if st.session_state.get("role") == "user":
+            conn = st.connection("gsheets", type=GSheetsConnection)
+            check_df = conn.read(ttl=0)
+            check_df.columns = check_df.columns.str.strip()
+            user_row = check_df[check_df['CLIENTE'] == st.session_state['usuario']]
+            
+            if not user_row.empty:
+                id_atual = str(user_row.iloc[0]['SESSAO']).strip()
+                if id_atual != st.session_state["session_id"]:
+                    st.error("⚠️ ACESSO BLOQUEADO: Sua conta foi conectada em outro dispositivo.")
+                    st.stop()
+
+        # RENDERIZAÇÃO DO TERMINAL
+        with placeholder.container():
+            now = datetime.now(pytz.timezone('America/Sao_Paulo'))
+            st.markdown(f"""
+                <div class="top-header-fixed">
+                    <div class="top-bar">
+                        <div class="live-indicator"><span class="dot"></span> {st.session_state['usuario']} | ONLINE</div>
+                        <div style="color:#888; font-family:monospace; font-size:11px;">BRASÍLIA: {now.strftime('%H:%M:%S')}</div>
+                    </div>
+                    <div class="title-gold">SHARK VISION TERMINAL</div>
+                    <div class="header-grid">
+                        <div class="h-col">CÓDIGO</div><div class="h-col">PREÇO</div>
+                        <div class="h-col" style="color:#FF4444;">EXAUST. T.</div><div class="h-col" style="color:#FFA500;">TOPO</div>
+                        <div class="h-col" style="color:#FFFF00;">DECISÃO</div><div class="h-col" style="color:#00CED1;">RESPIRO</div>
+                        <div class="h-col" style="color:#00CED1;">RESP. F.</div><div class="h-col" style="color:#FFFF00;">DECIS. F.</div>
+                        <div class="h-col" style="color:#FFA500;">FUNDO</div><div class="h-col" style="color:#00FF00;">EXAUST. F.</div>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+
+            for t, info in COINS_CONFIG.items():
+                price = yf.Ticker(t).fast_info['last_price']
+                mp = st.session_state[f'mp_{t}']
+                
+                # Lógica simplificada de níveis (Exemplo)
+                levels = [1.02, 1.015, 1.01, 1.005, 0.995, 0.99, 0.985, 0.98]
+                vals = [mp * l for l in levels]
+
+                st.markdown(f"""
+                    <div class="row-container">
+                        <div class="w-col" style="color:#D4AF37; font-size:13px;">{info['label']}</div>
+                        <div class="w-col">{price:,.{info['dec']}f}</div>
+                        <div class="w-col" style="color:#FF4444;">{vals[0]:,.{info['dec']}f}</div>
+                        <div class="w-col" style="color:#FFA500;">{vals[1]:,.{info['dec']}f}</div>
+                        <div class="w-col" style="color:#FFFF00;">{vals[2]:,.{info['dec']}f}</div>
+                        <div class="w-col" style="color:#00CED1;">{vals[3]:,.{info['dec']}f}</div>
+                        <div class="w-col" style="color:#00CED1;">{vals[4]:,.{info['dec']}f}</div>
+                        <div class="w-col" style="color:#FFFF00;">{vals[5]:,.{info['dec']}f}</div>
+                        <div class="w-col" style="color:#FFA500;">{vals[6]:,.{info['dec']}f}</div>
+                        <div class="w-col" style="color:#00FF00;">{vals[7]:,.{info['dec']}f}</div>
+                    </div>
+                """, unsafe_allow_html=True)
+        time.sleep(2)
+    except Exception as e:
+        time.sleep(5)
