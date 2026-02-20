@@ -127,18 +127,52 @@ def get_calculation_date():
     if now.hour < 18: return now - timedelta(days=1)
     return now
 
+def get_calculation_date():
+    br_tz = pytz.timezone('America/Sao_Paulo')
+    now = datetime.now(br_tz)
+    
+    # Se ainda não deu 18h hoje, o "Reset Oficial" que queremos mostrar
+    # é obrigatoriamente o de ONTEM (ou Sexta, se for Segunda).
+    if now.hour < 18:
+        # Lógica para pular o final de semana corretamente
+        if now.weekday() == 0: # Segunda antes das 18h -> Pega Sexta
+            return now - timedelta(days=3)
+        elif now.weekday() == 6: # Domingo -> Pega Sexta
+            return now - timedelta(days=2)
+        else:
+            return now - timedelta(days=1)
+    
+    # Se já passou das 18h, o reset é o de HOJE.
+    return now
+
 def get_alpha_midpoint(ticker):
     try:
         br_tz = pytz.timezone('America/Sao_Paulo')
         target_date = get_calculation_date()
-        df = yf.download(ticker, start=target_date.strftime('%Y-%m-%d'), interval="1m", progress=False)
-        if df.empty: return yf.Ticker(ticker).fast_info['last_price']
+        
+        # AJUSTE CHAVE: Forçamos o download a terminar exatamente no dia do alvo
+        # para que o 'High' e 'Low' de HOJE não entrem na conta antes das 18h.
+        start_str = target_date.strftime('%Y-%m-%d')
+        end_str = (target_date + timedelta(days=1)).strftime('%Y-%m-%d')
+        
+        df = yf.download(ticker, start=start_str, end=end_str, interval="1m", progress=False)
+        
+        if df.empty: 
+            return yf.Ticker(ticker).fast_info['last_price']
+        
         df.index = df.index.tz_convert(br_tz)
+        
+        # Filtramos a janela exata do pregão americano
         df_window = df.between_time('11:30', '18:00')
+        
         if not df_window.empty:
+            # Aqui calculamos o Ponto Médio (Eixo E) com precisão
             return (float(df_window['High'].max()) + float(df_window['Low'].min())) / 2
+            
         return yf.Ticker(ticker).fast_info['last_price']
-    except: return 0
+    except: 
+        return 0
+
 
 st.markdown("""<style>.stApp { background-color: #000000; } .top-header-fixed { position: sticky; top: 0; background: #000000; z-index: 1000; border-bottom: 2px solid #D4AF37; } .top-bar { display: flex; justify-content: space-between; align-items: center; padding: 5px 20px; background: #050505; border-bottom: 1px solid #1a1a1a; } .clocks { display: flex; gap: 30px; color: #888; font-family: monospace; font-size: 11px; } .live-indicator { display: flex; align-items: center; gap: 8px; color: #FFF; font-size: 11px; font-weight: bold; } .title-gold { color: #D4AF37; font-size: 24px; font-weight: 900; text-align: center; margin-top: 5px; } .subtitle-white { color: #FFFFFF; font-size: 12px; text-align: center; letter-spacing: 4px; text-transform: lowercase; margin-bottom: 5px; } .header-grid { display: grid; grid-template-columns: 1.2fr 1fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr; width: 100%; padding: 10px 0; background: #080808; } .h-col { font-size: 9px; color: #FFF; text-align: center; font-weight: 800; } .row-container { display: grid; grid-template-columns: 1.2fr 1fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr; width: 100%; align-items: center; padding: 10px 0; } .w-col { text-align: center; font-family: 'monospace'; font-size: 15px; font-weight: 800; color: #FFF; } .vision-block { display: flex; justify-content: center; gap: 40px; padding: 5px 0; border-bottom: 2px solid #333; } @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.2; } 100% { opacity: 1; } } </style>""", unsafe_allow_html=True)
 
