@@ -42,16 +42,16 @@ def get_midpoint_v13():
         br_tz = pytz.timezone('America/Sao_Paulo')
         now_br = datetime.now(br_tz)
         if now_br.weekday() >= 5 or (now_br.weekday() == 0 and now_br.hour < 18):
-            return 82632
+            return 2900
         target_date = now_br if now_br.hour >= 18 else now_br - timedelta(days=1)
-        df = yf.download("BTC-USD", start=target_date.strftime('%Y-%m-%d'), interval="1m", progress=False)
+        df = yf.download("ETH-USD", start=target_date.strftime('%Y-%m-%d'), interval="1m", progress=False)
         df.index = df.index.tz_convert(br_tz)
         df_window = df.between_time('11:30', '18:00')
         if not df_window.empty:
             return int((float(df_window['High'].max()) + float(df_window['Low'].min())) / 2)
-        return 82632
+        return 2900
     except:
-        return 82632
+        return 2900
 
 # 3. INTERFACE REAL-TIME
 st.markdown("""
@@ -81,20 +81,20 @@ while True:
            st.session_state.rv_fixed = novo_valor
            st.rerun()
 
-        ticker = yf.Ticker("BTC-USD")
+        ticker = yf.Ticker("ETH-USD")
         price = ticker.fast_info['last_price']
         mp = st.session_state.mp_current
         var = ((price / mp) - 1) * 100
                     # --- LÓGICA DE ESCADA: GATILHO 1.35% | MOVIMENTO 1.22% ---
         if var >= 1.35:
             st.session_state.mp_current = int(mp * 1.0122)
-            st.toast("⚡ ROMPIMENTO: NOVO EIXO (1.22%)", icon="📈")
-            st.rerun() 
+            
+            
             
         elif var <= -1.35:
             st.session_state.mp_current = int(mp * 0.9878)
-            st.toast("⚠️ QUEDA: EIXO RECALIBRADO (1.22%)", icon="📉")
-            st.rerun()
+            
+            
 
         cor_var = "#00FF00" if var >= 0 else "#FF0000"
         seta = "▲" if var >= 0 else "▼"
@@ -129,7 +129,7 @@ while True:
                     <div class="h-col">PRÓX. AO F.</div><div class="h-col" style="color:#00FF00;">EXAUSTÃO F.</div>
                 </div>
                 <div class="row-container">
-                    <div class="w-col" style="color:#D4AF37; font-weight:bold; display: flex; align-items: center; justify-content: center;">BTC/USDT</div>
+                    <div class="w-col" style="color:#D4AF37; font-weight:bold; display: flex; align-items: center; justify-content: center;">ETH/USDT</div>
                     <div class="w-col" style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
                         <div style="font-weight: bold; line-height: 1.1;">{int(price):,}</div>
                         <div style="color:{cor_v}; font-size:11px; font-weight:bold; margin-top: 2px;">{seta_v} {var_reset:+.2f}%</div>
