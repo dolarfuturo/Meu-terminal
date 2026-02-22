@@ -128,19 +128,20 @@ def get_calculation_date():
     return now
 
 def get_calculation_date():
+    # Define o fuso horário de Brasília para evitar o delay do servidor
     br_tz = pytz.timezone('America/Sao_Paulo')
     now = datetime.now(br_tz)
     
-    # Se ainda não deu 18h hoje, o "Reset Oficial" que queremos mostrar
-    # é obrigatoriamente o de ONTEM (ou Sexta, se for Segunda).
-    if now.hour < 18:
-        # Lógica para pular o final de semana corretamente
-        if now.weekday() == 0: # Segunda antes das 18h -> Pega Sexta
-            return now - timedelta(days=3)
-        elif now.weekday() == 6: # Domingo -> Pega Sexta
-            return now - timedelta(days=2)
-        else:
-            return now - timedelta(days=1)
+    # Lógica de Reset Diário (Segunda a Domingo):
+    # Se agora for 18:00 ou mais, calculamos com base no dia de hoje.
+    # Se ainda não deu 18:00, calculamos com base no dia de ontem.
+    if now.hour >= 18:
+        target_date = now
+    else:
+        target_date = now - timedelta(days=1)
+        
+    return target_date
+
     
     # Se já passou das 18h, o reset é o de HOJE.
     return now
