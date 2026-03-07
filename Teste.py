@@ -37,7 +37,7 @@ st.markdown("""
     .perc-green { color: #00ff88; font-weight: bold; }
     .perc-red { color: #ff4d4d; font-weight: bold; }
     
-    /* Eixo Central Amarelo ou Ciano conforme a foto */
+    /* Eixo Central */
     .eixo-data { background: #00f2ff; color: #000000; font-weight: bold; text-align: center; padding: 8px; margin: 12px 0; font-size: 18px; }
 
     /* Inputs para Tablet */
@@ -71,7 +71,6 @@ with main_c:
     st.markdown('<p style="color:#848e9c; font-size:13px; font-weight:bold;">MONITORAMENTO DA GRADE PRINCIPAL</p>', unsafe_allow_html=True)
     
     ativos = ["SPOT", "DOLFUT", "DXY", "EWZ", "EUR/USD", "XAU/USD", "PETROLEO BRENT"]
-    # Tabela HTML para controle total do estilo
     table_html = "<table><tr><th>ATIVO</th><th>PRICE</th><th>CLOSE</th><th>OPEN</th><th>MAX</th><th>MIN</th><th>VAR</th></tr>"
     for a in ativos:
         table_html += f"<tr><td><span class=\"asset-tag\">{a}</span></td><td>5.4000</td><td>5.0000</td><td>5.0000</td><td>5.0000</td><td>0.000</td><td>0.000</td></tr>"
@@ -86,10 +85,20 @@ with side_c:
     val_close = st.number_input("CLOSE REF:", value=5.4223, format="%.4f")
     
     # Cálculos Superiores
-    for p, m in [("3,00%", 1.030), ("2,34%", 1.0234), ("2,00%", 1.020), ("1,34%", 1.0134), ("1,00%", 1.010), ("0,34%", 1.0034)]:
+    cals_up = [("3,00%", 1.030), ("2,34%", 1.0234), ("2,00%", 1.020), ("1,34%", 1.0134), ("1,00%", 1.010), ("0,34%", 1.0034)]
+    for p, m in cals_up:
         st.markdown(f'<div class="calc-row"><span class="perc-green">{p}</span><span style="color:#848e9c; font-size:12px;">(=cl x {m})</span><span>{val_close*m:.4f}</span></div>', unsafe_allow_html=True)
 
     st.markdown(f'<div class="eixo-data">CLOSE CENTER DATA EIXO: {val_close:.4f}</div>', unsafe_allow_html=True)
 
     # Cálculos Inferiores
-    for p, m in [("-
+    cals_down = [("-0,66%", 0.9934), ("-1%", 0.9900), ("-1,66%", 0.9834), ("-2%", 0.9800), ("-2,66%", 0.9734), ("-3%", 0.9700)]
+    for p, m in cals_down:
+        st.markdown(f'<div class="calc-row"><span class="perc-red">{p}</span><span style="color:#848e9c; font-size:12px;">(=cl x {m})</span><span>{val_close*m:.4f}</span></div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# RODAPÉ
+st.markdown('<div style="margin-top:20px; border-top:1px solid #00f2ff; padding:10px; color:#00f2ff; text-align:center; font-family:monospace; font-size:16px;">DXY 0,01% | EURUSD 0,01% | EWZ 0,0% | SPOT 0,0% | GBPUSD 1,00%</div>', unsafe_allow_html=True)
+
+time.sleep(1)
+st.rerun()
