@@ -1,88 +1,61 @@
 import streamlit as st
-import pandas as pd
 from datetime import datetime
 import pytz
 import time
 
-# Configuração de tela cheia para o Tablet
+# Configuração para Tablet (Ocupar 100% da largura)
 st.set_page_config(page_title="BAIR - TERMINAL DOLAR", layout="wide")
 
-# Interface Neon/Dark do Terminal
+# CSS CUSTOMIZADO PARA COPIAR O LAYOUT DA IMAGEM
 st.markdown("""
     <style>
-    .main { background-color: #0e1117; color: #00f2ff; }
-    .stNumberInput div { background-color: #161b22 !important; color: #00f2ff !important; }
-    .title-bair { font-size: 35px; font-weight: bold; color: #00f2ff; text-shadow: 0 0 10px #00f2ff; }
-    .clock-container { border: 1px solid #3d444d; padding: 10px; border-radius: 5px; text-align: center; background: #161b22; }
-    .calc-row { display: flex; justify-content: space-between; padding: 2px 0; border-bottom: 0.5px solid #2d333b; font-family: monospace; }
-    .eixo-close { background-color: #00f2ff; color: #000; font-weight: bold; text-align: center; padding: 5px; margin: 10px 0; }
+    /* Fundo e Cores Globais */
+    .stApp { background-color: #0b0e11; color: #e0e0e0; }
+    
+    /* Título BAIR */
+    .bair-title { color: #00f2ff; font-family: 'Arial Black', sans-serif; font-size: 38px; letter-spacing: 2px; margin-bottom: -10px; }
+    
+    /* Relógios e Cabeçalhos */
+    .header-box { text-align: center; border: 1px solid #1f2329; padding: 10px; border-radius: 4px; background: #161b22; }
+    .clock-time { color: #ffffff; font-size: 28px; font-weight: bold; font-family: 'Courier New', monospace; }
+    .clock-label { color: #848e9c; font-size: 14px; text-transform: uppercase; }
+
+    /* Grades e Tabelas */
+    .grid-container { border: 1px solid #00f2ff; padding: 0px; border-radius: 2px; }
+    th { color: #848e9c !important; text-transform: uppercase; font-size: 12px; border-bottom: 1px solid #1f2329 !important; }
+    td { font-family: 'Courier New', monospace; font-size: 18px; border-bottom: 1px solid #1f2329 !important; padding: 12px !important; }
+
+    /* Painel de Cálculos Lateral */
+    .calc-panel { border: 1px solid #00f2ff; padding: 15px; background: #0b0e11; height: 100%; }
+    .calc-title { color: #00f2ff; font-size: 16px; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #00f2ff; padding-bottom: 5px; }
+    .calc-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-family: 'Courier New', monospace; }
+    .perc-green { color: #00ff88; font-weight: bold; }
+    .perc-red { color: #ff4d4d; font-weight: bold; }
+    .formula-text { color: #848e9c; font-size: 14px; }
+    .eixo-data { background: #00f2ff; color: #000; font-weight: bold; text-align: center; padding: 5px; margin: 15px 0; border-radius: 2px; }
+
+    /* Rodapé Ticker */
+    .footer-ticker { border-top: 1px solid #00f2ff; padding: 10px; font-family: monospace; font-size: 14px; color: #00f2ff; margin-top: 20px; text-align: center; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- HEADER: BAIR + RELÓGIOS ---
-col_logo, col_br, col_ny, col_ldn = st.columns([2, 1, 1, 1])
+# --- HEADER (TÍTULO E RELÓGIOS) ---
+col_t, col_b, col_n, col_l = st.columns([2.5, 1, 1, 1])
 
-with col_logo:
-    st.markdown('<p class="title-bair">BAIR - TERMINAL DOLAR</p>', unsafe_allow_html=True)
+with col_t:
+    st.markdown('<p class="bair-title">BAIR - TERMINAL DOLAR</p>', unsafe_allow_html=True)
 
-# Função para pegar hora por Timezone
-def get_time(tz_name):
-    return datetime.now(pytz.timezone(tz_name)).strftime("%H:%M:%S")
+def get_tz_time(tz):
+    return datetime.now(pytz.timezone(tz)).strftime("%H:%M:%S")
 
-with col_br:
-    st.markdown(f'<div class="clock-container">BRASÍLIA<br><b style="color:#ffd700; font-size:22px;">{get_time("America/Sao_Paulo")}</b></div>', unsafe_allow_html=True)
-with col_ny:
-    st.markdown(f'<div class="clock-container">NEW YORK<br><b style="color:#ffd700; font-size:22px;">{get_time("America/New_York")}</b></div>', unsafe_allow_html=True)
-with col_ldn:
-    st.markdown(f'<div class="clock-container">LONDRES<br><b style="color:#ffd700; font-size:22px;">{get_time("Europe/London")}</b></div>', unsafe_allow_html=True)
+with col_b:
+    st.markdown(f'<div class="header-box"><div class="clock-label">BRASÍLIA</div><div class="clock-time">{get_tz_time("America/Sao_Paulo")}</div></div>', unsafe_allow_html=True)
+with col_n:
+    st.markdown(f'<div class="header-box"><div class="clock-label">NEW YORK</div><div class="clock-time">{get_tz_time("America/New_York")}</div></div>', unsafe_allow_html=True)
+with col_l:
+    st.markdown(f'<div class="header-box"><div class="clock-label">LONDRES</div><div class="clock-time">{get_tz_time("Europe/London")}</div></div>', unsafe_allow_html=True)
 
-st.divider()
+st.write("") # Espaçador
 
-# --- LAYOUT PRINCIPAL ---
-col_grid, col_side = st.columns([3, 1.2])
-
-with col_grid:
-    st.markdown("### GRADE PRINCIPAL DE ATIVOS")
-    ativos = ["SPOT", "DOLFUT", "DXY", "EWZ", "PRÉ/PÓS MARKET", "EUR/USD", "XAU/USD", "PETROLEO BRENT"]
-    df = pd.DataFrame({
-        "ATIVO": ativos,
-        "PRICE": ["—"] * 8, "CLOSE": ["—"] * 8, "OPEN": ["—"] * 8,
-        "MAX": ["—"] * 8, "MIN": ["—"] * 8, "VAR": ["0,00%"] * 8
-    }).set_index("ATIVO")
-    st.table(df)
-
-with col_side:
-    st.markdown("### PAINEL DE CÁLCULOS")
-    
-    # Input do PAINEL ADM e CLOSE
-    painel_adm = st.number_input("PAINEL ADM:", value=5.4000, format="%.4f")
-    st.write(f"Ajustes: `[1,0020]` | `[1,0070]` | `[1,0080]`")
-    
-    close_val = st.number_input("DIGITE O CLOSE PARA CÁLCULO:", value=5.4000, format="%.4f", step=0.0001)
-    
-    # Aplicação exata da lógica do rascunho
-    calc_data = [
-        ("3,00%", 1.030), ("2,34%", 1.0234), ("2,00%", 1.020),
-        ("1,34%", 1.0134), ("1,00%", 1.010), ("0,34%", 1.0034)
-    ]
-    calc_neg = [
-        ("-0,66%", 0.9934), ("-1,00%", 0.99), ("-1,66%", 0.9834),
-        ("-2,00%", 0.98), ("-2,66%", 0.9734), ("-3,00%", 0.97)
-    ]
-
-    # Renderização da lista de cálculos
-    for label, mult in calc_data:
-        st.markdown(f'<div class="calc-row"><span>{label}</span><span>{close_val * mult:.4f}</span></div>', unsafe_allow_html=True)
-    
-    st.markdown(f'<div class="eixo-close">CLOSE CENTER DATA EIXO: {close_val:.4f}</div>', unsafe_allow_html=True)
-    
-    for label, mult in calc_neg:
-        st.markdown(f'<div class="calc-row"><span>{label}</span><span>{close_val * mult:.4f}</span></div>', unsafe_allow_html=True)
-
-# --- RODAPÉ ---
-st.markdown("---")
-st.markdown("DXY 0,01% | EURUSD 0,01% | EWZ 0,0% | SPOT 0,0% | GBPUSD 1,00% | JPY/USD 0,00% | XAUUSD 0,00%")
-
-# Refresh para manter relógios ativos
-time.sleep(1)
-st.rerun()
+# --- CORPO PRINCIPAL ---
+col_main, col_side
