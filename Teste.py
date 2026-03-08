@@ -141,7 +141,7 @@ with s_col:
     st.markdown('<div class="frame-box">', unsafe_allow_html=True)
     st.markdown('<p style="color:#ffcc00; font-weight:900; font-size:12px; text-align:center;">CÁLCULOS OPERACIONAIS</p>', unsafe_allow_html=True)
     
-    for p, m in [("3,00%", 1.03), ("2,34%", 1.0235), ("2,00%", 1.02), ("1,34%", 1.0135), ("1,00%", 1.01), ("0,35%", 1.0034)]:
+    for p, m in [("3,00%", 1.03), ("2,35%", 1.0235), ("2,00%", 1.02), ("1,35%", 1.0135), ("1,00%", 1.01), ("0,35%", 1.0035)]:
         st.markdown(f'<div class="calc-row"><span class="perc-green">{p}</span><span>{fmt_v(close_ref*m)}</span></div>', unsafe_allow_html=True)
 
     st.markdown(f'<div class="eixo-frame">EIXO: {fmt_v(close_ref)}</div>', unsafe_allow_html=True)
