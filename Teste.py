@@ -6,7 +6,7 @@ import time
 # Configuração para Tablet
 st.set_page_config(page_title="BAIR - TERMINAL DOLAR", layout="wide")
 
-# CSS: GRID TÉCNICO COM LINHAS TOTAIS E BORDAS BRANCAS (IDÊNTICO À IMAGEM)
+# CSS: GRID COMPLETO COM LINHAS VERTICAIS E BORDAS TOTAIS
 st.markdown("""
     <style>
     .stApp { background-color: #0b0e11 !important; color: #ffffff !important; }
@@ -15,50 +15,46 @@ st.markdown("""
     .bair-text { color: #00f2ff; font-family: 'Arial Black', sans-serif; font-size: 30px; font-weight: 900; }
     .terminal-text { color: #ffcc00; font-family: 'Arial Black', sans-serif; font-size: 30px; font-weight: 900; }
     
-    /* Cabeçalho */
+    /* Cabeçalho: Cidades sem relógio analógico */
     .city-name { color: #ffcc00; font-family: 'Arial Black', sans-serif; font-size: 11px; letter-spacing: 1px; text-align: center; margin-bottom: 2px; }
     .clock-container { background: #161b22; border: 1px solid #3d444d; padding: 6px; border-radius: 2px; text-align: center; }
     .digital-time { color: #ffffff; font-size: 18px; font-weight: bold; font-family: 'Courier New', monospace; }
 
-    /* BORDAS EM VOLTA DE TODO O PAINEL (MOLDURA BRANCA) */
+    /* BORDAS EM TODO O PAINEL E GRID TÉCNICO */
     .frame-box { 
-        border: 2px solid #ffffff !important; /* Linhas nas bordas de todo o painel */
-        border-top: 5px solid #00f2ff !important; 
+        border: 2px solid #3d444d; /* Borda em volta de todo o painel */
+        border-top: 4px solid #00f2ff; 
         padding: 10px; 
         background: #0b0e11; 
         margin-bottom: 15px;
     }
     
-    /* GRID TÉCNICO: LINHAS VERTICAIS E HORIZONTAIS BRANCAS IDENTICAS */
-    table { width: 100%; border-collapse: collapse; border: 1px solid #ffffff !important; }
+    /* Tabela com Linhas Horizontais e Verticais (Destaque) */
+    table { width: 100%; border-collapse: collapse; border: 1px solid #3d444d; }
     th { 
         color: #00f2ff !important; font-size: 11px !important; 
-        border: 1px solid #ffffff !important; /* Linhas verticais brancas no topo */
+        border: 1px solid #3d444d !important; /* Linhas verticais no topo */
         text-align: left; padding: 8px !important; background: #161b22;
     }
     td { 
         font-size: 18px !important; font-family: 'Arial Black', sans-serif !important; font-weight: 900 !important; 
-        border: 1px solid #ffffff !important; /* Linhas verticais e horizontais brancas destacadas */
+        border: 1px solid #3d444d !important; /* Linhas verticais e horizontais destacadas */
         padding: 8px !important; 
     }
     
     .asset-tag { color: #00f2ff; font-weight: 900; }
     .pre-mkt { color: #ffcc00; font-size: 9px; font-family: sans-serif; }
 
-    /* Painel de Cálculos com Bordas */
-    .calc-row { 
-        display: flex; justify-content: space-between; font-size: 19px; 
-        font-family: 'Arial Black', sans-serif; font-weight: 900; 
-        padding: 4px 5px; border-bottom: 1px solid #ffffff; 
-    }
+    /* Painel de Cálculos Operacionais */
+    .calc-row { display: flex; justify-content: space-between; font-size: 19px; font-family: 'Arial Black', sans-serif; font-weight: 900; padding: 4px 0; border-bottom: 1px solid #1c2127; }
     .perc-green { color: #00ff88; }
     .perc-red { color: #ff4d4d; }
-    .eixo-frame { border: 2px dashed #00f2ff; color: #000; background: #ffcc00; font-weight: 900; text-align: center; padding: 6px; margin: 10px 0; font-size: 18px; }
+    .eixo-frame { border: 2px dashed #00f2ff; color: #ffcc00; font-weight: 900; text-align: center; padding: 6px; margin: 10px 0; font-size: 18px; }
 
     /* Rodapé */
     .footer-ticker {
         position: fixed; bottom: 0; left: 0; width: 100%;
-        background: #000; padding: 10px; border-top: 2px solid #ffffff;
+        background: #000; padding: 10px; border-top: 2px solid #00f2ff;
         overflow: hidden; white-space: nowrap; z-index: 1000;
     }
     .ticker-move { display: inline-block; animation: move 35s linear infinite; font-family: 'Arial Black', sans-serif; font-size: 14px; }
@@ -113,11 +109,13 @@ with s_col:
     st.markdown('<div class="frame-box">', unsafe_allow_html=True)
     st.markdown('<p style="color:#ffcc00; font-weight:900; font-size:12px; text-align:center;">CÁLCULOS OPERACIONAIS</p>', unsafe_allow_html=True)
     
+    # Altas
     for p, m in [("3,00%", 1.03), ("2,34%", 1.0234), ("2,00%", 1.02), ("1,34%", 1.0134), ("1,00%", 1.01), ("0,34%", 1.0034)]:
         st.markdown(f'<div class="calc-row"><span class="perc-green">{p}</span><span>{close_ref*m:.4f}</span></div>', unsafe_allow_html=True)
 
     st.markdown(f'<div class="eixo-frame">EIXO: {close_ref:.4f}</div>', unsafe_allow_html=True)
 
+    # Baixas
     for p, m in [("-0,66%", 0.9934), ("-1,00%", 0.99), ("-1,66%", 0.9834), ("-2,00%", 0.98), ("-2,66%", 0.9734), ("-3,00%", 0.97)]:
         st.markdown(f'<div class="calc-row"><span class="perc-red">{p}</span><span>{close_ref*m:.4f}</span></div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
