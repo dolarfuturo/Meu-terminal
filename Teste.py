@@ -6,50 +6,75 @@ import time
 # Configuração para Tablet
 st.set_page_config(page_title="BAIR - TERMINAL DOLAR", layout="wide")
 
-# CSS: GRID COMPLETO COM LINHAS VERTICAIS E BORDAS TOTAIS
+# CSS: GRID COMPLETO COM LINHAS VERTICAIS, BORDAS E PONTO PISCANTE
 st.markdown("""
     <style>
     .stApp { background-color: #0b0e11 !important; color: #ffffff !important; }
     
-    /* Títulos Robustos */
+    /* Títulos Robustos e Ponto Verde Discreto */
     .bair-text { color: #00f2ff; font-family: 'Arial Black', sans-serif; font-size: 30px; font-weight: 900; }
     .terminal-text { color: #ffcc00; font-family: 'Arial Black', sans-serif; font-size: 30px; font-weight: 900; }
     
-    /* Cabeçalho: Cidades sem relógio analógico */
+    .status-dot {
+        height: 10px;
+        width: 10px;
+        background-color: #00ff88;
+        border-radius: 50%;
+        display: inline-block;
+        margin-left: 10px;
+        vertical-align: middle;
+        box-shadow: 0 0 5px #00ff88;
+        animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.3; }
+        100% { opacity: 1; }
+    }
+    
+    /* Cabeçalho */
     .city-name { color: #ffcc00; font-family: 'Arial Black', sans-serif; font-size: 11px; letter-spacing: 1px; text-align: center; margin-bottom: 2px; }
     .clock-container { background: #161b22; border: 1px solid #3d444d; padding: 6px; border-radius: 2px; text-align: center; }
     .digital-time { color: #ffffff; font-size: 18px; font-weight: bold; font-family: 'Courier New', monospace; }
 
     /* BORDAS EM TODO O PAINEL E GRID TÉCNICO */
     .frame-box { 
-        border: 2px solid #3d444d; /* Borda em volta de todo o painel */
+        border: 2px solid #3d444d; 
         border-top: 4px solid #00f2ff; 
         padding: 10px; 
         background: #0b0e11; 
         margin-bottom: 15px;
     }
     
-    /* Tabela com Linhas Horizontais e Verticais (Destaque) */
     table { width: 100%; border-collapse: collapse; border: 1px solid #3d444d; }
     th { 
         color: #00f2ff !important; font-size: 11px !important; 
-        border: 1px solid #3d444d !important; /* Linhas verticais no topo */
+        border: 1px solid #3d444d !important; 
         text-align: left; padding: 8px !important; background: #161b22;
     }
     td { 
         font-size: 18px !important; font-family: 'Arial Black', sans-serif !important; font-weight: 900 !important; 
-        border: 1px solid #3d444d !important; /* Linhas verticais e horizontais destacadas */
+        border: 1px solid #3d444d !important; 
         padding: 8px !important; 
     }
     
     .asset-tag { color: #00f2ff; font-weight: 900; }
     .pre-mkt { color: #ffcc00; font-size: 9px; font-family: sans-serif; }
 
-    /* Painel de Cálculos Operacionais */
-    .calc-row { display: flex; justify-content: space-between; font-size: 19px; font-family: 'Arial Black', sans-serif; font-weight: 900; padding: 4px 0; border-bottom: 1px solid #1c2127; }
+    /* Painel de Cálculos Operacionais - FONTE REDUZIDA */
+    .calc-row { 
+        display: flex; 
+        justify-content: space-between; 
+        font-size: 15px; /* Reduzido para caber na tela */
+        font-family: 'Arial Black', sans-serif; 
+        font-weight: 900; 
+        padding: 3px 0; 
+        border-bottom: 1px solid #1c2127; 
+    }
     .perc-green { color: #00ff88; }
     .perc-red { color: #ff4d4d; }
-    .eixo-frame { border: 2px dashed #00f2ff; color: #ffcc00; font-weight: 900; text-align: center; padding: 6px; margin: 10px 0; font-size: 18px; }
+    .eixo-frame { border: 2px dashed #00f2ff; color: #ffcc00; font-weight: 900; text-align: center; padding: 6px; margin: 10px 0; font-size: 16px; }
 
     /* Rodapé */
     .footer-ticker {
@@ -65,7 +90,7 @@ st.markdown("""
 # --- HEADER ---
 c_logo, c_br, c_ny, c_ldn = st.columns([2.5, 1, 1, 1])
 with c_logo:
-    st.markdown('<span class="bair-text">BAIR</span> <span class="terminal-text">- TERMINAL DOLAR</span>', unsafe_allow_html=True)
+    st.markdown('<span class="bair-text">BAIR</span> <span class="terminal-text">- TERMINAL DOLAR</span><span class="status-dot"></span>', unsafe_allow_html=True)
 
 def clock_simple(city, tz):
     t = datetime.now(pytz.timezone(tz)).strftime("%H:%M:%S")
