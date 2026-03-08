@@ -118,7 +118,7 @@ m_col, s_col = st.columns([3.2, 1.2])
 
 with m_col:
     st.markdown('<div class="frame-box">', unsafe_allow_html=True)
-    st.markdown('<p style="color:#848e9c; font-size:10px; font-weight:900; margin-bottom:5px;">GRADE DE MONITORAMENTO DE ATIVOSE</p>', unsafe_allow_html=True)
+    st.markdown('<p style="color:#848e9c; font-size:10px; font-weight:900; margin-bottom:5px;">GRADE DE MONITORAMENTO DE ATIVOS</p>', unsafe_allow_html=True)
     
     ativos_data = [
         ("SPOT", 5.4000, 5.4200, 5.4100, 5.4350, 5.3910, "0,00%"),
