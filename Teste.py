@@ -146,7 +146,7 @@ with s_col:
 
     st.markdown(f'<div class="eixo-frame">EIXO: {fmt_v(close_ref)}</div>', unsafe_allow_html=True)
 
-    for p, m in [("-0,66%", 0.9934), ("-1,00%", 0.99), ("-1,66%", 0.9834), ("-2,00%", 0.98), ("-2,66%", 0.9734), ("-3,00%", 0.97)]:
+    for p, m in [("-0,65%", 0.9934), ("-1,00%", 0.99), ("-1,65%", 0.9834), ("-2,00%", 0.98), ("-2,65%", 0.9734), ("-3,00%", 0.97)]:
         st.markdown(f'<div class="calc-row"><span class="perc-red">{p}</span><span>{fmt_v(close_ref*m)}</span></div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
