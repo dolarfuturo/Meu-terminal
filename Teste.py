@@ -6,49 +6,55 @@ import time
 # Configuração para Tablet
 st.set_page_config(page_title="BAIR - TERMINAL DOLAR", layout="wide")
 
-# CSS: PAINEL COM LINHAS LATERAIS, ADM LIMPO E GRADE COMPLETA
+# CSS: GRID COMPLETO COM LINHAS VERTICAIS E BORDAS TOTAIS
 st.markdown("""
     <style>
     .stApp { background-color: #0b0e11 !important; color: #ffffff !important; }
     
-    /* Títulos e Letras Cheias */
+    /* Títulos Robustos */
     .bair-text { color: #00f2ff; font-family: 'Arial Black', sans-serif; font-size: 30px; font-weight: 900; }
     .terminal-text { color: #ffcc00; font-family: 'Arial Black', sans-serif; font-size: 30px; font-weight: 900; }
     
-    /* Cabeçalho: Cidades e Relógios Analógicos Simulados */
-    .city-name { color: #ffcc00; font-family: 'Arial Black', sans-serif; font-size: 11px; letter-spacing: 1px; margin-bottom: 3px; text-align: center;}
-    .clock-container { display: flex; align-items: center; justify-content: center; background: #161b22; border: 1px solid #3d444d; padding: 4px; border-radius: 2px; }
-    .analog-sim { width: 14px; height: 14px; border: 2px solid #00f2ff; border-radius: 50%; margin-right: 6px; position: relative; }
-    .digital-time { color: #ffffff; font-size: 17px; font-weight: bold; font-family: 'Courier New', monospace; }
+    /* Cabeçalho: Cidades sem relógio analógico */
+    .city-name { color: #ffcc00; font-family: 'Arial Black', sans-serif; font-size: 11px; letter-spacing: 1px; text-align: center; margin-bottom: 2px; }
+    .clock-container { background: #161b22; border: 1px solid #3d444d; padding: 6px; border-radius: 2px; text-align: center; }
+    .digital-time { color: #ffffff; font-size: 18px; font-weight: bold; font-family: 'Courier New', monospace; }
 
-    /* LATERAIS E LINHAS DO PAINEL (FECHAMENTO COMPLETO) */
+    /* BORDAS EM TODO O PAINEL E GRID TÉCNICO */
     .frame-box { 
-        border: 1px solid #3d444d; 
-        border-left: 4px solid #3d444d; /* Linha lateral esquerda */
-        border-right: 4px solid #3d444d; /* Linha lateral direita */
-        border-top: 3px solid #00f2ff; 
-        padding: 12px; 
+        border: 2px solid #3d444d; /* Borda em volta de todo o painel */
+        border-top: 4px solid #00f2ff; 
+        padding: 10px; 
         background: #0b0e11; 
-        margin-bottom: 12px;
+        margin-bottom: 15px;
     }
     
-    /* Grade Principal */
-    table { width: 100%; border-collapse: collapse; }
-    th { color: #00f2ff !important; font-size: 11px !important; border-bottom: 2px solid #3d444d !important; text-align: left; padding: 5px !important; }
-    td { font-size: 18px !important; font-family: 'Arial Black', sans-serif !important; font-weight: 900 !important; border-bottom: 1px solid #1c2127 !important; padding: 6px 4px !important; }
-    .asset-tag { border-left: 3px solid #00f2ff; padding-left: 6px; }
-    .pre-mkt { color: #ffcc00; font-size: 9px; display: block; font-family: sans-serif; font-weight: normal; }
+    /* Tabela com Linhas Horizontais e Verticais (Destaque) */
+    table { width: 100%; border-collapse: collapse; border: 1px solid #3d444d; }
+    th { 
+        color: #00f2ff !important; font-size: 11px !important; 
+        border: 1px solid #3d444d !important; /* Linhas verticais no topo */
+        text-align: left; padding: 8px !important; background: #161b22;
+    }
+    td { 
+        font-size: 18px !important; font-family: 'Arial Black', sans-serif !important; font-weight: 900 !important; 
+        border: 1px solid #3d444d !important; /* Linhas verticais e horizontais destacadas */
+        padding: 8px !important; 
+    }
+    
+    .asset-tag { color: #00f2ff; font-weight: 900; }
+    .pre-mkt { color: #ffcc00; font-size: 9px; font-family: sans-serif; }
 
-    /* Cálculos */
-    .calc-row { display: flex; justify-content: space-between; font-size: 19px; font-family: 'Arial Black', sans-serif; font-weight: 900; }
+    /* Painel de Cálculos Operacionais */
+    .calc-row { display: flex; justify-content: space-between; font-size: 19px; font-family: 'Arial Black', sans-serif; font-weight: 900; padding: 4px 0; border-bottom: 1px solid #1c2127; }
     .perc-green { color: #00ff88; }
     .perc-red { color: #ff4d4d; }
-    .eixo-frame { border: 1px dashed #00f2ff; color: #ffcc00; font-weight: 900; text-align: center; padding: 4px; margin: 8px 0; font-size: 17px; }
+    .eixo-frame { border: 2px dashed #00f2ff; color: #ffcc00; font-weight: 900; text-align: center; padding: 6px; margin: 10px 0; font-size: 18px; }
 
     /* Rodapé */
     .footer-ticker {
         position: fixed; bottom: 0; left: 0; width: 100%;
-        background: #000; padding: 8px; border-top: 2px solid #00f2ff;
+        background: #000; padding: 10px; border-top: 2px solid #00f2ff;
         overflow: hidden; white-space: nowrap; z-index: 1000;
     }
     .ticker-move { display: inline-block; animation: move 35s linear infinite; font-family: 'Arial Black', sans-serif; font-size: 14px; }
@@ -61,30 +67,27 @@ c_logo, c_br, c_ny, c_ldn = st.columns([2.5, 1, 1, 1])
 with c_logo:
     st.markdown('<span class="bair-text">BAIR</span> <span class="terminal-text">- TERMINAL DOLAR</span>', unsafe_allow_html=True)
 
-def draw_clock(city, tz):
+def clock_simple(city, tz):
     t = datetime.now(pytz.timezone(tz)).strftime("%H:%M:%S")
-    return f'<div class="city-name">{city}</div><div class="clock-container"><div class="analog-sim"></div><div class="digital-time">{t}</div></div>'
+    return f'<div class="city-name">{city}</div><div class="clock-container"><div class="digital-time">{t}</div></div>'
 
-with c_br: st.markdown(draw_clock("BRASÍLIA", "America/Sao_Paulo"), unsafe_allow_html=True)
-with c_ny: st.markdown(draw_clock("NEW YORK", "America/New_York"), unsafe_allow_html=True)
-with c_ldn: st.markdown(draw_clock("LONDRES", "Europe/London"), unsafe_allow_html=True)
+with c_br: st.markdown(clock_simple("BRASÍLIA", "America/Sao_Paulo"), unsafe_allow_html=True)
+with c_ny: st.markdown(clock_simple("NEW YORK", "America/New_York"), unsafe_allow_html=True)
+with c_ldn: st.markdown(clock_simple("LONDRES", "Europe/London"), unsafe_allow_html=True)
 
 # --- PAINEL ADM ---
 with st.expander("⚙️ PAINEL ADM"):
     c1, c2 = st.columns(2)
     with c1: adm_val = st.text_input("VALOR ATUAL:", "5,4000")
     with c2: close_ref = st.number_input("CLOSE REF:", value=5.4200, format="%.4f")
-    if st.button("💾 SALVAR DADOS"):
-        st.success("Configurações do Painel Atualizadas!")
 
-# --- MONITORAMENTO ---
+# --- CORPO DO TERMINAL ---
 m_col, s_col = st.columns([3.2, 1.2])
 
 with m_col:
     st.markdown('<div class="frame-box">', unsafe_allow_html=True)
-    st.markdown('<p style="color:#848e9c; font-size:10px; font-weight:900;">GRADE PRINCIPAL DE MONITORAMENTO</p>', unsafe_allow_html=True)
+    st.markdown('<p style="color:#848e9c; font-size:10px; font-weight:900; margin-bottom:5px;">SYSTEM GRADE MONITORING</p>', unsafe_allow_html=True)
     
-    # Lista de ativos com as inclusões solicitadas
     ativos_data = [
         ("SPOT", "5.4000", "5.4200", "5.4100", "5.4350", "5.3910", "0,00%"),
         ("DOLFUT", "5.4120", "5.4300", "5.4200", "5.4400", "5.4050", "0,05%"),
@@ -97,7 +100,7 @@ with m_col:
     
     t_html = "<table><tr><th>ATIVO</th><th>PRICE</th><th>CLOSE</th><th>OPEN</th><th>MAX</th><th>MIN</th><th>VAR%</th></tr>"
     for name, p, c, o, mx, mn, v in ativos_data:
-        pre_tag = '<span class="pre-mkt">PRE-MARKET</span>' if name == "EWZ" else ""
+        pre_tag = '<br><span class="pre-mkt">PRE-MARKET</span>' if name == "EWZ" else ""
         color = "perc-green" if "-" not in v else "perc-red"
         t_html += f"<tr><td><span class='asset-tag'>{name}</span>{pre_tag}</td><td>{p}</td><td>{c}</td><td>{o}</td><td>{mx}</td><td>{mn}</td><td class='{color}'>{v}</td></tr>"
     st.markdown(t_html + "</table></div>", unsafe_allow_html=True)
@@ -106,18 +109,18 @@ with s_col:
     st.markdown('<div class="frame-box">', unsafe_allow_html=True)
     st.markdown('<p style="color:#ffcc00; font-weight:900; font-size:12px; text-align:center;">CÁLCULOS OPERACIONAIS</p>', unsafe_allow_html=True)
     
-    # Variações Positivas
+    # Altas
     for p, m in [("3,00%", 1.03), ("2,34%", 1.0234), ("2,00%", 1.02), ("1,34%", 1.0134), ("1,00%", 1.01), ("0,34%", 1.0034)]:
         st.markdown(f'<div class="calc-row"><span class="perc-green">{p}</span><span>{close_ref*m:.4f}</span></div>', unsafe_allow_html=True)
 
     st.markdown(f'<div class="eixo-frame">EIXO: {close_ref:.4f}</div>', unsafe_allow_html=True)
 
-    # Variações Negativas
+    # Baixas
     for p, m in [("-0,66%", 0.9934), ("-1,00%", 0.99), ("-1,66%", 0.9834), ("-2,00%", 0.98), ("-2,66%", 0.9734), ("-3,00%", 0.97)]:
         st.markdown(f'<div class="calc-row"><span class="perc-red">{p}</span><span>{close_ref*m:.4f}</span></div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-# --- RODAPÉ COM JPY/GBP ---
+# --- RODAPÉ ---
 st.markdown(f"""
     <div class="footer-ticker">
         <div class="ticker-move">
