@@ -134,7 +134,6 @@ with m_col:
     for name, p, c, o, mx, mn, v in ativos_data:
         pre_tag = '<br><span class="pre-mkt">PRE-MARKET</span>' if name == "EWZ" else ""
         color = "perc-green" if "-" not in v else "perc-red"
-        # Aplica a vírgula sem alterar a precisão
         t_html += f"<tr><td><span class='asset-tag'>{name}</span>{pre_tag}</td><td>{fmt_v(p)}</td><td>{fmt_v(c)}</td><td>{fmt_v(o)}</td><td>{fmt_v(mx)}</td><td>{fmt_v(mn)}</td><td class='{color}'>{v}</td></tr>"
     st.markdown(t_html + "</table></div>", unsafe_allow_html=True)
 
@@ -151,11 +150,13 @@ with s_col:
         st.markdown(f'<div class="calc-row"><span class="perc-red">{p}</span><span>{fmt_v(close_ref*m)}</span></div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-# --- RODAPÉ ---
+# --- RODAPÉ COM XAUUSD E JPYUSD ---
 st.markdown(f"""
     <div class="footer-ticker">
         <div class="ticker-move">
             <span style="color:#ffffff;">DXY</span> <span style="color:#00ff88;">▲ 0,01%</span> | 
+            <span style="color:#ffffff;">XAUUSD</span> <span style="color:#00ff88;">▲ 0,12%</span> | 
+            <span style="color:#ffffff;">JPYUSD</span> <span style="color:#ff4d4d;">▼ -0,08%</span> | 
             <span style="color:#ffffff;">PETROLEO BRENT</span> <span style="color:#00ff88;">▲ 0,61%</span> | 
             <span style="color:#ffffff;">GBPUSD</span> <span style="color:#00ff88;">▲ 0,15%</span> | 
             <span style="color:#ffffff;">EURUSD</span> <span style="color:#00ff88;">▲ 0,05%</span> | 
