@@ -6,12 +6,12 @@ import time
 # Configuração para Tablet
 st.set_page_config(page_title="BAIR - TERMINAL DOLAR", layout="wide")
 
-# CSS: GRID, PONTO CENTRALIZADO E RODAPÉ ESPAÇADO
+# CSS: GRID COMPLETO COM LINHAS VERTICAIS, BORDAS E PONTO PISCANTE
 st.markdown("""
     <style>
     .stApp { background-color: #0b0e11 !important; color: #ffffff !important; }
     
-    /* Cabeçalho: Títulos e Ponto Verde Centralizado */
+    /* Títulos Robustos e Ponto Verde Centralizado */
     .header-container { display: flex; align-items: center; }
     .bair-text { color: #00f2ff; font-family: 'Arial Black', sans-serif; font-size: 30px; font-weight: 900; }
     .terminal-text { color: #ffcc00; font-family: 'Arial Black', sans-serif; font-size: 30px; font-weight: 900; margin-left: 5px; }
@@ -28,12 +28,12 @@ st.markdown("""
 
     @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
     
-    /* Relógios */
-    .city-name { color: #ffcc00; font-family: 'Arial Black', sans-serif; font-size: 11px; text-align: center; margin-bottom: 2px; }
+    /* Cabeçalho */
+    .city-name { color: #ffcc00; font-family: 'Arial Black', sans-serif; font-size: 11px; letter-spacing: 1px; text-align: center; margin-bottom: 2px; }
     .clock-container { background: #161b22; border: 1px solid #3d444d; padding: 6px; border-radius: 2px; text-align: center; }
     .digital-time { color: #ffffff; font-size: 18px; font-weight: bold; font-family: 'Courier New', monospace; }
 
-    /* Molduras e Grades */
+    /* BORDAS EM TODO O PAINEL E GRID TÉCNICO */
     .frame-box { 
         border: 2px solid #3d444d; 
         border-top: 4px solid #00f2ff; 
@@ -55,38 +55,40 @@ st.markdown("""
     }
     
     .asset-tag { color: #00f2ff; font-weight: 900; }
+    .pre-mkt { color: #ffcc00; font-size: 9px; font-family: sans-serif; }
 
-    /* Painel de Cálculos - FONTE REDUZIDA */
+    /* Painel de Cálculos Operacionais - FONTE REDUZIDA */
     .calc-row { 
         display: flex; 
         justify-content: space-between; 
-        font-size: 14px; /* Reduzido para caber no tablet */
+        font-size: 13.5px; /* Reduzido para caber na tela do tablet */
         font-family: 'Arial Black', sans-serif; 
         font-weight: 900; 
-        padding: 3px 0; 
+        padding: 2px 0; 
         border-bottom: 1px solid #1c2127; 
     }
     .perc-green { color: #00ff88; }
     .perc-red { color: #ff4d4d; }
     .eixo-frame { border: 2px dashed #00f2ff; color: #ffcc00; font-weight: 900; text-align: center; padding: 6px; margin: 10px 0; font-size: 16px; }
 
-    /* RODAPÉ ESPAÇADO (JUSTIFICADO) */
+    /* Rodapé */
     .footer-ticker {
         position: fixed; bottom: 0; left: 0; width: 100%;
-        background: #000; padding: 12px 15px; border-top: 2px solid #00f2ff;
-        display: flex; justify-content: space-around; align-items: center;
-        z-index: 1000;
-        font-family: 'Arial Black', sans-serif;
-        font-size: 13px;
+        background: #000; padding: 10px; border-top: 2px solid #00f2ff;
+        overflow: hidden; white-space: nowrap; z-index: 1000;
+        display: flex; justify-content: space-around; /* Espaçamento melhorado */
     }
+    .ticker-move { display: inline-block; animation: move 35s linear infinite; font-family: 'Arial Black', sans-serif; font-size: 14px; width: 100%; }
+    @keyframes move { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
     </style>
     """, unsafe_allow_html=True)
 
-# --- FUNÇÃO DE FORMATAÇÃO (5400.0 -> 5.400,0) ---
+# --- FUNÇÃO DE FORMATAÇÃO (Vírgula antes do último dígito) ---
 def fmt(val):
     try:
-        # Formata com separador de milhar e decimal, depois inverte para o padrão BR
-        return f"{float(val):,.1f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        val_str = f"{float(val):.4f}"
+        # Formata para padrão financeiro 5.400,0
+        return f"{float(val_str):,.1f}".replace(",", "X").replace(".", ",").replace("X", ".")
     except:
         return val
 
@@ -96,7 +98,7 @@ with c_logo:
     st.markdown("""
         <div class="header-container">
             <span class="bair-text">BAIR</span> 
-            <span class="terminal-text">- TERMINAL DOLAR</span>
+            <span class="terminal-text">- TERMINAL</span>
             <div class="status-dot"></div>
         </div>
     """, unsafe_allow_html=True)
@@ -113,7 +115,7 @@ with c_ldn: st.markdown(clock_simple("LONDRES", "Europe/London"), unsafe_allow_h
 with st.expander("⚙️ PAINEL ADM"):
     c1, c2 = st.columns(2)
     with c1: adm_val = st.text_input("VALOR ATUAL:", "5.400,0")
-    with c2: close_ref = st.number_input("CLOSE REF:", value=5420.0, step=1.0)
+    with c2: close_ref = st.number_input("CLOSE REF:", value=5.4200, format="%.4f")
 
 # --- CORPO DO TERMINAL ---
 m_col, s_col = st.columns([3.2, 1.2])
@@ -123,19 +125,20 @@ with m_col:
     st.markdown('<p style="color:#848e9c; font-size:10px; font-weight:900; margin-bottom:5px;">SYSTEM GRADE MONITORING</p>', unsafe_allow_html=True)
     
     ativos_data = [
-        ("SPOT", 5400.0, 5420.0, 5410.0, "0,00%"),
-        ("DOLFUT", 5412.0, 5430.0, 5420.0, "0,05%"),
-        ("DXY", 104.20, 104.10, 104.15, "0,10%"),
-        ("EWZ", 32.10, 32.20, 32.15, "-0,12%"),
-        ("EUR/USD", 1.0850, 1.0840, 1.0845, "0,09%"),
-        ("XAU/USD", 2030.5, 2028.0, 2029.0, "0,12%"),
-        ("PETROLEO BRENT", 82.40, 81.90, 82.00, "0,61%")
+        ("SPOT", 5.4000, 5.4200, 5.4100, 5.4350, 5.3910, "0,00%"),
+        ("DOLFUT", 5.4120, 5.4300, 5.4200, 5.4400, 5.4050, "0,05%"),
+        ("DXY", 104.20, 104.10, 104.15, 104.50, 104.05, "0,10%"),
+        ("EWZ", 32.10, 32.20, 32.15, 32.40, 31.90, "-0,12%"),
+        ("EUR/USD", 1.0850, 1.0840, 1.0845, 1.0890, 1.0820, "0,09%"),
+        ("XAU/USD", 2030.5, 2028.0, 2029.0, 2040.0, 2025.0, "0,12%"),
+        ("PETROLEO BRENT", 82.40, 81.90, 82.00, 83.10, 81.50, "0,61%")
     ]
     
-    t_html = "<table><tr><th>ATIVO</th><th>PRICE</th><th>CLOSE</th><th>OPEN</th><th>VAR%</th></tr>"
-    for name, p, c, o, v in ativos_data:
+    t_html = "<table><tr><th>ATIVO</th><th>PRICE</th><th>CLOSE</th><th>OPEN</th><th>MAX</th><th>MIN</th><th>VAR%</th></tr>"
+    for name, p, c, o, mx, mn, v in ativos_data:
+        pre_tag = '<br><span class="pre-mkt">PRE-MARKET</span>' if name == "EWZ" else ""
         color = "perc-green" if "-" not in v else "perc-red"
-        t_html += f"<tr><td><span class='asset-tag'>{name}</span></td><td>{fmt(p)}</td><td>{fmt(c)}</td><td>{fmt(o)}</td><td class='{color}'>{v}</td></tr>"
+        t_html += f"<tr><td><span class='asset-tag'>{name}</span>{pre_tag}</td><td>{fmt(p)}</td><td>{fmt(c)}</td><td>{fmt(o)}</td><td>{fmt(mx)}</td><td>{fmt(mn)}</td><td class='{color}'>{v}</td></tr>"
     st.markdown(t_html + "</table></div>", unsafe_allow_html=True)
 
 with s_col:
@@ -143,24 +146,27 @@ with s_col:
     st.markdown('<p style="color:#ffcc00; font-weight:900; font-size:12px; text-align:center;">CÁLCULOS OPERACIONAIS</p>', unsafe_allow_html=True)
     
     # Altas
-    for p, m in [("3,00%", 1.03), ("2,00%", 1.02), ("1,00%", 1.01), ("0,34%", 1.0034)]:
+    for p, m in [("3,00%", 1.03), ("2,34%", 1.0234), ("2,00%", 1.02), ("1,34%", 1.0134), ("1,00%", 1.01), ("0,34%", 1.0034)]:
         st.markdown(f'<div class="calc-row"><span class="perc-green">{p}</span><span>{fmt(close_ref*m)}</span></div>', unsafe_allow_html=True)
 
     st.markdown(f'<div class="eixo-frame">EIXO: {fmt(close_ref)}</div>', unsafe_allow_html=True)
 
     # Baixas
-    for p, m in [("-1,00%", 0.99), ("-2,00%", 0.98), ("-3,00%", 0.97)]:
+    for p, m in [("-0,66%", 0.9934), ("-1,00%", 0.99), ("-1,66%", 0.9834), ("-2,00%", 0.98), ("-2,66%", 0.9734), ("-3,00%", 0.97)]:
         st.markdown(f'<div class="calc-row"><span class="perc-red">{p}</span><span>{fmt(close_ref*m)}</span></div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-# --- RODAPÉ ESPAÇADO COM BRENT ---
+# --- RODAPÉ ---
 st.markdown(f"""
     <div class="footer-ticker">
-        <span><b style="color:#00f2ff;">DXY</b> <span style="color:#00ff88;">▲ 0,01%</span></span>
-        <span><b style="color:#00f2ff;">BRENT</b> <span style="color:#00ff88;">▲ 0,61%</span></span>
-        <span><b style="color:#00f2ff;">EWZ</b> <span style="color:#ff4d4d;">▼ -0,12%</span></span>
-        <span><b style="color:#00f2ff;">EURUSD</b> <span style="color:#00ff88;">▲ 0,05%</span></span>
-        <span><b style="color:#00f2ff;">SPOT</b> <span style="color:#ffffff;">● 0,00%</span></span>
+        <div class="ticker-move">
+            <span style="color:#ffffff;">DXY</span> <span style="color:#00ff88;">▲ 0,01%</span> | 
+            <span style="color:#ffffff;">PETROLEO BRENT</span> <span style="color:#00ff88;">▲ 0,61%</span> | 
+            <span style="color:#ffffff;">GBPUSD</span> <span style="color:#00ff88;">▲ 0,15%</span> | 
+            <span style="color:#ffffff;">EURUSD</span> <span style="color:#00ff88;">▲ 0,05%</span> | 
+            <span style="color:#ffffff;">EWZ</span> <span style="color:#ff4d4d;">▼ -0,12%</span> | 
+            <span style="color:#ffffff;">SPOT</span> <span style="color:#ffffff;">● 0,00%</span>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
