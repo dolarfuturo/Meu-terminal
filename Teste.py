@@ -103,8 +103,8 @@ with c_ldn: st.markdown(clock_simple("LONDRES", "Europe/London"), unsafe_allow_h
 # --- PAINEL ADM ---
 with st.expander("⚙️ PAINEL ADM"):
     c1, c2 = st.columns(2)
-    with c1: adm_val = st.text_input("VALOR ATUAL:", "5,4000")
-    with c2: close_ref = st.number_input("CLOSE REF:", value=5.4200, format="%.4f")
+    with c1: adm_val = st.text_input("VALOR ATUAL:", "5,400,0")
+    with c2: close_ref = st.number_input("CLOSE REF:", value=5.420,0, format="%.4f")
 
 # --- CORPO DO TERMINAL ---
 m_col, s_col = st.columns([3.2, 1.2])
@@ -114,8 +114,8 @@ with m_col:
     st.markdown('<p style="color:#848e9c; font-size:10px; font-weight:900; margin-bottom:5px;">SYSTEM GRADE MONITORING</p>', unsafe_allow_html=True)
     
     ativos_data = [
-        ("SPOT", "5.4000", "5.4200", "5.4100", "5.4350", "5.3910", "0,00%"),
-        ("DOLFUT", "5.4120", "5.4300", "5.4200", "5.4400", "5.4050", "0,05%"),
+        ("SPOT", "5.400,0", "5.420,0", "5.410,0", "5.435,0", "5.391,0", "0,00%"),
+        ("DOLFUT", "5.412,0", "5.430,0", "5.420,0", "5.440,0", "5.405,0", "0,05%"),
         ("DXY", "104.20", "104.10", "104.15", "104.50", "104.05", "0,10%"),
         ("EWZ", "32.10", "32.20", "32.15", "32.40", "31.90", "-0,12%"),
         ("EUR/USD", "1.0850", "1.0840", "1.0845", "1.0890", "1.0820", "0,09%"),
