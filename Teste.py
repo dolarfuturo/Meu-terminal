@@ -103,8 +103,8 @@ with c_ldn: st.markdown(clock_simple("LONDRES", "Europe/London"), unsafe_allow_h
 # --- PAINEL ADM ---
 with st.expander("⚙️ PAINEL ADM"):
     c1, c2 = st.columns(2)
-    with c1: adm_val = st.text_input("VALOR ATUAL:", "5,400,0")
-    with c2: close_ref = st.number_input("CLOSE REF:", value=5.420,0, format="%.4f")
+    with c1: adm_val = st.text_input("VALOR ATUAL:", "5,4000")
+    with c2: close_ref = st.number_input("CLOSE REF:", value=5.4200, format="%.4f")
 
 # --- CORPO DO TERMINAL ---
 m_col, s_col = st.columns([3.2, 1.2])
