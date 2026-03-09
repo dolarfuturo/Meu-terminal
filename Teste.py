@@ -29,7 +29,7 @@ def fetch_ewz():
             
             # Filtra o Eixo apenas no pregão regular de ontem (11:30 - 18:00)
             df_ontem = df[df.index.normalize() == dia_anterior]
-            df_regular = df_ontem.between_time('11:30', '18:00')
+            df_regular = df_ontem.between_time('10:30', '17:00')
             
             eixo_val = (df_regular['High'].max() + df_regular['Low'].min()) / 2
             preco_atual = df['Close'].iloc[-1] # Preço de AGORA (Pre-market)
