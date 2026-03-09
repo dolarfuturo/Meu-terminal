@@ -8,7 +8,7 @@ st.set_page_config(page_title="K97 - TERMINAL", layout="wide")
 # --- MOTOR DE CÁLCULO K97 ---
 def calcular_dolfut_k97(eixo_ewz, preco_ewz_atual, eixo_dolfut_manual):
     try:
-        # EIXO FIXO vs PREÇO MÓVEL
+        # EIXO FIXO (SEXTA) vs PREÇO AGORA (SEGUNDA)
         var_ewz = ((eixo_ewz / preco_ewz_atual) - 1) * 100 / 2
         preco_sintetico = eixo_dolfut_manual * (1 + (var_ewz / 100))
         return preco_sintetico, var_ewz
@@ -20,27 +20,28 @@ def calcular_dolfut_k97(eixo_ewz, preco_ewz_atual, eixo_dolfut_manual):
 def fetch_ewz():
     try:
         t = yf.Ticker("EWZ")
-        # Puxamos 5 dias para garantir o histórico e o pre-market de hoje
+        # Puxamos o histórico recente para isolar a Sexta do Pre-market de hoje
         df = t.history(period="5d", interval="1m", prepost=True) 
         
         if not df.empty:
-            # Filtra apenas dias com volume (ignora finais de semana)
             dias_uteis = df[df['Volume'] > 0].index.normalize().unique()
             
-            # EIXO FIXO: Penúltimo dia útil (Sexta-feira se hoje for Segunda)
-            dia_anterior = dias_uteis[-2]
-            df_eixo = df[df.index.normalize() == dia_anterior]
-            # Filtro das 11:30 às 18:00 conforme sua regra
-            df_regular = df_eixo.between_time('11:30', '18:00')
+            # --- TRAVANDO O EIXO NA SEXTA-FEIRA (06/03) ---
+            # Identificamos o dia 06/03 na lista de dias com volume
+            dia_sexta = [d for d in dias_uteis if d.day == 6 and d.month == 3][0]
+            df_sexta = df[df.index.normalize() == dia_sexta]
+            
+            # Filtro do pregão regular (11:30 - 18:00) para o Eixo Fixo
+            df_regular = df_sexta.between_time('11:30', '18:00')
             eixo_fixo = (df_regular['High'].max() + df_regular['Low'].min()) / 2
             
-            # PREÇO MÓVEL: Último tick de AGORA (Pre-market ativo)
-            preco_agora = df['Close'].iloc[-1]
+            # --- PREÇO EM TEMPO REAL (HOJE) ---
+            preco_atual = df['Close'].iloc[-1] 
             
             return {
-                "price": preco_agora,
+                "price": preco_atual,
                 "eixo_estatico": eixo_fixo,
-                "data_eixo": dia_anterior.strftime('%d/%m')
+                "data_eixo": "Sexta 06/03"
             }
     except:
         return None
@@ -67,15 +68,15 @@ with st.sidebar:
 market = fetch_ewz()
 
 if market:
-    eixo_ewz_calc = market["eixo_estatico"]
-    p_dolfut, v_desvio = calcular_dolfut_k97(eixo_ewz_calc, market["price"], eixo_dol_input)
+    eixo_fixo_calculado = market["eixo_estatico"]
+    p_dolfut, v_desvio = calcular_dolfut_k97(eixo_fixo_calculado, market["price"], eixo_dol_input)
 
     col1, col2 = st.columns(2)
     with col1:
         st.markdown('<div class="frame-box">', unsafe_allow_html=True)
-        st.markdown('<div class="metric-label">EWZ (PREÇO ATUAL - PRE-MARKET)</div>', unsafe_allow_html=True)
+        st.markdown('<div class="metric-label">EWZ (AGORA - PRE-MARKET)</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="metric-val">{market["price"]:.2f}</div>', unsafe_allow_html=True)
-        st.markdown(f'<div style="color: #848e9c; font-size: 16px;">Eixo Fixo ({market["data_eixo"]}): {eixo_ewz_calc:.2f}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="color: #848e9c; font-size: 16px;">Eixo Fixo ({market["data_eixo"]}): {eixo_fixo_calculado:.2f}</div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
     with col2:
@@ -89,7 +90,7 @@ if market:
     st.markdown(f'<div class="eixo-destaque">EIXO DÓLAR ANCORADO: {eixo_dol_input:.2f}</div>', unsafe_allow_html=True)
 
 else:
-    st.error("Conectando ao Pre-market...")
+    st.error("Carregando dados da Sexta (06/03) e Pre-market de hoje...")
 
 time.sleep(5)
 st.rerun()
