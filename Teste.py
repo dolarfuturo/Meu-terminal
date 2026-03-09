@@ -1,52 +1,62 @@
-# --- MOTOR DE CÁLCULOS K97 ---
+import datetime
 
-def calcular_eixo_diario(max_periodo, min_periodo):
-    """
-    Regra: Eixo = (MAX + MIN) / 2 
-    Referente ao intervalo das 11:30 às 18:00 BRT.
-    """
-    return (max_periodo + min_periodo) / 2
+# --- MOTOR DE CÁLCULOS K97 - CORE ENGINE ---
+# Data: 2026-03-08
 
-def calcular_preco_ajustado_dolar(eixo_ativo, eixo_ewz, price_ewz_atual):
+def get_eixo(max_val, min_val):
     """
-    Fórmula: Price = eixo * (eixo_EWZ / price_ewz - 1) * 100 / 2.
-    Aplica-se para SPOT e DOLFUT.
+    Calcula o ponto médio âncora.
+    Regra: Eixo = (MAX + MIN) / 2
+    Referente ao intervalo 11:30 - 18:00 BRT.
+    """
+    return (max_val + min_val) / 2
+
+def get_variacao_operacional(preco_atual, eixo_ref):
+    """
+    Regra: Variações partem sempre do Eixo, não do fechamento.
+    """
+    if eixo_ref == 0: return 0.0
+    return ((preco_atual / eixo_ref) - 1) * 100
+
+def get_fair_price_dolar(eixo_ativo, eixo_ewz, price_ewz_atual):
+    """
+    Fórmula de Arbitragem: eixo * (eixo_EWZ / price_ewz - 1) * 100 / 2.
+    Aplicável a SPOT e DOLFUT.
     """
     try:
-        # Cálculo do desvio do EWZ em relação ao seu próprio eixo
+        # Mede o desvio do EWZ (desde o pré-market das 06:00 BRT)
         desvio_ewz = (eixo_ewz / price_ewz_atual) - 1
-        
-        # Resultado do preço baseado na variação do EWZ (considerando Pre-market 6h)
         return eixo_ativo * desvio_ewz * 100 / 2
     except ZeroDivisionError:
         return eixo_ativo
 
-def calcular_variacao_operacional(valor_atual, eixo_referencia):
+def get_volatilidade_alvo(eixo, perc_desvio):
     """
-    Regra: As variações partem SEMPRE do eixo, não do fechamento.
+    Regra: MAX e MIN calculadas partindo do eixo conforme o ativo anda.
     """
-    if eixo_referencia == 0:
-        return 0.0
-    return ((valor_atual / eixo_referencia) - 1) * 100
+    return eixo * (1 + (perc_desvio / 100))
 
-def calcular_limites_volatilidade(eixo, percentual_desvio):
-    """
-    Regra: Cálculos de volatilidade, MAX e MIN partem do eixo.
-    Ex: Para alvo de 1%, percentual_desvio = 0.01
-    """
-    return eixo * (1 + percentual_desvio)
+# --- BLOCO DE TESTE (CI/CD GITHUB) ---
+if __name__ == "__main__":
+    # Dados de Exemplo (Anotações do Usuário)
+    EIXO_DOLAR_ONTEM = 5.4200 
+    EIXO_EWZ_ONTEM = 32.20
+    
+    # Simulação: EWZ no Pré-Market (06:00 BRT)
+    PRECO_EWZ_AGORA = 32.10 
+    
+    # 1. Calculando Preço Justo (Motor)
+    preco_justo = get_fair_price_dolar(EIXO_DOLAR_ONTEM, EIXO_EWZ_ONTEM, PRECO_EWZ_AGORA)
+    
+    # 2. Calculando Variação sobre o Eixo
+    var_percentual = get_variacao_operacional(preco_justo, EIXO_DOLAR_ONTEM)
+    
+    # 3. Calculando Alvo Operacional (Ex: 1% do Eixo)
+    alvo_1_percento = get_volatilidade_alvo(EIXO_DOLAR_ONTEM, 1.0)
 
-# --- EXEMPLO DE EXECUÇÃO DO MOTOR ---
-
-# 1. Definição dos Eixos (obtidos entre 11:30 e 18:00 do dia anterior)
-eixo_dolar = 5.4200 
-eixo_ewz = 32.20
-
-# 2. Captura do mercado atual (EWZ desde às 06:00 BRT)
-market_price_ewz = 32.10 
-
-# 3. Processamento do Preço Justo
-preco_spot_no_grade = calcular_preco_ajustado_dolar(eixo_dolar, eixo_ewz, market_price_ewz)
-
-# 4. Processamento da Variação da Grade
-variacao_spot = calcular_variacao_operacional(preco_spot_no_grade, eixo_dolar)
+    # Output Técnico
+    print(f"--- K97 MOTOR TEST ---")
+    print(f"Eixo Ref: {EIXO_DOLAR_ONTEM}")
+    print(f"Preço Justo (Arbitragem EWZ): {preco_justo:.4f}")
+    print(f"Variação vs Eixo: {var_percentual:.2f}%")
+    print(f"Alvo Volatilidade (1%): {alvo_1_percento:.4f}")
