@@ -8,8 +8,8 @@ st.set_page_config(page_title="K97 - TERMINAL", layout="wide")
 # --- MOTOR DE CÁLCULO K97 ---
 def calcular_dolfut_k97(eixo_ewz, preco_ewz_atual, eixo_dolfut_manual):
     try:
-        # Variação: (EIXO MANUAL / PREÇO VIVO - 1) * 100 / 3
-        var_ewz = ((eixo_ewz / preco_ewz_atual) - 1) * 100 / 3
+        # Variação: (EIXO MANUAL / PREÇO VIVO - 1) * 100 / 3,5
+        var_ewz = ((eixo_ewz / preco_ewz_atual) - 1) * 100 / 3,5
         preco_sintetico = eixo_dolfut_manual * (1 + (var_ewz / 100))
         return preco_sintetico, var_ewz
     except:
