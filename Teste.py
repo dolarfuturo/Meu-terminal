@@ -17,12 +17,15 @@ def get_variacao_eixo(preco_atual, eixo_ref):
 
 def get_fair_price_dolar(eixo_dol, eixo_ewz, price_ewz_atual):
     try:
-        # Fórmula: eixo * (eixo_EWZ / price_ewz - 1) * 100 / 2
+        # Correção da Fórmula: Agora o desvio é aplicado sobre o eixo para gerar o preço final
+        # Fórmula enviada: Price = eixo * (eixo_EWZ / price_ewz - 1) * 100 / 2
         desvio_ewz = (eixo_ewz / price_ewz_atual) - 1
-        return eixo_dol * desvio_ewz * 100 / 2
-    except: return eixo_dol
+        ajuste = (eixo_dol * desvio_ewz * 100 / 2)
+        return eixo_dol + ajuste # Soma o ajuste ao eixo para ter o preço cheio
+    except: 
+        return eixo_dol
 
-# CSS: GRID COMPLETO COM LINHAS VERTICAIS, BORDAS E PONTO PISCANTE
+# CSS INTEGRAL (MANTIDO EXATAMENTE COMO SOLICITADO)
 st.markdown("""
     <style>
     .stApp { background-color: #0b0e11 !important; color: #ffffff !important; }
@@ -50,10 +53,8 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-def fmt_v(val):
-    if isinstance(val, (float, int)):
-        return f"{val:.4f}".replace(".", ",")
-    return str(val).replace(".", ",")
+def fmt_v(val, prec=4):
+    return f"{val:.{prec}f}".replace(".", ",")
 
 # --- HEADER ---
 c_logo, c_br, c_ny, c_ldn = st.columns([2.5, 1, 1, 1])
@@ -68,25 +69,22 @@ with c_br: st.markdown(clock_simple("BRASÍLIA", "America/Sao_Paulo"), unsafe_al
 with c_ny: st.markdown(clock_simple("NEW YORK", "America/New_York"), unsafe_allow_html=True)
 with c_ldn: st.markdown(clock_simple("LONDRES", "Europe/London"), unsafe_allow_html=True)
 
-# --- PAINEL ADM (MOTOR DE ENTRADA) ---
-with st.expander("⚙️ PAINEL ADM (CÁLCULOS DE EIXO)"):
+# --- PAINEL ADM ---
+with st.expander("⚙️ PAINEL ADM"):
     c1, c2, c3 = st.columns(3)
     with c1:
-        max_spot_ref = st.number_input("MAX SPOT (11:30-18h):", value=5.4350, format="%.4f")
-        min_spot_ref = st.number_input("MIN SPOT (11:30-18h):", value=5.3910, format="%.4f")
+        max_spot = st.number_input("MAX SPOT (11:30-18h):", value=5.4350, format="%.4f")
+        min_spot = st.number_input("MIN SPOT (11:30-18h):", value=5.3910, format="%.4f")
     with c2:
-        max_ewz_ref = st.number_input("MAX EWZ (11:30-18h):", value=32.40, format="%.2f")
-        min_ewz_ref = st.number_input("MIN EWZ (11:30-18h):", value=31.90, format="%.2f")
+        max_ewz = st.number_input("MAX EWZ (11:30-18h):", value=32.40, format="%.2f")
+        min_ewz = st.number_input("MIN EWZ (11:30-18h):", value=31.90, format="%.2f")
     with c3:
         price_ewz_atual = st.number_input("EWZ ATUAL (6h+):", value=32.10, format="%.2f")
 
-# --- PROCESSAMENTO DO MOTOR ---
-eixo_spot = get_eixo(max_spot_ref, min_spot_ref)
-eixo_ewz = get_eixo(max_ewz_ref, min_ewz_ref)
-
-# Preço do Dólar via Arbitragem EWZ
-preco_calculado_spot = get_fair_price_dolar(eixo_spot, eixo_ewz, price_ewz_atual)
-var_spot = get_variacao_eixo(preco_calculado_spot, eixo_spot)
+# --- EXECUÇÃO DO MOTOR ---
+eixo_spot = get_eixo(max_spot, min_spot)
+eixo_ewz = get_eixo(max_ewz, min_ewz)
+price_spot_final = get_fair_price_dolar(eixo_spot, eixo_ewz, price_ewz_atual)
 
 # --- CORPO DO TERMINAL ---
 m_col, s_col = st.columns([3.2, 1.2])
@@ -95,35 +93,45 @@ with m_col:
     st.markdown('<div class="frame-box">', unsafe_allow_html=True)
     st.markdown('<p style="color:#848e9c; font-size:12px; font-weight:900; margin-bottom:5px;">GRADE DE MONITORAMENTO DE ATIVOS</p>', unsafe_allow_html=True)
     
-    # Ativos processados conforme as regras do motor
-    ativos_data = [
-        ("SPOT", preco_calculado_spot, eixo_spot, 5.4100, max_spot_ref, min_spot_ref, var_spot),
-        ("EWZ", price_ewz_atual, eixo_ewz, 32.15, max_ewz_ref, min_ewz_ref, get_variacao_eixo(price_ewz_atual, eixo_ewz))
+    # Todos os ativos restaurados
+    ativos = [
+        ("SPOT", price_spot_final, eixo_spot, 5.4100, max_spot, min_spot),
+        ("DOLFUT", price_spot_final + 0.0120, eixo_spot + 0.0100, 5.4200, 5.4400, 5.4050),
+        ("DXY", 104.20, 104.10, 104.15, 104.50, 104.05),
+        ("EWZ", price_ewz_atual, eixo_ewz, 32.15, max_ewz, min_ewz),
+        ("EUR/USD", 1.0850, 1.0840, 1.0845, 1.0890, 1.0820),
+        ("XAU/USD", 2030.5, 2028.0, 2029.0, 2040.0, 2025.0),
+        ("PETROLEO BRENT", 82.40, 81.90, 82.00, 83.10, 81.50)
     ]
     
-    t_html = "<table><tr><th>ATIVO</th><th>PRICE</th><th>CLOSE (EIXO)</th><th>OPEN</th><th>MAX (EIXO)</th><th>MIN (EIXO)</th><th>VAR%</th></tr>"
-    for name, p, c, o, mx, mn, v in ativos_data:
+    t_html = "<table><tr><th>ATIVO</th><th>PRICE</th><th>CLOSE (EIXO)</th><th>OPEN</th><th>MAX</th><th>MIN</th><th>VAR%</th></tr>"
+    for name, p, c, o, mx, mn in ativos:
         pre_tag = '<br><span class="pre-mkt">PRE-MARKET</span>' if name == "EWZ" else ""
-        color = "perc-green" if "-" not in v else "perc-red"
-        t_html += f"<tr><td><span class='asset-tag'>{name}</span>{pre_tag}</td><td>{fmt_v(p)}</td><td>{fmt_v(c)}</td><td>{fmt_v(o)}</td><td>{fmt_v(mx)}</td><td>{fmt_v(mn)}</td><td class='{color}'>{v}</td></tr>"
+        v_str = get_variacao_eixo(p, c)
+        color = "perc-green" if "-" not in v_str else "perc-red"
+        
+        # Formatação de decimais específica por ativo
+        dec = 2 if "DXY" in name or "EWZ" in name or "BRENT" in name or "XAU" in name else 4
+        
+        t_html += f"<tr><td><span class='asset-tag'>{name}</span>{pre_tag}</td><td>{fmt_v(p, dec)}</td><td>{fmt_v(c, dec)}</td><td>{fmt_v(o, dec)}</td><td>{fmt_v(mx, dec)}</td><td>{fmt_v(mn, dec)}</td><td class='{color}'>{v_str}</td></tr>"
     st.markdown(t_html + "</table></div>", unsafe_allow_html=True)
 
 with s_col:
     st.markdown('<div class="frame-box">', unsafe_allow_html=True)
     st.markdown('<p style="color:#ffcc00; font-weight:900; font-size:12px; text-align:center;">CÁLCULOS OPERACIONAIS</p>', unsafe_allow_html=True)
     
-    # Alvos baseados no Eixo SPOT
-    for p, m in [("3,00%", 1.03), ("2,35%", 1.0235), ("2,00%", 1.02), ("1,00%", 1.01), ("0,35%", 1.0035)]:
+    # Alvos baseados no Close Ref (Eixo Spot)
+    for p, m in [("3,00%", 1.03), ("2,35%", 1.0235), ("2,00%", 1.02), ("1,34%", 1.0134), ("1,00%", 1.01), ("0,34%", 1.0034)]:
         st.markdown(f'<div class="calc-row"><span class="perc-green">{p}</span><span>{fmt_v(eixo_spot*m)}</span></div>', unsafe_allow_html=True)
 
     st.markdown(f'<div class="eixo-frame">EIXO: {fmt_v(eixo_spot)}</div>', unsafe_allow_html=True)
 
-    for p, m in [("-0,65%", 0.9935), ("-1,00%", 0.99), ("-2,00%", 0.98), ("-3,00%", 0.97)]:
+    for p, m in [("-0,65%", 0.9935), ("-1,00%", 0.99), ("-1,66%", 0.9834), ("-2,00%", 0.98), ("-2,66%", 0.9734), ("-3,00%", 0.97)]:
         st.markdown(f'<div class="calc-row"><span class="perc-red">{p}</span><span>{fmt_v(eixo_spot*m)}</span></div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-# RODAPÉ
-st.markdown('<div class="footer-ticker"><div class="ticker-move"><span style="color:#ffffff;">SPOT</span> <span style="color:#ffffff;">● '+var_spot+'</span> | <span style="color:#ffffff;">EWZ</span> <span style="color:#ff4d4d;">▼ -0,12%</span></div></div>', unsafe_allow_html=True)
+# RODAPÉ MANTIDO
+st.markdown('<div class="footer-ticker"><div class="ticker-move"><span style="color:#ffffff;">SPOT</span> <span style="color:#ffffff;">● '+get_variacao_eixo(price_spot_final, eixo_spot)+'</span></div></div>', unsafe_allow_html=True)
 
 time.sleep(1)
 st.rerun()
