@@ -16,12 +16,14 @@ def calcular_dolfut_k97(eixo_ewz, preco_ewz_atual, eixo_dolfut_manual):
     except:
         return eixo_dolfut_manual, 0.0
 
-# --- CAPTURA DE DADOS (EWZ) ---
-@st.cache_data(ttl=10)
+# --- CAPTURA DE DADOS (EWZ) - AJUSTADA PARA PRE-MARKET ---
+@st.cache_data(ttl=5) # Cache reduzido para 5 segundos para não travar
 def fetch_ewz():
     try:
         t = yf.Ticker("EWZ")
-        df = t.history(period="1d") # Mantido conforme seu código funcional
+        # prepost=True busca o movimento de AGORA cedo
+        # interval="1m" garante o último clique do mercado
+        df = t.history(period="1d", interval="1m", prepost=True) 
         if not df.empty:
             return {
                 "price": df['Close'].iloc[-1],
@@ -41,6 +43,7 @@ st.markdown("""
     .metric-val { font-size: 44px; font-family: 'Arial Black'; font-weight: 900; color: #ffffff; }
     .metric-label { font-size: 14px; color: #00f2ff; font-weight: bold; }
     .eixo-destaque { border: 2px dashed #00f2ff; color: #ffcc00; text-align: center; padding: 15px; font-size: 26px; font-weight: 900; margin-top: 20px; }
+    .elastic-row { display: flex; justify-content: space-between; padding: 5px 10px; border-bottom: 1px solid #1e2226; font-family: 'monospace'; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -80,11 +83,30 @@ if market:
         st.markdown(f'<div style="color: {color}; font-weight:bold; font-size: 20px;">Desvio: {v_desvio:+.2f}%</div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
+    # --- GRID DE VARIÁVEIS (ELÁSTICO) ---
+    st.markdown('<div class="frame-box" style="margin-top:20px; border-top: 4px solid #ffcc00;">', unsafe_allow_html=True)
+    st.markdown('<div class="metric-label" style="color:#ffcc00; margin-bottom:10px;">VARIÁVEIS DE ELÁSTICO (ALVOS)</div>', unsafe_allow_html=True)
+    
+    p_vars = [1.0, 0.62, 0.31]
+    
+    # Renderizando Cima e Baixo
+    for p in p_vars:
+        up = p_dolfut * (1 + (p/100))
+        st.markdown(f'<div class="elastic-row"><span style="color:#ff4d4d;">RESISTÊNCIA +{p}%</span> <span>{up:.2f}</span></div>', unsafe_allow_html=True)
+    
+    st.markdown(f'<div class="elastic-row" style="background:#1e2226;"><span style="color:#00f2ff;">CENTRO SINTÉTICO</span> <span>{p_dolfut:.2f}</span></div>', unsafe_allow_html=True)
+    
+    for p in reversed(p_vars):
+        down = p_dolfut * (1 - (p/100))
+        st.markdown(f'<div class="elastic-row"><span style="color:#00ff88;">SUPORTE -{p}%</span> <span>{down:.2f}</span></div>', unsafe_allow_html=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+
     st.markdown(f'<div class="eixo-destaque">EIXO DÓLAR ANCORADO: {eixo_dol_input:.2f}</div>', unsafe_allow_html=True)
 
 else:
-    st.error("Buscando dados do mercado...")
+    st.error("Buscando dados do mercado (Verifique se o Pre-market abriu)...")
 
-# Loop de 10 segundos
-time.sleep(10)
+# Loop de 5 segundos para maior agilidade no clique
+time.sleep(5)
 st.rerun()
