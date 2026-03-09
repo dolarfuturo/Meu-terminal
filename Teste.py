@@ -1,54 +1,47 @@
 import streamlit as st
 import yfinance as yf
 import time
-import datetime
 
 # Configuração de Layout para Tablet
 st.set_page_config(page_title="K97 - TERMINAL", layout="wide")
 
-# --- MOTOR DE CÁLCULO K97 ---
-def calcular_dolfut_k97(eixo_ewz_ontem, preco_ewz_atual, eixo_dolfut_manual):
+# --- MOTOR DE CÁLCULO K97 (SUA FÓRMULA VALIDADA) ---
+def calcular_dolfut_k97(eixo_ewz, preco_ewz_atual, eixo_dolfut_manual):
     try:
-        # (EIXO FILTRADO ONTEM / PREÇO AGORA - 1) * 100 / 2
-        var_ewz = ((eixo_ewz_ontem / preco_ewz_atual) - 1) * 100 / 2
+        # (EIXO / PREÇO - 1) * 100 / 2
+        var_ewz = ((eixo_ewz / preco_ewz_atual) - 1) * 100 / 2
+        # DOLFUT = eixo do dol * (1 + variação/100)
         preco_sintetico = eixo_dolfut_manual * (1 + (var_ewz / 100))
         return preco_sintetico, var_ewz
     except:
         return eixo_dolfut_manual, 0.0
 
-# --- CAPTURA DE DADOS COM FILTRO DE HORÁRIO (11:30 - 18:00) ---
+# --- CAPTURA DE DADOS (EWZ) - AJUSTADA PARA EIXO ONTEM E PRE-MARKET HOJE ---
 @st.cache_data(ttl=5)
-def fetch_ewz_data():
+def fetch_ewz():
     try:
         t = yf.Ticker("EWZ")
-        # Pega 5 dias para garantir que pegamos a última sexta caso hoje seja segunda
-        df = t.history(period="5d", interval="1m", prepost=True)
-        
+        # Puxa 5 dias para garantir o dia anterior útil
+        df = t.history(period="5d", interval="1m", prepost=True) 
         if not df.empty:
             dias = df.index.normalize().unique()
-            # O dia anterior de negociação é o penúltimo no dataframe (dias[-2])
-            dia_anterior = dias[-2]
-            df_ontem = df[df.index.normalize() == dia_anterior]
+            dia_anterior = dias[-2] # Penúltimo dia (Ontem útil)
             
-            # FILTRO EXATO: 11:30 às 18:00 (Horário de Brasília/Yahoo costuma ser ET, ajuste manual se necessário)
-            # Aqui filtramos o miolo do pregão regular de ontem
+            # Filtra o Eixo apenas no pregão regular de ontem (11:30 - 18:00)
+            df_ontem = df[df.index.normalize() == dia_anterior]
             df_regular = df_ontem.between_time('11:30', '18:00')
             
-            if df_regular.empty: # Fallback caso o filtro falhe por fuso
-                df_regular = df_ontem
-                
-            eixo_filtrado = (df_regular['High'].max() + df_regular['Low'].min()) / 2
-            preco_atual = df['Close'].iloc[-1]
+            eixo_val = (df_regular['High'].max() + df_regular['Low'].min()) / 2
+            preco_atual = df['Close'].iloc[-1] # Preço de AGORA (Pre-market)
             
             return {
                 "price": preco_atual,
-                "eixo_ontem": eixo_filtrado,
-                "data_eixo": dia_anterior.strftime('%d/%m')
+                "eixo_auto": eixo_val
             }
     except:
         return None
 
-# --- ESTILO VISUAL ---
+# --- ESTILO VISUAL TERMINAL ---
 st.markdown("""
     <style>
     .stApp { background-color: #0b0e11 !important; color: #ffffff !important; }
@@ -57,42 +50,53 @@ st.markdown("""
     .frame-box { border: 2px solid #3d444d; border-top: 4px solid #00f2ff; padding: 20px; background: #0b0e11; border-radius: 4px; }
     .metric-val { font-size: 44px; font-family: 'Arial Black'; font-weight: 900; color: #ffffff; }
     .metric-label { font-size: 14px; color: #00f2ff; font-weight: bold; }
+    .eixo-destaque { border: 2px dashed #00f2ff; color: #ffcc00; text-align: center; padding: 15px; font-size: 26px; font-weight: 900; margin-top: 20px; }
     .elastic-row { display: flex; justify-content: space-between; padding: 5px 10px; border-bottom: 1px solid #1e2226; font-family: 'monospace'; }
     </style>
     """, unsafe_allow_html=True)
 
+# --- HEADER ---
 st.markdown('<div style="display:flex; align-items:center;"><span class="bair-text">BAIR</span><span class="terminal-text">- TERMINAL K97</span></div>', unsafe_allow_html=True)
 
+# Sidebar para ajuste manual do Dólar
 with st.sidebar:
     st.header("⚙️ AJUSTE MANUAL")
     eixo_dol_input = st.number_input("EIXO DOLFUT:", value=5295.50, format="%.2f")
 
-market = fetch_ewz_data()
+# Execução
+market = fetch_ewz()
 
 if market:
-    p_dolfut, v_desvio = calcular_dolfut_k97(market["eixo_ontem"], market["price"], eixo_dol_input)
+    # Eixo EWZ automático (Max+Min)/2 do pregão regular de ontem
+    eixo_ewz_calc = market["eixo_auto"]
+    
+    # Cálculo do seu DOLFUT Sintético
+    p_dolfut, v_desvio = calcular_dolfut_k97(eixo_ewz_calc, market["price"], eixo_dol_input)
 
+    # Painel Principal
     col1, col2 = st.columns(2)
+
     with col1:
         st.markdown('<div class="frame-box">', unsafe_allow_html=True)
-        st.markdown('<div class="metric-label">EWZ (AGORA)</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="metric-label">EWZ (PREÇO ATUAL)</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="metric-val">{market["price"]:.2f}</div>', unsafe_allow_html=True)
-        st.markdown(f'<div style="color: #848e9c; font-size: 14px;">Eixo ({market["data_eixo"]} 11:30-18h): {market["eixo_ontem"]:.2f}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="color: #848e9c; font-size: 18px;">Eixo (11:30-18:00): {eixo_ewz_calc:.2f}</div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
     with col2:
         st.markdown('<div class="frame-box">', unsafe_allow_html=True)
-        st.markdown('<div class="metric-label">DOLFUT SINTÉTICO</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="metric-label">DOLFUT SINTÉTICO (K97)</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="metric-val">{p_dolfut:.2f}</div>', unsafe_allow_html=True)
         color = "#00ff88" if v_desvio >= 0 else "#ff4d4d"
         st.markdown(f'<div style="color: {color}; font-weight:bold; font-size: 20px;">Desvio: {v_desvio:+.2f}%</div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # --- GRID DE VARIÁVEIS ---
+    # --- GRID DE VARIÁVEIS (ELÁSTICO) ---
     st.markdown('<div class="frame-box" style="margin-top:20px; border-top: 4px solid #ffcc00;">', unsafe_allow_html=True)
-    st.markdown('<div class="metric-label" style="color:#ffcc00; margin-bottom:10px;">VARIÁVEIS DE ELÁSTICO</div>', unsafe_allow_html=True)
+    st.markdown('<div class="metric-label" style="color:#ffcc00; margin-bottom:10px;">VARIÁVEIS DE ELÁSTICO (ALVOS)</div>', unsafe_allow_html=True)
     
     p_vars = [1.0, 0.62, 0.31]
+    
     for p in p_vars:
         up = p_dolfut * (1 + (p/100))
         st.markdown(f'<div class="elastic-row"><span style="color:#ff4d4d;">RESISTÊNCIA +{p}%</span> <span>{up:.2f}</span></div>', unsafe_allow_html=True)
@@ -102,10 +106,12 @@ if market:
     for p in reversed(p_vars):
         down = p_dolfut * (1 - (p/100))
         st.markdown(f'<div class="elastic-row"><span style="color:#00ff88;">SUPORTE -{p}%</span> <span>{down:.2f}</span></div>', unsafe_allow_html=True)
+    
     st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="eixo-destaque">EIXO DÓLAR ANCORADO: {eixo_dol_input:.2f}</div>', unsafe_allow_html=True)
 
 else:
-    st.error("Calculando Eixo 11:30-18:00 do dia anterior...")
+    st.error("Buscando dados do mercado...")
 
 time.sleep(5)
 st.rerun()
