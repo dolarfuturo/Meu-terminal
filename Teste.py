@@ -16,12 +16,13 @@ def calcular_dolfut_k97(eixo_ewz, preco_ewz_atual, eixo_dolfut_manual):
     except:
         return eixo_dolfut_manual, 0.0
 
-# --- CAPTURA DE DADOS (EWZ) ---
+# --- CAPTURA DE DADOS (EWZ) - AJUSTADO PARA PRE-MARKET ---
 @st.cache_data(ttl=10)
 def fetch_ewz():
     try:
         t = yf.Ticker("EWZ")
-        df = t.history(period="1d") # Mantido conforme seu código funcional
+        # AJUSTE: interval="1m" e prepost=True para o preço mexer agora cedo
+        df = t.history(period="1d", interval="1m", prepost=True) 
         if not df.empty:
             return {
                 "price": df['Close'].iloc[-1],
