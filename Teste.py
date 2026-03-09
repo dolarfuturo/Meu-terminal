@@ -20,7 +20,7 @@ def calcular_dolfut_k97(eixo_ewz, preco_ewz_atual, eixo_dolfut_manual):
 def fetch_ewz_vivo():
     try:
         t = yf.Ticker("EWZ")
-        # Pega o preço de agora (Pre-market aberto desde as 05:00 BRT)
+        # Pega o preço de agora (Pre-market aberto desde as 06:00 BRT)
         df = t.history(period="1d", interval="1m", prepost=True)
         if not df.empty:
             return df['Close'].iloc[-1]
