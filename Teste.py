@@ -16,27 +16,19 @@ def calcular_dolfut_k97(eixo_ewz, preco_ewz_atual, eixo_dolfut_manual):
     except:
         return eixo_dolfut_manual, 0.0
 
-# --- CAPTURA DE DADOS (EWZ) - AJUSTADA PARA EIXO ONTEM E PRE-MARKET HOJE ---
-@st.cache_data(ttl=5)
+# --- CAPTURA DE DADOS (EWZ) - AJUSTADA PARA PRE-MARKET ---
+@st.cache_data(ttl=5) # Cache reduzido para 5 segundos para não travar
 def fetch_ewz():
     try:
         t = yf.Ticker("EWZ")
-        # Puxa 5 dias para garantir o dia anterior útil
-        df = t.history(period="5d", interval="1m", prepost=True) 
+        # prepost=True busca o movimento de AGORA cedo
+        # interval="1m" garante o último clique do mercado
+        df = t.history(period="1d", interval="1m", prepost=True) 
         if not df.empty:
-            dias = df.index.normalize().unique()
-            dia_anterior = dias[-2] # Penúltimo dia (Ontem útil)
-            
-            # Filtra o Eixo apenas no pregão regular de ontem (11:30 - 18:00)
-            df_ontem = df[df.index.normalize() == dia_anterior]
-            df_regular = df_ontem.between_time('10:30', '17:00')
-            
-            eixo_val = (df_regular['High'].max() + df_regular['Low'].min()) / 2
-            preco_atual = df['Close'].iloc[-1] # Preço de AGORA (Pre-market)
-            
             return {
-                "price": preco_atual,
-                "eixo_auto": eixo_val
+                "price": df['Close'].iloc[-1],
+                "max": df['High'].max(),
+                "min": df['Low'].min()
             }
     except:
         return None
@@ -67,8 +59,8 @@ with st.sidebar:
 market = fetch_ewz()
 
 if market:
-    # Eixo EWZ automático (Max+Min)/2 do pregão regular de ontem
-    eixo_ewz_calc = market["eixo_auto"]
+    # Eixo EWZ automático (Max+Min)/2 conforme seu código
+    eixo_ewz_calc = (market["max"] + market["min"]) / 2
     
     # Cálculo do seu DOLFUT Sintético
     p_dolfut, v_desvio = calcular_dolfut_k97(eixo_ewz_calc, market["price"], eixo_dol_input)
@@ -80,7 +72,7 @@ if market:
         st.markdown('<div class="frame-box">', unsafe_allow_html=True)
         st.markdown(f'<div class="metric-label">EWZ (PREÇO ATUAL)</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="metric-val">{market["price"]:.2f}</div>', unsafe_allow_html=True)
-        st.markdown(f'<div style="color: #848e9c; font-size: 18px;">Eixo (11:30-18:00): {eixo_ewz_calc:.2f}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="color: #848e9c; font-size: 18px;">Eixo Auto: {eixo_ewz_calc:.2f}</div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
     with col2:
@@ -97,6 +89,7 @@ if market:
     
     p_vars = [1.0, 0.62, 0.31]
     
+    # Renderizando Cima e Baixo
     for p in p_vars:
         up = p_dolfut * (1 + (p/100))
         st.markdown(f'<div class="elastic-row"><span style="color:#ff4d4d;">RESISTÊNCIA +{p}%</span> <span>{up:.2f}</span></div>', unsafe_allow_html=True)
@@ -108,10 +101,12 @@ if market:
         st.markdown(f'<div class="elastic-row"><span style="color:#00ff88;">SUPORTE -{p}%</span> <span>{down:.2f}</span></div>', unsafe_allow_html=True)
     
     st.markdown('</div>', unsafe_allow_html=True)
+
     st.markdown(f'<div class="eixo-destaque">EIXO DÓLAR ANCORADO: {eixo_dol_input:.2f}</div>', unsafe_allow_html=True)
 
 else:
-    st.error("Buscando dados do mercado...")
+    st.error("Buscando dados do mercado (Verifique se o Pre-market abriu)...")
 
+# Loop de 5 segundos para maior agilidade no clique
 time.sleep(5)
 st.rerun()
