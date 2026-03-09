@@ -31,11 +31,11 @@ def fetch_ewz_k97():
             # dias_uteis[-1] é hoje (segunda), dias_uteis[-2] é sexta-feira
             dia_anterior = dias_uteis[-2]
             df_ontem = df[df.index.normalize() == dia_anterior]
-            # Filtro estrito: 11:30 às 18:00
-            df_regular = df_ontem.between_time('11:30', '18:00')
+            # Filtro estrito: 10:30 às 17:00
+            df_regular = df_ontem.between_time('10:30', '17:00')
             eixo_fixo = (df_regular['High'].max() + df_regular['Low'].min()) / 2
             
-            # --- 2. PREÇO VIVO (Pre-market de hoje desde as 06h) ---
+            # --- 2. PREÇO VIVO (Pre-market de hoje desde as 05h) ---
             preco_agora = df['Close'].iloc[-1]
             
             return {
