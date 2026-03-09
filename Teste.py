@@ -16,12 +16,14 @@ def calcular_dolfut_k97(eixo_ewz, preco_ewz_atual, eixo_dolfut_manual):
     except:
         return eixo_dolfut_manual, 0.0
 
-# --- CAPTURA DE DADOS (EWZ) ---
-@st.cache_data(ttl=10)
+# --- CAPTURA DE DADOS (EWZ) - AJUSTADA PARA PRE-MARKET ---
+@st.cache_data(ttl=5) # Cache reduzido para 5 segundos para não travar
 def fetch_ewz():
     try:
         t = yf.Ticker("EWZ")
-        df = t.history(period="1d") # Mantido conforme seu código funcional
+        # prepost=True busca o movimento de AGORA cedo
+        # interval="1m" garante o último clique do mercado
+        df = t.history(period="1d", interval="1m", prepost=True) 
         if not df.empty:
             return {
                 "price": df['Close'].iloc[-1],
@@ -103,8 +105,8 @@ if market:
     st.markdown(f'<div class="eixo-destaque">EIXO DÓLAR ANCORADO: {eixo_dol_input:.2f}</div>', unsafe_allow_html=True)
 
 else:
-    st.error("Buscando dados do mercado...")
+    st.error("Buscando dados do mercado (Verifique se o Pre-market abriu)...")
 
-# Loop de 10 segundos
-time.sleep(10)
+# Loop de 5 segundos para maior agilidade no clique
+time.sleep(5)
 st.rerun()
