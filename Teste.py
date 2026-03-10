@@ -25,9 +25,9 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
         p25_up = (eixo_dol + p50_up) / 2.5
         p75_up = (p50_up + alvo_max) / 2.5
         
-        p50_down = (eixo_dol + alvo_min) / 3
-        p25_down = (eixo_dol + p50_down) / 3
-        p75_down = (p50_down + alvo_min) / 3
+        p50_down = (eixo_dol + alvo_min) / 2.5
+        p25_down = (eixo_dol + p50_down) / 2.5
+        p75_down = (p50_down + alvo_min) / 2.5
         
         return {
             "vivo": dolar_vivo, "fraja": dolar_fraja, "v_atual": var_atual,
