@@ -3,7 +3,7 @@ import yfinance as yf
 import time
 
 # Configuração para Tablet
-st.set_page_config(page_title="K97 - TERMINAL COMPACTO", layout="wide")
+st.set_page_config(page_title="K97 - TERMINAL FINAL", layout="wide")
 
 # --- MOTOR DE CÁLCULO K97 ---
 def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
@@ -12,7 +12,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
         var_atual = ((eixo_ewz / p_ewz_atual) - 1) * 100 / 2
         dolar_vivo = eixo_dol * (1 + (var_atual / 100))
         
-        # Cálculo Especial (Divisor 3,6 - Referência Fraja)
+        # Cálculo Especial (Divisor 3,6)
         var_fraja = ((eixo_ewz / p_ewz_atual) - 1) * 100 / 3.6
         dolar_fraja = eixo_dol * (1 + (var_fraja / 100))
         
@@ -30,9 +30,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
         p75_down = (p50_down + alvo_min) / 2
         
         return {
-            "vivo": dolar_vivo, 
-            "fraja": dolar_fraja,
-            "v_atual": var_atual,
+            "vivo": dolar_vivo, "fraja": dolar_fraja, "v_atual": var_atual,
             "max": alvo_max, "p75_up": p75_up, "p50_up": p50_up, "p25_up": p25_up,
             "min": alvo_min, "p75_down": p75_down, "p50_down": p50_down, "p25_down": p25_down
         }
@@ -68,23 +66,29 @@ data = fetch_data()
 if data:
     res = calcular_k97_total(e_ewz, data["at"], data["mx"], data["mn"], e_dol)
     if res:
-        col_esq, col_dir = st.columns([1, 1.2])
-
-        with col_esq:
-            # SINTÉTICO ORIGINAL
+        c1, c2 = st.columns([1, 1.2])
+        with c1:
             st.markdown('<div class="vivo-box">', unsafe_allow_html=True)
-            st.markdown('<div class="label-k97">SINTÉTICO VIVO (2.0)</div>', unsafe_allow_html=True)
+            st.markdown('<div class="label-k97">SINTÉTICO (2.0)</div>', unsafe_allow_html=True)
             st.markdown(f'<div class="valor-vivo">{res["vivo"]:.2f}</div>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-            # SINTÉTICO FRAJA (3.6)
             st.markdown('<div class="fraja-box">', unsafe_allow_html=True)
-            st.markdown('<div class="label-k97" style="color:#ffffff;">SINTÉTICO (3.6)</div>', unsafe_allow_html=True)
+            st.markdown('<div class="label-k97">SINTÉTICO (3.6)</div>', unsafe_allow_html=True)
             st.markdown(f'<div class="valor-fraja">{res["fraja"]:.2f}</div>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
-            
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.metric("EWZ ATUAL", f"{data['at']:.2f}", delta=f"{res['v_atual']:+.2f}%")
+            st.metric("EWZ", f"{data['at']:.2f}", delta=f"{res['v_atual']:+.2f}%")
 
-        with col_dir:
-            st.markdown(f'<div class="price-row-mini" style="color:#ff4d4d; border-top: 2px solid #ff4d4d;"><span>MÁXIMA</span> <span>{res["max"]:.2f}</span></div>', unsafe_allow_html
+        with c2:
+            st.markdown(f'<div class="price-row-mini" style="color:#ff4d4d; border-top: 2px solid #ff4d4d;"><span>MÁXIMA</span> <span>{res["max"]:.2f}</span></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="price-row-mini" style="color:#ff7675;"><span>75% UP</span> <span>{res["p75_up"]:.2f}</span></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="price-row-mini" style="color:#fab1a0;"><span>50% UP</span> <span>{res["p50_up"]:.2f}</span></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="price-row-mini" style="color:#ffeaa7;"><span>25% UP</span> <span>{res["p25_up"]:.2f}</span></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="eixo-box-mini"><div class="label-k97">EIXO: {e_dol:.2f}</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="price-row-mini" style="color:#ffeaa7;"><span>25% DN</span> <span>{res["p25_down"]:.2f}</span></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="price-row-mini" style="color:#81ecec;"><span>50% DN</span> <span>{res["p50_down"]:.2f}</span></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="price-row-mini" style="color:#55efc4;"><span>75% DN</span> <span>{res["p75_down"]:.2f}</span></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="price-row-mini" style="color:#00ff88; border-bottom: 2px solid #00ff88;"><span>MÍNIMA</span> <span>{res["min"]:.2f}</span></div>', unsafe_allow_html=True)
+
+time.sleep(2)
+st.rerun()
