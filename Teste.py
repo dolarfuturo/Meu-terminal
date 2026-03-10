@@ -68,7 +68,7 @@ if preco_agora:
 
     with col2:
         st.markdown('<div class="frame-box">', unsafe_allow_html=True)
-        st.markdown('<div class="metric-label">DÓLAR SINTÉTICO (K97)</div>', unsafe_allow_html=True)
+        st.markdown('<div class="metric-label">DÓLAR SINTÉTICO</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="metric-val">{p_dolfut:.2f}</div>', unsafe_allow_html=True)
         color = "#00ff88" if v_desvio >= 0 else "#ff4d4d"
         st.markdown(f'<div style="color: {color}; font-weight:bold; font-size: 20px;">Desvio: {v_desvio:+.2f}%</div>', unsafe_allow_html=True)
@@ -76,7 +76,7 @@ if preco_agora:
 
     # --- VARIÁVEIS DE ELÁSTICO ---
     st.markdown('<div class="frame-box" style="margin-top:20px; border-top: 4px solid #ffcc00;">', unsafe_allow_html=True)
-    p_vars = [1.0, 0.62, 0.31]
+    p_vars = [1.0, 0.62, 0.25]
     
     for p in p_vars:
         up = p_dolfut * (1 + (p/100))
