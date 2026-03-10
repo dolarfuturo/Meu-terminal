@@ -3,34 +3,37 @@ import yfinance as yf
 import time
 
 # Configuração para Tablet
-st.set_page_config(page_title="K97 - MICROS VARIAVEIS", layout="wide")
+st.set_page_config(page_title="K97 - ESCADA DE PREÇO", layout="wide")
 
-# --- MOTOR DE CÁLCULO K97 (COM FRACIONAMENTO) ---
-def calcular_micros_k97(eixo_ewz, max_ewz, min_ewz, eixo_dol):
+# --- MOTOR DE CÁLCULO K97 (FRAÇÕES) ---
+def calcular_escada_k97(eixo_ewz, max_ewz, min_ewz, eixo_dol):
     try:
-        # 1. Calcular as Variações Máximas conforme sua fórmula
-        var_neg = ((eixo_ewz / max_ewz) - 1) * 100 / 2  # Suporte (EWZ na Max)
-        var_pos = ((eixo_ewz / min_ewz) - 1) * 100 / 2  # Resistência (EWZ na Min)
+        # Variações Máximas
+        var_neg = ((eixo_ewz / max_ewz) - 1) * 100 / 2  # Alvo Baixo
+        var_pos = ((eixo_ewz / min_ewz) - 1) * 100 / 2  # Alvo Cima
         
-        # 2. Alvos Finais de Exaustão
         alvo_max = eixo_dol * (1 + (var_pos / 100))
         alvo_min = eixo_dol * (1 + (var_neg / 100))
         
-        # 3. Gerar Micros Variáveis (Frações 2, 4, 6) entre o Eixo e o Alvo
-        def fracionar(inicio, fim):
-            diff = fim - inicio
-            return {
-                "f2": inicio + (diff / 2),
-                "f4": inicio + (diff / 4),
-                "f6": inicio + (diff / 6)
-            }
+        # Frações para Cima (entre Eixo e Alvo Máximo)
+        diff_cima = alvo_max - eixo_dol
+        cima = {
+            "f2": eixo_dol + (diff_cima / 2),
+            "f4": eixo_dol + (diff_cima / 4),
+            "f6": eixo_dol + (diff_cima / 6)
+        }
         
-        micros_cima = fracionar(eixo_dol, alvo_max)
-        micros_baixo = fracionar(eixo_dol, alvo_min)
+        # Frações para Baixo (entre Eixo e Alvo Mínimo)
+        diff_baixo = alvo_min - eixo_dol
+        baixo = {
+            "f2": eixo_dol + (diff_baixo / 2),
+            "f4": eixo_dol + (diff_baixo / 4),
+            "f6": eixo_dol + (diff_baixo / 6)
+        }
         
-        return alvo_max, alvo_min, micros_cima, micros_baixo, var_pos, var_neg
+        return alvo_max, alvo_min, cima, baixo
     except:
-        return 0, 0, {}, {}, 0, 0
+        return 0, 0, {}, {}
 
 # --- CAPTURA DE DADOS ---
 @st.cache_data(ttl=2)
@@ -38,62 +41,48 @@ def fetch_data():
     try:
         t = yf.Ticker("EWZ")
         df = t.history(period="1d", interval="1m", prepost=True)
-        if not df.empty:
-            return {"at": df['Close'].iloc[-1], "mx": df['High'].max(), "mn": df['Low'].min()}
-        return None
+        return {"at": df['Close'].iloc[-1], "mx": df['High'].max(), "mn": df['Low'].min()} if not df.empty else None
     except: return None
 
 # --- ESTILO VISUAL ---
 st.markdown("""<style>
     .stApp { background-color: #0b0e11 !important; color: #ffffff !important; }
-    .metric-val { font-size: 38px; font-family: 'Arial Black'; font-weight: 900; }
-    .frame-box { border: 1px solid #3d444d; padding: 15px; background: #161b22; border-radius: 4px; margin-bottom: 10px; text-align: center; }
-    .micro-row { display: flex; justify-content: space-between; padding: 5px; border-bottom: 1px solid #2d333b; font-size: 18px; font-family: 'monospace'; }
-    .label-k97 { color: #00f2ff; font-weight: bold; font-size: 14px; }
+    .price-row { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid #2d333b; font-family: 'monospace'; font-size: 22px; font-weight: bold; }
+    .eixo-box { background: #1e2226; border: 2px solid #00f2ff; padding: 15px; text-align: center; margin: 10px 0; border-radius: 5px; }
+    .label-k97 { color: #00f2ff; font-size: 14px; font-weight: bold; }
 </style>""", unsafe_allow_html=True)
 
-st.title("K97 - PONTOS DE CORREÇÃO")
+st.title("K97 - ESCADA DE VOLATILIDADE")
 
-# --- SIDEBAR ---
 with st.sidebar:
-    st.header("⚙️ CALIBRAÇÃO")
+    st.header("⚙️ AJUSTE")
     e_ewz = st.number_input("EIXO EWZ:", value=35.70, format="%.2f")
     e_dol = st.number_input("EIXO DOLFUT:", value=5295.50, format="%.2f")
 
 data = fetch_data()
 
 if data:
-    mx_alvo, mn_alvo, m_cima, m_baixo, v_p, v_n = calcular_micros_k97(e_ewz, data["mx"], data["mn"], e_dol)
+    alvo_up, alvo_down, c, b = calcular_escada_k97(e_ewz, data["mx"], data["mn"], e_dol)
     
-    col1, col2 = st.columns(2)
+    # --- PARTE SUPERIOR (PARA CIMA) ---
+    st.markdown(f'<div class="price-row" style="color:#ff4d4d; border-top: 3px solid #ff4d4d;"><span>MÁXIMA SINTÉTICA (EWZ MÍN)</span> <span>{alvo_up:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="price-row" style="color:#ff7675;"><span>FRAÇÃO 2 (50%)</span> <span>{c["f2"]:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="price-row" style="color:#fab1a0;"><span>FRAÇÃO 4 (25%)</span> <span>{c["f4"]:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="price-row" style="color:#ffeaa7;"><span>FRAÇÃO 6 (16%)</span> <span>{c["f6"]:.2f}</span></div>', unsafe_allow_html=True)
 
-    # --- RESISTÊNCIAS (EWZ NA MÍNIMA) ---
-    with col1:
-        st.markdown('<div class="frame-box" style="border-top: 4px solid #ff4d4d;">', unsafe_allow_html=True)
-        st.markdown(f'<div class="label-k97">MÁXIMA DOLFUT (+{v_p:.2f}%)</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="metric-val" style="color:#ff4d4d;">{mx_alvo:.2f}</div>', unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown(f'<div class="micro-row"><span>FRAÇÃO 2 (50%)</span> <b>{m_cima["f2"]:.2f}</b></div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="micro-row"><span>FRAÇÃO 4 (25%)</span> <b>{m_cima["f4"]:.2f}</b></div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="micro-row"><span>FRAÇÃO 6 (16%)</span> <b>{m_cima["f6"]:.2f}</b></div>', unsafe_allow_html=True)
+    # --- CENTRO (EIXO) ---
+    st.markdown(f'<div class="eixo-box"><div class="label-k97">EIXO DOLFUT (REFERÊNCIA)</div><div style="font-size:35px; font-weight:900;">{e_dol:.2f}</div></div>', unsafe_allow_html=True)
 
-    # --- SUPORTES (EWZ NA MÁXIMA) ---
-    with col2:
-        st.markdown('<div class="frame-box" style="border-top: 4px solid #00ff88;">', unsafe_allow_html=True)
-        st.markdown(f'<div class="label-k97">MÍNIMA DOLFUT ({v_n:.2f}%)</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="metric-val" style="color:#00ff88;">{mn_alvo:.2f}</div>', unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+    # --- PARTE INFERIOR (PARA BAIXO) ---
+    st.markdown(f'<div class="price-row" style="color:#a29bfe;"><span>FRAÇÃO 6 (16%)</span> <span>{b["f6"]:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="price-row" style="color:#81ecec;"><span>FRAÇÃO 4 (25%)</span> <span>{b["f4"]:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="price-row" style="color:#55efc4;"><span>FRAÇÃO 2 (50%)</span> <span>{b["f2"]:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="price-row" style="color:#00ff88; border-bottom: 3px solid #00ff88;"><span>MÍNIMA SINTÉTICA (EWZ MÁX)</span> <span>{alvo_down:.2f}</span></div>', unsafe_allow_html=True)
 
-        st.markdown(f'<div class="micro-row"><span>FRAÇÃO 2 (50%)</span> <b>{m_baixo["f2"]:.2f}</b></div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="micro-row"><span>FRAÇÃO 4 (25%)</span> <b>{m_baixo["f4"]:.2f}</b></div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="micro-row"><span>FRAÇÃO 6 (16%)</span> <b>{m_baixo["f6"]:.2f}</b></div>', unsafe_allow_html=True)
-
-    st.markdown("---")
-    st.info(f"EWZ AGORA: {data['at']:.2f} | MÁX EWZ: {data['mx']:.2f} | MÍN EWZ: {data['mn']:.2f}")
+    st.info(f"EWZ VIVO: {data['at']:.2f} | MÁX: {data['mx']:.2f} | MÍN: {data['mn']:.2f}")
 
 else:
-    st.warning("Aguardando sinal do mercado...")
+    st.warning("Aguardando dados...")
 
 time.sleep(2)
 st.rerun()
