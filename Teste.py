@@ -3,31 +3,30 @@ import yfinance as yf
 import time
 
 # Configuração para Tablet
-st.set_page_config(page_title="K97 - PONTOS MEDIOS", layout="wide")
+st.set_page_config(page_title="K97 - PREÇO VIVO", layout="wide")
 
-# --- MOTOR DE CÁLCULO K97 (PONTOS MÉDIOS) ---
-def calcular_pontos_medios(eixo_ewz, max_ewz, min_ewz, eixo_dol):
+# --- MOTOR DE CÁLCULO K97 ---
+def calcular_k97_completo(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
     try:
-        # 1. Alvos de Exaustão (Sua fórmula base)
+        # 1. VARIAÇÃO REAL AGORA
+        var_atual = ((eixo_ewz / p_ewz_atual) - 1) * 100 / 2
+        dolar_sintetico_vivo = eixo_dol * (1 + (var_atual / 100))
+        
+        # 2. VARIAÇÕES DE EXTREMO (MÁX/MÍN)
         var_neg = ((eixo_ewz / max_ewz) - 1) * 100 / 2
         var_pos = ((eixo_ewz / min_ewz) - 1) * 100 / 2
         
         alvo_max = eixo_dol * (1 + (var_pos / 100))
         alvo_min = eixo_dol * (1 + (var_neg / 100))
         
-        # 2. Divisões para CIMA (Eixo até Máxima)
+        # 3. PONTOS MÉDIOS
         p50_up = (eixo_dol + alvo_max) / 2
-        p25_up = (eixo_dol + p50_up) / 2
-        p75_up = (p50_up + alvo_max) / 2
-        
-        # 3. Divisões para BAIXO (Eixo até Mínima)
         p50_down = (eixo_dol + alvo_min) / 2
-        p25_down = (eixo_dol + p50_down) / 2
-        p75_down = (p50_down + alvo_min) / 2
         
         return {
-            "max": alvo_max, "p75_up": p75_up, "p50_up": p50_up, "p25_up": p25_up,
-            "min": alvo_min, "p75_down": p75_down, "p50_down": p50_down, "p25_down": p25_down
+            "vivo": dolar_sintetico_vivo, "v_atual": var_atual,
+            "max": alvo_max, "p50_up": p50_up,
+            "min": alvo_min, "p50_down": p50_down
         }
     except:
         return None
@@ -46,39 +45,42 @@ def fetch_data():
 # --- ESTILO VISUAL ---
 st.markdown("""<style>
     .stApp { background-color: #0b0e11 !important; color: #ffffff !important; }
-    .price-row { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid #2d333b; font-family: 'monospace'; font-size: 22px; font-weight: bold; }
-    .eixo-box { background: #1e2226; border: 2px solid #00f2ff; padding: 15px; text-align: center; margin: 5px 0; border-radius: 5px; }
+    .vivo-box { background: #161b22; border: 3px solid #ffcc00; padding: 20px; text-align: center; border-radius: 8px; margin-bottom: 20px; }
+    .price-row { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #2d333b; font-family: 'monospace'; font-size: 22px; font-weight: bold; }
     .label-k97 { color: #00f2ff; font-size: 14px; font-weight: bold; }
+    .valor-principal { font-size: 55px; font-family: 'Arial Black'; color: #ffcc00; line-height: 1; }
 </style>""", unsafe_allow_html=True)
 
-st.title("K97 - ESCADA DE PONTOS MÉDIOS")
+st.title("K97 - TERMINAL REAL-TIME")
 
 with st.sidebar:
-    st.header("⚙️ AJUSTE")
-    e_ewz = st.number_input("EIXO EWZ:", value=35.70, format="%.2f")
-    e_dol = st.number_input("EIXO DOLFUT:", value=5295.50, format="%.2f")
+    st.header("⚙️ CALIBRAÇÃO")
+    e_ewz = st.number_input("EIXO EWZ:", value=37.85, format="%.2f")
+    e_dol = st.number_input("EIXO DOLFUT:", value=5219.50, format="%.2f")
 
 data = fetch_data()
 
 if data:
-    res = calcular_pontos_medios(e_ewz, data["mx"], data["mn"], e_dol)
+    res = calcular_k97_completo(e_ewz, data["at"], data["mx"], data["mn"], e_dol)
     
     if res:
-        # --- ZONA DE RESISTÊNCIA (PARA CIMA) ---
-        st.markdown(f'<div class="price-row" style="color:#ff4d4d; border-top: 3px solid #ff4d4d;"><span>MÁXIMA SINTÉTICA</span> <span>{res["max"]:.2f}</span></div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="price-row" style="color:#ff7675;"><span>NÍVEL 75%</span> <span>{res["p75_up"]:.2f}</span></div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="price-row" style="color:#fab1a0;"><span>NÍVEL 50%</span> <span>{res["p50_up"]:.2f}</span></div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="price-row" style="color:#ffeaa7;"><span>NÍVEL 25%</span> <span>{res["p25_up"]:.2f}</span></div>', unsafe_allow_html=True)
+        # --- PREÇO REAL SINTÉTICO (CENTRAL) ---
+        st.markdown('<div class="vivo-box">', unsafe_allow_html=True)
+        st.markdown('<div class="label-k97">DÓLAR SINTÉTICO AGORA (PREÇO REAL)</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="valor-principal">{res["vivo"]:.2f}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="font-size:18px; color:#848e9c;">Var EWZ: {res["v_atual"]:+.2f}%</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
-        # --- CENTRO (EIXO) ---
-        st.markdown(f'<div class="eixo-box"><div class="label-k97">EIXO DOLFUT</div><div style="font-size:35px; font-weight:900;">{e_dol:.2f}</div></div>', unsafe_allow_html=True)
+        # --- ESCADA DE ALVOS ---
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown(f'<div class="price-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res["max"]:.2f}</span></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="price-row" style="color:#fab1a0;"><span>NÍVEL 50%</span> <span>{res["p50_up"]:.2f}</span></div>', unsafe_allow_html=True)
+        with col2:
+            st.markdown(f'<div class="price-row" style="color:#81ecec;"><span>NÍVEL 50%</span> <span>{res["p50_down"]:.2f}</span></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="price-row" style="color:#00ff88;"><span>MÍNIMA</span> <span>{res["min"]:.2f}</span></div>', unsafe_allow_html=True)
 
-        # --- ZONA DE SUPORTE (PARA BAIXO) ---
-        st.markdown(f'<div class="price-row" style="color:#ffeaa7;"><span>NÍVEL 25%</span> <span>{res["p25_down"]:.2f}</span></div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="price-row" style="color:#81ecec;"><span>NÍVEL 50%</span> <span>{res["p50_down"]:.2f}</span></div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="price-row" style="color:#55efc4;"><span>NÍVEL 75%</span> <span>{res["p75_down"]:.2f}</span></div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="price-row" style="color:#00ff88; border-bottom: 3px solid #00ff88;"><span>MÍNIMA SINTÉTICA</span> <span>{res["min"]:.2f}</span></div>', unsafe_allow_html=True)
-
+        st.markdown(f'<div style="text-align:center; padding:10px; background:#1e2226; margin-top:10px;">EIXO REFERÊNCIA: {e_dol:.2f}</div>', unsafe_allow_html=True)
         st.info(f"EWZ VIVO: {data['at']:.2f} | MÁX: {data['mx']:.2f} | MÍN: {data['mn']:.2f}")
 
 time.sleep(2)
