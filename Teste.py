@@ -2,98 +2,98 @@ import streamlit as st
 import yfinance as yf
 import time
 
-# Configuração de Layout para Tablet
-st.set_page_config(page_title="K97 - TERMINAL", layout="wide")
+# Configuração para Tablet
+st.set_page_config(page_title="K97 - VOLATILIDADE", layout="wide")
 
-# --- MOTOR DE CÁLCULO K97 ---
-def calcular_dolfut_k97(eixo_ewz, preco_ewz_atual, eixo_dolfut_manual):
+# --- MOTOR DE CÁLCULO K97 (SUA FÓRMULA) ---
+def calcular_limites_k97(eixo_ewz, max_ewz, min_ewz, eixo_dol):
     try:
-        # Variação: (EIXO MANUAL / PREÇO VIVO - 1) * 100 / 2
-        var_ewz = ((eixo_ewz / preco_ewz_atual) - 1) * 100 / 2
-        preco_sintetico = eixo_dolfut_manual * (1 + (var_ewz / 100))
-        return preco_sintetico, var_ewz
+        # VAR - (Baseada na Máxima do EWZ)
+        # (EIXO / MAX - 1) * 100 / 2
+        var_negativa = ((eixo_ewz / max_ewz) - 1) * 100 / 2
+        
+        # VAR + (Baseada na Mínima do EWZ)
+        # (EIXO / MIN - 1) * 100 / 2
+        var_positiva = ((eixo_ewz / min_ewz) - 1) * 100 / 2
+        
+        # PROJEÇÕES DOLFUT
+        alvo_baixo = eixo_dol * (1 + (var_negativa / 100))
+        alvo_cima = eixo_dol * (1 + (var_positiva / 100))
+        
+        return alvo_cima, alvo_baixo, var_positiva, var_negativa
     except:
-        return eixo_dolfut_manual, 0.0
+        return eixo_dol, eixo_dol, 0.0, 0.0
 
-# --- CAPTURA AUTOMÁTICA DE PREÇO (PRE-MARKET) ---
-@st.cache_data(ttl=2) # Atualização rápida para o clique
-def fetch_ewz_auto():
+# --- CAPTURA DE DADOS EM TEMPO REAL ---
+@st.cache_data(ttl=2)
+def fetch_ewz_data():
     try:
         t = yf.Ticker("EWZ")
-        # Puxa o último preço disponível (incluindo pre-market)
         df = t.history(period="1d", interval="1m", prepost=True)
         if not df.empty:
-            return df['Close'].iloc[-1]
-    except:
-        return None
+            return {
+                "atual": df['Close'].iloc[-1],
+                "max": df['High'].max(),
+                "min": df['Low'].min()
+            }
+    except: return None
 
-# --- ESTILO VISUAL TERMINAL ---
-st.markdown("""
-    <style>
+# --- ESTILO VISUAL ---
+st.markdown("""<style>
     .stApp { background-color: #0b0e11 !important; color: #ffffff !important; }
-    .bair-text { color: #00f2ff; font-family: 'Arial Black'; font-size: 32px; font-weight: 900; }
-    .terminal-text { color: #ffcc00; font-family: 'Arial Black'; font-size: 32px; font-weight: 900; }
-    .frame-box { border: 2px solid #3d444d; border-top: 4px solid #00f2ff; padding: 20px; background: #0b0e11; border-radius: 4px; }
-    .metric-val { font-size: 48px; font-family: 'Arial Black'; font-weight: 900; color: #ffffff; }
-    .metric-label { font-size: 14px; color: #00f2ff; font-weight: bold; }
-    .elastic-row { display: flex; justify-content: space-between; padding: 8px 10px; border-bottom: 1px solid #1e2226; font-family: 'monospace'; font-size: 20px; }
-    .eixo-destaque { border: 2px dashed #00f2ff; color: #ffcc00; text-align: center; padding: 10px; font-size: 22px; font-weight: 900; margin-top: 15px; }
-    </style>
-    """, unsafe_allow_html=True)
+    .metric-val { font-size: 45px; font-family: 'Arial Black'; font-weight: 900; line-height: 1; }
+    .frame-box { border: 2px solid #3d444d; padding: 20px; background: #161b22; border-radius: 4px; text-align: center; }
+    .label-k97 { color: #00f2ff; font-weight: bold; font-size: 14px; margin-bottom: 10px; }
+</style>""", unsafe_allow_html=True)
 
-st.markdown('<div style="display:flex; align-items:center;"><span class="bair-text">BAIR</span><span class="terminal-text">- TERMINAL K97</span></div>', unsafe_allow_html=True)
+st.title("K97 - PROJEÇÃO DE MÁX/MÍN")
 
-# --- SIDEBAR (CONTROLE DE EIXOS) ---
+# --- ENTRADAS MANUAIS ---
 with st.sidebar:
-    st.header("⚙️ AJUSTE MANUAL")
-    # Digite aqui o eixo que você calculou na mão ou viu no gráfico
-    eixo_ewz_input = st.number_input("EIXO EWZ (FIXO):", value=35.70, format="%.2f")
-    eixo_dol_input = st.number_input("EIXO DOLFUT:", value=5295.50, format="%.2f")
+    st.header("⚙️ CALIBRAÇÃO")
+    eixo_ewz_manual = st.number_input("EIXO EWZ (FIXO):", value=35.70, format="%.2f")
+    eixo_dol_manual = st.number_input("EIXO DOLFUT:", value=5295.50, format="%.2f")
 
-# Execução Automática
-preco_agora = fetch_ewz_auto()
+# Execução
+data = fetch_ewz_data()
 
-if preco_agora:
-    p_dolfut, v_desvio = calcular_dolfut_k97(eixo_ewz_input, preco_agora, eixo_dol_input)
+if data:
+    cima, baixo, v_pos, v_neg = calcular_limites_k97(eixo_ewz_manual, data["max"], data["min"], eixo_dol_manual)
+    
+    # Painel EWZ (Referência)
+    st.subheader("📊 MONITORAMENTO EWZ (REAL-TIME)")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("MÍNIMA EWZ", f"{data['min']:.2f}")
+    c2.metric("PREÇO ATUAL", f"{data['atual']:.2f}")
+    c3.metric("MÁXIMA EWZ", f"{data['max']:.2f}")
 
-    # Painel Principal
-    col1, col2 = st.columns(2)
+    st.markdown("---")
 
-    with col1:
-        st.markdown('<div class="frame-box">', unsafe_allow_html=True)
-        st.markdown('<div class="metric-label">EWZ (PREÇO VIVO AUTOMÁTICO)</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="metric-val">{preco_agora:.2f}</div>', unsafe_allow_html=True)
-        st.markdown(f'<div style="color: #848e9c; font-size: 16px;">Eixo Referência: {eixo_ewz_input:.2f}</div>', unsafe_allow_html=True)
+    # Painel DOLFUT (Projeção baseada na sua fórmula)
+    st.subheader("🎯 ALVOS SINTÉTICOS (DOLFUT)")
+    res_col, sup_col = st.columns(2)
+
+    with res_col:
+        st.markdown('<div class="frame-box" style="border-top: 4px solid #ff4d4d;">', unsafe_allow_html=True)
+        st.markdown('<div class="label-k97">DÓLAR NA MÍNIMA DO EWZ (RESISTÊNCIA)</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="metric-val" style="color:#ff4d4d;">{cima:.2f}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="font-weight:bold;">Var: {v_pos:+.2f}%</div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-    with col2:
-        st.markdown('<div class="frame-box">', unsafe_allow_html=True)
-        st.markdown('<div class="metric-label">DÓLAR SINTÉTICO</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="metric-val">{p_dolfut:.2f}</div>', unsafe_allow_html=True)
-        color = "#00ff88" if v_desvio >= 0 else "#ff4d4d"
-        st.markdown(f'<div style="color: {color}; font-weight:bold; font-size: 20px;">Desvio: {v_desvio:+.2f}%</div>', unsafe_allow_html=True)
+    with sup_col:
+        st.markdown('<div class="frame-box" style="border-top: 4px solid #00ff88;">', unsafe_allow_html=True)
+        st.markdown('<div class="label-k97">DÓLAR NA MÁXIMA DO EWZ (SUPORTE)</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="metric-val" style="color:#00ff88;">{baixo:.2f}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="font-weight:bold;">Var: {v_neg:+.2f}%</div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # --- VARIÁVEIS DE ELÁSTICO ---
-    st.markdown('<div class="frame-box" style="margin-top:20px; border-top: 4px solid #ffcc00;">', unsafe_allow_html=True)
-    p_vars = [1.0, 0.62, 0.25]
-    
-    for p in p_vars:
-        up = p_dolfut * (1 + (p/100))
-        st.markdown(f'<div class="elastic-row"><span style="color:#ff4d4d;">RESISTÊNCIA +{p}%</span> <span>{up:.2f}</span></div>', unsafe_allow_html=True)
-    
-    st.markdown(f'<div class="elastic-row" style="background:#1e2226;"><span style="color:#00f2ff;">CENTRO SINTÉTICO</span> <span>{p_dolfut:.2f}</span></div>', unsafe_allow_html=True)
-    
-    for p in reversed(p_vars):
-        down = p_dolfut * (1 - (p/100))
-        st.markdown(f'<div class="elastic-row"><span style="color:#00ff88;">SUPORTE -{p}%</span> <span>{down:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    st.markdown(f'<div class="eixo-destaque">EIXO DÓLAR ANCORADO: {eixo_dol_input:.2f}</div>', unsafe_allow_html=True)
+    # Preço Justo de Agora (Para comparar)
+    var_agora = ((eixo_ewz_manual / data["atual"]) - 1) * 100 / 2
+    justo_agora = eixo_dol_manual * (1 + (var_agora / 100))
+    st.info(f"Dólar Sintético Atual: {justo_agora:.2f} (Variação: {var_agora:+.2f}%)")
 
 else:
-    st.error("Conectando ao sinal automático do EWZ...")
+    st.error("Buscando dados do mercado...")
 
-# Loop rápido de 2 segundos para não perder o movimento
 time.sleep(2)
 st.rerun()
