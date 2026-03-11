@@ -11,7 +11,7 @@ st.set_page_config(page_title="K97 - ARBITRAGE SYSTEM", layout="wide")
 def buscar_eixo_automatico():
     try:
         t = yf.Ticker("EWZ")
-        df = t.history(period="5d", interval="15m", prepost=False)
+        df = t.history(period="5d", interval="30m", prepost=False)
         if df.empty: return 37.85, 0, 0
         
         datas = df.index.normalize().unique()
