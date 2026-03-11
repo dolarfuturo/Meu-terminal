@@ -28,25 +28,27 @@ def calcular_eixo_automatico():
 # --- MOTOR DE CÁLCULO K97 ---
 def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
     try:
+        # Sintético (2.0)
         var_atual = ((eixo_ewz / p_ewz_atual) - 1) * 100 / 1.5
         dolar_vivo = eixo_dol * (1 + (var_atual / 100))
+        
+        # Sintético (3.6 / Fraja)
         var_fraja = ((eixo_ewz / p_ewz_atual) - 1) * 100 / 5.3
         dolar_fraja = eixo_dol * (1 + (var_fraja / 100))
         
+        # CÁLCULO DO MÉDIO REAL (50% do Movimento de Hoje)
+        medio_ewz_hoje = (max_ewz + min_ewz) / 2
+        var_medio = ((eixo_ewz / medio_ewz_hoje) - 1) * 100 / 1.5
+        dolar_medio = eixo_dol * (1 + (var_medio / 100))
+        
+        # Escada de Alvos
         v_neg = ((eixo_ewz / max_ewz) - 1) * 100 / 2.66
         v_pos = ((eixo_ewz / min_ewz) - 1) * 100 / 2.66
         alvo_max = eixo_dol * (1 + (v_pos / 100))
         alvo_min = eixo_dol * (1 + (v_neg / 100))
         
-        # CÁLCULO DO MÉDIO REAL DO DIA (50% do movimento de hoje)
-        # Usando a variação do EWZ para projetar onde seria o 50% no dólar
-        medio_dia_ewz = (max_ewz + min_ewz) / 2
-        var_medio = ((eixo_ewz / medio_dia_ewz) - 1) * 100 / 1.5
-        dolar_medio_real = eixo_dol * (1 + (var_medio / 100))
-        
         return {
-            "vivo": dolar_vivo, "fraja": dolar_fraja, "v_atual": var_atual,
-            "medio_real": dolar_medio_real,
+            "vivo": dolar_vivo, "fraja": dolar_fraja, "medio": dolar_medio, "v_atual": var_atual,
             "max": alvo_max, "p75_up": (eixo_dol + (alvo_max - eixo_dol)*0.75), 
             "p50_up": (eixo_dol + alvo_max) / 2, 
             "p25_up": (eixo_dol + (alvo_max - eixo_dol)*0.25),
@@ -61,15 +63,15 @@ def fetch_data():
     try:
         t = yf.Ticker("EWZ")
         df = t.history(period="1d", interval="1m", prepost=True)
-        if df.empty: return None
         return {"at": df['Close'].iloc[-1], "mx_real": df['High'].max(), "mn_real": df['Low'].min()}
     except: return None
 
 # --- ESTILO VISUAL ---
 st.markdown("""<style>
     .stApp { background-color: #0b0e11 !important; color: #ffffff !important; }
-    .vivo-box { background: #161b22; border: 2px solid #ffcc00; padding: 15px; text-align: center; border-radius: 8px; margin-bottom: 10px; }
-    .medio-box { background: #1e2226; border-left: 5px solid #00f2ff; padding: 10px; text-align: center; border-radius: 4px; margin: 10px 0; }
+    .vivo-box { background: #161b22; border: 2px solid #ffcc00; padding: 15px; text-align: center; border-radius: 8px; margin-bottom: 8px; }
+    .medio-box { background: #1e2226; border-left: 5px solid #00f2ff; padding: 10px; text-align: center; border-radius: 4px; margin-bottom: 8px; }
+    .fraja-box { background: #1c1c1c; border: 1px dashed #888; padding: 10px; text-align: center; border-radius: 8px; }
     .price-row-mini { display: flex; justify-content: space-between; padding: 4px 8px; border-bottom: 1px solid #2d333b; font-family: 'monospace'; font-size: 16px; font-weight: bold; }
     .label-k97 { color: #00f2ff; font-size: 12px; font-weight: bold; }
     .valor-vivo { font-size: 42px; font-family: 'Arial Black'; color: #ffcc00; line-height: 1; }
@@ -91,8 +93,10 @@ if data:
         with c1:
             st.markdown(f'<div class="vivo-box"><div class="label-k97">SINTÉTICO (2.0)</div><div class="valor-vivo">{res["vivo"]:.2f}</div></div>', unsafe_allow_html=True)
             
-            # NOVO: DESTAQUE DO MÉDIO REAL DO DIA
-            st.markdown(f'<div class="medio-box"><div style="color:#00f2ff; font-size:11px;">MÉDIO REAL (50% DIA)</div><div style="font-size:24px; font-weight:bold; color:#ffffff;">{res["medio_real"]:.2f}</div></div>', unsafe_allow_html=True)
+            # ADICIONADO: MÉDIO SINTÉTICO (50% DO DIA)
+            st.markdown(f'<div class="medio-box"><div class="label-k97">SINTÉTICO MÉDIO (50% DIA)</div><div style="font-size:24px; font-weight:bold;">{res["medio"]:.2f}</div></div>', unsafe_allow_html=True)
+            
+            st.markdown(f'<div class="fraja-box"><div class="label-k97">SINTÉTICO (3.6)</div><div style="font-size:20px; font-weight:bold;">{res["fraja"]:.2f}</div></div>', unsafe_allow_html=True)
             
             st.metric("EWZ VIVO", f"{data['at']:.2f}", delta=f"{res['v_atual']:+.2f}%")
             st.markdown(f"MAX REAL: <span style='color:#ff4d4d'>{data['mx_real']:.2f}</span> | MIN REAL: <span style='color:#00ff88'>{data['mn_real']:.2f}</span>", unsafe_allow_html=True)
