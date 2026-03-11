@@ -49,6 +49,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
         
         return {
             "vivo": dolar_vivo, "fraja": dolar_fraja, "medio": dolar_medio, "v_atual": var_atual,
+            "medio_ewz": medio_ewz_hoje,
             "max": alvo_max, "p75_up": (eixo_dol + (alvo_max - eixo_dol)*0.75), 
             "p50_up": (eixo_dol + alvo_max) / 2, 
             "p25_up": (eixo_dol + (alvo_max - eixo_dol)*0.25),
@@ -75,6 +76,7 @@ st.markdown("""<style>
     .price-row-mini { display: flex; justify-content: space-between; padding: 4px 8px; border-bottom: 1px solid #2d333b; font-family: 'monospace'; font-size: 16px; font-weight: bold; }
     .label-k97 { color: #00f2ff; font-size: 12px; font-weight: bold; }
     .valor-vivo { font-size: 42px; font-family: 'Arial Black'; color: #ffcc00; line-height: 1; }
+    .ewz-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-top: 10px; text-align: center; font-size: 13px; font-family: 'monospace'; }
 </style>""", unsafe_allow_html=True)
 
 eixo_sugerido, mx_ref, mn_ref = calcular_eixo_automatico()
@@ -93,13 +95,21 @@ if data:
         with c1:
             st.markdown(f'<div class="vivo-box"><div class="label-k97">SINTÉTICO (2.0)</div><div class="valor-vivo">{res["vivo"]:.2f}</div></div>', unsafe_allow_html=True)
             
-            # ADICIONADO: MÉDIO SINTÉTICO (50% DO DIA)
+            # SINTÉTICO MÉDIO (SÓ MUDA SE MX/MN MUDAR)
             st.markdown(f'<div class="medio-box"><div class="label-k97">SINTÉTICO MÉDIO (50% DIA)</div><div style="font-size:24px; font-weight:bold;">{res["medio"]:.2f}</div></div>', unsafe_allow_html=True)
             
             st.markdown(f'<div class="fraja-box"><div class="label-k97">SINTÉTICO (3.6)</div><div style="font-size:20px; font-weight:bold;">{res["fraja"]:.2f}</div></div>', unsafe_allow_html=True)
             
             st.metric("EWZ VIVO", f"{data['at']:.2f}", delta=f"{res['v_atual']:+.2f}%")
-            st.markdown(f"MAX REAL: <span style='color:#ff4d4d'>{data['mx_real']:.2f}</span> | MIN REAL: <span style='color:#00ff88'>{data['mn_real']:.2f}</span>", unsafe_allow_html=True)
+            
+            # GRID EWZ: MÁX | MÉDIO | MÍN
+            st.markdown(f"""
+            <div class="ewz-grid">
+                <div><span style="color:#ff4d4d">MAX EWZ</span><br>{data['mx_real']:.2f}</div>
+                <div><span style="color:#00f2ff">MED EWZ</span><br>{res['medio_ewz']:.2f}</div>
+                <div><span style="color:#00ff88">MIN EWZ</span><br>{data['mn_real']:.2f}</div>
+            </div>
+            """, unsafe_allow_html=True)
 
         with c2:
             st.markdown(f'<div class="price-row-mini" style="color:#ff4d4d; border-top: 2px solid #ff4d4d;"><span>MÁXIMA</span> <span>{res["max"]:.2f}</span></div>', unsafe_allow_html=True)
