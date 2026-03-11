@@ -40,8 +40,8 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
         var_fraja = ((eixo_ewz / p_ewz_atual) - 1) * 100 / 5.0
         dolar_fraja = eixo_dol * (1 + (var_fraja / 100))
         
-        v_neg = ((eixo_ewz / max_ewz) - 1) * 100 / 2
-        v_pos = ((eixo_ewz / min_ewz) - 1) * 100 / 2
+        v_neg = ((eixo_ewz / max_ewz) - 1) * 100 / 2.66
+        v_pos = ((eixo_ewz / min_ewz) - 1) * 100 / 2.66
         alvo_max = eixo_dol * (1 + (v_pos / 100))
         alvo_min = eixo_dol * (1 + (v_neg / 100))
         
