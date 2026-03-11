@@ -1,61 +1,27 @@
 import streamlit as st
 import yfinance as yf
 import time
-from datetime import datetime
-import pytz
 
 # Configuração para Tablet
 st.set_page_config(page_title="K97 - ARBITRAGE SYSTEM", layout="wide")
 
-# --- MOTOR DE BUSCA E CÁLCULO AUTOMÁTICO ---
-def buscar_eixo_automatico():
-    try:
-        t = yf.Ticker("EWZ")
-        df = t.history(period="5d", interval="30m", prepost=False)
-        if df.empty: return 37.85, 0, 0
-        
-        datas = df.index.normalize().unique()
-        agora = datetime.now(pytz.timezone('America/Sao_Paulo'))
-        
-        # Referência: Ontem ou hoje após fechamento
-        data_ref = datas[-1] if agora.hour >= 18 else datas[-2]
-        df_dia = df.loc[data_ref.strftime('%Y-%m-%d')]
-        df_sessao = df_dia.between_time('09:30', '16:00')
-        
-        mx = df_sessao['High'].max()
-        mn = df_sessao['Low'].min()
-        return (mx + mn) / 2, mx, mn
-    except:
-        return 37.85, 0, 0
-
-# Inicialização do Estado (Session State) para o Eixo Automático
-if 'eixo_manual' not in st.session_state:
-    eixo_auto, mx_r, mn_r = buscar_eixo_automatico()
-    st.session_state.eixo_manual = float(eixo_auto)
-    st.session_state.mx_ref = mx_r
-    st.session_state.mn_ref = mn_r
-
 # --- MOTOR K97 ---
-def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
+def calcular_k97(eixo_ewz, p_atual, mx_ref, mn_ref, e_dol):
     try:
-        var_atual = ((eixo_ewz / p_ewz_atual) - 1) * 100 / 2
-        dolar_vivo = eixo_dol * (1 + (var_atual / 100))
-        var_fraja = ((eixo_ewz / p_ewz_atual) - 1) * 100 / 3.6
-        dolar_fraja = eixo_dol * (1 + (var_fraja / 100))
+        # Variação Sintética (2.0)
+        var_atual = ((eixo_ewz / p_atual) - 1) * 100 / 2
+        dolar_vivo = e_dol * (1 + (var_atual / 100))
         
-        v_neg = ((eixo_ewz / max_ewz) - 1) * 100 / 2
-        v_pos = ((eixo_ewz / min_ewz) - 1) * 100 / 2
-        alvo_max = eixo_dol * (1 + (v_pos / 100))
-        alvo_min = eixo_dol * (1 + (v_neg / 100))
+        # Projeção da Escada (Volatilidade Real de Terça)
+        v_neg = ((eixo_ewz / mx_ref) - 1) * 100 / 2
+        v_pos = ((eixo_ewz / mn_ref) - 1) * 100 / 2
+        alvo_max = e_dol * (1 + (v_pos / 100))
+        alvo_min = e_dol * (1 + (v_neg / 100))
         
         return {
-            "vivo": dolar_vivo, "fraja": dolar_fraja, "v_atual": var_atual,
-            "max": alvo_max, "p75_up": (eixo_dol + (alvo_max - eixo_dol)*0.75), 
-            "p50_up": (eixo_dol + alvo_max) / 2, 
-            "p25_up": (eixo_dol + (alvo_max - eixo_dol)*0.25),
-            "min": alvo_min, "p75_down": (eixo_dol + (alvo_min - eixo_dol)*0.75), 
-            "p50_down": (eixo_dol + alvo_min) / 2, 
-            "p25_down": (eixo_dol + (alvo_min - eixo_dol)*0.25)
+            "vivo": dolar_vivo, "v_at": var_atual,
+            "max": alvo_max, "p50_up": (e_dol + alvo_max) / 2,
+            "min": alvo_min, "p50_down": (e_dol + alvo_min) / 2
         }
     except: return None
 
@@ -65,52 +31,40 @@ def fetch_data():
         t = yf.Ticker("EWZ")
         df = t.history(period="1d", interval="1m", prepost=True)
         if df.empty: return None
-        return {"at": df['Close'].iloc[-1], "mx_real": df['High'].max(), "mn_real": df['Low'].min()}
+        return {"at": df['Close'].iloc[-1]}
     except: return None
 
-# --- CSS E LAYOUT ---
+# --- UI / ESTILO ---
 st.markdown("""<style>
     .stApp { background-color: #0b0e11 !important; color: #ffffff !important; }
-    .vivo-box { background: #161b22; border: 2px solid #ffcc00; padding: 15px; text-align: center; border-radius: 8px; }
-    .price-row-mini { display: flex; justify-content: space-between; padding: 4px 8px; border-bottom: 1px solid #2d333b; font-family: 'monospace'; font-size: 16px; font-weight: bold; }
-    .valor-vivo { font-size: 44px; font-family: 'Arial Black'; color: #ffcc00; line-height: 1; }
+    .vivo-box { background: #161b22; border: 2px solid #ffcc00; padding: 20px; text-align: center; border-radius: 8px; }
+    .price-row { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #2d333b; font-family: 'monospace'; font-size: 20px; font-weight: bold; }
 </style>""", unsafe_allow_html=True)
 
 with st.sidebar:
-    st.header("⚙️ K97 SETUP")
-    # O valor padrão (value) é o que foi calculado automaticamente no início
-    e_ewz = st.number_input("EIXO EWZ (AUTO/MANUAL):", value=st.session_state.eixo_manual, format="%.2f", step=0.01)
+    st.header("⚙️ K97 RESET")
+    # Valores travados conforme sua validação
+    e_ewz = st.number_input("EIXO EWZ (FIXO):", value=37.50, format="%.2f")
+    mx_ref = st.number_input("MAX REF (TERÇA):", value=38.13, format="%.2f")
+    mn_ref = st.number_input("MIN REF (TERÇA):", value=36.86, format="%.2f")
     e_dol = st.number_input("EIXO DOLFUT:", value=5219.50, format="%.2f", step=0.5)
-    st.markdown("---")
-    st.write(f"Ref. Máxima: {st.session_state.mx_ref:.2f}")
-    st.write(f"Ref. Mínima: {st.session_state.mn_ref:.2f}")
-    if st.button("Resetar p/ Automático"):
-        del st.session_state.eixo_manual
-        st.rerun()
 
 data = fetch_data()
 
 if data:
-    res = calcular_k97_total(e_ewz, data["at"], data["mx_real"], data["mn_real"], e_dol)
+    res = calcular_k97(e_ewz, data['at'], mx_ref, mn_ref, e_dol)
     if res:
         c1, c2 = st.columns([1, 1.2])
         with c1:
-            st.markdown(f'<div class="vivo-box"><div style="color:#00f2ff; font-size:12px;">SINTÉTICO (2.0)</div><div class="valor-vivo">{res["vivo"]:.2f}</div></div>', unsafe_allow_html=True)
-            st.metric("EWZ VIVO", f"{data['at']:.2f}", delta=f"{res['v_atual']:+.2f}%")
-            st.write(f"Sintético (3.6): **{res['fraja']:.2f}**")
-            st.markdown(f"MAX REAL: <span style='color:#ff4d4d'>{data['mx_real']:.2f}</span>", unsafe_allow_html=True)
-            st.markdown(f"MIN REAL: <span style='color:#00ff88'>{data['mn_real']:.2f}</span>", unsafe_allow_html=True)
-
+            st.markdown(f'<div class="vivo-box"><div style="color:#00f2ff; font-size:14px;">DÓLAR SINTÉTICO (2.0)</div><div style="font-size:55px; font-family:Arial Black; color:#ffcc00;">{res["vivo"]:.2f}</div></div>', unsafe_allow_html=True)
+            st.metric("EWZ VIVO", f"{data['at']:.2f}", delta=f"{res['v_at']:+.2f}%")
+            
         with c2:
-            st.markdown(f'<div class="price-row-mini" style="color:#ff4d4d; border-top: 2px solid #ff4d4d;"><span>MÁXIMA</span> <span>{res["max"]:.2f}</span></div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="price-row-mini" style="color:#ff7675;"><span>75% UP</span> <span>{res["p75_up"]:.2f}</span></div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="price-row-mini" style="color:#fab1a0;"><span>50% UP</span> <span>{res["p50_up"]:.2f}</span></div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="price-row-mini" style="color:#ffeaa7;"><span>25% UP</span> <span>{res["p25_up"]:.2f}</span></div>', unsafe_allow_html=True)
-            st.markdown(f'<div style="text-align:center; padding:5px; color:#00f2ff; font-weight:bold;">EIXO: {e_dol:.2f}</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="price-row-mini" style="color:#ffeaa7;"><span>25% DN</span> <span>{res["p25_down"]:.2f}</span></div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="price-row-mini" style="color:#81ecec;"><span>50% DN</span> <span>{res["p50_down"]:.2f}</span></div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="price-row-mini" style="color:#55efc4;"><span>75% DN</span> <span>{res["p75_down"]:.2f}</span></div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="price-row-mini" style="color:#00ff88; border-bottom: 2px solid #00ff88;"><span>MÍNIMA</span> <span>{res["min"]:.2f}</span></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="price-row" style="color:#ff4d4d; border-top: 2px solid #ff4d4d;"><span>MÁXIMA</span> <span>{res["max"]:.2f}</span></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="price-row" style="color:#fab1a0;"><span>50% UP</span> <span>{res["p50_up"]:.2f}</span></div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="text-align:center; padding:15px; color:#00f2ff; font-weight:bold; font-size:20px;">EIXO: {e_dol:.2f}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="price-row" style="color:#81ecec;"><span>50% DN</span> <span>{res["p50_down"]:.2f}</span></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="price-row" style="color:#00ff88; border-bottom: 2px solid #00ff88;"><span>MÍNIMA</span> <span>{res["min"]:.2f}</span></div>', unsafe_allow_html=True)
 
 time.sleep(2)
 st.rerun()
