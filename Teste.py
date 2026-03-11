@@ -38,7 +38,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
         
         # CÁLCULO DO MÉDIO REAL (50% do Movimento de Hoje)
         medio_ewz_hoje = (max_ewz + min_ewz) / 2
-        var_medio = ((eixo_ewz / medio_ewz_hoje) - 1) * 100 / 
+        var_medio = ((eixo_ewz / medio_ewz_hoje) - 1) * 100 
         dolar_medio = eixo_dol * (1 + (var_medio / 100))
         
         # Escada de Alvos
