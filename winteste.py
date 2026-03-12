@@ -52,8 +52,8 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_index, div_
         index_medio = eixo_index * (1 + (var_medio / 100)) 
         
         # Alvos de Máxima e Mínima (Divisor fixo / 3 como no original)
-        v_neg = ((p_ewz_atual / max_ewz) - 1) * 100 / 3
-        v_pos = ((p_ewz_atual / min_ewz) - 1) * 100 / 3
+        v_neg = ((p_ewz_atual / max_ewz) - 1) * 100 / 2.5
+        v_pos = ((p_ewz_atual / min_ewz) - 1) * 100 / 2.5
         alvo_max = eixo_index * (1 + (v_pos / 100))
         alvo_min = eixo_index * (1 + (v_neg / 100))
         
