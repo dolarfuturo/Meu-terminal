@@ -44,8 +44,8 @@ def calcular_k97_index(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_index):
         var_medio = ((p_ewz_atual / ewz_medio_dia) - 1) * 100 
         index_medio = eixo_index * (1 + (var_medio / 100)) 
         
-        v_alta = ((max_ewz / eixo_ewz) - 1) * 100 / 3
-        v_baixa = ((min_ewz / eixo_ewz) - 1) * 100 / 3
+        v_alta = ((max_ewz / eixo_ewz) - 1) * 100 / 2
+        v_baixa = ((min_ewz / eixo_ewz) - 1) * 100 / 2
         
         alvo_max = eixo_index * (1 + (v_alta / 100))
         alvo_min = eixo_index * (1 + (v_baixa / 100))
