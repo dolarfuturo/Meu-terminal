@@ -36,9 +36,9 @@ def calcular_eixo_automatico():
 # --- MOTOR DE CÁLCULO K97 INDEX (INVERTIDO) ---
 def calcular_k97_index(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_index):
     try:
-        var_base = ((p_ewz_atual / eixo_ewz) - 1) * 100 / 1.5
+        var_base = ((p_ewz_atual / eixo_ewz) - 1) * 100 
         index_vivo = eixo_index * (1 + (var_base * 1.8 / 100)) 
-        index_fraja = eixo_index * (1 + (var_base * 1.2 / 100)) / 4.5
+        index_fraja = eixo_index * (1 + (var_base * 1.2 / 100)) 
         
         ewz_medio_dia = (max_ewz + min_ewz) / 2
         var_medio = ((p_ewz_atual / ewz_medio_dia) - 1) * 100 
