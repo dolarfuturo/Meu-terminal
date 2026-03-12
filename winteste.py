@@ -4,17 +4,15 @@ import time
 from datetime import datetime
 import pytz
 
-# Configuração para Tablet - MODO ÍNDICE K97 CALIBRÁVEL
+# Configuração para Tablet - K97 INDEX (MOTOR ORIGINAL)
 st.set_page_config(page_title="K97 INDEX - TERMINAL", layout="wide")
 
-# Função auxiliar para formatação de milhar brasileira (130.500)
 def fmt_m(valor):
     try:
         return f"{int(valor):,}".replace(",", ".")
     except:
         return str(valor)
 
-# --- CÁLCULO AUTOMÁTICO DO EIXO EWZ ---
 @st.cache_data(ttl=600)
 def calcular_eixo_automatico():
     try:
@@ -30,30 +28,29 @@ def calcular_eixo_automatico():
         mn = df_sessao['Low'].min()
         eixo = (mx + mn) / 2
         return eixo, mx, mn
-    except:
-        return 37.85, 0, 0
+    except: return 37.85, 0, 0
 
-# --- MOTOR DE CÁLCULO K97 INDEX (ESTILO DÓLAR) ---
+# --- MOTOR DE CÁLCULO K97 INDEX (IGUAL AO DÓLAR) ---
 def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_index, div_vivo, div_fraja):
     try:
-        # Variação direta do EWZ
+        # Variação pura do EWZ
         v_pura = ((p_ewz_atual / eixo_ewz) - 1) * 100
         
-        # Cálculo usando os divisores (Igual ao seu código de dólar)
+        # SINTÉTICO VIVO (2.0) - SEM MULTIPLICADOR
         var_vivo = v_pura / div_vivo
         index_vivo = eixo_index * (1 + (var_vivo / 100))
         
+        # SINTÉTICO FRAJA (3.6) - SEM MULTIPLICADOR
         var_fraja = v_pura / div_fraja
         index_fraja = eixo_index * (1 + (var_fraja / 100))
         
-        # --- CÁLCULO SINTÉTICO MÉDIO ---
         ewz_medio_dia = (max_ewz + min_ewz) / 2
         var_medio = ((p_ewz_atual / ewz_medio_dia) - 1) * 100 
         index_medio = eixo_index * (1 + (var_medio / 100)) 
         
-        # Alvos de Máxima e Mínima (Divisor fixo / 3 como no original)
-        v_neg = ((p_ewz_atual / max_ewz) - 1) * 100 / 2.5
-        v_pos = ((p_ewz_atual / min_ewz) - 1) * 100 / 2.5
+        # Alvos fixos seguindo a lógica original
+        v_neg = ((p_ewz_atual / max_ewz) - 1) * 100 / 3
+        v_pos = ((p_ewz_atual / min_ewz) - 1) * 100 / 3
         alvo_max = eixo_index * (1 + (v_pos / 100))
         alvo_min = eixo_index * (1 + (v_neg / 100))
         
@@ -78,7 +75,7 @@ def fetch_data():
         return {"at": df['Close'].iloc[-1], "mx_real": df['High'].max(), "mn_real": df['Low'].min()}
     except: return None
 
-# --- ESTILO VISUAL ---
+# --- CSS E LAYOUT ---
 st.markdown("""<style>
     .stApp { background-color: #0b0e11 !important; color: #ffffff !important; }
     .vivo-box { background: #161b22; border: 2px solid #00f2ff; padding: 15px; text-align: center; border-radius: 8px; margin-bottom: 10px; }
@@ -90,15 +87,15 @@ st.markdown("""<style>
     .valor-vivo { font-size: 42px; font-family: 'Arial Black'; color: #00f2ff; line-height: 1; }
 </style>""", unsafe_allow_html=True)
 
-eixo_sugerido, mx_ref, mn_ref = calcular_eixo_automatico()
+eixo_sugerido, _, _ = calcular_eixo_automatico()
 
 with st.sidebar:
-    st.header("⚙️ CALIBRAGEM")
+    st.header("⚙️ AJUSTE WIN")
     e_ewz = st.number_input("EIXO EWZ:", value=float(eixo_sugerido), format="%.2f")
-    e_index = st.number_input("EIXO WIN:", value=130500, step=50)
+    e_index = st.number_input("EIXO INDEX:", value=130500, step=50)
     st.markdown("---")
-    d_vivo = st.slider("DIVISOR VIVO (2.0):", 0.5, 10.0, 1.5)
-    d_fraja = st.slider("DIVISOR FRAJA (3.6):", 0.5, 10.0, 4.5)
+    d_vivo = st.number_input("DIVISOR VIVO (2.0):", value=1.5, step=0.1)
+    d_fraja = st.number_input("DIVISOR FRAJA (3.6):", value=4.5, step=0.1)
 
 data = fetch_data()
 
@@ -108,7 +105,7 @@ if data:
         c1, c2 = st.columns([1, 1.2])
         with c1:
             st.markdown(f'<div class="vivo-box"><div class="label-k97">SINTÉTICO INDEX (2.0)</div><div class="valor-vivo">{fmt_m(res["vivo"])}</div></div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="medio-box"><div class="label-k97">SINTÉTICO MÉDIO (50%)</div><div style="font-size:25px; font-weight:bold; color:#ffcc00;">{fmt_m(res["medio"])}</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="medio-box"><div class="label-k97">SINTÉTICO MÉDIO</div><div style="font-size:25px; font-weight:bold; color:#ffcc00;">{fmt_m(res["medio"])}</div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="fraja-box"><div class="label-k97">SINTÉTICO (3.6)</div><div style="font-size:25px; font-weight:bold;">{fmt_m(res["fraja"])}</div></div>', unsafe_allow_html=True)
             st.metric("EWZ VIVO", f"{data['at']:.2f}", delta=f"{res['v_atual']:+.2f}%")
             
@@ -117,4 +114,11 @@ if data:
             st.markdown(f'<div class="price-row-mini" style="color:#55efc4;"><span>75% UP</span> <span>{fmt_m(res["p75_up"])}</span></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="price-row-mini" style="color:#81ecec;"><span>50% UP</span> <span>{fmt_m(res["p50_up"])}</span></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="price-row-mini" style="color:#ffeaa7;"><span>25% UP</span> <span>{fmt_m(res["p25_up"])}</span></div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="eixo-box-mini"><div class
+            st.markdown(f'<div class="eixo-box-mini"><div class="label-k97">EIXO WIN: {fmt_m(e_index)}</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="price-row-mini" style="color:#ffeaa7;"><span>25% DN</span> <span>{fmt_m(res["p25_down"])}</span></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="price-row-mini" style="color:#fab1a0;"><span>50% DN</span> <span>{fmt_m(res["p50_down"])}</span></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="price-row-mini" style="color:#ff7675;"><span>75% DN</span> <span>{fmt_m(res["p75_down"])}</span></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="price-row-mini" style="color:#ff4d4d; border-bottom: 2px solid #ff4d4d;"><span>MÍNIMA</span> <span>{fmt_m(res["min"])}</span></div>', unsafe_allow_html=True)
+
+time.sleep(2)
+st.rerun()
