@@ -45,8 +45,8 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
         var_medio = ((eixo_ewz / ewz_medio_dia) - 1) * 100 
         dolar_medio = eixo_dol * (1 + (var_medio / 100)) 
         
-        v_neg = ((eixo_ewz / max_ewz) - 1) * 100 / 2.66
-        v_pos = ((eixo_ewz / min_ewz) - 1) * 100 / 2.66
+        v_neg = ((eixo_ewz / max_ewz) - 1) * 100 / 1.5
+        v_pos = ((eixo_ewz / min_ewz) - 1) * 100 / 1.5
         alvo_max = eixo_dol * (1 + (v_pos / 100))
         alvo_min = eixo_dol * (1 + (v_neg / 100))
         
