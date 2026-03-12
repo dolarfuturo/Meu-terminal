@@ -95,7 +95,7 @@ eixo_sugerido, mx_ref, mn_ref = calcular_eixo_automatico()
 with st.sidebar:
     st.header("⚙️ AJUSTE")
     e_ewz = st.number_input("EIXO EWZ:", value=float(eixo_sugerido), format="%.2f")
-    e_dol = st.number_input("EIXO DOLFUT:", value=5219.50, format="%.2f")
+    e_dol = st.number_input("EIXO WIN:", value=130500, step=50, format="%.0f")
     st.markdown("---")
     st.write(f"Ref. Calculada: **{eixo_sugerido:.2f}**")
     st.write(f"MAX EWZ ONTEM: **{mx_ref:.2f}**")
