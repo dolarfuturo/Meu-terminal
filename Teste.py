@@ -42,7 +42,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
         
         # --- CÁLCULO SINTÉTICO MÉDIO (50% DA MÁX/MÍN DO DIA) ---
         ewz_medio_dia = (max_ewz + min_ewz) / 2
-        var_medio = ((eixo_ewz / ewz_medio_dia) - 1) * 100 / 2
+        var_medio = ((eixo_ewz / ewz_medio_dia) - 1) * 100 
         dolar_medio = eixo_dol * (1 + (var_medio / 100)) 
         
         v_neg = ((eixo_ewz / max_ewz) - 1) * 100 / 3
