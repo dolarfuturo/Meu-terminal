@@ -19,7 +19,7 @@ def calcular_eixo_automatico():
         agora = datetime.now(pytz.timezone('America/Sao_Paulo'))
         
         # Se for noite, já olha para o pregão de hoje como referência
-        data_ref = datas[-1] if agora.hour >= 18 else datas[-2]
+        data_ref = datas[-1] if agora.hour >= 18 else datas[0]
         
         df_dia = df.loc[data_ref.strftime('%Y-%m-%d')]
         # Filtra o horário oficial: 10:30 às 17:00 BRT
