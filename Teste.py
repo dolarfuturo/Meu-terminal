@@ -7,13 +7,37 @@ import pytz
 # Configuração para Tablet
 st.set_page_config(page_title="K97 - TERMINAL FINAL", layout="wide")
 
-# --- CÁLCULO AUTOMÁTICO DO EIXO (MÁX+MÍN)/2 DO PREGÃO ANTERIOR ---
+# --- CÁLCULO AUTOMÁTICO DO EIXO EWZ (TRAVA DAS 18H) ---
 @st.cache_data(ttl=600)
 def calcular_eixo_automatico():
     try:
         t = yf.Ticker("EWZ")
-        df = t.history(period="5d", interval="15m", prepost=False)
+        # Pegamos 7 dias para cobrir finais de semana e feriados
+        df = t.history(period="7d", interval="1d", prepost=False)
         if df.empty: return 37.85, 0, 0
+        
+        agora = datetime.now(pytz.timezone('America/Sao_Paulo'))
+        hoje = agora.date()
+        ultima_data_yahoo = df.index[-1].date()
+        
+        # --- A LOGICA DA SENTINELA ---
+        # Se o Yahoo já tem a linha de "hoje", mas ainda não deu 18h:
+        # Significa que o dado de hoje está incompleto (pregão rolando).
+        # Então, pulamos para a linha de ontem (-2) para manter o Eixo fixo.
+        if ultima_data_yahoo == hoje and agora.hour < 18:
+            idx = -2
+        else:
+            # Se já passou das 18h ou o Yahoo só tem até ontem, usamos a última (-1)
+            idx = -1
+            
+        mx = df['High'].iloc[idx]
+        mn = df['Low'].iloc[idx]
+        eixo = (mx + mn) / 2
+        
+        return eixo, mx, mn
+    except: 
+        return 37.85, 0, 0
+
         
         datas = df.index.normalize().unique()
         agora = datetime.now(pytz.timezone('America/Sao_Paulo'))
