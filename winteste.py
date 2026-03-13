@@ -90,7 +90,7 @@ eixo_sugerido, mx_ref, mn_ref = calcular_eixo_automatico()
 with st.sidebar:
     st.header("⚙️ AJUSTE WIN")
     e_ewz = st.number_input("EIXO EWZ:", value=float(eixo_sugerido), format="%.2f")
-    e_index = st.number_input("EIXO WIN:", value=130500, step=50, format="%d" (o d vem de dígito/inteiro)
+    e_index = st.number_input("EIXO WIN:", value=130500, step=50, format="%d" 
 
 data = fetch_data()
 
