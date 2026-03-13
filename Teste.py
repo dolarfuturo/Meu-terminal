@@ -35,7 +35,7 @@ def calcular_eixo_automatico():
         eixo = (mx + mn) / 2
         
         return eixo, mx, mn
-    except: 
+        except: 
         return 37.85, 0, 0
 
         
