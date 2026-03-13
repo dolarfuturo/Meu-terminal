@@ -32,21 +32,18 @@ def calcular_eixo_automatico():
         return eixo, mx, mn
     except: return 37.85, 0, 0
 
-# --- MOTOR DE CÁLCULO K97 INDEX (INVERTIDO E CALIBRADO) ---
+# --- MOTOR DE CÁLCULO K97 INDEX (CALIBRADO +1.22) ---
 def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_index):
     try:
-        # INVERSÃO: (Atual / Eixo) para seguir o movimento do Índice
-        var_atual = ((p_ewz_atual / eixo_ewz) - 1) * 100 
-        index_vivo = eixo_index * (1 + (var_atual / 100))
-        
-        var_fraja = ((p_ewz_atual / eixo_ewz) - 1) * 100 
-        index_fraja = eixo_index * (1 + (var_fraja / 100))
+        v_pura = ((p_ewz_atual / eixo_ewz) - 1) * 100 
+        index_vivo = eixo_index * (1 + (v_pura / 100))
+        index_fraja = eixo_index * (1 + (v_pura / 100))
         
         ewz_medio_dia = (max_ewz + min_ewz) / 2
         var_medio = ((p_ewz_atual / ewz_medio_dia) - 1) * 100
         index_medio = eixo_index * (1 + (var_medio / 100)) 
         
-        # Alvos de Máxima e Mínima com ajuste de +1.22
+        # Calibragem de Amplitude WIN (+1.22)
         v_neg = ((min_ewz / eixo_ewz) - 1) * 100 + 1.22
         v_pos = ((max_ewz / eixo_ewz) - 1) * 100 + 1.22
         alvo_max = eixo_index * (1 + (v_pos / 100))
@@ -54,7 +51,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_index):
         
         return {
             "vivo": index_vivo, "fraja": index_fraja, "medio": index_medio, 
-            "v_atual": var_atual, "ewz_med": ewz_medio_dia,
+            "v_atual": v_pura, "ewz_med": ewz_medio_dia,
             "max": alvo_max, "p75_up": (eixo_index + (alvo_max - eixo_index)*0.75), 
             "p50_up": (eixo_index + alvo_max) / 2, 
             "p25_up": (eixo_index + (alvo_max - eixo_index)*0.25),
@@ -83,6 +80,7 @@ st.markdown("""<style>
     .eixo-box-mini { background: #1e2226; border: 1px solid #ffcc00; padding: 5px; text-align: center; margin: 5px 0; border-radius: 4px; }
     .label-k97 { color: #ffcc00; font-size: 12px; font-weight: bold; }
     .valor-vivo { font-size: 42px; font-family: 'Arial Black'; color: #00f2ff; line-height: 1; }
+    .mini-info { font-size: 10px; color: #848d96; text-align: center; }
 </style>""", unsafe_allow_html=True)
 
 e_sug, mx_ref, mn_ref = calcular_eixo_automatico()
@@ -91,9 +89,7 @@ with st.sidebar:
     st.header("⚙️ AJUSTE WIN")
     e_ewz = st.number_input("EIXO EWZ:", value=float(e_sug), format="%.2f")
     e_index = st.number_input("EIXO WIN:", value=130500, step=50, format="%d")
-    
     st.markdown("---")
-    # Voltando com as referências que tinham sumido:
     st.write(f"Ref. Calculada: **{e_sug:.2f}**")
     st.write(f"MAX EWZ OBTEM: **{mx_ref:.2f}**")
     st.write(f"MIN EWZ ONTEM: **{mn_ref:.2f}**")
@@ -108,7 +104,15 @@ if data:
             st.markdown(f'<div class="vivo-box"><div class="label-k97">SINTÉTICO INDEX (2.0)</div><div class="valor-vivo">{fmt_m(res["vivo"])}</div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="medio-box"><div class="label-k97">SINTÉTICO MÉDIO</div><div style="font-size:25px; font-weight:bold; color:#ffcc00;">{fmt_m(res["medio"])}</div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="fraja-box"><div class="label-k97">SINTÉTICO (3.6)</div><div style="font-size:25px; font-weight:bold;">{fmt_m(res["fraja"])}</div></div>', unsafe_allow_html=True)
+            
+            # --- MÉTRICA PRINCIPAL EWZ ---
             st.metric("EWZ VIVO", f"{data['at']:.2f}", delta=f"{res['v_atual']:+.2f}%")
+            
+            # --- VOLTANDO COM O RODAPÉ (MAX/MED/MIN) DO DIA ---
+            m1, m2, m3 = st.columns(3)
+            m1.markdown(f'<div class="mini-info">MAX<br><b style="color:#ff4d4d">{data["mx_real"]:.2f}</b></div>', unsafe_allow_html=True)
+            m2.markdown(f'<div class="mini-info">MED<br><b style="color:#ffffff">{res["ewz_med"]:.2f}</b></div>', unsafe_allow_html=True)
+            m3.markdown(f'<div class="mini-info">MIN<br><b style="color:#00ff88">{data["mn_real"]:.2f}</b></div>', unsafe_allow_html=True)
             
         with c2:
             st.markdown(f'<div class="price-row-mini" style="color:#00ff88; border-top: 2px solid #00ff88;"><span>MÁXIMA</span> <span>{fmt_m(res["max"])}</span></div>', unsafe_allow_html=True)
