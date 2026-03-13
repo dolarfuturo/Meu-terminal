@@ -36,10 +36,10 @@ def calcular_eixo_automatico():
 def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_index):
     try:
         # INVERSÃO: (Atual / Eixo) para seguir o movimento do Índice
-        var_atual = ((p_ewz_atual / eixo_ewz) - 1) * 100 / 1.5
+        var_atual = ((p_ewz_atual / eixo_ewz) - 1) * 100 
         index_vivo = eixo_index * (1 + (var_atual / 100))
         
-        var_fraja = ((p_ewz_atual / eixo_ewz) - 1) * 100 / 4.5
+        var_fraja = ((p_ewz_atual / eixo_ewz) - 1) * 100 
         index_fraja = eixo_index * (1 + (var_fraja / 100))
         
         ewz_medio_dia = (max_ewz + min_ewz) / 2
@@ -47,8 +47,8 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_index):
         index_medio = eixo_index * (1 + (var_medio / 100)) 
         
         # Alvos de Máxima e Mínima Invertidos para o WIN
-        v_neg = ((min_ewz / eixo_ewz) - 1) * 100 / 3
-        v_pos = ((max_ewz / eixo_ewz) - 1) * 100 / 3
+        v_neg = ((min_ewz / eixo_ewz) - 1) * 100 + 1.22
+        v_pos = ((max_ewz / eixo_ewz) - 1) * 100 + 1.22
         alvo_max = eixo_index * (1 + (v_pos / 100))
         alvo_min = eixo_index * (1 + (v_neg / 100))
         
