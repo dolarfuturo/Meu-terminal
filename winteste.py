@@ -14,23 +14,32 @@ def fmt_m(valor):
     except:
         return str(valor)
 
-# --- CÁLCULO AUTOMÁTICO DO EIXO EWZ ---
+# --- CÁLCULO AUTOMÁTICO DO EIXO EWZ (TRAVA DAS 18H) ---
 @st.cache_data(ttl=600)
 def calcular_eixo_automatico():
     try:
         t = yf.Ticker("EWZ")
-        df = t.history(period="5d", interval="15m", prepost=False)
+        # Pegamos 7 dias para cobrir finais de semana e feriados
+        df = t.history(period="7d", interval="1d", prepost=False)
         if df.empty: return 37.85, 0, 0
-        datas = df.index.normalize().unique()
+        
         agora = datetime.now(pytz.timezone('America/Sao_Paulo'))
-        data_ref = datas[-1] if agora.hour >= 18 else datas[-2]
-        df_dia = df.loc[data_ref.strftime('%Y-%m-%d')]
-        df_sessao = df_dia.between_time('09:30', '16:00')
-        mx = df_sessao['High'].max()
-        mn = df_sessao['Low'].min()
+        hoje = agora.date()
+        ultima_data_yahoo = df.index[-1].date()
+        
+        # --- LÓGICA DA SENTINELA: Reset apenas às 18h ---
+        if ultima_data_yahoo == hoje and agora.hour < 18:
+            idx = -2 # Mantém o eixo do pregão anterior (Ontem)
+        else:
+            idx = -1 # Assume o novo fechamento após as 18h
+            
+        mx = df['High'].iloc[idx]
+        mn = df['Low'].iloc[idx]
         eixo = (mx + mn) / 2
+        
         return eixo, mx, mn
-    except: return 37.85, 0, 0
+    except: 
+        return 37.85, 0, 0
 
 # --- MOTOR DE CÁLCULO K97 INDEX (CALIBRADO +1.22) ---
 def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_index):
@@ -43,7 +52,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_index):
         var_medio = ((p_ewz_atual / ewz_medio_dia) - 1) * 100
         index_medio = eixo_index * (1 + (var_medio / 100)) 
         
-        # Calibragem de Amplitude WIN (+1.22)
+        # Calibragem de Amplitude WIN (+1.22) - Mantida conforme sua estratégia
         v_neg = ((min_ewz / eixo_ewz) - 1) * 100 + 1.22
         v_pos = ((max_ewz / eixo_ewz) - 1) * 100 + 1.22
         alvo_max = eixo_index * (1 + (v_pos / 100))
@@ -70,7 +79,7 @@ def fetch_data():
         return {"at": df['Close'].iloc[-1], "mx_real": df['High'].max(), "mn_real": df['Low'].min()}
     except: return None
 
-# --- ESTILO VISUAL ---
+# --- ESTILO VISUAL (CIANO E AMARELO) ---
 st.markdown("""<style>
     .stApp { background-color: #0b0e11 !important; color: #ffffff !important; }
     .vivo-box { background: #161b22; border: 2px solid #00f2ff; padding: 15px; text-align: center; border-radius: 8px; margin-bottom: 10px; }
@@ -91,7 +100,7 @@ with st.sidebar:
     e_index = st.number_input("EIXO WIN:", value=130500, step=50, format="%d")
     st.markdown("---")
     st.write(f"Ref. Calculada: **{e_sug:.2f}**")
-    st.write(f"MAX EWZ OBTEM: **{mx_ref:.2f}**")
+    st.write(f"MAX EWZ ONTEM: **{mx_ref:.2f}**")
     st.write(f"MIN EWZ ONTEM: **{mn_ref:.2f}**")
 
 data = fetch_data()
@@ -105,10 +114,8 @@ if data:
             st.markdown(f'<div class="medio-box"><div class="label-k97">SINTÉTICO MÉDIO</div><div style="font-size:25px; font-weight:bold; color:#ffcc00;">{fmt_m(res["medio"])}</div></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="fraja-box"><div class="label-k97">SINTÉTICO (3.6)</div><div style="font-size:25px; font-weight:bold;">{fmt_m(res["fraja"])}</div></div>', unsafe_allow_html=True)
             
-            # --- MÉTRICA PRINCIPAL EWZ ---
             st.metric("EWZ VIVO", f"{data['at']:.2f}", delta=f"{res['v_atual']:+.2f}%")
             
-            # --- VOLTANDO COM O RODAPÉ (MAX/MED/MIN) DO DIA ---
             m1, m2, m3 = st.columns(3)
             m1.markdown(f'<div class="mini-info">MAX<br><b style="color:#ff4d4d">{data["mx_real"]:.2f}</b></div>', unsafe_allow_html=True)
             m2.markdown(f'<div class="mini-info">MED<br><b style="color:#ffffff">{res["ewz_med"]:.2f}</b></div>', unsafe_allow_html=True)
