@@ -32,7 +32,7 @@ def calcular_eixo_automatico():
         return eixo, mx, mn
     except: return 37.85, 0, 0
 
-# --- MOTOR DE CÁLCULO K97 INDEX (INVERTIDO) ---
+# --- MOTOR DE CÁLCULO K97 INDEX (INVERTIDO E CALIBRADO) ---
 def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_index):
     try:
         # INVERSÃO: (Atual / Eixo) para seguir o movimento do Índice
@@ -46,7 +46,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_index):
         var_medio = ((p_ewz_atual / ewz_medio_dia) - 1) * 100
         index_medio = eixo_index * (1 + (var_medio / 100)) 
         
-        # Alvos de Máxima e Mínima Invertidos para o WIN
+        # Alvos de Máxima e Mínima com ajuste de +1.22
         v_neg = ((min_ewz / eixo_ewz) - 1) * 100 + 1.22
         v_pos = ((max_ewz / eixo_ewz) - 1) * 100 + 1.22
         alvo_max = eixo_index * (1 + (v_pos / 100))
@@ -73,7 +73,7 @@ def fetch_data():
         return {"at": df['Close'].iloc[-1], "mx_real": df['High'].max(), "mn_real": df['Low'].min()}
     except: return None
 
-# --- ESTILO VISUAL (CIANO E AMARELO) ---
+# --- ESTILO VISUAL ---
 st.markdown("""<style>
     .stApp { background-color: #0b0e11 !important; color: #ffffff !important; }
     .vivo-box { background: #161b22; border: 2px solid #00f2ff; padding: 15px; text-align: center; border-radius: 8px; margin-bottom: 10px; }
@@ -85,12 +85,18 @@ st.markdown("""<style>
     .valor-vivo { font-size: 42px; font-family: 'Arial Black'; color: #00f2ff; line-height: 1; }
 </style>""", unsafe_allow_html=True)
 
-eixo_sugerido, mx_ref, mn_ref = calcular_eixo_automatico()
+e_sug, mx_ref, mn_ref = calcular_eixo_automatico()
 
 with st.sidebar:
     st.header("⚙️ AJUSTE WIN")
-    e_ewz = st.number_input("EIXO EWZ:", value=float(eixo_sugerido), format="%.2f")
+    e_ewz = st.number_input("EIXO EWZ:", value=float(e_sug), format="%.2f")
     e_index = st.number_input("EIXO WIN:", value=130500, step=50, format="%d")
+    
+    st.markdown("---")
+    # Voltando com as referências que tinham sumido:
+    st.write(f"Ref. Calculada: **{e_sug:.2f}**")
+    st.write(f"MAX EWZ OBTEM: **{mx_ref:.2f}**")
+    st.write(f"MIN EWZ ONTEM: **{mn_ref:.2f}**")
 
 data = fetch_data()
 
@@ -105,7 +111,6 @@ if data:
             st.metric("EWZ VIVO", f"{data['at']:.2f}", delta=f"{res['v_atual']:+.2f}%")
             
         with c2:
-            # GRID DE PREÇOS FORMATADO (SEM CASAS DECIMAIS)
             st.markdown(f'<div class="price-row-mini" style="color:#00ff88; border-top: 2px solid #00ff88;"><span>MÁXIMA</span> <span>{fmt_m(res["max"])}</span></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="price-row-mini" style="color:#55efc4;"><span>75% UP</span> <span>{fmt_m(res["p75_up"])}</span></div>', unsafe_allow_html=True)
             st.markdown(f'<div class="price-row-mini" style="color:#81ecec;"><span>50% UP</span> <span>{fmt_m(res["p50_up"])}</span></div>', unsafe_allow_html=True)
