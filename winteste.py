@@ -54,7 +54,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_index):
         
         # Calibragem de Amplitude WIN (+1.22) - Mantida conforme sua estratégia
         v_neg = ((min_ewz / eixo_ewz) - 1) * 100 + 0.485
-        v_pos = ((max_ewz / eixo_ewz) - 1) * 100 - 0.485
+        v_pos = ((max_ewz / eixo_ewz) - 1) * 100 + 0.485
         alvo_max = eixo_index * (1 + (v_pos / 100))  
         alvo_min = eixo_index * (1 + (v_neg / 100)) 
         
