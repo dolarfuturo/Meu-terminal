@@ -69,7 +69,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
         "medio": eixo_dol * (1 + (((eixo_ewz / ((max_ewz + min_ewz) / 2)) - 1) * 100 / 100)),
         "v_atual": v_atual, "v_med": ((eixo_ewz / ((max_ewz + min_ewz) / 2)) - 1) * 100,
         "max": alvo_max, "min": alvo_min,
-        "p75_UP": (eixo_dol + (alvo_max - eixo_dol)*0.75), "p50_up": (eixo_dol + alvo_max) / 2, "p25_up": (eixo_dol + (alvo_max - eixo_dol)*0.25),
+        "p75_up": (eixo_dol + (alvo_max - eixo_dol)*0.75), "p50_up": (eixo_dol + alvo_max) / 2, "p25_up": (eixo_dol + (alvo_max - eixo_dol)*0.25),
         "p75_down": (eixo_dol + (alvo_min - eixo_dol)*0.75), "p50_down": (eixo_dol + alvo_min) / 2, "p25_down": (eixo_dol + (alvo_min - eixo_dol)*0.25)
     }
 
