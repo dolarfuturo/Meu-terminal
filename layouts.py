@@ -7,36 +7,39 @@ import pytz
 # Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLAR")
 
-# --- CSS: DESTAQUE NEGRITO, AJUSTE DE FONTE E TICKER LENTO ---
+# --- CSS: BORDAS BRANCAS, COLUNA PRICE MONITOR E TICKER LENTO ---
 st.markdown("""
 <style>
     .stApp { background-color: #050a0e !important; }
     
-    /* Blocos com bordas mais grossas e negrito */
-    .main-grid { border: 3px solid #1c3d4d; border-radius: 8px; overflow: hidden; font-family: 'monospace'; background-color: #0d1b22; }
+    /* Blocos com bordas BRANCAS e Negrito */
+    .main-grid { border: 3px solid #ffffff; border-radius: 8px; overflow: hidden; font-family: 'monospace'; background-color: #0d1b22; }
     
     .terminal-table { width: 100%; border-collapse: collapse; color: #e0e0e0; font-weight: bold; }
-    .terminal-table th { background-color: #0a141a; color: #d4a017; border: 1px solid #1c3d4d; padding: 12px; text-align: center; font-size: 16px; text-transform: uppercase; }
-    .terminal-table td { border: 1px solid #1c3d4d; padding: 14px; text-align: center; font-size: 17px; }
+    .terminal-table th { background-color: #0a141a; color: #d4a017; border: 1px solid #ffffff; padding: 12px; text-align: center; font-size: 16px; text-transform: uppercase; }
+    .terminal-table td { border: 1px solid #ffffff; padding: 14px; text-align: center; font-size: 17px; }
     
-    /* Nome do Ativo maior */
-    .asset-name { font-size: 19px; color: #fff; text-align: left; padding-left: 15px; }
+    /* Nome do Ativo maior e em destaque */
+    .asset-name { font-size: 20px; color: #ffffff; text-align: left; padding-left: 15px; font-weight: 900; }
+
+    /* Coluna PRICE na cor de monitoramento (Ciano) */
+    .price-col { color: #00f2ff !important; font-size: 18px; }
 
     .header-bair { display: flex; justify-content: space-between; align-items: center; padding: 10px; color: #00f2ff; font-size: 28px; font-weight: bold; }
     .clock-container { display: flex; gap: 20px; color: #888; font-family: 'monospace'; font-size: 12px; }
-    .clock-box { text-align: center; border: 1px solid #1c3d4d; padding: 5px; border-radius: 4px; background: #0a141a; }
+    .clock-box { text-align: center; border: 1px solid #ffffff; padding: 5px; border-radius: 4px; background: #0a141a; }
     .clock-time { color: #fff; font-size: 16px; display: block; }
     
-    /* Painéis de Projeção em Negrito */
-    .calc-panel { border: 3px solid #1c3d4d; border-radius: 8px; padding: 12px; background: #0a141a; font-family: monospace; margin-bottom: 10px; font-weight: bold; }
-    .calc-row { display: flex; justify-content: space-between; padding: 8px 10px; border-bottom: 1px solid #1c3d4d; font-size: 16px; }
+    /* Painéis de Projeção com bordas Brancas */
+    .calc-panel { border: 3px solid #ffffff; border-radius: 8px; padding: 12px; background: #0a141a; font-family: monospace; margin-bottom: 10px; font-weight: bold; }
+    .calc-row { display: flex; justify-content: space-between; padding: 8px 10px; border-bottom: 1px solid #444; font-size: 16px; }
     
-    /* Ticker FULL WIDTH e mais LENTO (60s) */
-    .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 2px solid #1c3d4d; border-bottom: 2px solid #1c3d4d; padding: 10px 0; overflow: hidden; white-space: nowrap; margin-top: 25px; }
-    .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 16px; font-weight: bold; }
+    /* Ticker FULL WIDTH e LENTO (75s para leitura clara) */
+    .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 2px solid #ffffff; border-bottom: 2px solid #ffffff; padding: 12px 0; overflow: hidden; white-space: nowrap; margin-top: 25px; }
+    .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 75s linear infinite; font-family: 'monospace'; font-size: 16px; font-weight: bold; }
     @keyframes marquee { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
     
-    .monitor-bar { background: #0a141a; border: 3px solid #1c3d4d; padding: 10px; text-align: center; color: #00f2ff; font-weight: bold; font-family: monospace; border-radius: 4px; font-size: 18px; }
+    .monitor-bar { background: #0a141a; border: 3px solid #ffffff; padding: 10px; text-align: center; color: #00f2ff; font-weight: bold; font-family: monospace; border-radius: 4px; font-size: 18px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -58,8 +61,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
     dolar_vivo = eixo_dol * (1 + (var_atual / 100))
     v_neg = ((eixo_ewz / max_ewz) - 1) * 100 / 1.5
     v_pos = ((eixo_ewz / min_ewz) - 1) * 100 / 1.5
-    alvo_max = eixo_dol * (1 + (v_pos / 100))
-    alvo_min = eixo_dol * (1 + (v_neg / 100))
+    alvo_max, alvo_min = eixo_dol * (1 + (v_pos / 100)), eixo_dol * (1 + (v_neg / 100))
     return {
         "vivo": dolar_vivo, 
         "fraja": eixo_dol * (1 + (((eixo_ewz / p_ewz_atual) - 1) * 100 / 4.5 / 100)),
@@ -79,61 +81,47 @@ def fetch(s):
 # --- SIDEBAR COM BOTÃO DE SALVAR ---
 eixo_auto, mx_ref, mn_ref = calcular_referencias_eixo()
 with st.sidebar:
-    st.markdown("### ⚙️ CONFIGURAÇÃO EIXO")
-    with st.form("ajuste_k97"):
+    st.markdown("### ⚙️ AJUSTE DE VARIÁVEIS")
+    with st.form("form_ajuste"):
         e_ewz = st.number_input("EIXO EWZ:", value=float(eixo_auto), format="%.2f")
         e_dol = st.number_input("EIXO DOLFUT:", value=5246.00, format="%.2f")
-        submit = st.form_submit_button("SALVAR VARIÁVEIS")
-    
+        salvar = st.form_submit_button("SALVAR ALTERAÇÕES")
     st.divider()
-    st.write(f"**REF MAX:** {mx_ref:.2f}")
-    st.write(f"**REF MIN:** {mn_ref:.2f}")
+    st.write(f"**SENTINELA MAX:** {mx_ref:.2f}")
+    st.write(f"**SENTINELA MIN:** {mn_ref:.2f}")
 
 # --- UI PRINCIPAL ---
 br_t = datetime.now(pytz.timezone('America/Sao_Paulo')).strftime('%H:%M')
 ny_t = datetime.now(pytz.timezone('America/New_York')).strftime('%H:%M')
 ld_t = datetime.now(pytz.timezone('Europe/London')).strftime('%H:%M')
 
-st.markdown(f"""<div class="header-bair"><div>BAIR - <span style="color: #d4a017;">TERMINAL DOLAR</span></div><div class="clock-container"><div class="clock-box">BRASÍLIA<span class="clock-time">{br_t}</span></div><div class="clock-box">NEW YORK<span class="clock-time">{ny_t}</span></div><div class="clock-box">LONDRES<span class="clock-time">{ld_t}</span></div></div></div>""", unsafe_allow_html=True)
+st.markdown(f"""<div class="header-bair"><div>SHAKE VISION - <span style="color: #d4a017;">K97 TERMINAL</span></div><div class="clock-container"><div class="clock-box" style="border-color:#fff;">BRASÍLIA<span class="clock-time">{br_t}</span></div><div class="clock-box" style="border-color:#fff;">NEW YORK<span class="clock-time">{ny_t}</span></div><div class="clock-box" style="border-color:#fff;">LONDRES<span class="clock-time">{ld_t}</span></div></div></div>""", unsafe_allow_html=True)
 
 ewz_live = fetch("EWZ")
 if ewz_live:
     res = calcular_k97_total(e_ewz, ewz_live['at'], mx_ref, mn_ref, e_dol)
-    
     h1, h2 = st.columns([3, 1])
     h1.markdown('<div class="monitor-bar">MONITORAMENTO DE ATIVOS</div>', unsafe_allow_html=True)
     h2.markdown('<div class="monitor-bar">PROJEÇÕES K97</div>', unsafe_allow_html=True)
 
     c_main, c_side = st.columns([3, 1])
-    
     with c_main:
         html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th style='color: #00f2ff;'>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
-        
-        # Sintético 2.0
         v2_var = ((res['vivo'] / e_dol) - 1) * 100
         v2_cor = "#00ff00" if v2_var >= 0 else "#ff0000"
-        html_table += f"<tr><td class='asset-name'>SINTÉTICO 2.0 (VIVO)</td><td style='color:#00f2ff;'>{(res['vivo']/1000):.4f}</td><td>{(e_dol/1000):.4f}</td><td>{(e_dol/1000):.4f}</td><td>{(res['max']/1000):.4f}</td><td>{(res['min']/1000):.4f}</td><td style='color:{v2_cor};'>{v2_var:+.2f}%</td></tr>"
+        html_table += f"<tr><td class='asset-name'>SINTÉTICO 2.0 (VIVO)</td><td class='price-col'>{(res['vivo']/1000):.4f}</td><td>{(e_dol/1000):.4f}</td><td>{(e_dol/1000):.4f}</td><td>{(res['max']/1000):.4f}</td><td>{(res['min']/1000):.4f}</td><td style='color:{v2_cor};'>{v2_var:+.2f}%</td></tr>"
         
-        ativos_config = {
-            "SPOT": {"sym": "USDBRL=X", "fmt": ".4f"},
-            "DXY": {"sym": "DX-Y.NYB", "fmt": ".2f"},
-            "EWZ": {"sym": "EWZ", "fmt": ".2f"},
-            "GBP/USD": {"sym": "GBPUSD=X", "fmt": ".4f"},
-            "JPY/USD": {"sym": "JPYUSD=X", "fmt": ".4f"},
-            "EUR/USD": {"sym": "EURUSD=X", "fmt": ".4f"},
-            "GOLD": {"sym": "GC=F", "fmt": ".3f"},
-            "BRENT": {"sym": "BZ=F", "fmt": ".2f"}
-        }
-        
+        ativos = {"SPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "GOLD": "GC=F", "BRENT": "BZ=F"}
         ticker_items = [f"<span style='color:#fff;'>SINTÉTICO 2.0:</span> <span style='color:{v2_cor};'>{v2_var:+.2f}%</span>"]
-        for label, cfg in ativos_config.items():
-            d = fetch(cfg['sym'])
+        
+        for label, sym in ativos.items():
+            d = fetch(sym)
             if d:
+                fmt = ".3f" if label == "GOLD" else (".4f" if "USD" in label or label == "SPOT" else ".2f")
                 v = ((d['at']/d['cl'])-1)*100
                 c = "#00ff00" if v >= 0 else "#ff0000"
-                html_table += f"<tr><td class='asset-name'>{label}</td><td style='color:#00f2ff;'>{d['at']:{cfg['fmt']}}</td><td>{d['cl']:{cfg['fmt']}}</td><td>{d['cl']:{cfg['fmt']}}</td><td>{d['mx']:{cfg['fmt']}}</td><td>{d['mn']:{cfg['fmt']}}</td><td style='color:{c};'>{v:+.2f}%</td></tr>"
+                html_table += f"<tr><td class='asset-name'>{label}</td><td class='price-col'>{d['at']:{fmt}}</td><td>{d['cl']:{fmt}}</td><td>{d['cl']:{fmt}}</td><td>{d['mx']:{fmt}}</td><td>{d['mn']:{fmt}}</td><td style='color:{c};'>{v:+.2f}%</td></tr>"
                 ticker_items.append(f"<span style='color:#fff;'>{label}:</span> <span style='color:{c};'>{v:+.2f}%</span>")
-        
         st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
 
     with c_side:
