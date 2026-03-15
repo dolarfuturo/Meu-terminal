@@ -1,111 +1,136 @@
 import streamlit as st
-import yfinance as yf
-from datetime import datetime
-import pytz
+import pandas as pd
 
-# ... (Mantenha suas funções de calcular_eixo_automatico, calcular_k97_total, fetch_data e a Sidebar aqui) ...
+# Configuração da página para ocupar a tela toda do Tablet
+st.set_page_config(layout="wide", page_title="BAIR TERMINAL")
 
-# --- FUNÇÃO PARA DESENHAR O GRID HTML/CSS (O SEGREDO DO VISUAL) ---
-def desenhar_grid_principal(dados_ativos):
-    """
-    Recebe um dicionário com os dados formatados e gera o HTML da tabela.
-    dados_ativos = {
-        'SPOT': {'price': '5.2150', 'close': '5.2000', 'var': '+0.29', 'cor': '#00f2ff'},
-        'DOLFUT': {...},
-        ...
+# --- CSS PARA REPLICAR OS BLOCOS E LINHAS DA IMAGEM ---
+st.markdown("""
+<style>
+    .stApp { background-color: #050a0e !important; }
+    
+    /* Container Principal do Grid */
+    .main-grid {
+        border: 2px solid #1c3d4d;
+        border-radius: 8px;
+        padding: 0px;
+        overflow: hidden;
+        font-family: 'monospace';
     }
-    """
+
+    /* Tabela de Monitoramento */
+    .terminal-table {
+        width: 100%;
+        border-collapse: collapse;
+        color: #e0e0e0;
+    }
+
+    .terminal-table th {
+        background-color: #0a141a;
+        color: #5ba6b5;
+        border: 1px solid #1c3d4d;
+        padding: 10px;
+        text-align: center;
+        font-size: 14px;
+    }
+
+    .terminal-table td {
+        background-color: #0d1b22;
+        border: 1px solid #1c3d4d;
+        padding: 12px;
+        text-align: center;
+        font-size: 16px;
+    }
+
+    /* Cores das variações */
+    .var-pos { color: #00f2ff; font-weight: bold; }
+    .var-neg { color: #ff4d4d; font-weight: bold; }
     
-    # Início da Tabela com Estilo CSS para o Grid
-    html_table = """
-    <style>
-        .terminal-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-family: 'monospace';
-            font-size: 14px;
-            color: #ffffff;
-            border: 1px solid #333; /* Borda externa */
-        }
-        .terminal-table th {
-            background-color: #000000; /* Fundo do Cabeçalho Preto */
-            color: #888; /* Texto do Cabeçalho Cinza */
-            text-align: left;
-            padding: 8px;
-            border: 1px solid #333; /* Linhas do Grid */
-            text-transform: uppercase;
-        }
-        .terminal-table td {
-            background-color: #1a1a1a; /* Fundo das Células Cinza Escuro */
-            padding: 8px;
-            border: 1px solid #333; /* Linhas do Grid */
-            vertical-align: middle;
-        }
-        /* Alinhamento à direita para colunas numéricas */
-        .terminal-table td:nth-child(n+2), 
-        .terminal-table th:nth-child(n+2) {
-            text-align: right;
-        }
-        /* Estilo para a coluna Asset (primeira) */
-        .terminal-table td:first-child {
-            font-weight: bold;
-            color: #ffffff;
-        }
-    </style>
+    /* Header Estilizado */
+    .header-bair {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px;
+        color: #00f2ff;
+        font-size: 24px;
+        font-weight: bold;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# --- CABEÇALHO ---
+st.markdown("""
+<div class="header-bair">
+    <div>BAIR - TERMINAL DOLAR</div>
+    <div style="font-size: 14px; color: #888;">BRASÍLIA: 21:03 | NY: 19:03 | LONDRES: 00:03</div>
+</div>
+""", unsafe_allow_html=True)
+
+# --- CONSTRUÇÃO DA GRADE (GRID) ---
+# Aqui simulamos os dados que virão do yfinance futuramente
+ativos = [
+    ["SPOT", "5,4000", "5,0000", "5,0000", "5,0000", "0,000", "0,000", "var-pos"],
+    ["DOLFUT", "5,4000", "5,0000", "5,0000", "5,0000", "0,000", "0,000", "var-pos"],
+    ["DXY", "5,4000", "5,0000", "5,0000", "5,0000", "0,000", "0,000", "var-neg"],
+    ["EWZ", "5,4000", "5,0000", "5,0000", "5,0000", "0,000", "0,000", "var-neg"],
+    ["EUR/USD", "5,0000", "5,0000", "5,0000", "5,0000", "0,000", "0,000", "var-pos"],
+    ["XAU/USD", "5,0000", "5,0000", "5,0000", "5,0000", "0,000", "0,000", "var-pos"],
+    ["PETROLEO BRENT", "5,0000", "5,0000", "5,0000", "5,0000", "0,000", "0,000", "var-pos"]
+]
+
+html_table = """
+<div class="main-grid">
+    <div style="background: #0a141a; color: #5ba6b5; text-align: center; padding: 5px; border-bottom: 1px solid #1c3d4d;">
+        MONITORAMENTO DA GRADE PRINCIPAL
+    </div>
     <table class="terminal-table">
-        <thead>
-            <tr>
-                <th>Asset</th>
-                <th>Price</th>
-                <th>Close</th>
-                <th>Open</th>
-                <th>Max</th>
-                <th>Min</th>
-                <th>Var</th>
-            </tr>
-        </thead>
-        <tbody>
+        <tr>
+            <th>ATIVO</th>
+            <th>PRICE</th>
+            <th>CLOSE</th>
+            <th>OPEN</th>
+            <th>MAX</th>
+            <th>MIN</th>
+            <th>VAR</th>
+        </tr>
+"""
+
+for a in ativos:
+    html_table += f"""
+        <tr>
+            <td style="color: #ffffff; text-align: left; font-weight: bold;">{a[0]}</td>
+            <td style="color: #00f2ff;">{a[1]}</td>
+            <td>{a[2]}</td>
+            <td>{a[3]}</td>
+            <td>{a[4]}</td>
+            <td>{a[5]}</td>
+            <td class="{a[7]}">{a[6]}</td>
+        </tr>
     """
-    
-    # Preenchimento Dinâmico das Linhas (Blocks)
-    for ativo, info in dados_ativos.items():
-        html_table += f"""
-            <tr>
-                <td>{ativo}</td>
-                <td style="color: #ffffff; font-size: 16px;">{info['price']}</td>
-                <td>{info['close']}</td>
-                <td>{info['open']}</td>
-                <td>{info['max']}</td>
-                <td>{info['min']}</td>
-                <td style="color: {info['cor']}; font-weight: bold;">{info['var']}%</td>
-            </tr>
-        """
-        
-    # Fechamento da Tabela
-    html_table += """
-        </tbody>
-    </table>
-    """
-    
-    return html_table
 
-# --- ÁREA PRINCIPAL DE EXIBIÇÃO (ONDE O GRID É CHAMADO) ---
-# Simulando os dados capturados para demonstração do layout
-# Na sua versão real, você preencherá este dicionário com os dados do yfinance e K97
-dados_para_exibir = {
-    'SPOT': {'price': '5.2150', 'close': '5.1980', 'open': '5.1980', 'max': '5.2210', 'min': '5.1950', 'var': '+0.33', 'cor': '#00f2ff'},
-    'DOLFUT': {'price': '5.228.50', 'close': '5.210.00', 'open': '5.212.00', 'max': '5.235.00', 'min': '5.208.00', 'var': '+0.35', 'cor': '#00f2ff'},
-    'DXY': {'price': '104.520', 'close': '104.600', 'open': '104.605', 'max': '104.710', 'min': '104.480', 'var': '-0.08', 'cor': '#ff4d4d'},
-    'EWZ': {'price': '31.85', 'close': '32.10', 'open': '32.05', 'max': '32.15', 'min': '31.78', 'var': '-0.78', 'cor': '#ff4d4d'},
-    'K97 SINTETICO': {'price': '5.219.50', 'close': '5.219.50', 'open': 'EIXO', 'max': '5.255.10', 'min': '5.183.90', 'var': '0.00', 'cor': '#ffffff'} # Exemplo do seu K97 integrado
-}
+html_table += "</table></div>"
 
-# Título do Terminal (BAIR - TERMINAL DOLAR)
-st.markdown("<h1 style='text-align: center; color: #ffffff; font-family: monospace;'>BAIR - TERMINAL DOLAR</h1>", unsafe_allow_html=True)
+# Colunas para separar o Grid do Painel Lateral
+col_main, col_side = st.columns([3, 1])
 
-# Chamada da função para desenhar o Grid
-html_do_grid = desenhar_grid_principal(dados_para_exibir)
-st.markdown(html_do_grid, unsafe_allow_html=True)
+with col_main:
+    st.markdown(html_table, unsafe_allow_html=True)
+    # Ticker Tape (Rodapé)
+    st.markdown("""
+    <div style="background: #000; color: #00f2ff; padding: 5px; margin-top: 10px; border: 1px solid #1c3d4d; font-size: 12px;">
+        ↑ DXY 0,01% | EURUSD 0,01% | ↓ EWZ 0,0% | ↑ SPOT 0,0% | GBPUSD 1,00%
+    </div>
+    """, unsafe_allow_html=True)
 
-# ... (Mantenha o st.rerun() e time.sleep() no final) ...
-
+with col_side:
+    st.markdown("""
+    <div style="border: 1px solid #1c3d4d; border-radius: 8px; padding: 10px; background: #0a141a;">
+        <div style="color: #5ba6b5; text-align: center; font-size: 12px;">PAINEL DE CONTROLE CÁLCULOS</div>
+        <hr style="border: 0.5px solid #1c3d4d;">
+        <div style="color: #ffcc00; font-size: 18px; text-align: center;">PAINEL ADM: 5,4000</div>
+        <div style="color: #00ff88; font-size: 12px; margin-top: 10px;">3,00% (=close x 1,030)</div>
+        <div style="color: #00ff88; font-size: 12px;">2,34% (=close x 1,0234)</div>
+        <div style="color: #ff4d4d; font-size: 12px; margin-top: 10px;">-0,66% (=close x 0,9934)</div>
+    </div>
+    """, unsafe_allow_html=True)
