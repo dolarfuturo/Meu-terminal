@@ -11,7 +11,7 @@ st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLAR")
 st.markdown("""
 <style>
     .stApp { background-color: #050a0e !important; }
-    .main-grid { border: 2.5px solid #ffffff; border-radius: 8px; overflow: hidden; font-family: 'monospace'; background-color: #0d1b22; height: 100%; }
+    .main-grid { border: 2.5px solid #ffffff; border-radius: 8px; overflow: hidden; font-family: 'monospace'; background-color: #0d1b22; }
     .terminal-table { width: 100%; border-collapse: collapse; color: #e0e0e0; }
     .terminal-table th { background-color: #0a141a; color: #d4a017; border: 1px solid #ffffff; padding: 10px; text-align: center; font-size: 13px; text-transform: uppercase; }
     .terminal-table td { border: 1px solid #ffffff; padding: 12px; text-align: center; font-size: 15px; }
@@ -29,7 +29,6 @@ st.markdown("""
     .clock-label { font-size: 10px; color: #d4a017; font-weight: bold; display: block; text-transform: uppercase; margin-bottom: 2px; }
     .clock-time { color: #fff; font-size: 17px; font-weight: bold; display: block; }
     
-    /* BLOCOS LATERAIS */
     .calc-panel { border: 2.5px solid #ffffff; border-radius: 8px; padding: 10px; background: #0a141a; font-family: monospace; margin-bottom: 10px; }
     .calc-row { display: flex; justify-content: space-between; padding: 6px 8px; border-bottom: 1px solid #444; font-size: 14px; font-weight: bold; }
     
@@ -67,7 +66,6 @@ def calcular_k97_total(axis_ewz, p_ewz_atual, max_ewz, min_ewz, axis_dol):
         "vivo": dolar_vivo, 
         "fraja": axis_dol * (1 + (((axis_ewz / p_ewz_atual) - 1) * 100 / 4.5 / 100)),
         "medio": axis_dol * (1 + (((axis_ewz / ((max_ewz + min_ewz) / 2)) - 1) * 100 / 100)),
-        "v_atual": v_atual, "v_med": ((axis_ewz / ((max_ewz + min_ewz) / 2)) - 1) * 100,
         "max": alvo_max, "min": alvo_min,
         "p75_up": (axis_dol + (alvo_max - axis_dol)*0.75), "p50_up": (axis_dol + alvo_max) / 2, "p25_up": (axis_dol + (alvo_max - axis_dol)*0.25),
         "p75_down": (axis_dol + (alvo_min - axis_dol)*0.75), "p50_down": (axis_dol + alvo_min) / 2, "p25_down": (axis_dol + (alvo_min - axis_dol)*0.25)
@@ -155,20 +153,19 @@ if ewz_live:
             <div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div>
         </div>""", unsafe_allow_html=True)
         
-        # BLOCO 2: DOLFUT EXCLUSIVO (Ajustado para alinhamento)
+        # BLOCO 2: CONSOLIDADO (DOLFUT + MÉDIA + JUSTO)
         st.markdown(f"""
-        <div class="calc-panel" style="border-color: #00f2ff; margin-bottom: 10px;">
-            <div class="calc-row" style="color:#fff; border-bottom: none; font-size: 18px; padding: 10px;">
-                <span>DOLFUT</span> 
-                <span style="color:#00f2ff; font-weight: 950;">{res['vivo']:.2f}</span>
+        <div class="calc-panel" style="border-color: #d4a017;">
+            <div class="calc-row" style="color:#fff; border-bottom: 1px solid #444; padding: 12px 8px;">
+                <span style="font-size: 14px;">DOLFUT</span> 
+                <span style="color:#00f2ff; font-size: 20px; font-weight: 950;">{res['vivo']:.2f}</span>
             </div>
-        </div>""", unsafe_allow_html=True)
-        
-        # BLOCO 3: MÉDIA E JUSTO
-        st.markdown(f"""
-        <div class="calc-panel" style="border-color: #d4a017; margin-bottom: 0px;">
-            <div class="calc-row" style="color:#00f2ff;"><span>MÉDIA DOLFUT</span> <span>{res['medio']:.2f}</span></div>
-            <div class="calc-row" style="color:#d4a017; border-bottom: none;"><span>PREÇO JUSTO</span> <span>{res['fraja']:.2f}</span></div>
+            <div class="calc-row" style="color:#00f2ff; border-bottom: 1px solid #444;">
+                <span>MÉDIA DOLFUT</span> <span>{res['medio']:.2f}</span>
+            </div>
+            <div class="calc-row" style="color:#d4a017; border-bottom: none;">
+                <span>PREÇO JUSTO</span> <span>{res['fraja']:.2f}</span>
+            </div>
         </div>""", unsafe_allow_html=True)
 
     ticker_html = " • ".join(ticker_items)
