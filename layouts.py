@@ -19,15 +19,17 @@ st.markdown("""
     .price-col { color: #00f2ff !important; font-weight: bold; }
     
     /* HEADER COMPACTO E "CHEIO" */
-    .header-bair { display: flex; justify-content: space-between; align-items: center; padding: 10px 10px; border-bottom: 2.5px solid #ffffff; margin-bottom: 15px; }
+    .header-bair { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 2.5px solid #ffffff; margin-bottom: 12px; }
     .title-box { display: flex; align-items: center; gap: 8px; line-height: 1; }
     .bair-text { font-size: 46px; color: #00f2ff; font-weight: 950; font-family: 'monospace'; letter-spacing: -1px; } 
     .sep-text { font-size: 46px; color: #ffffff; font-weight: 950; margin: 0 5px; }
     .terminal-text { font-size: 46px; color: #d4a017; font-weight: 950; font-family: 'monospace'; letter-spacing: -1px; }
     
-    .clock-container { display: flex; gap: 12px; color: #888; font-family: 'monospace'; }
-    .clock-box { text-align: center; border: 1.5px solid #ffffff; padding: 6px 10px; border-radius: 4px; background: #0a141a; min-width: 95px; }
-    .clock-time { color: #fff; font-size: 18px; font-weight: bold; display: block; }
+    /* RELÓGIOS COM NOMES DAS CIDADES */
+    .clock-container { display: flex; gap: 10px; color: #888; font-family: 'monospace'; }
+    .clock-box { text-align: center; border: 1.5px solid #ffffff; padding: 4px 10px; border-radius: 4px; background: #0a141a; min-width: 95px; }
+    .clock-label { font-size: 10px; color: #d4a017; font-weight: bold; display: block; text-transform: uppercase; margin-bottom: 2px; }
+    .clock-time { color: #fff; font-size: 17px; font-weight: bold; display: block; }
     
     .calc-panel { border: 2.5px solid #ffffff; border-radius: 8px; padding: 10px; background: #0a141a; font-family: monospace; margin-bottom: 10px; }
     .calc-row { display: flex; justify-content: space-between; padding: 6px 8px; border-bottom: 1px solid #444; font-size: 14px; font-weight: bold; }
@@ -109,9 +111,9 @@ st.markdown(f"""
         <span class="terminal-text">TERMINAL DOLAR</span>
     </div>
     <div class="clock-container">
-        <div class="clock-box"><span class="clock-time">{br_t}</span></div>
-        <div class="clock-box"><span class="clock-time">{ny_t}</span></div>
-        <div class="clock-box"><span class="clock-time">{ld_t}</span></div>
+        <div class="clock-box"><span class="clock-label">BRASÍLIA</span><span class="clock-time">{br_t}</span></div>
+        <div class="clock-box"><span class="clock-label">NEW YORK</span><span class="clock-time">{ny_t}</span></div>
+        <div class="clock-box"><span class="clock-label">LONDRES</span><span class="clock-time">{ld_t}</span></div>
     </div>
 </div>""", unsafe_allow_html=True)
 
