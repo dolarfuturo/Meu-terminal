@@ -76,8 +76,23 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
 
 def fetch(s):
     try:
-        d = yf.Ticker(s).history(period="1d", interval="1m", prepost=True)
-        return {"at": d['Close'].iloc[-1], "cl": d['Close'].iloc[0], "mx": d['High'].max(), "mn": d['Low'].min()}
+        # Puxa 1 dia com intervalo de 1m para filtrar a janela operacional
+        d = yf.Ticker(s).history(period="1d", interval="1m", prepost=False)
+        if d.empty: return None
+        
+        # Ajusta fuso e filtra 10:30 às 17:00
+        d.index = d.index.tz_convert('America/Sao_Paulo')
+        d_op = d.between_time(dt_time(10, 30), dt_time(17, 0))
+        
+        if d_op.empty:
+             return {"at": d['Close'].iloc[-1], "cl": d['Close'].iloc[0], "mx": d['High'].max(), "mn": d['Low'].min()}
+             
+        return {
+            "at": d['Close'].iloc[-1], 
+            "cl": d['Close'].iloc[0], 
+            "mx": d_op['High'].max(), # Máxima filtrada na janela
+            "mn": d_op['Low'].min()  # Mínima filtrada na janela
+        }
     except: return None
 
 # --- SIDEBAR (PAINEL ADM) ---
