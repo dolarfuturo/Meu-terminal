@@ -7,7 +7,7 @@ import pytz
 # Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLAR")
 
-# --- CSS: ESTILIZAÇÃO REFINADA (BORDAS BRANCAS E FONTES AJUSTADAS) ---
+# --- CSS: ESTILIZAÇÃO REFINADA ---
 st.markdown("""
 <style>
     .stApp { background-color: #050a0e !important; }
@@ -37,19 +37,15 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS: FILTRO OPERACIONAL 10:30 - 17:00 ---
+# --- MOTOR DE DADOS ---
 @st.cache_data(ttl=300)
 def calcular_referencias_eixo():
     try:
         t = yf.Ticker("EWZ")
-        # Puxa dados de 1 minuto para ter precisão cirúrgica na máxima/mínima do horário
         df = t.history(period="1d", interval="1m", prepost=False)
         if df.empty: return 37.85, 38.10, 37.60
-        
-        # Filtro de Horário: 10:30 às 17:00
         df.index = df.index.tz_convert('America/Sao_Paulo')
         df_filtered = df.between_time(dt_time(10, 30), dt_time(17, 0))
-        
         if not df_filtered.empty:
             mx = df_filtered['High'].max()
             mn = df_filtered['Low'].min()
@@ -84,7 +80,7 @@ def fetch(s):
         return {"at": d['Close'].iloc[-1], "cl": d['Close'].iloc[0], "mx": d_op['High'].max(), "mn": d_op['Low'].min()}
     except: return None
 
-# --- SIDEBAR (PAINEL ADM) ---
+# --- SIDEBAR ---
 eixo_auto, mx_ref, mn_ref = calcular_referencias_eixo()
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
@@ -93,7 +89,6 @@ with st.sidebar:
         e_dol = st.number_input("EIXO DOLFUT:", value=5246.00, format="%.2f")
         salvar = st.form_submit_button("SALVAR VARIÁVEIS")
     st.divider()
-    # AQUI ESTAVA O ERRO: Agora puxa o mx_ref/mn_ref filtrado por 10:30-17:00
     st.write(f"**REF MAX (10:30-17h):** {mx_ref:.2f}")
     st.write(f"**REF MIN (10:30-17h):** {mn_ref:.2f}")
 
@@ -141,7 +136,20 @@ if ewz_live:
         st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
 
     with c_side:
-        st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div><div class="calc-row" style="color:#ff7675;"><span>75% UP</span> <span>{res['p75_up']:.2f}</span></div><div class="calc-row" style="color:#fab1a0;"><span>50% UP</span> <span>{res['p50_up']:.2f}</span></div><div class="calc-row" style="color:#ffeaa7;"><span>25% UP</span> <span>{res['p25_up']:.2f}</span></div><div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 16px;">EIXO: {e_dol:.2f}</div><div class="calc-row" style="color:#ffeaa7;"><span>25% DN</span> <span>{res['p25_down']:.2f}</span></div><div class="calc-row" style="color:#81ecec;"><span>50% DN</span> <span>{res['p50_down']:.2f}</span></div><div class="calc-row" style="color:#55efc4;"><span>75% DN</span> <span>{res['p75_down']:.2f}</span></div><div class="calc-row" style="color:#00ff88;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div></div>""", unsafe_allow_html=True)
+        # ATUALIZAÇÃO DO BLOCO DE PROJEÇÕES CONFORME SOLICITADO
+        st.markdown(f"""
+        <div class="calc-panel">
+            <div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div>
+            <div class="calc-row" style="color:#ffff00;"><span>75%</span> <span>{res['p75_up']:.2f}</span></div>
+            <div class="calc-row" style="color:#ffa500;"><span>1ª MAX</span> <span>{res['p50_up']:.2f}</span></div>
+            <div class="calc-row" style="color:#ffff00;"><span>25%</span> <span>{res['p25_up']:.2f}</span></div>
+            <div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 16px;">EIXO: {e_dol:.2f}</div>
+            <div class="calc-row" style="color:#ffff00;"><span>-25%</span> <span>{res['p25_down']:.2f}</span></div>
+            <div class="calc-row" style="color:#ffa500;"><span>1ª MIN</span> <span>{res['p50_down']:.2f}</span></div>
+            <div class="calc-row" style="color:#ffff00;"><span>-75%</span> <span>{res['p75_down']:.2f}</span></div>
+            <div class="calc-row" style="color:#00ff88;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div>
+        </div>""", unsafe_allow_html=True)
+        
         vm_cor = "#00ff00" if res['v_med'] >= 0 else "#ff0000"
         st.markdown(f"""<div class="calc-panel" style="border-color: #d4a017;"><div class="calc-row" style="color:#00f2ff;"><span>MÉDIA DOLFUT</span> <span>{res['medio']:.2f}</span></div><div class="calc-row" style="color:{vm_cor}; font-size:12px;"><span>VAR MÉDIA</span> <span>{res['v_med']:+.2f}%</span></div><div class="calc-row" style="color:#d4a017; border-bottom: none;"><span>PREÇO JUSTO</span> <span>{res['fraja']:.2f}</span></div></div>""", unsafe_allow_html=True)
 
