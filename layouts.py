@@ -87,7 +87,7 @@ def fetch(s):
 # --- SIDEBAR COM BOTÃO DE SALVAR ---
 eixo_auto, mx_ref, mn_ref = calcular_referencias_eixo()
 with st.sidebar:
-    st.markdown("### ⚙️ AJUSTE K97")
+    st.markdown("### ⚙️ PAINEL ADM")
     with st.form("ajuste_eixo"):
         e_ewz = st.number_input("EIXO EWZ:", value=float(eixo_auto), format="%.2f")
         e_dol = st.number_input("EIXO DOLFUT:", value=5246.00, format="%.2f")
@@ -142,7 +142,7 @@ if ewz_live:
     with c_side:
         st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div><div class="calc-row" style="color:#ff7675;"><span>75% UP</span> <span>{res['p75_up']:.2f}</span></div><div class="calc-row" style="color:#fab1a0;"><span>50% UP</span> <span>{res['p50_up']:.2f}</span></div><div class="calc-row" style="color:#ffeaa7;"><span>25% UP</span> <span>{res['p25_up']:.2f}</span></div><div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 16px;">EIXO: {e_dol:.2f}</div><div class="calc-row" style="color:#ffeaa7;"><span>25% DN</span> <span>{res['p25_down']:.2f}</span></div><div class="calc-row" style="color:#81ecec;"><span>50% DN</span> <span>{res['p50_down']:.2f}</span></div><div class="calc-row" style="color:#55efc4;"><span>75% DN</span> <span>{res['p75_down']:.2f}</span></div><div class="calc-row" style="color:#00ff88;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div></div>""", unsafe_allow_html=True)
         vm_cor = "#00ff00" if res['v_med'] >= 0 else "#ff0000"
-        st.markdown(f"""<div class="calc-panel" style="border-color: #d4a017;"><div class="calc-row" style="color:#00f2ff;"><span>MÉDIO (50%)</span> <span>{res['medio']:.2f}</span></div><div class="calc-row" style="color:{vm_cor}; font-size:12px;"><span>VAR MÉDIA</span> <span>{res['v_med']:+.2f}%</span></div><div class="calc-row" style="color:#d4a017; border-bottom: none;"><span>3.6 (FRAJA)</span> <span>{res['fraja']:.2f}</span></div></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="calc-panel" style="border-color: #d4a017;"><div class="calc-row" style="color:#00f2ff;"><span>MÉDIA DOLFUT</span> <span>{res['medio']:.2f}</span></div><div class="calc-row" style="color:{vm_cor}; font-size:12px;"><span>VAR MÉDIA</span> <span>{res['v_med']:+.2f}%</span></div><div class="calc-row" style="color:#d4a017; border-bottom: none;"><span>PREÇO JUSTO</span> <span>{res['fraja']:.2f}</span></div></div>""", unsafe_allow_html=True)
 
     ticker_html = " • ".join(ticker_items)
     st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{ticker_html} • {ticker_html}</div></div>', unsafe_allow_html=True)
