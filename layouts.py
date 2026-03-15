@@ -33,7 +33,6 @@ st.markdown("""
     .calc-row { display: flex; justify-content: space-between; padding: 5px 8px; border-bottom: 1px solid #444; font-size: 13px; font-weight: bold; align-items: center; }
     
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 2px solid #ffffff; border-bottom: 2px solid #ffffff; padding: 8px 0; overflow: hidden; white-space: nowrap; margin-top: 15px; }
-    /* AJUSTE DE TEMPO E FLUIDEZ DO TICKER SOLICITADO */
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 14px; font-weight: bold; }
     @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
     
@@ -90,6 +89,9 @@ with st.sidebar:
     with st.form("ajuste_axis"):
         a_ewz = st.number_input("AXIS EWZ:", value=float(axis_auto), format="%.2f")
         a_dol = st.number_input("AXIS DOLFUT:", value=5246.00, format="%.2f")
+        # Recollocando Max e Min do Eixo
+        st.write(f"Eixo Max: {mx_ref:.2f}")
+        st.write(f"Eixo Min: {mn_ref:.2f}")
         salvar = st.form_submit_button("SALVAR VARIÁVEIS")
 
 # --- UI HEADER ---
@@ -154,9 +156,9 @@ if ewz_live:
             <div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div>
         </div>""", unsafe_allow_html=True)
         
-        # BLOCO 2: CONSOLIDADO (CORES CUSTOMIZADAS E ALINHADAS)
+        # BLOCO 2: CONSOLIDADO
         st.markdown(f"""
-        <div class="calc-panel" style="border-color: #ffffff; margin-bottom: 0px;">
+        <div class="calc-panel" style="border-color: #ffffff; margin-bottom: 10px;">
             <div class="calc-row" style="border-bottom: 1px solid #444; padding: 10px 8px;">
                 <span style="color:#ffffff; font-size: 13px;">DOLFUT</span> 
                 <span style="color:#00f2ff; font-size: 19px; font-weight: 950;">{res['vivo']:.2f}</span>
@@ -168,6 +170,21 @@ if ewz_live:
             <div class="calc-row" style="border-bottom: none;">
                 <span style="color:#d4a017; font-size: 12px;">P. JUSTO</span> 
                 <span style="color:#ffffff; font-size: 16px; font-weight: bold;">{res['fraja']:.2f}</span>
+            </div>
+        </div>""", unsafe_allow_html=True)
+
+        # BLOCO 3: EWZ TEMPO REAL (SOLICITADO)
+        ewz_avg = (ewz_live['mx'] + ewz_live['mn']) / 2
+        st.markdown(f"""
+        <div class="calc-panel" style="border-color: #00f2ff; margin-bottom: 0px;">
+            <div class="calc-row" style="border-bottom: 1px solid #444;">
+                <span style="color:#ffffff;">EWZ MAX</span><span style="color:#00ff88;">{ewz_live['mx']:.2f}</span>
+            </div>
+            <div class="calc-row" style="border-bottom: 1px solid #444;">
+                <span style="color:#ffffff;">EWZ MIN</span><span style="color:#ff4d4d;">{ewz_live['mn']:.2f}</span>
+            </div>
+            <div class="calc-row" style="border-bottom: none;">
+                <span style="color:#00f2ff;">EWZ MEDIA</span><span style="color:#ffffff;">{ewz_avg:.2f}</span>
             </div>
         </div>""", unsafe_allow_html=True)
 
