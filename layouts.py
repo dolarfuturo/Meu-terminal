@@ -18,13 +18,17 @@ st.markdown("""
     .asset-name { font-size: 17px; color: #fff; text-align: left; font-weight: bold; padding-left: 15px; }
     .price-col { color: #00f2ff !important; font-weight: bold; }
     
-    .header-bair { display: flex; justify-content: space-between; align-items: center; padding: 10px; color: #00f2ff; font-weight: bold; }
-    .bair-text { font-size: 42px; letter-spacing: 2px; } 
-    .terminal-text { font-size: 26px; color: #d4a017; }
+    /* HEADER COM MÁXIMO DESTAQUE */
+    .header-bair { display: flex; justify-content: space-between; align-items: center; padding: 20px 10px; border-bottom: 3px solid #ffffff; margin-bottom: 20px; }
+    .title-container { display: flex; align-items: center; gap: 15px; }
+    .bair-text { font-size: 52px; color: #00f2ff; font-weight: 900; font-family: 'monospace'; letter-spacing: 4px; text-shadow: 2px 2px #000; } 
+    .sep-text { font-size: 52px; color: #ffffff; font-weight: 900; }
+    .terminal-text { font-size: 52px; color: #d4a017; font-weight: 900; font-family: 'monospace'; letter-spacing: 2px; text-shadow: 2px 2px #000; }
     
-    .clock-container { display: flex; gap: 20px; color: #888; font-family: 'monospace'; font-size: 12px; }
-    .clock-box { text-align: center; border: 1px solid #ffffff; padding: 5px; border-radius: 4px; background: #0a141a; }
-    .clock-time { color: #fff; font-size: 16px; display: block; }
+    .clock-container { display: flex; gap: 15px; color: #888; font-family: 'monospace'; }
+    .clock-box { text-align: center; border: 2px solid #ffffff; padding: 10px 15px; border-radius: 6px; background: #0a141a; min-width: 110px; }
+    .clock-label { font-size: 11px; display: block; color: #d4a017; margin-bottom: 4px; font-weight: bold; }
+    .clock-time { color: #fff; font-size: 22px; font-weight: bold; display: block; }
     
     .calc-panel { border: 2.5px solid #ffffff; border-radius: 8px; padding: 10px; background: #0a141a; font-family: monospace; margin-bottom: 10px; }
     .calc-row { display: flex; justify-content: space-between; padding: 6px 8px; border-bottom: 1px solid #444; font-size: 14px; font-weight: bold; }
@@ -33,7 +37,7 @@ st.markdown("""
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 45s linear infinite; font-family: 'monospace'; font-size: 14px; font-weight: bold; }
     @keyframes marquee { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
     
-    .monitor-bar { background: #0a141a; border: 2px solid #ffffff; padding: 8px; text-align: center; color: #00f2ff; font-weight: bold; font-family: monospace; border-radius: 4px; }
+    .monitor-bar { background: #0a141a; border: 2px solid #ffffff; padding: 8px; text-align: center; color: #00f2ff; font-weight: bold; font-family: monospace; border-radius: 4px; margin-bottom: 10px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -92,7 +96,7 @@ with st.sidebar:
     st.write(f"**REF MAX:** {mx_ref:.2f}")
     st.write(f"**REF MIN:** {mn_ref:.2f}")
 
-# --- UI ---
+# --- UI HEADER ---
 tz_sp = pytz.timezone('America/Sao_Paulo')
 br_t = datetime.now(tz_sp).strftime('%H:%M')
 ny_t = datetime.now(pytz.timezone('America/New_York')).strftime('%H:%M')
@@ -100,11 +104,15 @@ ld_t = datetime.now(pytz.timezone('Europe/London')).strftime('%H:%M')
 
 st.markdown(f"""
 <div class="header-bair">
-    <div><span class="bair-text">BAIR</span> - <span class="terminal-text">TERMINAL DOLAR</span></div>
+    <div class="title-container">
+        <span class="bair-text">BAIR</span>
+        <span class="sep-text">-</span>
+        <span class="terminal-text">TERMINAL DOLAR</span>
+    </div>
     <div class="clock-container">
-        <div class="clock-box">BRASÍLIA<span class="clock-time">{br_t}</span></div>
-        <div class="clock-box">NEW YORK<span class="clock-time">{ny_t}</span></div>
-        <div class="clock-box">LONDRES<span class="clock-time">{ld_t}</span></div>
+        <div class="clock-box"><span class="clock-label">BRASÍLIA</span><span class="clock-time">{br_t}</span></div>
+        <div class="clock-box"><span class="clock-label">NEW YORK</span><span class="clock-time">{ny_t}</span></div>
+        <div class="clock-box"><span class="clock-label">LONDRES</span><span class="clock-time">{ld_t}</span></div>
     </div>
 </div>""", unsafe_allow_html=True)
 
@@ -122,7 +130,6 @@ if ewz_live:
         v2_cor = "#00ff00" if v2_var >= 0 else "#ff0000"
         html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col'>{(res['vivo']/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max']/1000):.4f}</td><td>{(res['min']/1000):.4f}</td><td style='color:{v2_cor}; font-weight:bold;'>{v2_var:+.2f}%</td></tr>"
         
-        # Ativos configurados com nomes técnicos
         ativos_config = {"SPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
         ticker_items = [f"<span style='color:#fff;'>DOLFUT:</span> <span style='color:{v2_cor};'>{v2_var:+.2f}%</span>"]
         
@@ -137,14 +144,13 @@ if ewz_live:
         st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
 
     with c_side:
-        # BLOCO DE PROJEÇÕES COM TERMO AXIS
         st.markdown(f"""
         <div class="calc-panel">
             <div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div>
             <div class="calc-row" style="color:#ffff00;"><span>75%</span> <span>{res['p75_up']:.2f}</span></div>
             <div class="calc-row" style="color:#ffa500;"><span>1ª MAX</span> <span>{res['p50_up']:.2f}</span></div>
             <div class="calc-row" style="color:#ffff00;"><span>25%</span> <span>{res['p25_up']:.2f}</span></div>
-            <div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 16px; font-weight: bold; letter-spacing: 1px;">AXIS: {a_dol:.2f}</div>
+            <div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 20px; font-weight: bold; border-top:1px solid #333; border-bottom:1px solid #333; margin: 5px 0; letter-spacing: 2px;">AXIS: {a_dol:.2f}</div>
             <div class="calc-row" style="color:#ffff00;"><span>-25%</span> <span>{res['p25_down']:.2f}</span></div>
             <div class="calc-row" style="color:#ffa500;"><span>1ª MIN</span> <span>{res['p50_down']:.2f}</span></div>
             <div class="calc-row" style="color:#ffff00;"><span>-75%</span> <span>{res['p75_down']:.2f}</span></div>
