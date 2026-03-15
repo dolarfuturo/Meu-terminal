@@ -76,22 +76,23 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
 
 def fetch(s):
     try:
-        # Puxa 1 dia com intervalo de 1m para filtrar a janela operacional
+        # Puxa 1 dia com dados de 1 minuto
         d = yf.Ticker(s).history(period="1d", interval="1m", prepost=False)
         if d.empty: return None
         
-        # Ajusta fuso e filtra 10:30 às 17:00
+        # Converte para São Paulo e filtra a Janela Operacional
         d.index = d.index.tz_convert('America/Sao_Paulo')
         d_op = d.between_time(dt_time(10, 30), dt_time(17, 0))
         
+        # Se a janela estiver vazia (antes das 10:30), retorna o dia todo para não zerar
         if d_op.empty:
-             return {"at": d['Close'].iloc[-1], "cl": d['Close'].iloc[0], "mx": d['High'].max(), "mn": d['Low'].min()}
-             
+            return {"at": d['Close'].iloc[-1], "cl": d['Close'].iloc[0], "mx": d['High'].max(), "mn": d['Low'].min()}
+            
         return {
             "at": d['Close'].iloc[-1], 
             "cl": d['Close'].iloc[0], 
-            "mx": d_op['High'].max(), # Máxima filtrada na janela
-            "mn": d_op['Low'].min()  # Mínima filtrada na janela
+            "mx": d_op['High'].max(), # MÁXIMA REAL DENTRO DE 10:30-17:00
+            "mn": d_op['Low'].min()   # MÍNIMA REAL DENTRO DE 10:30-17:00
         }
     except: return None
 
