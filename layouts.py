@@ -3,6 +3,7 @@ import yfinance as yf
 import time
 from datetime import datetime, time as dt_time
 import pytz
+import pandas as pd
 
 # Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLAR")
@@ -34,39 +35,42 @@ st.markdown("""
     @keyframes marquee { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
     
     .monitor-bar { background: #0a141a; border: 2px solid #ffffff; padding: 8px; text-align: center; color: #00f2ff; font-weight: bold; font-family: monospace; border-radius: 4px; }
+    
+    /* Sparkline Style */
+    .spark-container { padding: 5px 15px; text-align: center; background: #050a0e; border-radius: 4px; margin-top: 5px; border: 1px solid #333; }
 </style>
 """, unsafe_allow_html=True)
 
 # --- MOTOR DE DADOS ---
 @st.cache_data(ttl=300)
-def calcular_referencias_eixo():
+def calcular_referencias_axis():
     try:
         t = yf.Ticker("EWZ")
         df = t.history(period="1d", interval="1m", prepost=False)
-        if df.empty: return 37.85, 38.10, 37.60
+        if df.empty: return 37.85, 38.10, 37.60, None
         df.index = df.index.tz_convert('America/Sao_Paulo')
         df_filtered = df.between_time(dt_time(10, 30), dt_time(17, 0))
         if not df_filtered.empty:
             mx = df_filtered['High'].max()
             mn = df_filtered['Low'].min()
-            return (mx + mn) / 2, mx, mn
+            return (mx + mn) / 2, mx, mn, df_filtered['Close']
     except: pass
-    return 37.85, 38.10, 37.60
+    return 37.85, 38.10, 37.60, None
 
-def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
-    v_atual = ((eixo_ewz / p_ewz_atual) - 1) * 100 / 1.5
-    dolar_vivo = eixo_dol * (1 + (v_atual / 100))
-    v_neg = ((eixo_ewz / max_ewz) - 1) * 100 / 1.5
-    v_pos = ((eixo_ewz / min_ewz) - 1) * 100 / 1.5
-    alvo_max, alvo_min = eixo_dol * (1 + (v_pos / 100)), eixo_dol * (1 + (v_neg / 100))
+def calcular_k97_total(axis_ewz, p_ewz_atual, max_ewz, min_ewz, axis_dol):
+    v_atual = ((axis_ewz / p_ewz_atual) - 1) * 100 / 1.5
+    dolar_vivo = axis_dol * (1 + (v_atual / 100))
+    v_neg = ((axis_ewz / max_ewz) - 1) * 100 / 1.5
+    v_pos = ((axis_ewz / min_ewz) - 1) * 100 / 1.5
+    alvo_max, alvo_min = axis_dol * (1 + (v_pos / 100)), axis_dol * (1 + (v_neg / 100))
     return {
         "vivo": dolar_vivo, 
-        "fraja": eixo_dol * (1 + (((eixo_ewz / p_ewz_atual) - 1) * 100 / 4.5 / 100)),
-        "medio": eixo_dol * (1 + (((eixo_ewz / ((max_ewz + min_ewz) / 2)) - 1) * 100 / 100)),
-        "v_atual": v_atual, "v_med": ((eixo_ewz / ((max_ewz + min_ewz) / 2)) - 1) * 100,
+        "fraja": axis_dol * (1 + (((axis_ewz / p_ewz_atual) - 1) * 100 / 4.5 / 100)),
+        "medio": axis_dol * (1 + (((axis_ewz / ((max_ewz + min_ewz) / 2)) - 1) * 100 / 100)),
+        "v_atual": v_atual, "v_med": ((axis_ewz / ((max_ewz + min_ewz) / 2)) - 1) * 100,
         "max": alvo_max, "min": alvo_min,
-        "p75_up": (eixo_dol + (alvo_max - eixo_dol)*0.75), "p50_up": (eixo_dol + alvo_max) / 2, "p25_up": (eixo_dol + (alvo_max - eixo_dol)*0.25),
-        "p75_down": (eixo_dol + (alvo_min - eixo_dol)*0.75), "p50_down": (eixo_dol + alvo_min) / 2, "p25_down": (eixo_dol + (alvo_min - eixo_dol)*0.25)
+        "p75_up": (axis_dol + (alvo_max - axis_dol)*0.75), "p50_up": (axis_dol + alvo_max) / 2, "p25_up": (axis_dol + (alvo_max - axis_dol)*0.25),
+        "p75_down": (axis_dol + (alvo_min - axis_dol)*0.75), "p50_down": (axis_dol + alvo_min) / 2, "p25_down": (axis_dol + (alvo_min - axis_dol)*0.25)
     }
 
 def fetch(s):
@@ -81,12 +85,12 @@ def fetch(s):
     except: return None
 
 # --- SIDEBAR ---
-eixo_auto, mx_ref, mn_ref = calcular_referencias_eixo()
+axis_auto, mx_ref, mn_ref, hist_ewz = calcular_referencias_axis()
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
-    with st.form("ajuste_eixo"):
-        e_ewz = st.number_input("EIXO EWZ:", value=float(eixo_auto), format="%.2f")
-        e_dol = st.number_input("EIXO DOLFUT:", value=5246.00, format="%.2f")
+    with st.form("ajuste_axis"):
+        a_ewz = st.number_input("AXIS EWZ:", value=float(axis_auto), format="%.2f")
+        a_dol = st.number_input("AXIS DOLFUT:", value=5246.00, format="%.2f")
         salvar = st.form_submit_button("SALVAR VARIÁVEIS")
     st.divider()
     st.write(f"**REF MAX (10:30-17h):** {mx_ref:.2f}")
@@ -110,7 +114,7 @@ st.markdown(f"""
 
 ewz_live = fetch("EWZ")
 if ewz_live:
-    res = calcular_k97_total(e_ewz, ewz_live['at'], mx_ref, mn_ref, e_dol)
+    res = calcular_k97_total(a_ewz, ewz_live['at'], mx_ref, mn_ref, a_dol)
     h1, h2 = st.columns([3, 1])
     h1.markdown('<div class="monitor-bar">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
     h2.markdown('<div class="monitor-bar">CÁLCULOS DE PROJEÇÕES</div>', unsafe_allow_html=True)
@@ -118,9 +122,9 @@ if ewz_live:
     c_main, c_side = st.columns([3, 1])
     with c_main:
         html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th style='color: #d4a017;'>Price</th><th style='color: #d4a017;'>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
-        v2_var = ((res['vivo'] / e_dol) - 1) * 100
+        v2_var = ((res['vivo'] / a_dol) - 1) * 100
         v2_cor = "#00ff00" if v2_var >= 0 else "#ff0000"
-        html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col'>{(res['vivo']/1000):.4f}</td><td>{(e_dol/1000):.4f}</td><td>{(e_dol/1000):.4f}</td><td>{(res['max']/1000):.4f}</td><td>{(res['min']/1000):.4f}</td><td style='color:{v2_cor}; font-weight:bold;'>{v2_var:+.2f}%</td></tr>"
+        html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col'>{(res['vivo']/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max']/1000):.4f}</td><td>{(res['min']/1000):.4f}</td><td style='color:{v2_cor}; font-weight:bold;'>{v2_var:+.2f}%</td></tr>"
         
         ativos_config = {"SPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "GOLD": "GC=F", "BRENT": "BZ=F"}
         ticker_items = [f"<span style='color:#fff;'>DOLFUT:</span> <span style='color:{v2_cor};'>{v2_var:+.2f}%</span>"]
@@ -136,14 +140,21 @@ if ewz_live:
         st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
 
     with c_side:
-        # ATUALIZAÇÃO DO BLOCO DE PROJEÇÕES CONFORME SOLICITADO
         st.markdown(f"""
         <div class="calc-panel">
             <div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div>
             <div class="calc-row" style="color:#ffff00;"><span>75%</span> <span>{res['p75_up']:.2f}</span></div>
             <div class="calc-row" style="color:#ffa500;"><span>1ª MAX</span> <span>{res['p50_up']:.2f}</span></div>
             <div class="calc-row" style="color:#ffff00;"><span>25%</span> <span>{res['p25_up']:.2f}</span></div>
-            <div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 16px;">EIXO: {e_dol:.2f}</div>
+            <div style="text-align:center; padding: 10px 10px 2px 10px; color: #00f2ff; font-size: 16px; font-weight: bold; letter-spacing: 1px;">AXIS: {a_dol:.2f}</div>
+        </div>""", unsafe_allow_html=True)
+        
+        # Sparkline de Tendência (Diferencial visual)
+        if hist_ewz is not None:
+            st.sparkline(hist_ewz.tail(40), color="#00f2ff")
+        
+        st.markdown(f"""
+        <div class="calc-panel">
             <div class="calc-row" style="color:#ffff00;"><span>-25%</span> <span>{res['p25_down']:.2f}</span></div>
             <div class="calc-row" style="color:#ffa500;"><span>1ª MIN</span> <span>{res['p50_down']:.2f}</span></div>
             <div class="calc-row" style="color:#ffff00;"><span>-75%</span> <span>{res['p75_down']:.2f}</span></div>
