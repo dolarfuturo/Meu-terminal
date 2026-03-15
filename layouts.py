@@ -29,8 +29,8 @@ st.markdown("""
     .clock-label { font-size: 10px; color: #d4a017; font-weight: bold; display: block; text-transform: uppercase; margin-bottom: 2px; }
     .clock-time { color: #fff; font-size: 17px; font-weight: bold; display: block; }
     
-    .calc-panel { border: 2.5px solid #ffffff; border-radius: 8px; padding: 10px; background: #0a141a; font-family: monospace; margin-bottom: 10px; }
-    .calc-row { display: flex; justify-content: space-between; padding: 6px 8px; border-bottom: 1px solid #444; font-size: 14px; font-weight: bold; }
+    .calc-panel { border: 2.5px solid #ffffff; border-radius: 8px; padding: 8px; background: #0a141a; font-family: monospace; margin-bottom: 10px; }
+    .calc-row { display: flex; justify-content: space-between; padding: 5px 8px; border-bottom: 1px solid #444; font-size: 13px; font-weight: bold; align-items: center; }
     
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 2px solid #ffffff; border-bottom: 2px solid #ffffff; padding: 8px 0; overflow: hidden; white-space: nowrap; margin-top: 15px; }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 45s linear infinite; font-family: 'monospace'; font-size: 14px; font-weight: bold; }
@@ -153,18 +153,20 @@ if ewz_live:
             <div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div>
         </div>""", unsafe_allow_html=True)
         
-        # BLOCO 2: CONSOLIDADO (DOLFUT + MÉDIA + JUSTO)
+        # BLOCO 2: CONSOLIDADO (CORES CUSTOMIZADAS E ALINHADAS)
         st.markdown(f"""
-        <div class="calc-panel" style="border-color: #d4a017;">
-            <div class="calc-row" style="color:#fff; border-bottom: 1px solid #444; padding: 12px 8px;">
-                <span style="font-size: 14px;">DOLFUT</span> 
-                <span style="color:#00f2ff; font-size: 20px; font-weight: 950;">{res['vivo']:.2f}</span>
+        <div class="calc-panel" style="border-color: #ffffff; margin-bottom: 0px;">
+            <div class="calc-row" style="border-bottom: 1px solid #444; padding: 10px 8px;">
+                <span style="color:#ffffff; font-size: 13px;">DOLFUT</span> 
+                <span style="color:#00f2ff; font-size: 19px; font-weight: 950;">{res['vivo']:.2f}</span>
             </div>
-            <div class="calc-row" style="color:#00f2ff; border-bottom: 1px solid #444;">
-                <span>MÉDIA DOLFUT</span> <span>{res['medio']:.2f}</span>
+            <div class="calc-row" style="border-bottom: 1px solid #444;">
+                <span style="color:#ffff00; font-size: 12px;">MÉDIA DOL</span> 
+                <span style="color:#00f2ff; font-size: 16px;">{res['medio']:.2f}</span>
             </div>
-            <div class="calc-row" style="color:#d4a017; border-bottom: none;">
-                <span>PREÇO JUSTO</span> <span>{res['fraja']:.2f}</span>
+            <div class="calc-row" style="border-bottom: none;">
+                <span style="color:#d4a017; font-size: 12px;">P. JUSTO</span> 
+                <span style="color:#ffffff; font-size: 16px; font-weight: bold;">{res['fraja']:.2f}</span>
             </div>
         </div>""", unsafe_allow_html=True)
 
