@@ -18,10 +18,9 @@ st.markdown("""
     .asset-name { font-size: 17px; color: #fff; text-align: left; font-weight: bold; padding-left: 15px; }
     .price-col { color: #00f2ff !important; font-weight: bold; }
     
-    /* CABEÇALHO AMPLIADO */
-    .header-bair { display: flex; justify-content: space-between; align-items: center; padding: 15px 10px; color: #00f2ff; border-bottom: 2px solid #ffffff; margin-bottom: 15px; }
-    .bair-title { font-size: 58px; font-weight: 900; letter-spacing: 4px; font-family: 'monospace'; } 
-    .terminal-sub { font-size: 32px; color: #d4a017; font-weight: bold; margin-left: 15px; }
+    /* CABEÇALHO UNIFORME */
+    .header-bair { display: flex; justify-content: space-between; align-items: center; padding: 15px 10px; border-bottom: 2px solid #ffffff; margin-bottom: 15px; }
+    .full-title { font-size: 48px; font-weight: 900; letter-spacing: 3px; font-family: 'monospace'; color: #00f2ff; }
     
     .clock-container { display: flex; gap: 15px; color: #888; font-family: 'monospace'; }
     .clock-box { text-align: center; border: 1px solid #ffffff; padding: 8px 12px; border-radius: 4px; background: #0a141a; min-width: 100px; }
@@ -102,10 +101,7 @@ ld_t = datetime.now(pytz.timezone('Europe/London')).strftime('%H:%M')
 
 st.markdown(f"""
 <div class="header-bair">
-    <div>
-        <span class="bair-title">BAIR</span>
-        <span class="terminal-sub">- TERMINAL DOLAR</span>
-    </div>
+    <div class="full-title">BAIR - TERMINAL DOLAR</div>
     <div class="clock-container">
         <div class="clock-box"><span class="clock-label">BRASÍLIA</span><span class="clock-time">{br_t}</span></div>
         <div class="clock-box"><span class="clock-label">NEW YORK</span><span class="clock-time">{ny_t}</span></div>
