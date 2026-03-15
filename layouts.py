@@ -7,7 +7,7 @@ import pytz
 # Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLAR")
 
-# --- CSS: ESTILO REFINADO + VELOCIDADE MARQUEE AJUSTADA ---
+# --- CSS: ESTILO REFINADO ---
 st.markdown("""
 <style>
     .stApp { background-color: #050a0e !important; }
@@ -23,7 +23,6 @@ st.markdown("""
     .calc-panel { border: 2px solid #1c3d4d; border-radius: 8px; padding: 10px; background: #0a141a; font-family: monospace; margin-bottom: 10px; }
     .calc-row { display: flex; justify-content: space-between; padding: 6px 8px; border-bottom: 1px solid #1c3d4d; font-size: 14px; font-weight: bold; }
     
-    /* Marquee mais lento: 45s */
     .ticker-wrapper { background: #000; border: 1px solid #1c3d4d; padding: 5px; overflow: hidden; white-space: nowrap; margin-top: 15px; }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 45s linear infinite; font-family: 'monospace'; font-size: 13px; font-weight: bold; }
     @keyframes marquee { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
@@ -32,18 +31,25 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS ---
+# --- MOTOR DE CÁLCULO AUTOMÁTICO (SENTINELA 10:30 - 17:00) ---
 @st.cache_data(ttl=600)
-def calcular_eixo_automatico():
+def calcular_referencias_eixo():
     try:
         t = yf.Ticker("EWZ")
-        df = t.history(period="7d", interval="1d")
+        # Puxa dados de 5 dias para garantir a captura da última sessão completa
+        df = t.history(period="5d", interval="1d")
         if df.empty: return 37.85, 38.10, 37.60
+        
         agora = datetime.now(pytz.timezone('America/Sao_Paulo'))
+        # Se for antes das 18h, usa o dia anterior como referência de fechamento de eixo
         idx = -2 if agora.hour < 18 else -1
-        mx, mn = df['High'].iloc[idx], df['Low'].iloc[idx]
-        return (mx + mn) / 2, mx, mn
-    except: return 37.85, 38.10, 37.60
+        
+        mx = df['High'].iloc[idx]
+        mn = df['Low'].iloc[idx]
+        eixo = (mx + mn) / 2
+        return eixo, mx, mn
+    except:
+        return 37.85, 38.10, 37.60
 
 def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
     var_atual = ((eixo_ewz / p_ewz_atual) - 1) * 100 / 1.5
@@ -53,16 +59,19 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
     ewz_medio_dia = (max_ewz + min_ewz) / 2
     var_medio = ((eixo_ewz / ewz_medio_dia) - 1) * 100 
     dolar_medio = eixo_dol * (1 + (var_medio / 100)) 
+    
     v_neg = ((eixo_ewz / max_ewz) - 1) * 100 / 1.5
     v_pos = ((eixo_ewz / min_ewz) - 1) * 100 / 1.5
     alvo_max = eixo_dol * (1 + (v_pos / 100))
     alvo_min = eixo_dol * (1 + (v_neg / 100))
+    
     return {
         "vivo": dolar_vivo, "fraja": dolar_fraja, "medio": dolar_medio, 
         "v_atual": var_atual, "ewz_med": ewz_medio_dia, "v_med": var_medio,
-        "max": alvo_max, "p75_up": (eixo_dol + (alvo_max - eixo_dol)*0.75), 
+        "max": alvo_max, "min": alvo_min,
+        "p75_up": (eixo_dol + (alvo_max - eixo_dol)*0.75), 
         "p50_up": (eixo_dol + alvo_max) / 2, "p25_up": (eixo_dol + (alvo_max - eixo_dol)*0.25),
-        "min": alvo_min, "p75_down": (eixo_dol + (alvo_min - eixo_dol)*0.75), 
+        "p75_down": (eixo_dol + (alvo_min - eixo_dol)*0.75), 
         "p50_down": (eixo_dol + alvo_min) / 2, "p25_down": (eixo_dol + (alvo_min - eixo_dol)*0.25)
     }
 
@@ -72,17 +81,23 @@ def fetch(s):
         return {"at": d['Close'].iloc[-1], "cl": d['Close'].iloc[0], "mx": d['High'].max(), "mn": d['Low'].min()}
     except: return None
 
+# --- UI SIDEBAR COM REFERÊNCIAS AUTOMÁTICAS ---
+eixo_auto, mx_ref, mn_ref = calcular_referencias_eixo()
+
+with st.sidebar:
+    st.markdown("### ⚙️ AJUSTE K97")
+    e_ewz = st.number_input("EIXO EWZ:", value=float(eixo_auto), format="%.2f")
+    e_dol = st.number_input("EIXO DOLFUT:", value=5246.00, format="%.2f")
+    st.divider()
+    # Restauração da visualização das referências automáticas
+    st.write(f"**REF MAX (10:30-17:00):** {mx_ref:.2f}")
+    st.write(f"**REF MIN (10:30-17:00):** {mn_ref:.2f}")
+    st.caption("Cálculo baseado na última sessão completa.")
+
 # --- UI PRINCIPAL ---
-eixo_sug, mx_ref, mn_ref = calcular_eixo_automatico()
 br_t = datetime.now(pytz.timezone('America/Sao_Paulo')).strftime('%H:%M')
 ny_t = datetime.now(pytz.timezone('America/New_York')).strftime('%H:%M')
 ld_t = datetime.now(pytz.timezone('Europe/London')).strftime('%H:%M')
-
-with st.sidebar:
-    st.header("⚙️ AJUSTE K97")
-    e_ewz = st.number_input("EIXO EWZ:", value=float(eixo_sug), format="%.2f")
-    e_dol = st.number_input("EIXO DOLFUT:", value=5219.50, format="%.2f")
-    st.divider()
 
 st.markdown(f"""<div class="header-bair"><div>BAIR - <span style="color: #d4a017;">TERMINAL DOLAR</span></div><div class="clock-container"><div class="clock-box">BRASÍLIA<span class="clock-time">{br_t}</span></div><div class="clock-box">NEW YORK<span class="clock-time">{ny_t}</span></div><div class="clock-box">LONDRES<span class="clock-time">{ld_t}</span></div></div></div>""", unsafe_allow_html=True)
 
@@ -91,22 +106,20 @@ if ewz_live:
     res = calcular_k97_total(e_ewz, ewz_live['at'], mx_ref, mn_ref, e_dol)
     
     head_col1, head_col2 = st.columns([3, 1])
-    with head_col1:
-        st.markdown('<div class="monitor-bar">MONITORAMENTO DE ATIVOS</div>', unsafe_allow_html=True)
-    with head_col2:
-        st.markdown('<div class="monitor-bar">PROJEÇÕES K97</div>', unsafe_allow_html=True)
+    with head_col1: st.markdown('<div class="monitor-bar">MONITORAMENTO DE ATIVOS</div>', unsafe_allow_html=True)
+    with head_col2: st.markdown('<div class="monitor-bar">PROJEÇÕES K97</div>', unsafe_allow_html=True)
 
     col_main, col_side = st.columns([3, 1])
     
     with col_main:
         html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
         
-        # Sintético 2.0 - Ex: 5.3510
+        # Sintético 2.0
         v2_var = ((res['vivo'] / e_dol) - 1) * 100
         v2_cor = "#00ff00" if v2_var >= 0 else "#ff0000"
         html_table += f"<tr><td style='color:#fff; text-align:left; font-weight:bold; padding-left:15px;'>SINTÉTICO 2.0 (VIVO)</td><td style='color:#d4a017;'>{(res['vivo']/1000):.4f}</td><td>{(e_dol/1000):.4f}</td><td>{(e_dol/1000):.4f}</td><td>{(res['max']/1000):.4f}</td><td>{(res['min']/1000):.4f}</td><td style='color:{v2_cor}; font-weight:bold;'>{v2_var:+.2f}%</td></tr>"
         
-        # Dicionário de ativos com mapeamento de precisão
+        # Configuração de Ativos
         ativos_config = {
             "SPOT": {"sym": "USDBRL=X", "fmt": ".4f"},
             "DXY": {"sym": "DX-Y.NYB", "fmt": ".2f"},
@@ -132,12 +145,11 @@ if ewz_live:
         html_table += "</tbody></table></div>"
         st.markdown(html_table, unsafe_allow_html=True)
         
-        # Ticker Marquee Lento
         ticker_html = " • ".join(ticker_items)
         st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{ticker_html} • {ticker_html}</div></div>', unsafe_allow_html=True)
 
     with col_side:
-        # Bloco de Projeções (Níveis)
+        # Bloco de Projeções
         st.markdown(f"""
         <div class="calc-panel">
             <div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div>
@@ -152,7 +164,7 @@ if ewz_live:
         </div>
         """, unsafe_allow_html=True)
         
-        # Bloco Externo
+        # Bloco Sintéticos Extras
         vm_cor = "#00ff00" if res['v_med'] >= 0 else "#ff0000"
         st.markdown(f"""
         <div class="calc-panel" style="border-color: #d4a017;">
