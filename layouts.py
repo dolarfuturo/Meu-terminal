@@ -35,6 +35,9 @@ st.markdown("""
     @keyframes marquee { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
     
     .monitor-bar { background: #0a141a; border: 2px solid #ffffff; padding: 8px; text-align: center; color: #00f2ff; font-weight: bold; font-family: monospace; border-radius: 4px; }
+    
+    /* Ajuste para o Sparkline não quebrar o layout */
+    .spark-box { padding: 0 10px; margin-top: -5px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -50,6 +53,7 @@ def calcular_referencias_axis():
         if not df_filtered.empty:
             mx = df_filtered['High'].max()
             mn = df_filtered['Low'].min()
+            # Retornamos os preços de fechamento para o gráfico
             return (mx + mn) / 2, mx, mn, df_filtered['Close']
     except: pass
     return 37.85, 38.10, 37.60, None
@@ -82,7 +86,7 @@ def fetch(s):
     except: return None
 
 # --- SIDEBAR ---
-axis_auto, mx_ref, mn_ref, hist_ewz = calcular_referencias_axis()
+axis_auto, mx_ref, mn_ref, hist_data = calcular_referencias_axis()
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
     with st.form("ajuste_axis"):
@@ -90,8 +94,8 @@ with st.sidebar:
         a_dol = st.number_input("AXIS DOLFUT:", value=5246.00, format="%.2f")
         salvar = st.form_submit_button("SALVAR VARIÁVEIS")
     st.divider()
-    st.write(f"**REF MAX (10:30-17h):** {mx_ref:.2f}")
-    st.write(f"**REF MIN (10:30-17h):** {mn_ref:.2f}")
+    st.write(f"**REF MAX:** {mx_ref:.2f}")
+    st.write(f"**REF MIN:** {mn_ref:.2f}")
 
 # --- UI ---
 tz_sp = pytz.timezone('America/Sao_Paulo')
@@ -137,18 +141,21 @@ if ewz_live:
         st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
 
     with c_side:
+        # Bloco de Projeções com AXIS Central
         st.markdown(f"""
         <div class="calc-panel">
             <div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div>
             <div class="calc-row" style="color:#ffff00;"><span>75%</span> <span>{res['p75_up']:.2f}</span></div>
             <div class="calc-row" style="color:#ffa500;"><span>1ª MAX</span> <span>{res['p50_up']:.2f}</span></div>
             <div class="calc-row" style="color:#ffff00;"><span>25%</span> <span>{res['p25_up']:.2f}</span></div>
-            <div style="text-align:center; padding-top: 10px; color: #00f2ff; font-size: 16px; font-weight: bold;">AXIS: {a_dol:.2f}</div>
+            <div style="text-align:center; padding-top: 10px; color: #00f2ff; font-size: 16px; font-weight: bold; letter-spacing: 1px;">AXIS: {a_dol:.2f}</div>
         </div>""", unsafe_allow_html=True)
-        
-        # Sparkline de Tendência
-        if hist_ewz is not None:
-            st.sparkline(hist_ewz.tail(40), color="#00f2ff")
+
+        # Gráfico de tendência usando st.line_chart (substituto seguro para sparkline)
+        if hist_data is not None:
+            st.markdown('<div class="spark-box">', unsafe_allow_html=True)
+            st.line_chart(hist_data.tail(30), height=60, use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
         
         st.markdown(f"""
         <div class="calc-panel">
