@@ -7,7 +7,7 @@ import pytz
 # Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLAR")
 
-# --- CSS: ESTILIZAÇÃO REFINADA ---
+# --- CSS: ESTILIZAÇÃO COMPACTA E ROBUSTA ---
 st.markdown("""
 <style>
     .stApp { background-color: #050a0e !important; }
@@ -18,26 +18,25 @@ st.markdown("""
     .asset-name { font-size: 17px; color: #fff; text-align: left; font-weight: bold; padding-left: 15px; }
     .price-col { color: #00f2ff !important; font-weight: bold; }
     
-    /* HEADER COM MÁXIMO DESTAQUE */
-    .header-bair { display: flex; justify-content: space-between; align-items: center; padding: 20px 10px; border-bottom: 3px solid #ffffff; margin-bottom: 20px; }
-    .title-container { display: flex; align-items: center; gap: 15px; }
-    .bair-text { font-size: 52px; color: #00f2ff; font-weight: 900; font-family: 'monospace'; letter-spacing: 4px; text-shadow: 2px 2px #000; } 
-    .sep-text { font-size: 52px; color: #ffffff; font-weight: 900; }
-    .terminal-text { font-size: 52px; color: #d4a017; font-weight: 900; font-family: 'monospace'; letter-spacing: 2px; text-shadow: 2px 2px #000; }
+    /* HEADER COMPACTO E "CHEIO" */
+    .header-bair { display: flex; justify-content: space-between; align-items: center; padding: 10px 10px; border-bottom: 2.5px solid #ffffff; margin-bottom: 15px; }
+    .title-box { display: flex; align-items: center; gap: 8px; line-height: 1; }
+    .bair-text { font-size: 46px; color: #00f2ff; font-weight: 950; font-family: 'monospace'; letter-spacing: -1px; } 
+    .sep-text { font-size: 46px; color: #ffffff; font-weight: 950; margin: 0 5px; }
+    .terminal-text { font-size: 46px; color: #d4a017; font-weight: 950; font-family: 'monospace'; letter-spacing: -1px; }
     
-    .clock-container { display: flex; gap: 15px; color: #888; font-family: 'monospace'; }
-    .clock-box { text-align: center; border: 2px solid #ffffff; padding: 10px 15px; border-radius: 6px; background: #0a141a; min-width: 110px; }
-    .clock-label { font-size: 11px; display: block; color: #d4a017; margin-bottom: 4px; font-weight: bold; }
-    .clock-time { color: #fff; font-size: 22px; font-weight: bold; display: block; }
+    .clock-container { display: flex; gap: 12px; color: #888; font-family: 'monospace'; }
+    .clock-box { text-align: center; border: 1.5px solid #ffffff; padding: 6px 10px; border-radius: 4px; background: #0a141a; min-width: 95px; }
+    .clock-time { color: #fff; font-size: 18px; font-weight: bold; display: block; }
     
     .calc-panel { border: 2.5px solid #ffffff; border-radius: 8px; padding: 10px; background: #0a141a; font-family: monospace; margin-bottom: 10px; }
     .calc-row { display: flex; justify-content: space-between; padding: 6px 8px; border-bottom: 1px solid #444; font-size: 14px; font-weight: bold; }
     
-    .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 2px solid #ffffff; border-bottom: 2px solid #ffffff; padding: 8px 0; overflow: hidden; white-space: nowrap; margin-top: 20px; }
+    .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 2px solid #ffffff; border-bottom: 2px solid #ffffff; padding: 8px 0; overflow: hidden; white-space: nowrap; margin-top: 15px; }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 45s linear infinite; font-family: 'monospace'; font-size: 14px; font-weight: bold; }
     @keyframes marquee { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
     
-    .monitor-bar { background: #0a141a; border: 2px solid #ffffff; padding: 8px; text-align: center; color: #00f2ff; font-weight: bold; font-family: monospace; border-radius: 4px; margin-bottom: 10px; }
+    .monitor-bar { background: #0a141a; border: 2.2px solid #ffffff; padding: 6px; text-align: center; color: #00f2ff; font-weight: bold; font-family: monospace; border-radius: 4px; margin-bottom: 8px; font-size: 14px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -104,15 +103,15 @@ ld_t = datetime.now(pytz.timezone('Europe/London')).strftime('%H:%M')
 
 st.markdown(f"""
 <div class="header-bair">
-    <div class="title-container">
+    <div class="title-box">
         <span class="bair-text">BAIR</span>
         <span class="sep-text">-</span>
         <span class="terminal-text">TERMINAL DOLAR</span>
     </div>
     <div class="clock-container">
-        <div class="clock-box"><span class="clock-label">BRASÍLIA</span><span class="clock-time">{br_t}</span></div>
-        <div class="clock-box"><span class="clock-label">NEW YORK</span><span class="clock-time">{ny_t}</span></div>
-        <div class="clock-box"><span class="clock-label">LONDRES</span><span class="clock-time">{ld_t}</span></div>
+        <div class="clock-box"><span class="clock-time">{br_t}</span></div>
+        <div class="clock-box"><span class="clock-time">{ny_t}</span></div>
+        <div class="clock-box"><span class="clock-time">{ld_t}</span></div>
     </div>
 </div>""", unsafe_allow_html=True)
 
@@ -150,7 +149,7 @@ if ewz_live:
             <div class="calc-row" style="color:#ffff00;"><span>75%</span> <span>{res['p75_up']:.2f}</span></div>
             <div class="calc-row" style="color:#ffa500;"><span>1ª MAX</span> <span>{res['p50_up']:.2f}</span></div>
             <div class="calc-row" style="color:#ffff00;"><span>25%</span> <span>{res['p25_up']:.2f}</span></div>
-            <div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 20px; font-weight: bold; border-top:1px solid #333; border-bottom:1px solid #333; margin: 5px 0; letter-spacing: 2px;">AXIS: {a_dol:.2f}</div>
+            <div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 18px; font-weight: bold; border-top:1.5px solid #444; border-bottom:1.5px solid #444; margin: 5px 0; letter-spacing: 2px;">AXIS: {a_dol:.2f}</div>
             <div class="calc-row" style="color:#ffff00;"><span>-25%</span> <span>{res['p25_down']:.2f}</span></div>
             <div class="calc-row" style="color:#ffa500;"><span>1ª MIN</span> <span>{res['p50_down']:.2f}</span></div>
             <div class="calc-row" style="color:#ffff00;"><span>-75%</span> <span>{res['p75_down']:.2f}</span></div>
