@@ -7,11 +7,11 @@ import pytz
 # Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLAR")
 
-# --- CSS: ESTILIZAÇÃO COMPACTA E ROBUSTA ---
+# --- CSS: ESTILIZAÇÃO COMPACTA E ALINHADA ---
 st.markdown("""
 <style>
     .stApp { background-color: #050a0e !important; }
-    .main-grid { border: 2.5px solid #ffffff; border-radius: 8px; overflow: hidden; font-family: 'monospace'; background-color: #0d1b22; }
+    .main-grid { border: 2.5px solid #ffffff; border-radius: 8px; overflow: hidden; font-family: 'monospace'; background-color: #0d1b22; height: 100%; }
     .terminal-table { width: 100%; border-collapse: collapse; color: #e0e0e0; }
     .terminal-table th { background-color: #0a141a; color: #d4a017; border: 1px solid #ffffff; padding: 10px; text-align: center; font-size: 13px; text-transform: uppercase; }
     .terminal-table td { border: 1px solid #ffffff; padding: 12px; text-align: center; font-size: 15px; }
@@ -29,6 +29,7 @@ st.markdown("""
     .clock-label { font-size: 10px; color: #d4a017; font-weight: bold; display: block; text-transform: uppercase; margin-bottom: 2px; }
     .clock-time { color: #fff; font-size: 17px; font-weight: bold; display: block; }
     
+    /* BLOCOS LATERAIS */
     .calc-panel { border: 2.5px solid #ffffff; border-radius: 8px; padding: 10px; background: #0a141a; font-family: monospace; margin-bottom: 10px; }
     .calc-row { display: flex; justify-content: space-between; padding: 6px 8px; border-bottom: 1px solid #444; font-size: 14px; font-weight: bold; }
     
@@ -91,9 +92,6 @@ with st.sidebar:
         a_ewz = st.number_input("AXIS EWZ:", value=float(axis_auto), format="%.2f")
         a_dol = st.number_input("AXIS DOLFUT:", value=5246.00, format="%.2f")
         salvar = st.form_submit_button("SALVAR VARIÁVEIS")
-    st.divider()
-    st.write(f"**REF MAX:** {mx_ref:.2f}")
-    st.write(f"**REF MIN:** {mn_ref:.2f}")
 
 # --- UI HEADER ---
 tz_sp = pytz.timezone('America/Sao_Paulo')
@@ -143,7 +141,7 @@ if ewz_live:
         st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
 
     with c_side:
-        # 1. BLOCO DE PROJEÇÕES
+        # BLOCO 1: PROJEÇÕES
         st.markdown(f"""
         <div class="calc-panel">
             <div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div>
@@ -154,21 +152,21 @@ if ewz_live:
             <div class="calc-row" style="color:#ffff00;"><span>-25%</span> <span>{res['p25_down']:.2f}</span></div>
             <div class="calc-row" style="color:#ffa500;"><span>1ª MIN</span> <span>{res['p50_down']:.2f}</span></div>
             <div class="calc-row" style="color:#ffff00;"><span>-75%</span> <span>{res['p75_down']:.2f}</span></div>
-            <div class="calc-row" style="color:#00ff88;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div>
+            <div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div>
         </div>""", unsafe_allow_html=True)
         
-        # 2. BLOCO PREÇO DOLFUT (NOVO)
+        # BLOCO 2: DOLFUT EXCLUSIVO (Ajustado para alinhamento)
         st.markdown(f"""
-        <div class="calc-panel" style="border-color: #00f2ff; margin-bottom: 5px;">
-            <div class="calc-row" style="color:#fff; border-bottom: none; font-size: 16px;">
+        <div class="calc-panel" style="border-color: #00f2ff; margin-bottom: 10px;">
+            <div class="calc-row" style="color:#fff; border-bottom: none; font-size: 18px; padding: 10px;">
                 <span>DOLFUT</span> 
-                <span style="color:#00f2ff;">{res['vivo']:.2f}</span>
+                <span style="color:#00f2ff; font-weight: 950;">{res['vivo']:.2f}</span>
             </div>
         </div>""", unsafe_allow_html=True)
         
-        # 3. BLOCO MÉDIA E PREÇO JUSTO
+        # BLOCO 3: MÉDIA E JUSTO
         st.markdown(f"""
-        <div class="calc-panel" style="border-color: #d4a017;">
+        <div class="calc-panel" style="border-color: #d4a017; margin-bottom: 0px;">
             <div class="calc-row" style="color:#00f2ff;"><span>MÉDIA DOLFUT</span> <span>{res['medio']:.2f}</span></div>
             <div class="calc-row" style="color:#d4a017; border-bottom: none;"><span>PREÇO JUSTO</span> <span>{res['fraja']:.2f}</span></div>
         </div>""", unsafe_allow_html=True)
