@@ -35,9 +35,6 @@ st.markdown("""
     @keyframes marquee { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
     
     .monitor-bar { background: #0a141a; border: 2px solid #ffffff; padding: 8px; text-align: center; color: #00f2ff; font-weight: bold; font-family: monospace; border-radius: 4px; }
-    
-    /* Sparkline Style */
-    .spark-container { padding: 5px 15px; text-align: center; background: #050a0e; border-radius: 4px; margin-top: 5px; border: 1px solid #333; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -146,10 +143,10 @@ if ewz_live:
             <div class="calc-row" style="color:#ffff00;"><span>75%</span> <span>{res['p75_up']:.2f}</span></div>
             <div class="calc-row" style="color:#ffa500;"><span>1ª MAX</span> <span>{res['p50_up']:.2f}</span></div>
             <div class="calc-row" style="color:#ffff00;"><span>25%</span> <span>{res['p25_up']:.2f}</span></div>
-            <div style="text-align:center; padding: 10px 10px 2px 10px; color: #00f2ff; font-size: 16px; font-weight: bold; letter-spacing: 1px;">AXIS: {a_dol:.2f}</div>
+            <div style="text-align:center; padding-top: 10px; color: #00f2ff; font-size: 16px; font-weight: bold;">AXIS: {a_dol:.2f}</div>
         </div>""", unsafe_allow_html=True)
         
-        # Sparkline de Tendência (Diferencial visual)
+        # Sparkline de Tendência
         if hist_ewz is not None:
             st.sparkline(hist_ewz.tail(40), color="#00f2ff")
         
