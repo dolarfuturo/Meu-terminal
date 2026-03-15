@@ -7,7 +7,7 @@ import pytz
 # Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLAR")
 
-# --- CSS: ESTILO REFINADO + MONITORAMENTO UNIFICADO ---
+# --- CSS: ESTILO REFINADO + VELOCIDADE MARQUEE AJUSTADA ---
 st.markdown("""
 <style>
     .stApp { background-color: #050a0e !important; }
@@ -20,13 +20,12 @@ st.markdown("""
     .clock-box { text-align: center; border: 1px solid #1c3d4d; padding: 5px; border-radius: 4px; background: #0a141a; }
     .clock-time { color: #fff; font-size: 16px; display: block; }
     
-    /* Blocos Laterais */
     .calc-panel { border: 2px solid #1c3d4d; border-radius: 8px; padding: 10px; background: #0a141a; font-family: monospace; margin-bottom: 10px; }
     .calc-row { display: flex; justify-content: space-between; padding: 6px 8px; border-bottom: 1px solid #1c3d4d; font-size: 14px; font-weight: bold; }
     
-    /* Marquee */
+    /* Marquee mais lento: 45s */
     .ticker-wrapper { background: #000; border: 1px solid #1c3d4d; padding: 5px; overflow: hidden; white-space: nowrap; margin-top: 15px; }
-    .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 30s linear infinite; font-family: 'monospace'; font-size: 13px; font-weight: bold; }
+    .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 45s linear infinite; font-family: 'monospace'; font-size: 13px; font-weight: bold; }
     @keyframes marquee { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
     
     .monitor-bar { background: #0a141a; border: 1px solid #1c3d4d; padding: 8px; text-align: center; color: #00f2ff; font-weight: bold; font-family: monospace; border-radius: 4px; }
@@ -91,45 +90,54 @@ ewz_live = fetch("EWZ")
 if ewz_live:
     res = calcular_k97_total(e_ewz, ewz_live['at'], mx_ref, mn_ref, e_dol)
     
-    # Linha Unificada de Cabeçalhos
     head_col1, head_col2 = st.columns([3, 1])
     with head_col1:
         st.markdown('<div class="monitor-bar">MONITORAMENTO DE ATIVOS</div>', unsafe_allow_html=True)
     with head_col2:
         st.markdown('<div class="monitor-bar">PROJEÇÕES K97</div>', unsafe_allow_html=True)
 
-    # Conteúdo Principal
     col_main, col_side = st.columns([3, 1])
     
     with col_main:
         html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
         
-        # Sintético 2.0 - Preço = Eixo Dolfut * Preço Sintético (Ajustado)
-        # Nota: Como o Sintético 2.0 já é o valor em pontos, mantivemos a exibição técnica correta conforme a instrução de visualização.
+        # Sintético 2.0 - Ex: 5.3510
         v2_var = ((res['vivo'] / e_dol) - 1) * 100
         v2_cor = "#00ff00" if v2_var >= 0 else "#ff0000"
-        html_table += f"<tr><td style='color:#fff; text-align:left; font-weight:bold; padding-left:15px;'>SINTÉTICO 2.0 (VIVO)</td><td style='color:#d4a017;'>{res['vivo']:.2f}</td><td>{e_dol:.2f}</td><td>{e_dol:.2f}</td><td>{res['max']:.2f}</td><td>{res['min']:.2f}</td><td style='color:{v2_cor}; font-weight:bold;'>{v2_var:+.2f}%</td></tr>"
+        html_table += f"<tr><td style='color:#fff; text-align:left; font-weight:bold; padding-left:15px;'>SINTÉTICO 2.0 (VIVO)</td><td style='color:#d4a017;'>{(res['vivo']/1000):.4f}</td><td>{(e_dol/1000):.4f}</td><td>{(e_dol/1000):.4f}</td><td>{(res['max']/1000):.4f}</td><td>{(res['min']/1000):.4f}</td><td style='color:{v2_cor}; font-weight:bold;'>{v2_var:+.2f}%</td></tr>"
         
-        outros = {"SPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "EUR/USD": "EURUSD=X", "GOLD": "GC=F", "BRENT": "BZ=F"}
+        # Dicionário de ativos com mapeamento de precisão
+        ativos_config = {
+            "SPOT": {"sym": "USDBRL=X", "fmt": ".4f"},
+            "DXY": {"sym": "DX-Y.NYB", "fmt": ".2f"},
+            "EWZ": {"sym": "EWZ", "fmt": ".2f"},
+            "GBP/USD": {"sym": "GBPUSD=X", "fmt": ".4f"},
+            "JPY/USD": {"sym": "JPYUSD=X", "fmt": ".4f"},
+            "EUR/USD": {"sym": "EURUSD=X", "fmt": ".4f"},
+            "GOLD": {"sym": "GC=F", "fmt": ".4f"},
+            "BRENT": {"sym": "BZ=F", "fmt": ".2f"}
+        }
+        
         ticker_items = [f"<span style='color:#fff;'>SINTÉTICO 2.0:</span> <span style='color:{v2_cor};'>{v2_var:+.2f}%</span>"]
         
-        for label, sym in outros.items():
-            d = fetch(sym)
+        for label, cfg in ativos_config.items():
+            d = fetch(cfg['sym'])
             if d:
                 v = ((d['at']/d['cl'])-1)*100
                 c = "#00ff00" if v >= 0 else "#ff0000"
-                html_table += f"<tr><td style='color:#fff; text-align:left; font-weight:bold; padding-left:15px;'>{label}</td><td style='color:#d4a017;'>{d['at']:.4f}</td><td>{d['cl']:.4f}</td><td>{d['cl']:.4f}</td><td>{d['mx']:.4f}</td><td>{d['mn']:.4f}</td><td style='color:{c}; font-weight:bold;'>{v:+.2f}%</td></tr>"
+                f = cfg['fmt']
+                html_table += f"<tr><td style='color:#fff; text-align:left; font-weight:bold; padding-left:15px;'>{label}</td><td style='color:#d4a017;'>{d['at']:{f}}</td><td>{d['cl']:{f}}</td><td>{d['cl']:{f}}</td><td>{d['mx']:{f}}</td><td>{d['mn']:{f}}</td><td style='color:{c}; font-weight:bold;'>{v:+.2f}%</td></tr>"
                 ticker_items.append(f"<span style='color:#fff;'>{label}:</span> <span style='color:{c};'>{v:+.2f}%</span>")
 
         html_table += "</tbody></table></div>"
         st.markdown(html_table, unsafe_allow_html=True)
         
-        # Ticker Marquee
+        # Ticker Marquee Lento
         ticker_html = " • ".join(ticker_items)
         st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{ticker_html} • {ticker_html}</div></div>', unsafe_allow_html=True)
 
     with col_side:
-        # Bloco de Projeções (Somente Níveis)
+        # Bloco de Projeções (Níveis)
         st.markdown(f"""
         <div class="calc-panel">
             <div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div>
@@ -144,7 +152,7 @@ if ewz_live:
         </div>
         """, unsafe_allow_html=True)
         
-        # Bloco Externo: Sintéticos Médio e 3.6
+        # Bloco Externo
         vm_cor = "#00ff00" if res['v_med'] >= 0 else "#ff0000"
         st.markdown(f"""
         <div class="calc-panel" style="border-color: #d4a017;">
