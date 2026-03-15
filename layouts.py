@@ -1,46 +1,36 @@
 import streamlit as st
 import yfinance as yf
 import time
-from datetime import datetime
+from datetime import datetime, time as dt_time
 import pytz
 
 # Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLAR")
 
-# --- CSS: ESTILIZAÇÃO REFINADA ---
+# --- CSS: ESTILIZAÇÃO REFINADA (BORDAS BRANCAS E FONTES AJUSTADAS) ---
 st.markdown("""
 <style>
     .stApp { background-color: #050a0e !important; }
-    
-    /* Blocos com bordas BRANCAS */
     .main-grid { border: 2.5px solid #ffffff; border-radius: 8px; overflow: hidden; font-family: 'monospace'; background-color: #0d1b22; }
-    
     .terminal-table { width: 100%; border-collapse: collapse; color: #e0e0e0; }
-    
-    /* Cabeçalho da Tabela: PRICE agora igual ao CLOSE (Dourado) */
     .terminal-table th { background-color: #0a141a; color: #d4a017; border: 1px solid #ffffff; padding: 10px; text-align: center; font-size: 13px; text-transform: uppercase; }
     .terminal-table td { border: 1px solid #ffffff; padding: 12px; text-align: center; font-size: 15px; }
-    
-    /* Nome do Ativo */
     .asset-name { font-size: 17px; color: #fff; text-align: left; font-weight: bold; padding-left: 15px; }
-
-    /* Valores PRICE na cor de monitoramento (Ciano) */
     .price-col { color: #00f2ff !important; font-weight: bold; }
-
+    
     /* Header: Aumento da fonte BAIR */
     .header-bair { display: flex; justify-content: space-between; align-items: center; padding: 10px; color: #00f2ff; font-weight: bold; }
-    .bair-text { font-size: 42px; letter-spacing: 2px; } /* BAIR em destaque */
+    .bair-text { font-size: 42px; letter-spacing: 2px; } 
     .terminal-text { font-size: 26px; color: #d4a017; }
     
     .clock-container { display: flex; gap: 20px; color: #888; font-family: 'monospace'; font-size: 12px; }
     .clock-box { text-align: center; border: 1px solid #ffffff; padding: 5px; border-radius: 4px; background: #0a141a; }
     .clock-time { color: #fff; font-size: 16px; display: block; }
     
-    /* Painéis de Projeção */
     .calc-panel { border: 2.5px solid #ffffff; border-radius: 8px; padding: 10px; background: #0a141a; font-family: monospace; margin-bottom: 10px; }
     .calc-row { display: flex; justify-content: space-between; padding: 6px 8px; border-bottom: 1px solid #444; font-size: 14px; font-weight: bold; }
     
-    /* Ticker: Velocidade Aumentada (45s para ciclo completo) */
+    /* Ticker: Velocidade Aumentada (45s) */
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 2px solid #ffffff; border-bottom: 2px solid #ffffff; padding: 8px 0; overflow: hidden; white-space: nowrap; margin-top: 20px; }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 45s linear infinite; font-family: 'monospace'; font-size: 14px; font-weight: bold; }
     @keyframes marquee { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
@@ -49,18 +39,24 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS ---
-@st.cache_data(ttl=600)
+# --- MOTOR DE DADOS: FILTRO OPERACIONAL 10:30 - 17:00 ---
+@st.cache_data(ttl=300)
 def calcular_referencias_eixo():
     try:
         t = yf.Ticker("EWZ")
-        df = t.history(period="5d", interval="1d")
+        df = t.history(period="2d", interval="15m", prepost=False)
         if df.empty: return 37.85, 38.10, 37.60
-        agora = datetime.now(pytz.timezone('America/Sao_Paulo'))
-        idx = -2 if agora.hour < 18 else -1
-        mx, mn = df['High'].iloc[idx], df['Low'].iloc[idx]
-        return (mx + mn) / 2, mx, mn
-    except: return 37.85, 38.10, 37.60
+        
+        # Filtro de Horário: 10:30 às 17:00
+        df.index = df.index.tz_convert('America/Sao_Paulo')
+        df_filtered = df.between_time(dt_time(10, 30), dt_time(17, 0))
+        
+        if not df_filtered.empty:
+            mx = df_filtered['High'].max()
+            mn = df_filtered['Low'].min()
+            return (mx + mn) / 2, mx, mn
+    except: pass
+    return 37.85, 38.10, 37.60
 
 def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
     v_atual = ((eixo_ewz / p_ewz_atual) - 1) * 100 / 1.5
@@ -84,7 +80,7 @@ def fetch(s):
         return {"at": d['Close'].iloc[-1], "cl": d['Close'].iloc[0], "mx": d['High'].max(), "mn": d['Low'].min()}
     except: return None
 
-# --- SIDEBAR COM BOTÃO DE SALVAR ---
+# --- SIDEBAR (PAINEL ADM) ---
 eixo_auto, mx_ref, mn_ref = calcular_referencias_eixo()
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
@@ -93,10 +89,12 @@ with st.sidebar:
         e_dol = st.number_input("EIXO DOLFUT:", value=5246.00, format="%.2f")
         salvar = st.form_submit_button("SALVAR VARIÁVEIS")
     st.divider()
-    st.write(f"**REF MAX:** {mx_ref:.2f} | **REF MIN:** {mn_ref:.2f}")
+    st.write(f"**REF MAX (10:30-17h):** {mx_ref:.2f}")
+    st.write(f"**REF MIN (10:30-17h):** {mn_ref:.2f}")
 
 # --- UI ---
-br_t = datetime.now(pytz.timezone('America/Sao_Paulo')).strftime('%H:%M')
+tz_sp = pytz.timezone('America/Sao_Paulo')
+br_t = datetime.now(tz_sp).strftime('%H:%M')
 ny_t = datetime.now(pytz.timezone('America/New_York')).strftime('%H:%M')
 ld_t = datetime.now(pytz.timezone('Europe/London')).strftime('%H:%M')
 
@@ -115,13 +113,11 @@ if ewz_live:
     res = calcular_k97_total(e_ewz, ewz_live['at'], mx_ref, mn_ref, e_dol)
     h1, h2 = st.columns([3, 1])
     h1.markdown('<div class="monitor-bar">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
-    h2.markdown('<div class="monitor-bar">CALCULOS DE PROJEÇÕES</div>', unsafe_allow_html=True)
+    h2.markdown('<div class="monitor-bar">CÁLCULOS DE PROJEÇÕES</div>', unsafe_allow_html=True)
 
     c_main, c_side = st.columns([3, 1])
     with c_main:
-        # Tabela: Cor de PRICE ajustada para Dourado (igual ao CLOSE)
         html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th style='color: #d4a017;'>Price</th><th style='color: #d4a017;'>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
-        
         v2_var = ((res['vivo'] / e_dol) - 1) * 100
         v2_cor = "#00ff00" if v2_var >= 0 else "#ff0000"
         html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col'>{(res['vivo']/1000):.4f}</td><td>{(e_dol/1000):.4f}</td><td>{(e_dol/1000):.4f}</td><td>{(res['max']/1000):.4f}</td><td>{(res['min']/1000):.4f}</td><td style='color:{v2_cor}; font-weight:bold;'>{v2_var:+.2f}%</td></tr>"
