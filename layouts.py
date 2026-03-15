@@ -18,14 +18,12 @@ st.markdown("""
     .asset-name { font-size: 17px; color: #fff; text-align: left; font-weight: bold; padding-left: 15px; }
     .price-col { color: #00f2ff !important; font-weight: bold; }
     
-    /* HEADER COMPACTO E "CHEIO" */
     .header-bair { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 2.5px solid #ffffff; margin-bottom: 12px; }
     .title-box { display: flex; align-items: center; gap: 8px; line-height: 1; }
     .bair-text { font-size: 46px; color: #00f2ff; font-weight: 950; font-family: 'monospace'; letter-spacing: -1px; } 
     .sep-text { font-size: 46px; color: #ffffff; font-weight: 950; margin: 0 5px; }
     .terminal-text { font-size: 46px; color: #d4a017; font-weight: 950; font-family: 'monospace'; letter-spacing: -1px; }
     
-    /* RELÓGIOS COM NOMES DAS CIDADES */
     .clock-container { display: flex; gap: 10px; color: #888; font-family: 'monospace'; }
     .clock-box { text-align: center; border: 1.5px solid #ffffff; padding: 4px 10px; border-radius: 4px; background: #0a141a; min-width: 95px; }
     .clock-label { font-size: 10px; color: #d4a017; font-weight: bold; display: block; text-transform: uppercase; margin-bottom: 2px; }
@@ -145,6 +143,7 @@ if ewz_live:
         st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
 
     with c_side:
+        # 1. BLOCO DE PROJEÇÕES
         st.markdown(f"""
         <div class="calc-panel">
             <div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div>
@@ -158,8 +157,21 @@ if ewz_live:
             <div class="calc-row" style="color:#00ff88;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div>
         </div>""", unsafe_allow_html=True)
         
-        vm_cor = "#00ff00" if res['v_med'] >= 0 else "#ff0000"
-        st.markdown(f"""<div class="calc-panel" style="border-color: #d4a017;"><div class="calc-row" style="color:#00f2ff;"><span>MÉDIA DOLFUT</span> <span>{res['medio']:.2f}</span></div><div class="calc-row" style="color:{vm_cor}; font-size:12px;"><span>VAR MÉDIA</span> <span>{res['v_med']:+.2f}%</span></div><div class="calc-row" style="color:#d4a017; border-bottom: none;"><span>PREÇO JUSTO</span> <span>{res['fraja']:.2f}</span></div></div>""", unsafe_allow_html=True)
+        # 2. BLOCO PREÇO DOLFUT (NOVO)
+        st.markdown(f"""
+        <div class="calc-panel" style="border-color: #00f2ff; margin-bottom: 5px;">
+            <div class="calc-row" style="color:#fff; border-bottom: none; font-size: 16px;">
+                <span>DOLFUT</span> 
+                <span style="color:#00f2ff;">{res['vivo']:.2f}</span>
+            </div>
+        </div>""", unsafe_allow_html=True)
+        
+        # 3. BLOCO MÉDIA E PREÇO JUSTO
+        st.markdown(f"""
+        <div class="calc-panel" style="border-color: #d4a017;">
+            <div class="calc-row" style="color:#00f2ff;"><span>MÉDIA DOLFUT</span> <span>{res['medio']:.2f}</span></div>
+            <div class="calc-row" style="color:#d4a017; border-bottom: none;"><span>PREÇO JUSTO</span> <span>{res['fraja']:.2f}</span></div>
+        </div>""", unsafe_allow_html=True)
 
     ticker_html = " • ".join(ticker_items)
     st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{ticker_html} • {ticker_html}</div></div>', unsafe_allow_html=True)
