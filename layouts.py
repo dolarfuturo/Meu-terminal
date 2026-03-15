@@ -21,7 +21,7 @@ st.markdown("""
     .clock-time { color: #fff; font-size: 16px; display: block; }
     .calc-panel { border: 2px solid #1c3d4d; border-radius: 8px; padding: 10px; background: #0a141a; font-family: monospace; }
     .calc-row { display: flex; justify-content: space-between; padding: 6px 8px; border-bottom: 1px solid #1c3d4d; font-size: 14px; font-weight: bold; }
-    .ticker-wrapper { background: #000; border: 1px solid #1c3d4d; color: #fff; padding: 5px; overflow: hidden; white-space: nowrap; margin-top: 15px; }
+    .ticker-wrapper { background: #000; border: 1px solid #1c3d4d; padding: 5px; overflow: hidden; white-space: nowrap; margin-top: 15px; }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 30s linear infinite; font-family: 'monospace'; font-size: 13px; font-weight: bold; }
     @keyframes marquee { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
     .monitor-bar { background: #0a141a; border: 1px solid #1c3d4d; padding: 8px; text-align: center; color: #00f2ff; font-weight: bold; font-family: monospace; margin-bottom: 5px; border-radius: 4px; }
@@ -76,10 +76,8 @@ with st.sidebar:
     st.divider()
     st.write(f"MAX REF: {mx_ref:.2f} | MIN REF: {mn_ref:.2f}")
 
-# Cabeçalho
 st.markdown(f"""<div class="header-bair"><div>BAIR - <span style="color: #d4a017;">TERMINAL DOLAR</span></div><div class="clock-container"><div class="clock-box">BRASÍLIA<span class="clock-time">{br_t}</span></div><div class="clock-box">NEW YORK<span class="clock-time">{ny_t}</span></div><div class="clock-box">LONDRES<span class="clock-time">{ld_t}</span></div></div></div>""", unsafe_allow_html=True)
 
-# Bloco de Monitoramento
 st.markdown('<div class="monitor-bar">MONITORAMENTO DE ATIVOS</div>', unsafe_allow_html=True)
 
 def fetch(s):
@@ -94,19 +92,13 @@ if ewz_live:
     
     html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
     
-    # Sintéticos
-    v2_cor = "#00f2ff" if res['v_atual'] >= 0 else "#ff4d4d"
-    html_table += f"<tr><td style='color:#fff; text-align:left; font-weight:bold; padding-left:15px;'>SINTÉTICO 2.0 (VIVO)</td><td style='color:#d4a017;'>{res['vivo']:.2f}</td><td>{e_dol:.2f}</td><td>{e_dol:.2f}</td><td>{res['max']:.2f}</td><td>{res['min']:.2f}</td><td style='color:{v2_cor}; font-weight:bold;'>{res['v_atual']:+.2f}%</td></tr>"
-    
-    vm_cor = "#00f2ff" if res['v_med'] >= 0 else "#ff4d4d"
-    html_table += f"<tr><td style='color:#fff; text-align:left; font-weight:bold; padding-left:15px;'>SINTÉTICO MÉDIO (50%)</td><td style='color:#d4a017;'>{res['medio']:.2f}</td><td>{e_dol:.2f}</td><td>{e_dol:.2f}</td><td>---</td><td>---</td><td style='color:{vm_cor}; font-weight:bold;'>{res['v_med']:+.2f}%</td></tr>"
-    
-    html_table += f"<tr><td style='color:#fff; text-align:left; font-weight:bold; padding-left:15px;'>SINTÉTICO 3.6 (FRAJA)</td><td style='color:#d4a017;'>{res['fraja']:.2f}</td><td>{e_dol:.2f}</td><td>{e_dol:.2f}</td><td>---</td><td>---</td><td style='color:#00f2ff; font-weight:bold;'>FRAJA</td></tr>"
+    # Sintético 2.0 (Grade) - VAR com base no eixo
+    v2_var = ((res['vivo'] / e_dol) - 1) * 100
+    v2_cor = "#00f2ff" if v2_var >= 0 else "#ff4d4d"
+    html_table += f"<tr><td style='color:#fff; text-align:left; font-weight:bold; padding-left:15px;'>SINTÉTICO 2.0 (VIVO)</td><td style='color:#d4a017;'>{res['vivo']:.2f}</td><td>{e_dol:.2f}</td><td>{e_dol:.2f}</td><td>{res['max']:.2f}</td><td>{res['min']:.2f}</td><td style='color:{v2_cor}; font-weight:bold;'>{v2_var:+.2f}%</td></tr>"
     
     outros = {"SPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "EUR/USD": "EURUSD=X", "GOLD": "GC=F", "BRENT": "BZ=F"}
-    
-    # Ticker Tape Dinâmico
-    ticker_content = f"SINTÉTICO 2.0: <span style='color:{v2_cor};'>{res['v_atual']:+.2f}%</span> "
+    ticker_tape = f"<span style='color:#fff;'>SINTÉTICO 2.0:</span> <span style='color:{v2_cor};'>{v2_var:+.2f}%</span> "
     
     for label, sym in outros.items():
         d = fetch(sym)
@@ -114,16 +106,16 @@ if ewz_live:
             v = ((d['at']/d['cl'])-1)*100
             c = "#00f2ff" if v >= 0 else "#ff4d4d"
             html_table += f"<tr><td style='color:#fff; text-align:left; font-weight:bold; padding-left:15px;'>{label}</td><td style='color:#d4a017;'>{d['at']:.4f}</td><td>{d['cl']:.4f}</td><td>{d['cl']:.4f}</td><td>{d['mx']:.4f}</td><td>{d['mn']:.4f}</td><td style='color:{c}; font-weight:bold;'>{v:+.2f}%</td></tr>"
-            ticker_content += f" • {label}: <span style='color:{c};'>{v:+.2f}%</span> "
+            ticker_tape += f" • <span style='color:#fff;'>{label}:</span> <span style='color:{c};'>{v:+.2f}%</span>"
 
     html_table += "</tbody></table></div>"
     
     col_main, col_side = st.columns([3, 1])
     with col_main:
         st.markdown(html_table, unsafe_allow_html=True)
-        st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{ticker_content * 3}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{ticker_tape * 3}</div></div>', unsafe_allow_html=True)
     with col_side:
-        # Painel de Projeções e Blocos Variáveis
+        vm_cor = "#00f2ff" if res['v_med'] >= 0 else "#ff4d4d"
         st.markdown(f"""
         <div class="calc-panel">
             <div style="color: #d4a017; text-align: center; font-size: 14px; font-weight: bold; margin-bottom: 10px;">PROJEÇÕES K97</div>
@@ -137,9 +129,10 @@ if ewz_live:
             <div class="calc-row" style="color:#55efc4;"><span>75% DN</span> <span>{res['p75_down']:.2f}</span></div>
             <div class="calc-row" style="color:#00ff88; border-bottom: 2px solid #1c3d4d;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div>
             
-            <div style="margin-top:15px;">
-                <div class="calc-row" style="color:#00f2ff;"><span>SINTÉTICO MÉDIO</span> <span style="color:{vm_cor};">{res['medio']:.2f}</span></div>
-                <div class="calc-row" style="color:#d4a017;"><span>SINTÉTICO 3.6</span> <span>{res['fraja']:.2f}</span></div>
+            <div style="margin-top:15px; border-top: 1px solid #1c3d4d; padding-top:10px;">
+                <div class="calc-row" style="color:#00f2ff;"><span>SINTÉTICO MÉDIO</span> <span>{res['medio']:.2f}</span></div>
+                <div class="calc-row" style="color:#00f2ff; font-size:12px;"><span>VAR MÉDIA</span> <span style="color:{vm_cor};">{res['v_med']:+.2f}%</span></div>
+                <div class="calc-row" style="color:#d4a017; margin-top:5px;"><span>SINTÉTICO 3.6</span> <span>{res['fraja']:.2f}</span></div>
             </div>
         </div>
         """, unsafe_allow_html=True)
