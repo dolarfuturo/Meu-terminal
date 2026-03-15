@@ -1,5 +1,8 @@
 import streamlit as st
-import pandas as pd
+import yfinance as yf
+import time
+from datetime import datetime
+import pytz
 
 # Configuração da página para ocupar a tela toda do Tablet
 st.set_page_config(layout="wide", page_title="BAIR TERMINAL")
