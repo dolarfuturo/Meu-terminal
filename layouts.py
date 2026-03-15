@@ -87,7 +87,7 @@ def fetch(s):
 # --- SIDEBAR COM BOTÃO DE SALVAR ---
 eixo_auto, mx_ref, mn_ref = calcular_referencias_eixo()
 with st.sidebar:
-    st.markdown("### ⚙️ PAINEL ADM")
+    st.markdown("### ⚙️ AJUSTE K97")
     with st.form("ajuste_eixo"):
         e_ewz = st.number_input("EIXO EWZ:", value=float(eixo_auto), format="%.2f")
         e_dol = st.number_input("EIXO DOLFUT:", value=5246.00, format="%.2f")
@@ -114,7 +114,7 @@ ewz_live = fetch("EWZ")
 if ewz_live:
     res = calcular_k97_total(e_ewz, ewz_live['at'], mx_ref, mn_ref, e_dol)
     h1, h2 = st.columns([3, 1])
-    h1.markdown('<div class="monitor-bar">MONITORAMENTO DA GRADE PRINCIAPAL</div>', unsafe_allow_html=True)
+    h1.markdown('<div class="monitor-bar">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
     h2.markdown('<div class="monitor-bar">CALCULOS DE PROJEÇÕES</div>', unsafe_allow_html=True)
 
     c_main, c_side = st.columns([3, 1])
@@ -126,8 +126,8 @@ if ewz_live:
         v2_cor = "#00ff00" if v2_var >= 0 else "#ff0000"
         html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col'>{(res['vivo']/1000):.4f}</td><td>{(e_dol/1000):.4f}</td><td>{(e_dol/1000):.4f}</td><td>{(res['max']/1000):.4f}</td><td>{(res['min']/1000):.4f}</td><td style='color:{v2_cor}; font-weight:bold;'>{v2_var:+.2f}%</td></tr>"
         
-        ativos_config = {"SPOT" "USDBRL=X", "DXY" "DX-Y.NYB", "EWZ" "EWZ", "GBP/USD" "GBPUSD=X", "JPY/USD" "JPYUSD=X", "EUR/USD" "EURUSD=X", "GOLD" "GC=F", "BRENT" "BZ=F"}
-        ticker_items = [f"<span style='color:#fff;'>DOLFUT</span> <span style='color:{v2_cor};'>{v2_var:+.2f}%</span>"]
+        ativos_config = {"SPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "GOLD": "GC=F", "BRENT": "BZ=F"}
+        ticker_items = [f"<span style='color:#fff;'>SINTÉTICO 2.0:</span> <span style='color:{v2_cor};'>{v2_var:+.2f}%</span>"]
         
         for label, sym in ativos_config.items():
             d = fetch(sym)
