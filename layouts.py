@@ -18,7 +18,6 @@ st.markdown("""
     .asset-name { font-size: 17px; color: #fff; text-align: left; font-weight: bold; padding-left: 15px; }
     .price-col { color: #00f2ff !important; font-weight: bold; }
     
-    /* Header: Aumento da fonte BAIR */
     .header-bair { display: flex; justify-content: space-between; align-items: center; padding: 10px; color: #00f2ff; font-weight: bold; }
     .bair-text { font-size: 42px; letter-spacing: 2px; } 
     .terminal-text { font-size: 26px; color: #d4a017; }
@@ -30,7 +29,6 @@ st.markdown("""
     .calc-panel { border: 2.5px solid #ffffff; border-radius: 8px; padding: 10px; background: #0a141a; font-family: monospace; margin-bottom: 10px; }
     .calc-row { display: flex; justify-content: space-between; padding: 6px 8px; border-bottom: 1px solid #444; font-size: 14px; font-weight: bold; }
     
-    /* Ticker: Velocidade Aumentada (45s) */
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 2px solid #ffffff; border-bottom: 2px solid #ffffff; padding: 8px 0; overflow: hidden; white-space: nowrap; margin-top: 20px; }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 45s linear infinite; font-family: 'monospace'; font-size: 14px; font-weight: bold; }
     @keyframes marquee { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
@@ -44,7 +42,8 @@ st.markdown("""
 def calcular_referencias_eixo():
     try:
         t = yf.Ticker("EWZ")
-        df = t.history(period="2d", interval="15m", prepost=False)
+        # Puxa dados de 1 minuto para ter precisão cirúrgica na máxima/mínima do horário
+        df = t.history(period="1d", interval="1m", prepost=False)
         if df.empty: return 37.85, 38.10, 37.60
         
         # Filtro de Horário: 10:30 às 17:00
@@ -76,24 +75,13 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
 
 def fetch(s):
     try:
-        # Puxa 1 dia com dados de 1 minuto
         d = yf.Ticker(s).history(period="1d", interval="1m", prepost=False)
         if d.empty: return None
-        
-        # Converte para São Paulo e filtra a Janela Operacional
         d.index = d.index.tz_convert('America/Sao_Paulo')
         d_op = d.between_time(dt_time(10, 30), dt_time(17, 0))
-        
-        # Se a janela estiver vazia (antes das 10:30), retorna o dia todo para não zerar
         if d_op.empty:
             return {"at": d['Close'].iloc[-1], "cl": d['Close'].iloc[0], "mx": d['High'].max(), "mn": d['Low'].min()}
-            
-        return {
-            "at": d['Close'].iloc[-1], 
-            "cl": d['Close'].iloc[0], 
-            "mx": d_op['High'].max(), # MÁXIMA REAL DENTRO DE 10:30-17:00
-            "mn": d_op['Low'].min()   # MÍNIMA REAL DENTRO DE 10:30-17:00
-        }
+        return {"at": d['Close'].iloc[-1], "cl": d['Close'].iloc[0], "mx": d_op['High'].max(), "mn": d_op['Low'].min()}
     except: return None
 
 # --- SIDEBAR (PAINEL ADM) ---
@@ -105,6 +93,7 @@ with st.sidebar:
         e_dol = st.number_input("EIXO DOLFUT:", value=5246.00, format="%.2f")
         salvar = st.form_submit_button("SALVAR VARIÁVEIS")
     st.divider()
+    # AQUI ESTAVA O ERRO: Agora puxa o mx_ref/mn_ref filtrado por 10:30-17:00
     st.write(f"**REF MAX (10:30-17h):** {mx_ref:.2f}")
     st.write(f"**REF MIN (10:30-17h):** {mn_ref:.2f}")
 
