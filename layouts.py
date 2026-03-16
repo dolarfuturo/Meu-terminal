@@ -7,7 +7,7 @@ import pytz
 # Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLAR")
 
-# --- CSS: ESTILIZAÇÃO COMPACTA ---
+# --- CSS: ESTILIZAÇÃO COMPACTA MANTIDA ---
 st.markdown("""
 <style>
     .stApp { background-color: #050a0e !important; }
@@ -42,25 +42,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS ---
-@st.cache_data(ttl=60)
-def fetch(s):
-    try:
-        t = yf.Ticker(s)
-        # Busca intraday de 1 dia com intervalo de 1 minuto para tempo real
-        d = t.history(period="1d", interval="1m", prepost=True)
-        if d.empty: 
-            return {"at": 0.0, "cl": 0.0, "op": 0.0, "mx": 0.0, "mn": 0.0}
-        return {
-            "at": d['Close'].iloc[-1], 
-            "cl": d['Close'].iloc[0], 
-            "op": d['Open'].iloc[0],
-            "mx": d['High'].max(), 
-            "mn": d['Low'].min()
-        }
-    except: 
-        return {"at": 0.0, "cl": 0.0, "op": 0.0, "mx": 0.0, "mn": 0.0}
-
+# --- MOTOR DE DADOS ATUALIZADO (SENTINELA 18H) ---
 @st.cache_data(ttl=600)
 def calcular_eixo_automatico():
     try:
@@ -81,12 +63,15 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
         dolar_vivo = eixo_dol * (1 + (var_atual / 100))
         var_fraja = ((eixo_ewz / p_ewz_atual) - 1) * 100 / 4.5
         dolar_fraja = eixo_dol * (1 + (var_fraja / 100))
+        
         ewz_medio_dia = (max_ewz + min_ewz) / 2
         var_medio = ((eixo_ewz / ewz_medio_dia) - 1) * 100 
         dolar_medio = eixo_dol * (1 + (var_medio / 100)) 
+        
         v_neg = ((eixo_ewz / max_ewz) - 1) * 100 / 1.5
         v_pos = ((eixo_ewz / min_ewz) - 1) * 100 / 1.5
         alvo_max, alvo_min = eixo_dol * (1 + (v_pos / 100)), eixo_dol * (1 + (v_neg / 100))
+        
         return {
             "vivo": dolar_vivo, "fraja": dolar_fraja, "medio": dolar_medio, 
             "v_atual": var_atual, "ewz_med": ewz_medio_dia,
@@ -99,6 +84,14 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
             "p25_down": (eixo_dol + (alvo_min - eixo_dol)*0.25)
         }
     except: return None
+
+def fetch(s):
+    try:
+        t = yf.Ticker(s)
+        d = t.history(period="1d", interval="1m", prepost=True)
+        if d.empty: return {"at": 0.0, "cl": 0.0, "mx": 0.0, "mn": 0.0}
+        return {"at": d['Close'].iloc[-1], "cl": d['Close'].iloc[0], "mx": d['High'].max(), "mn": d['Low'].min()}
+    except: return {"at": 0.0, "cl": 0.0, "mx": 0.0, "mn": 0.0}
 
 # --- SIDEBAR ADM ---
 eixo_sug, mx_ref, mn_ref = calcular_eixo_automatico()
@@ -136,29 +129,30 @@ if ewz_live:
         
         ticker_items = [f"<span style='color:#fff;'>DOLFUT:</span> <span style='color:{c_v};'>{v_v:+.2f}%</span>"]
         
-        # ATIVOS SOLICITADOS
-        ativos_solicitados = {
-            "DXY": "DX-Y.NYB",
-            "GBPUSD": "GBPUSD=X",
-            "JPYUSD": "JPYUSD=X",
-            "EURUSD": "EURUSD=X",
-            "XAUUSD": "GC=F",
-            "PETROLEO BRENT": "BZ=F"
-        }
-
-        for lbl, sym in ativos_solicitados.items():
+        outros = {"SPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
+        for lbl, sym in outros.items():
             d = fetch(sym)
-            f = ".4f" if "USD" in lbl else ".2f"
-            v = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
-            c = "#00ff00" if v >= 0 else "#ff0000"
+            f = ".4f" if "USD" in lbl or lbl == "SPOT" else ".2f"
             
-            html_table += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col'>{d['at']:{f}}</td><td>{d['cl']:{f}}</td><td>{d['op']:{f}}</td><td>{d['mx']:{f}}</td><td>{d['mn']:{f}}</td><td style='color:{c}; font-weight:bold;'>{v:+.2f}%</td></tr>"
+            # --- AJUSTE SOLICITADO: VARIÇÃO EWZ BASEADA NO AXIS E INVERTIDA ---
+            if lbl == "EWZ":
+                v = ((a_ewz / d['at']) - 1) * 100 if d['at'] > 0 else 0
+                ref_close = a_ewz
+            else:
+                v = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
+                ref_close = d['cl']
+                
+            c = "#00ff00" if v >= 0 else "#ff0000"
+            html_table += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col'>{d['at']:{f}}</td><td>{ref_close:{f}}</td><td>{d['cl']:{f}}</td><td>{d['mx']:{f}}</td><td>{d['mn']:{f}}</td><td style='color:{c}; font-weight:bold;'>{v:+.2f}%</td></tr>"
             ticker_items.append(f"<span style='color:#fff;'>{lbl}:</span> <span style='color:{c};'>{v:+.2f}%</span>")
         
         st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
 
     with c_side:
+        # PAINEL DE PROJEÇÕES K97
         st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>75%</span> <span>{res['p75_up']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>1ª MAX</span> <span>{res['p50_up']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>25%</span> <span>{res['p25_up']:.2f}</span></div><div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 18px; font-weight: bold; border-top:1.5px solid #444; border-bottom:1.5px solid #444; margin: 5px 0; letter-spacing: 2px;">AXIS: {a_dol:.2f}</div><div class="calc-row" style="color:#ffff00;"><span>-25%</span> <span>{res['p25_down']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>1ª MIN</span> <span>{res['p50_down']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>-75%</span> <span>{res['p75_down']:.2f}</span></div><div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div></div>""", unsafe_allow_html=True)
+        
+        # PAINEL SINTÉTICO INFERIOR
         st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="padding: 10px 8px;"><span style="color:#ffffff;">DOLFUT</span> <span style="color:#00f2ff; font-size: 16px; font-weight: 950;">{res['vivo']:.2f}</span></div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOL</span> <span style="color:#00f2ff; font-size: 16px;">{res['medio']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#d4a017;">P. JUSTO</span> <span style="color:#ffffff; font-size: 16px; font-weight: bold;">{res['fraja']:.2f}</span></div><div class="ewz-mini-container"><span class="ewz-mini-val" style="color:#00ff88;">{ewz_live['mx']:.2f}</span><span class="ewz-mini-val" style="color:#00f2ff;">{res['ewz_med']:.2f}</span><span class="ewz-mini-val" style="color:#ff4d4d;">{ewz_live['mn']:.2f}</span></div></div>""", unsafe_allow_html=True)
 
     t_html = " • ".join(ticker_items)
