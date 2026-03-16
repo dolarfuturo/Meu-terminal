@@ -18,7 +18,7 @@ st.markdown("""
     .asset-name { font-size: 17px; color: #fff; text-align: left; font-weight: bold; padding-left: 15px; }
     .price-col { color: #00f2ff !important; font-weight: bold; }
     
-    .header-bair { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 2.5px solid #ffffff; margin-bottom: 12px; }
+    .header-bair { display: space-between; align-items: center; padding: 8px 10px; border-bottom: 2.5px solid #ffffff; margin-bottom: 12px; display: flex; }
     .title-box { display: flex; align-items: center; gap: 8px; line-height: 1; }
     .bair-text { font-size: 46px; color: #00f2ff; font-weight: 950; font-family: 'monospace'; letter-spacing: -1px; } 
     .sep-text { font-size: 46px; color: #ffffff; font-weight: 950; margin: 0 5px; }
@@ -41,15 +41,23 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- MOTOR DE DADOS ---
-@st.cache_data(ttl=60) # REDUZIDO PARA ATUALIZAR MAIS RÁPIDO NA ABERTURA
 def calcular_referencias_axis():
     try:
         t = yf.Ticker("EWZ")
-        df = t.history(period="1d", interval="1m", prepost=True) # HABILITADO PRE-MARKET
+        df = t.history(period="1d", interval="1m", prepost=True)
         if df.empty: return 37.85, 38.10, 37.60
-        mx = df['High'].max()
-        mn = df['Low'].min()
-        return (mx + mn) / 2, mx, mn
+        
+        # Reset do Eixo entre 10:30 e 17:00 (America/Sao_Paulo)
+        df.index = df.index.tz_convert('America/Sao_Paulo')
+        df_filtered = df.between_time(dt_time(10, 30), dt_time(17, 0))
+        
+        if not df_filtered.empty:
+            mx = df_filtered['High'].max()
+            mn = df_filtered['Low'].min()
+            return (mx + mn) / 2, mx, mn
+        else:
+            # Caso esteja fora do horário, pega o dia todo para não zerar
+            return (df['High'].max() + df['Low'].min()) / 2, df['High'].max(), df['Low'].min()
     except: pass
     return 37.85, 38.10, 37.60
 
@@ -70,10 +78,10 @@ def calcular_k97_total(axis_ewz, p_ewz_atual, max_ewz, min_ewz, axis_dol):
 
 def fetch(s):
     try:
+        # Sem cache para tempo real
         tk = yf.Ticker(s)
         d = tk.history(period="1d", interval="1m", prepost=True)
         if d.empty: 
-            # FALLBACK CASO O HISTORY FALHE NA ABERTURA
             price = tk.info.get('regularMarketPrice', 0.0)
             close = tk.info.get('previousClose', price)
             return {"at": price, "cl": close, "mx": price, "mn": price}
@@ -106,30 +114,32 @@ if ewz_live:
         html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th style='color: #d4a017;'>Price</th><th style='color: #d4a017;'>Close</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
         
         # Ativos Principais
-        ativos = {"DOLFUT": "DOL=F", "SPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "XAU/USD": "GC=F"}
+        ativos = {"DOLFUT": "DOL=F", "SPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "XAU/USD": "GC=F", "EUR/USD": "EURUSD=X"}
         ticker_items = []
         
         for label, sym in ativos.items():
             if label == "DOLFUT":
                 price, close = res['vivo'], a_dol
+                mx_val, mn_val = res['max'], res['min']
             else:
                 d = fetch(sym)
                 price, close = d['at'], d['cl']
+                mx_val, mn_val = d['mx'], d['mn']
             
             var = ((price/close)-1)*100 if close > 0 else 0
             cor = "#00ff00" if var >= 0 else "#ff0000"
             fmt = ".4f" if "USD" in label or label == "SPOT" else ".2f"
             
-            html_table += f"<tr><td class='asset-name'>{label}</td><td class='price-col'>{price:{fmt}}</td><td>{close:{fmt}}</td><td>{price:{fmt}}</td><td>{price:{fmt}}</td><td style='color:{cor}; font-weight:bold;'>{var:+.2f}%</td></tr>"
+            html_table += f"<tr><td class='asset-name'>{label}</td><td class='price-col'>{price:{fmt}}</td><td>{close:{fmt}}</td><td>{mx_val:{fmt}}</td><td>{mn_val:{fmt}}</td><td style='color:{cor}; font-weight:bold;'>{var:+.2f}%</td></tr>"
             ticker_items.append(f"<span style='color:#fff;'>{label}:</span> <span style='color:{cor};'>{var:+.2f}%</span>")
 
         st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
 
     with c_side:
-        st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>1ª MAX</span> <span>{res['p50_up']:.2f}</span></div><div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 18px; font-weight: bold;">AXIS: {a_dol:.2f}</div><div class="calc-row" style="color:#ffa500;"><span>1ª MIN</span> <span>{res['p50_down']:.2f}</span></div><div class="calc-row" style="color:#00ff88;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>1ª MAX</span> <span>{res['p50_up']:.2f}</span></div><div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 18px; font-weight: bold; border-top: 1px solid #444; border-bottom: 1px solid #444;">AXIS: {a_dol:.2f}</div><div class="calc-row" style="color:#ffa500;"><span>1ª MIN</span> <span>{res['p50_down']:.2f}</span></div><div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div></div>""", unsafe_allow_html=True)
 
     t_html = " • ".join(ticker_items)
     st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{t_html} • {t_html}</div></div>', unsafe_allow_html=True)
 
-time.sleep(1) # ATUALIZAÇÃO MAIS RÁPIDA (1s)
+time.sleep(1) 
 st.rerun()
