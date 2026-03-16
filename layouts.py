@@ -115,25 +115,28 @@ if ewz_live:
     with c_main:
         html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th style='color: #d4a017;'>Price</th><th style='color: #d4a017;'>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
         
-        # Ordem: SPOT primeiro, DOLFUT segundo
+        # 1. DOLFUT PRIMEIRO
+        v2_var = ((res['vivo'] / a_dol) - 1) * 100
+        v2_cor = "#00ff00" if v2_var >= 0 else "#ff0000"
+        html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col'>{(res['vivo']/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max']/1000):.4f}</td><td>{(res['min']/1000):.4f}</td><td style='color:{v2_cor}; font-weight:bold;'>{v2_var:+.2f}%</td></tr>"
+        
+        # 2. SPOT LOGO ABAIXO DO DOLFUT
         spot_data = fetch("USDBRL=X")
         if spot_data:
             v_spot = ((spot_data['at']/spot_data['cl'])-1)*100
             c_spot = "#00ff00" if v_spot >= 0 else "#ff0000"
             html_table += f"<tr><td class='asset-name'>SPOT</td><td class='price-col'>{spot_data['at']:.4f}</td><td>{spot_data['cl']:.4f}</td><td>{spot_data['cl']:.4f}</td><td>{spot_data['mx']:.4f}</td><td>{spot_data['mn']:.4f}</td><td style='color:{c_spot}; font-weight:bold;'>{v_spot:+.2f}%</td></tr>"
 
-        v2_var = ((res['vivo'] / a_dol) - 1) * 100
-        v2_cor = "#00ff00" if v2_var >= 0 else "#ff0000"
-        html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col'>{(res['vivo']/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max']/1000):.4f}</td><td>{(res['min']/1000):.4f}</td><td style='color:{v2_cor}; font-weight:bold;'>{v2_var:+.2f}%</td></tr>"
-        
+        # Ticker do rodapé iniciando com DOLFUT e SPOT
         ticker_items = [f"<span style='color:#fff;'>DOLFUT:</span> <span style='color:{v2_cor};'>{v2_var:+.2f}%</span>"]
+        if spot_data:
+            ticker_items.append(f"<span style='color:#fff;'>SPOT:</span> <span style='color:{c_spot};'>{v_spot:+.2f}%</span>")
         
         ativos_resto = {"DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
         for label, sym in ativos_resto.items():
             d = fetch(sym)
             if d:
-                fmt = ".3f" if label == "XAU/USD" else ".2f"
-                if "USD" in label: fmt = ".4f"
+                fmt = ".4f" if label == "XAU/USD" or "USD" in label else ".2f"
                 v = ((d['at']/d['cl'])-1)*100
                 c = "#00ff00" if v >= 0 else "#ff0000"
                 html_table += f"<tr><td class='asset-name'>{label}</td><td class='price-col'>{d['at']:{fmt}}</td><td>{d['cl']:{fmt}}</td><td>{d['cl']:{fmt}}</td><td>{d['mx']:{fmt}}</td><td>{d['mn']:{fmt}}</td><td style='color:{c}; font-weight:bold;'>{v:+.2f}%</td></tr>"
