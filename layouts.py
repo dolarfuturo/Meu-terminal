@@ -5,7 +5,7 @@ from datetime import datetime, time as dt_time
 import pytz
 
 # Configuração para Tablet
-st.set_page_config(layout="wide", page_title="K97 - TERMINAL DOLAR")
+st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLAR")
 
 # --- CSS: ESTILIZAÇÃO COMPACTA ---
 st.markdown("""
