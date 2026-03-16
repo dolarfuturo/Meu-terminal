@@ -26,7 +26,7 @@ st.markdown("""
     
     .clock-container { display: flex; gap: 10px; color: #888; font-family: 'monospace'; }
     .clock-box { text-align: center; border: 1.5px solid #ffffff; padding: 4px 10px; border-radius: 4px; background: #0a141a; min-width: 95px; }
-    .clock-label { font-size: 10px; color: #d4a017; font-weight: bold; display: block; text-transform: uppercase; margin-bottom: 2px; }
+    .clock-label { font-size: 10px; color: #d4a017; font-weight: bold; border-radius: 4px; display: block; text-transform: uppercase; margin-bottom: 2px; }
     .clock-time { color: #fff; font-size: 17px; font-weight: bold; display: block; }
     
     .calc-panel { border: 2.5px solid #ffffff; border-radius: 8px; padding: 8px; background: #0a141a; font-family: monospace; margin-bottom: 10px; }
@@ -88,10 +88,21 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
 def fetch(s):
     try:
         t = yf.Ticker(s)
+        # Puxa 1 dia com intervalo de 1m para pegar at, mx, mn reais
         d = t.history(period="1d", interval="1m", prepost=True)
-        if d.empty: return {"at": 0.0, "cl": 0.0, "mx": 0.0, "mn": 0.0}
-        return {"at": d['Close'].iloc[-1], "cl": d['Close'].iloc[0], "mx": d['High'].max(), "mn": d['Low'].min()}
-    except: return {"at": 0.0, "cl": 0.0, "mx": 0.0, "mn": 0.0}
+        # Puxa o info ou history diário para o Close e Open precisos
+        d_daily = t.history(period="1d")
+        
+        if d.empty: return {"at": 0.0, "cl": 0.0, "op": 0.0, "mx": 0.0, "mn": 0.0}
+        
+        return {
+            "at": d['Close'].iloc[-1],
+            "cl": d_daily['Close'].iloc[0] if not d_daily.empty else d['Close'].iloc[0],
+            "op": d_daily['Open'].iloc[0] if not d_daily.empty else d['Open'].iloc[0],
+            "mx": d['High'].max(),
+            "mn": d['Low'].min()
+        }
+    except: return {"at": 0.0, "cl": 0.0, "op": 0.0, "mx": 0.0, "mn": 0.0}
 
 # --- SIDEBAR ADM ---
 eixo_sug, mx_ref, mn_ref = calcular_eixo_automatico()
@@ -134,7 +145,7 @@ if ewz_live:
             d = fetch(sym)
             f = ".4f" if "USD" in lbl or lbl == "SPOT" else ".2f"
             
-            # --- AJUSTE SOLICITADO: VARIÇÃO EWZ BASEADA NO AXIS E INVERTIDA ---
+            # Ajuste de variação e close de referência
             if lbl == "EWZ":
                 v = ((a_ewz / d['at']) - 1) * 100 if d['at'] > 0 else 0
                 ref_close = a_ewz
@@ -143,7 +154,7 @@ if ewz_live:
                 ref_close = d['cl']
                 
             c = "#00ff00" if v >= 0 else "#ff0000"
-            html_table += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col'>{d['at']:{f}}</td><td>{ref_close:{f}}</td><td>{d['cl']:{f}}</td><td>{d['mx']:{f}}</td><td>{d['mn']:{f}}</td><td style='color:{c}; font-weight:bold;'>{v:+.2f}%</td></tr>"
+            html_table += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col'>{d['at']:{f}}</td><td>{ref_close:{f}}</td><td>{d['op']:{f}}</td><td>{d['mx']:{f}}</td><td>{d['mn']:{f}}</td><td style='color:{c}; font-weight:bold;'>{v:+.2f}%</td></tr>"
             ticker_items.append(f"<span style='color:#fff;'>{lbl}:</span> <span style='color:{c};'>{v:+.2f}%</span>")
         
         st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
