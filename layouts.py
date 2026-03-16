@@ -7,6 +7,12 @@ import pytz
 # Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLAR")
 
+# --- INICIALIZAÇÃO DO ESTADO (TRAVA DOS EIXOS) ---
+if 'a_ewz' not in st.session_state:
+    st.session_state.a_ewz = 37.85
+if 'a_dol' not in st.session_state:
+    st.session_state.a_dol = 5246.00
+
 # --- CSS: ESTILIZAÇÃO COMPACTA ---
 st.markdown("""
 <style>
@@ -85,15 +91,19 @@ def fetch(s):
         return {"at": d['Close'].iloc[-1], "cl": d['Close'].iloc[0], "mx": d_op['High'].max(), "mn": d_op['Low'].min()}
     except: return {"at": 0.0, "cl": 0.0, "mx": 0.0, "mn": 0.0}
 
-# --- SIDEBAR ---
+# --- SIDEBAR (COM TRAVA) ---
 axis_auto, mx_ref, mn_ref = calcular_referencias_axis()
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
     with st.form("ajuste_axis"):
-        a_ewz = st.number_input("AXIS EWZ:", value=float(axis_auto), format="%.2f")
-        a_dol = st.number_input("AXIS DOLFUT:", value=5246.00, format="%.2f")
+        # Carrega o valor travado do session_state
+        a_ewz = st.number_input("AXIS EWZ:", value=float(st.session_state.a_ewz), format="%.2f")
+        a_dol = st.number_input("AXIS DOLFUT:", value=float(st.session_state.a_dol), format="%.2f")
         st.write(f"Eixo Max: {mx_ref:.2f} | Min: {mn_ref:.2f}")
-        salvar = st.form_submit_button("SALVAR VARIÁVEIS")
+        if st.form_submit_button("SALVAR VARIÁVEIS"):
+            st.session_state.a_ewz = a_ewz
+            st.session_state.a_dol = a_dol
+            st.rerun()
 
 # --- UI HEADER ---
 tz_sp = pytz.timezone('America/Sao_Paulo')
@@ -101,11 +111,12 @@ br_t = datetime.now(tz_sp).strftime('%H:%M')
 ny_t = datetime.now(pytz.timezone('America/New_York')).strftime('%H:%M')
 ld_t = datetime.now(pytz.timezone('Europe/London')).strftime('%H:%M')
 
-st.markdown(f"""<div class="header-bair"><div class="title-box"><span class="bair-text">K97</span><span class="sep-text">-</span><span class="terminal-text">TERMINAL DOLAR</span></div><div class="clock-container"><div class="clock-box"><span class="clock-label">BRASÍLIA</span><span class="clock-time">{br_t}</span></div><div class="clock-box"><span class="clock-label">NEW YORK</span><span class="clock-time">{ny_t}</span></div><div class="clock-box"><span class="clock-label">LONDRES</span><span class="clock-time">{ld_t}</span></div></div></div>""", unsafe_allow_html=True)
+st.markdown(f"""<div class="header-bair"><div class="title-box"><span class="bair-text">BAIR</span><span class="sep-text">-</span><span class="terminal-text">TERMINAL DOLAR</span></div><div class="clock-container"><div class="clock-box"><span class="clock-label">BRASÍLIA</span><span class="clock-time">{br_t}</span></div><div class="clock-box"><span class="clock-label">NEW YORK</span><span class="clock-time">{ny_t}</span></div><div class="clock-box"><span class="clock-label">LONDRES</span><span class="clock-time">{ld_t}</span></div></div></div>""", unsafe_allow_html=True)
 
 ewz_live = fetch("EWZ")
 if ewz_live:
-    res = calcular_k97_total(a_ewz, (ewz_live['at'] if ewz_live['at'] > 0 else a_ewz), mx_ref, mn_ref, a_dol)
+    # Usa as variáveis TRAVADAS para o cálculo
+    res = calcular_k97_total(st.session_state.a_ewz, (ewz_live['at'] if ewz_live['at'] > 0 else st.session_state.a_ewz), mx_ref, mn_ref, st.session_state.a_dol)
     h1, h2 = st.columns([3, 1])
     h1.markdown('<div class="monitor-bar">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
     h2.markdown('<div class="monitor-bar">CÁLCULOS DE PROJEÇÕES</div>', unsafe_allow_html=True)
@@ -115,11 +126,11 @@ if ewz_live:
         html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th style='color: #d4a017;'>Price</th><th style='color: #d4a017;'>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
         
         # 1. DOLFUT
-        v2_var = ((res['vivo'] / a_dol) - 1) * 100
+        v2_var = ((res['vivo'] / st.session_state.a_dol) - 1) * 100
         v2_cor = "#00ff00" if v2_var >= 0 else "#ff0000"
-        html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col'>{(res['vivo']/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max']/1000):.4f}</td><td>{(res['min']/1000):.4f}</td><td style='color:{v2_cor}; font-weight:bold;'>{v2_var:+.2f}%</td></tr>"
+        html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col'>{(res['vivo']/1000):.4f}</td><td>{(st.session_state.a_dol/1000):.4f}</td><td>{(st.session_state.a_dol/1000):.4f}</td><td>{(res['max']/1000):.4f}</td><td>{(res['min']/1000):.4f}</td><td style='color:{v2_cor}; font-weight:bold;'>{v2_var:+.2f}%</td></tr>"
         
-        # 2. SPOT (FORÇADO)
+        # 2. SPOT
         sd = fetch("USDBRL=X")
         vs = ((sd['at']/sd['cl'])-1)*100 if sd['cl'] > 0 else 0
         cs = "#00ff00" if vs >= 0 else "#ff0000"
@@ -127,7 +138,6 @@ if ewz_live:
 
         ticker_items = [f"<span style='color:#fff;'>DOLFUT:</span> <span style='color:{v2_cor};'>{v2_var:+.2f}%</span>", f"<span style='color:#fff;'>SPOT:</span> <span style='color:{cs};'>{vs:+.2f}%</span>"]
         
-        # RESTO DA GRADE
         outros = {"DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
         for label, sym in outros.items():
             d = fetch(sym)
@@ -140,7 +150,7 @@ if ewz_live:
         st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
 
     with c_side:
-        st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>75%</span> <span>{res['p75_up']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>1ª MAX</span> <span>{res['p50_up']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>25%</span> <span>{res['p25_up']:.2f}</span></div><div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 18px; font-weight: bold; border-top:1.5px solid #444; border-bottom:1.5px solid #444; margin: 5px 0; letter-spacing: 2px;">AXIS: {a_dol:.2f}</div><div class="calc-row" style="color:#ffff00;"><span>-25%</span> <span>{res['p25_down']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>1ª MIN</span> <span>{res['p50_down']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>-75%</span> <span>{res['p75_down']:.2f}</span></div><div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>75%</span> <span>{res['p75_up']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>1ª MAX</span> <span>{res['p50_up']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>25%</span> <span>{res['p25_up']:.2f}</span></div><div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 18px; font-weight: bold; border-top:1.5px solid #444; border-bottom:1.5px solid #444; margin: 5px 0; letter-spacing: 2px;">AXIS: {st.session_state.a_dol:.2f}</div><div class="calc-row" style="color:#ffff00;"><span>-25%</span> <span>{res['p25_down']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>1ª MIN</span> <span>{res['p50_down']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>-75%</span> <span>{res['p75_down']:.2f}</span></div><div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div></div>""", unsafe_allow_html=True)
         
         ea = (ewz_live['mx'] + ewz_live['mn']) / 2
         st.markdown(f"""
