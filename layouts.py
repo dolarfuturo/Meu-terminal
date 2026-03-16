@@ -81,10 +81,18 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
 
 def fetch(s):
     try:
-        d = yf.Ticker(s).history(period="1d", interval="1m", prepost=True)
-        if d.empty: return {"at": 0.0, "cl": 0.0, "mx": 0.0, "mn": 0.0}
-        return {"at": d['Close'].iloc[-1], "cl": d['Close'].iloc[0], "mx": d['High'].max(), "mn": d['Low'].min()}
-    except: return {"at": 0.0, "cl": 0.0, "mx": 0.0, "mn": 0.0}
+        t = yf.Ticker(s)
+        d = t.history(period="1d", interval="1m", prepost=True)
+        if d.empty: 
+            return {"at": 0.0, "cl": 0.0, "mx": 0.0, "mn": 0.0}
+        return {
+            "at": d['Close'].iloc[-1], 
+            "cl": d['Close'].iloc[0], 
+            "mx": d['High'].max(), 
+            "mn": d['Low'].min()
+        }
+    except: 
+        return {"at": 0.0, "cl": 0.0, "mx": 0.0, "mn": 0.0}
 
 # --- UI SIDEBAR ---
 e_sug, mx_ref, mn_ref = calcular_eixo_automatico()
@@ -112,10 +120,9 @@ if ewz_live:
         html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col'>{(res['vivo']/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max']/1000):.4f}</td><td>{(res['min']/1000):.4f}</td><td style='color:{c_v}; font-weight:bold;'>{v_v:+.2f}%</td></tr>"
         
         ticker_items = [f"DOLFUT: {v_v:+.2f}%"]
-        outros = {"SPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
+        outros = {"SPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "EB=F"}
         for lbl, sym in outros.items():
             d = fetch(sym)
-            # RECALIBRAGEM DA VARIAÇÃO DO EWZ BASEADO NO EIXO
             if lbl == "EWZ":
                 v = ((d['at']/a_ewz)-1)*100 if a_ewz > 0 else 0
                 ref_close = a_ewz
