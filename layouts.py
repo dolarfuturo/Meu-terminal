@@ -133,9 +133,17 @@ if ewz_live:
         for lbl, sym in outros.items():
             d = fetch(sym)
             f = ".4f" if "USD" in lbl or lbl == "SPOT" else ".2f"
-            v = ((d['at']/d['cl'])-1)*100 if d['cl'] > 0 else 0
+            
+            # --- AJUSTE SOLICITADO: VARIAÇÃO DO EWZ BASEADA NO EIXO ---
+            if lbl == "EWZ":
+                v = ((d['at'] / a_ewz) - 1) * 100 if a_ewz > 0 else 0
+                ref_close = a_ewz
+            else:
+                v = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
+                ref_close = d['cl']
+            
             c = "#00ff00" if v >= 0 else "#ff0000"
-            html_table += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col'>{d['at']:{f}}</td><td>{d['cl']:{f}}</td><td>{d['cl']:{f}}</td><td>{d['mx']:{f}}</td><td>{d['mn']:{f}}</td><td style='color:{c}; font-weight:bold;'>{v:+.2f}%</td></tr>"
+            html_table += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col'>{d['at']:{f}}</td><td>{ref_close:{f}}</td><td>{d['cl']:{f}}</td><td>{d['mx']:{f}}</td><td>{d['mn']:{f}}</td><td style='color:{c}; font-weight:bold;'>{v:+.2f}%</td></tr>"
             ticker_items.append(f"<span style='color:#fff;'>{lbl}:</span> <span style='color:{c};'>{v:+.2f}%</span>")
         
         st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
