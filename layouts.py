@@ -38,11 +38,9 @@ st.markdown("""
     
     .monitor-bar { background: #0a141a; border: 2.2px solid #ffffff; padding: 6px; text-align: center; color: #00f2ff; font-weight: bold; font-family: monospace; border-radius: 4px; margin-bottom: 8px; font-size: 14px; }
     
-    /* ESTILO PARA DADOS EWZ LADO A LADO */
-    .ewz-inline-container { display: flex; justify-content: space-around; padding: 5px 0; border-top: 1px solid #444; margin-top: 5px; }
-    .ewz-item { text-align: center; }
-    .ewz-label { display: block; font-size: 9px; color: #888; text-transform: uppercase; }
-    .ewz-value { font-size: 12px; font-weight: bold; }
+    /* ESTILO EWZ DISCRETO */
+    .ewz-mini-container { display: flex; justify-content: space-around; padding: 4px 0; border-top: 1px solid #444; margin-top: 4px; }
+    .ewz-mini-val { font-size: 11px; font-weight: bold; font-family: monospace; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -95,8 +93,6 @@ with st.sidebar:
     with st.form("ajuste_axis"):
         a_ewz = st.number_input("AXIS EWZ:", value=float(axis_auto), format="%.2f")
         a_dol = st.number_input("AXIS DOLFUT:", value=5246.00, format="%.2f")
-        st.write(f"Eixo Max: {mx_ref:.2f}")
-        st.write(f"Eixo Min: {mn_ref:.2f}")
         salvar = st.form_submit_button("SALVAR VARIÁVEIS")
 
 # --- UI HEADER ---
@@ -105,19 +101,7 @@ br_t = datetime.now(tz_sp).strftime('%H:%M')
 ny_t = datetime.now(pytz.timezone('America/New_York')).strftime('%H:%M')
 ld_t = datetime.now(pytz.timezone('Europe/London')).strftime('%H:%M')
 
-st.markdown(f"""
-<div class="header-bair">
-    <div class="title-box">
-        <span class="bair-text">BAIR</span>
-        <span class="sep-text">-</span>
-        <span class="terminal-text">TERMINAL DOLAR</span>
-    </div>
-    <div class="clock-container">
-        <div class="clock-box"><span class="clock-label">BRASÍLIA</span><span class="clock-time">{br_t}</span></div>
-        <div class="clock-box"><span class="clock-label">NEW YORK</span><span class="clock-time">{ny_t}</span></div>
-        <div class="clock-box"><span class="clock-label">LONDRES</span><span class="clock-time">{ld_t}</span></div>
-    </div>
-</div>""", unsafe_allow_html=True)
+st.markdown(f"""<div class="header-bair"><div class="title-box"><span class="bair-text">BAIR</span><span class="sep-text">-</span><span class="terminal-text">TERMINAL DOLAR</span></div><div class="clock-container"><div class="clock-box"><span class="clock-label">BRASÍLIA</span><span class="clock-time">{br_t}</span></div><div class="clock-box"><span class="clock-label">NEW YORK</span><span class="clock-time">{ny_t}</span></div><div class="clock-box"><span class="clock-label">LONDRES</span><span class="clock-time">{ld_t}</span></div></div></div>""", unsafe_allow_html=True)
 
 ewz_live = fetch("EWZ")
 if ewz_live:
@@ -148,20 +132,9 @@ if ewz_live:
 
     with c_side:
         # BLOCO 1: PROJEÇÕES
-        st.markdown(f"""
-        <div class="calc-panel">
-            <div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div>
-            <div class="calc-row" style="color:#ffff00;"><span>75%</span> <span>{res['p75_up']:.2f}</span></div>
-            <div class="calc-row" style="color:#ffa500;"><span>1ª MAX</span> <span>{res['p50_up']:.2f}</span></div>
-            <div class="calc-row" style="color:#ffff00;"><span>25%</span> <span>{res['p25_up']:.2f}</span></div>
-            <div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 18px; font-weight: bold; border-top:1.5px solid #444; border-bottom:1.5px solid #444; margin: 5px 0; letter-spacing: 2px;">AXIS: {a_dol:.2f}</div>
-            <div class="calc-row" style="color:#ffff00;"><span>-25%</span> <span>{res['p25_down']:.2f}</span></div>
-            <div class="calc-row" style="color:#ffa500;"><span>1ª MIN</span> <span>{res['p50_down']:.2f}</span></div>
-            <div class="calc-row" style="color:#ffff00;"><span>-75%</span> <span>{res['p75_down']:.2f}</span></div>
-            <div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div>
-        </div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>75%</span> <span>{res['p75_up']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>1ª MAX</span> <span>{res['p50_up']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>25%</span> <span>{res['p25_up']:.2f}</span></div><div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 18px; font-weight: bold; border-top:1.5px solid #444; border-bottom:1.5px solid #444; margin: 5px 0; letter-spacing: 2px;">AXIS: {a_dol:.2f}</div><div class="calc-row" style="color:#ffff00;"><span>-25%</span> <span>{res['p25_down']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>1ª MIN</span> <span>{res['p50_down']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>-75%</span> <span>{res['p75_down']:.2f}</span></div><div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div></div>""", unsafe_allow_html=True)
         
-        # BLOCO 2: CONSOLIDADO UNIFICADO
+        # BLOCO 2: CONSOLIDADO (Alinhado com a base da grade)
         ewz_avg = (ewz_live['mx'] + ewz_live['mn']) / 2
         st.markdown(f"""
         <div class="calc-panel" style="border-color: #ffffff; margin-bottom: 0px;">
@@ -177,19 +150,10 @@ if ewz_live:
                 <span style="color:#d4a017; font-size: 12px;">P. JUSTO</span> 
                 <span style="color:#ffffff; font-size: 16px; font-weight: bold;">{res['fraja']:.2f}</span>
             </div>
-            <div class="ewz-inline-container">
-                <div class="ewz-item">
-                    <span class="ewz-label">EWZ MAX</span>
-                    <span class="ewz-value" style="color:#00ff88;">{ewz_live['mx']:.2f}</span>
-                </div>
-                <div class="ewz-item">
-                    <span class="ewz-label">EWZ MIN</span>
-                    <span class="ewz-value" style="color:#ff4d4d;">{ewz_live['mn']:.2f}</span>
-                </div>
-                <div class="ewz-item">
-                    <span class="ewz-label">EWZ MED</span>
-                    <span class="ewz-value" style="color:#00f2ff;">{ewz_avg:.2f}</span>
-                </div>
+            <div class="ewz-mini-container">
+                <span class="ewz-mini-val" style="color:#00ff88;">{ewz_live['mx']:.2f}</span>
+                <span class="ewz-mini-val" style="color:#00f2ff;">{ewz_avg:.2f}</span>
+                <span class="ewz-mini-val" style="color:#ff4d4d;">{ewz_live['mn']:.2f}</span>
             </div>
         </div>""", unsafe_allow_html=True)
 
