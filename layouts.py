@@ -38,7 +38,6 @@ st.markdown("""
     
     .monitor-bar { background: #0a141a; border: 2.2px solid #ffffff; padding: 6px; text-align: center; color: #00f2ff; font-weight: bold; font-family: monospace; border-radius: 4px; margin-bottom: 8px; font-size: 14px; }
     
-    /* ESTILO EWZ DISCRETO */
     .ewz-mini-container { display: flex; justify-content: space-around; padding: 4px 0; border-top: 1px solid #444; margin-top: 4px; }
     .ewz-mini-val { font-size: 11px; font-weight: bold; font-family: monospace; }
 </style>
@@ -93,6 +92,8 @@ with st.sidebar:
     with st.form("ajuste_axis"):
         a_ewz = st.number_input("AXIS EWZ:", value=float(axis_auto), format="%.2f")
         a_dol = st.number_input("AXIS DOLFUT:", value=5246.00, format="%.2f")
+        st.write(f"Eixo Max: {mx_ref:.2f}")
+        st.write(f"Eixo Min: {mn_ref:.2f}")
         salvar = st.form_submit_button("SALVAR VARIÁVEIS")
 
 # --- UI HEADER ---
@@ -113,17 +114,26 @@ if ewz_live:
     c_main, c_side = st.columns([3, 1])
     with c_main:
         html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th style='color: #d4a017;'>Price</th><th style='color: #d4a017;'>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
+        
+        # Ordem: SPOT primeiro, DOLFUT segundo
+        spot_data = fetch("USDBRL=X")
+        if spot_data:
+            v_spot = ((spot_data['at']/spot_data['cl'])-1)*100
+            c_spot = "#00ff00" if v_spot >= 0 else "#ff0000"
+            html_table += f"<tr><td class='asset-name'>SPOT</td><td class='price-col'>{spot_data['at']:.4f}</td><td>{spot_data['cl']:.4f}</td><td>{spot_data['cl']:.4f}</td><td>{spot_data['mx']:.4f}</td><td>{spot_data['mn']:.4f}</td><td style='color:{c_spot}; font-weight:bold;'>{v_spot:+.2f}%</td></tr>"
+
         v2_var = ((res['vivo'] / a_dol) - 1) * 100
         v2_cor = "#00ff00" if v2_var >= 0 else "#ff0000"
         html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col'>{(res['vivo']/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max']/1000):.4f}</td><td>{(res['min']/1000):.4f}</td><td style='color:{v2_cor}; font-weight:bold;'>{v2_var:+.2f}%</td></tr>"
         
-        ativos_config = {"SPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
         ticker_items = [f"<span style='color:#fff;'>DOLFUT:</span> <span style='color:{v2_cor};'>{v2_var:+.2f}%</span>"]
         
-        for label, sym in ativos_config.items():
+        ativos_resto = {"DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
+        for label, sym in ativos_resto.items():
             d = fetch(sym)
             if d:
-                fmt = ".3f" if label == "XAU/USD" else (".4f" if "USD" in label or label == "SPOT" else ".2f")
+                fmt = ".3f" if label == "XAU/USD" else ".2f"
+                if "USD" in label: fmt = ".4f"
                 v = ((d['at']/d['cl'])-1)*100
                 c = "#00ff00" if v >= 0 else "#ff0000"
                 html_table += f"<tr><td class='asset-name'>{label}</td><td class='price-col'>{d['at']:{fmt}}</td><td>{d['cl']:{fmt}}</td><td>{d['cl']:{fmt}}</td><td>{d['mx']:{fmt}}</td><td>{d['mn']:{fmt}}</td><td style='color:{c}; font-weight:bold;'>{v:+.2f}%</td></tr>"
@@ -134,13 +144,13 @@ if ewz_live:
         # BLOCO 1: PROJEÇÕES
         st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>75%</span> <span>{res['p75_up']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>1ª MAX</span> <span>{res['p50_up']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>25%</span> <span>{res['p25_up']:.2f}</span></div><div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 18px; font-weight: bold; border-top:1.5px solid #444; border-bottom:1.5px solid #444; margin: 5px 0; letter-spacing: 2px;">AXIS: {a_dol:.2f}</div><div class="calc-row" style="color:#ffff00;"><span>-25%</span> <span>{res['p25_down']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>1ª MIN</span> <span>{res['p50_down']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>-75%</span> <span>{res['p75_down']:.2f}</span></div><div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div></div>""", unsafe_allow_html=True)
         
-        # BLOCO 2: CONSOLIDADO (Alinhado com a base da grade)
+        # BLOCO 2: CONSOLIDADO
         ewz_avg = (ewz_live['mx'] + ewz_live['mn']) / 2
         st.markdown(f"""
         <div class="calc-panel" style="border-color: #ffffff; margin-bottom: 0px;">
             <div class="calc-row" style="border-bottom: 1px solid #444; padding: 10px 8px;">
                 <span style="color:#ffffff; font-size: 13px;">DOLFUT</span> 
-                <span style="color:#00f2ff; font-size: 19px; font-weight: 950;">{res['vivo']:.2f}</span>
+                <span style="color:#00f2ff; font-size: 16px; font-weight: 950;">{res['vivo']:.2f}</span>
             </div>
             <div class="calc-row" style="border-bottom: 1px solid #444;">
                 <span style="color:#ffff00; font-size: 12px;">MÉDIA DOL</span> 
