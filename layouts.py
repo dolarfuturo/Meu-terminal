@@ -7,23 +7,23 @@ import pytz
 # Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLAR", initial_sidebar_state="collapsed")
 
-# --- CSS: ESTILIZAÇÃO FINAL E OCULTAÇÃO DE STATUS ---
+# --- CSS: ESCONDE APENAS O STATUS DE ATUALIZAÇÃO ---
 st.markdown("""
 <style>
-    /* 1. ESCONDE A BARRA DE ATUALIZAÇÃO E ELEMENTOS DE INTERFACE */
+    /* ESCONDE O STATUS "RUNNING" E A BARRA DE PROGRESSO */
     div[data-testid="stStatusWidget"] { display: none !important; }
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    [data-testid="stHeader"] {display: none;}
     
-    /* 2. ESTILO DO TERMINAL */
+    /* MANTÉM O BOTÃO DO MENU/SIDEBAR MAS TIRA O RESTO DO HEADER */
+    header { background-color: rgba(0,0,0,0) !important; }
+    
     .stApp { background-color: #050a0e !important; }
+    .block-container { padding: 1rem !important; max-width: 100% !important; }
+
+    /* Estilo das Tabelas */
     .main-grid { border: 2.5px solid #ffffff; border-radius: 8px; overflow: hidden; font-family: 'monospace'; background-color: #0d1b22; }
     .terminal-table { width: 100%; border-collapse: collapse; color: #e0e0e0; }
     .terminal-table th { background-color: #0a141a; color: #d4a017; border: 1px solid #ffffff; padding: 10px; text-align: center; font-size: 13px; text-transform: uppercase; }
     .terminal-table td { border: 1px solid #ffffff; padding: 12px; text-align: center; font-size: 15px; }
-    
     .asset-name { font-size: 17px; color: #fff; text-align: left; font-weight: bold; padding-left: 15px; }
     .price-col { color: #00f2ff !important; font-weight: bold; }
     
@@ -41,6 +41,11 @@ st.markdown("""
     .calc-panel { border: 2.5px solid #ffffff; border-radius: 8px; padding: 8px; background: #0a141a; font-family: monospace; margin-bottom: 10px; }
     .calc-row { display: flex; justify-content: space-between; padding: 5px 8px; border-bottom: 1px solid #444; font-size: 13px; font-weight: bold; }
     .monitor-bar { background: #0a141a; border: 2.2px solid #ffffff; padding: 6px; text-align: center; color: #00f2ff; font-weight: bold; font-size: 14px; border-radius: 4px; margin-bottom: 8px; }
+    
+    /* Ticker Animado */
+    .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 2px solid #ffffff; border-bottom: 2px solid #ffffff; padding: 8px 0; overflow: hidden; white-space: nowrap; margin-top: 15px; }
+    .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 14px; font-weight: bold; }
+    @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
 </style>
 """, unsafe_allow_html=True)
 
@@ -58,22 +63,26 @@ def calcular_k97_total(eixo_ewz, p_ewz_at, max_e, min_e, eixo_dol):
     if p_ewz_at <= 0: return None
     try:
         v_at = ((eixo_ewz / p_ewz_at) - 1) * 100 / 1.5
+        v_fr = ((eixo_ewz / p_ewz_at) - 1) * 100 / 4.5
         v_pos = ((eixo_ewz / min_e) - 1) * 100 / 1.5 if min_e > 0 else 0
         v_neg = ((eixo_ewz / max_e) - 1) * 100 / 1.5 if max_e > 0 else 0
         mx_d, mn_d = eixo_dol * (1 + (v_pos / 100)), eixo_dol * (1 + (v_neg / 100))
         return {
-            "vivo": eixo_dol * (1 + (v_at / 100)), "max": mx_d, "min": mn_d,
+            "vivo": eixo_dol * (1 + (v_at / 100)), "fraja": eixo_dol * (1 + (v_fr / 100)),
+            "max": mx_d, "min": mn_d,
             "p75_up": (eixo_dol + (mx_d - eixo_dol)*0.75), "p50_up": (eixo_dol + mx_d) / 2,
             "p25_up": (eixo_dol + (mx_d - eixo_dol)*0.25), "p75_down": (eixo_dol + (mn_d - eixo_dol)*0.75),
             "p50_down": (eixo_dol + mn_d) / 2, "p25_down": (eixo_dol + (mn_d - eixo_dol)*0.25)
         }
     except: return None
 
-# --- PAINEL ADM ---
+# --- SIDEBAR (PAINEL ADM) ---
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
-    a_ewz = st.number_input("AXIS EWZ:", value=36.42, format="%.2f")
-    a_dol = st.number_input("AXIS DOLFUT:", value=5246.00, format="%.2f")
+    with st.form("ajuste_vars"):
+        a_ewz = st.number_input("AXIS EWZ:", value=36.42, format="%.2f")
+        a_dol = st.number_input("AXIS DOLFUT:", value=5246.00, format="%.2f")
+        st.form_submit_button("SALVAR")
 
 # --- HEADER ---
 tz_sp, tz_ny, tz_ld = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London')
@@ -81,9 +90,9 @@ st.markdown(f"""
 <div class="header-bair">
     <div class="title-box"><span class="bair-text">BAIR</span><span style="color:#fff; font-size:46px; font-weight:950;">-</span><span class="terminal-text">TERMINAL DOLAR</span></div>
     <div style="display: flex; gap: 10px;">
-        <div class="clock-box"><span class="clock-label">BSB</span><span class="clock-time">{datetime.now(tz_sp).strftime('%H:%M')}</span></div>
-        <div class="clock-box"><span class="clock-label">NY</span><span class="clock-time">{datetime.now(tz_ny).strftime('%H:%M')}</span></div>
-        <div class="clock-box"><span class="clock-label">LDN</span><span class="clock-time">{datetime.now(tz_ld).strftime('%H:%M')}</span></div>
+        <div class="clock-box"><span class="clock-label">BRASÍLIA</span><span class="clock-time">{datetime.now(tz_sp).strftime('%H:%M')}</span></div>
+        <div class="clock-box"><span class="clock-label">NEW YORK</span><span class="clock-time">{datetime.now(tz_ny).strftime('%H:%M')}</span></div>
+        <div class="clock-box"><span class="clock-label">LONDRES</span><span class="clock-time">{datetime.now(tz_ld).strftime('%H:%M')}</span></div>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -100,7 +109,8 @@ while True:
             st.markdown('<div class="monitor-bar">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
             html = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
             
-            ativos = {"DOLFUT": "BZ=F", "SPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "XAU/USD": "GC=F"}
+            ticker_items = []
+            ativos = {"DOLFUT": "BZ=F", "SPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "XAU/USD": "GC=F", "BRENT": "BZ=F"}
             for lbl, sym in ativos.items():
                 d = fetch(sym)
                 price = res['vivo'] if lbl == "DOLFUT" and res else d['at']
@@ -109,6 +119,8 @@ while True:
                 color = "#00ff00" if var >= 0 else "#ff4d4d"
                 fmt = ".4f" if "USD" in lbl or lbl == "SPOT" else ".2f"
                 html += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col'>{price:{fmt}}</td><td>{close:{fmt}}</td><td>{d['op']:{fmt}}</td><td>{d['mx']:{fmt}}</td><td>{d['mn']:{fmt}}</td><td style='color:{color}; font-weight:bold;'>{var:+.2f}%</td></tr>"
+                ticker_items.append(f"<span style='color:#fff;'>{lbl}:</span> <span style='color:{color};'>{var:+.2f}%</span>")
+            
             st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
 
         with c_side:
@@ -123,9 +135,12 @@ while True:
                     <div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div>
                 </div>
                 <div class="calc-panel">
-                    <div class="calc-row" style="border-bottom:none;"><span>DOLFUT VIVO</span> <span style="color:#00f2ff; font-size:16px;">{res['vivo']:.2f}</span></div>
+                    <div class="calc-row"><span>DOLFUT VIVO</span> <span style="color:#00f2ff; font-size:16px;">{res['vivo']:.2f}</span></div>
+                    <div class="calc-row" style="border-bottom:none;"><span>P. JUSTO</span> <span style="color:#ffffff; font-size:16px; font-weight:bold;">{res['fraja']:.2f}</span></div>
                 </div>
                 """, unsafe_allow_html=True)
+
+        st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)} • {" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
 
     time.sleep(5)
     st.rerun()
