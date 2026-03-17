@@ -4,7 +4,7 @@ import time
 from datetime import datetime
 import pytz
 
-# Março 17, 2026 — 16:50 BRT
+# Março 17, 2026 — 16:55 BRT
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLAR")
 
 # --- CSS: ESTILIZAÇÃO COMPACTA MANTIDA ---
@@ -40,7 +40,7 @@ def fetch(s):
 
 def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
     try:
-        divisor = 8.0 # Conforme estratégia para esticar a grade
+        divisor = 8.0 
         var_atual = ((eixo_ewz / p_ewz_atual) - 1) * 100 / divisor
         dolar_vivo = eixo_dol * (1 + (var_atual / 100))
         
@@ -83,10 +83,12 @@ if ewz_live:
         
         for lbl, sym in ativos.items():
             d = fetch(sym)
+            
+            # Lógica: Apenas DOLFUT usa o AXIS como referência
             if lbl == "DOLFUT":
-                val, ref = res['vivo'], a_dol # Baseado no AXIS
+                val, ref = res['vivo'], a_dol 
             else:
-                val, ref = d['at'], d['cl'] # Ativos normais de mercado
+                val, ref = d['at'], d['cl'] 
             
             var = ((val/ref)-1)*100 if ref > 0 else 0
             color = "#00ff00" if var >= 0 else "#ff0000"
@@ -98,7 +100,6 @@ if ewz_live:
         st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
 
     with c_side:
-        # Grade de Projeções (12.5% e Divisor 8.0)
         grade_html = f"""
         <div class="calc-panel">
             <div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div>
@@ -113,7 +114,6 @@ if ewz_live:
         </div>"""
         st.markdown(grade_html, unsafe_allow_html=True)
         
-        # Sintético Inferior
         st.markdown(f'<div class="calc-panel"><div class="calc-row" style="padding: 10px 8px;"><span style="color:#ffffff;">DOLFUT</span> <span style="color:#00f2ff; font-size: 16px; font-weight: 950;">{res["vivo"]:.2f}</span></div></div>', unsafe_allow_html=True)
 
     t_str = " • ".join(ticker_items)
