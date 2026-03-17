@@ -7,10 +7,25 @@ import pytz
 # Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLAR")
 
-# --- CSS: ESTILIZAÇÃO COMPACTA ---
+# --- CSS: ESTILIZAÇÃO COM ZOOM GLOBAL ---
 st.markdown("""
 <style>
-    .stApp { background-color: #050a0e !important; }
+    /* APLICA ZOOM EM TODO O APP */
+    .stApp { 
+        background-color: #050a0e !important; 
+        zoom: 0.85; /* Ajuste aqui: 0.85 = 85% do tamanho original */
+        -moz-transform: scale(0.85); /* Suporte para Firefox */
+        -moz-transform-origin: 0 0;
+    }
+    
+    /* Remove espaços vazios nas laterais que o Streamlit cria */
+    .block-container {
+        padding-top: 1rem !important;
+        padding-bottom: 0rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+
     .main-grid { border: 2.5px solid #ffffff; border-radius: 8px; overflow: hidden; font-family: 'monospace'; background-color: #0d1b22; }
     .terminal-table { width: 100%; border-collapse: collapse; color: #e0e0e0; }
     .terminal-table th { background-color: #0a141a; color: #d4a017; border: 1px solid #ffffff; padding: 10px; text-align: center; font-size: 13px; text-transform: uppercase; }
