@@ -42,7 +42,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS ATUALIZADO (SENTINELA 18H) ---
+# --- MOTOR DE DADOS ---
 @st.cache_data(ttl=600)
 def calcular_eixo_automatico():
     try:
@@ -59,17 +59,21 @@ def calcular_eixo_automatico():
 
 def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
     try:
-        var_atual = ((eixo_ewz / p_ewz_atual) - 1) * 100 / 1.5
+        # AJUSTE SOLICITADO: Grade principal agora dividida por 3.0 para maior amplitude
+        var_atual = ((eixo_ewz / p_ewz_atual) - 1) * 100 / 3.0
         dolar_vivo = eixo_dol * (1 + (var_atual / 100))
-        var_fraja = ((eixo_ewz / p_ewz_atual) - 1) * 100 / 4.5
+        
+        # AJUSTE SOLICITADO: P. Justo (Fraja) dividido por 8.0 para dias de forte tendência
+        var_fraja = ((eixo_ewz / p_ewz_atual) - 1) * 100 / 8.0
         dolar_fraja = eixo_dol * (1 + (var_fraja / 100))
         
         ewz_medio_dia = (max_ewz + min_ewz) / 2
         var_medio = ((eixo_ewz / ewz_medio_dia) - 1) * 100 
         dolar_medio = eixo_dol * (1 + (var_medio / 100)) 
         
-        v_neg = ((eixo_ewz / max_ewz) - 1) * 100 / 1.5
-        v_pos = ((eixo_ewz / min_ewz) - 1) * 100 / 1.5
+        # Máxima e Mínima acompanhando a nova amplitude de 3.0
+        v_neg = ((eixo_ewz / max_ewz) - 1) * 100 / 3.0
+        v_pos = ((eixo_ewz / min_ewz) - 1) * 100 / 3.0
         alvo_max, alvo_min = eixo_dol * (1 + (v_pos / 100)), eixo_dol * (1 + (v_neg / 100))
         
         return {
@@ -134,7 +138,6 @@ if ewz_live:
             d = fetch(sym)
             f = ".4f" if "USD" in lbl or lbl == "SPOT" else ".2f"
             
-            # --- AJUSTE SOLICITADO: VARIÇÃO EWZ BASEADA NO AXIS E INVERTIDA ---
             if lbl == "EWZ":
                 v = ((a_ewz / d['at']) - 1) * 100 if d['at'] > 0 else 0
                 ref_close = a_ewz
@@ -149,10 +152,8 @@ if ewz_live:
         st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
 
     with c_side:
-        # PAINEL DE PROJEÇÕES K97
         st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>75%</span> <span>{res['p75_up']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>1ª MAX</span> <span>{res['p50_up']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>25%</span> <span>{res['p25_up']:.2f}</span></div><div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 18px; font-weight: bold; border-top:1.5px solid #444; border-bottom:1.5px solid #444; margin: 5px 0; letter-spacing: 2px;">AXIS: {a_dol:.2f}</div><div class="calc-row" style="color:#ffff00;"><span>-25%</span> <span>{res['p25_down']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>1ª MIN</span> <span>{res['p50_down']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>-75%</span> <span>{res['p75_down']:.2f}</span></div><div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div></div>""", unsafe_allow_html=True)
         
-        # PAINEL SINTÉTICO INFERIOR
         st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="padding: 10px 8px;"><span style="color:#ffffff;">DOLFUT</span> <span style="color:#00f2ff; font-size: 16px; font-weight: 950;">{res['vivo']:.2f}</span></div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOL</span> <span style="color:#00f2ff; font-size: 16px;">{res['medio']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#d4a017;">P. JUSTO</span> <span style="color:#ffffff; font-size: 16px; font-weight: bold;">{res['fraja']:.2f}</span></div><div class="ewz-mini-container"><span class="ewz-mini-val" style="color:#00ff88;">{ewz_live['mx']:.2f}</span><span class="ewz-mini-val" style="color:#00f2ff;">{res['ewz_med']:.2f}</span><span class="ewz-mini-val" style="color:#ff4d4d;">{ewz_live['mn']:.2f}</span></div></div>""", unsafe_allow_html=True)
 
     t_html = " • ".join(ticker_items)
