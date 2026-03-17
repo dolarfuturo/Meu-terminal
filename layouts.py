@@ -132,5 +132,5 @@ if res:
 
     st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker)} • {" • ".join(ticker)}</div></div>', unsafe_allow_html=True)
 
-time.sleep(2)
+time.sleep(5)
 st.rerun()
