@@ -4,6 +4,7 @@ import time
 from datetime import datetime, time as dt_time
 import pytz
 
+# Março 17, 2026 — 12:50 BRT
 # Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLAR")
 
@@ -59,32 +60,29 @@ def calcular_eixo_automatico():
 
 def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
     try:
-        # AJUSTE: Aplicado divisor 8.0 para maior fôlego na grade
-        var_atual = ((eixo_ewz / p_ewz_atual) - 1) * 100 / 8.0
+        # AJUSTE: Divisor 8.0 para esticar a grade (8 pontos para cima/baixo)
+        divisor = 8.0
+        var_atual = ((eixo_ewz / p_ewz_atual) - 1) * 100 / divisor
         dolar_vivo = eixo_dol * (1 + (var_atual / 100))
-        
-        var_fraja = ((eixo_ewz / p_ewz_atual) - 1) * 100 / 8.0
-        dolar_fraja = eixo_dol * (1 + (var_fraja / 100))
         
         ewz_medio_dia = (max_ewz + min_ewz) / 2
         var_medio = ((eixo_ewz / ewz_medio_dia) - 1) * 100 
         dolar_medio = eixo_dol * (1 + (var_medio / 100)) 
         
-        v_neg = ((eixo_ewz / max_ewz) - 1) * 100 / 8.0
-        v_pos = ((eixo_ewz / min_ewz) - 1) * 100 / 8.0
+        v_neg = ((eixo_ewz / max_ewz) - 1) * 100 / divisor
+        v_pos = ((eixo_ewz / min_ewz) - 1) * 100 / divisor
         alvo_max, alvo_min = eixo_dol * (1 + (v_pos / 100)), eixo_dol * (1 + (v_neg / 100))
         
-        # AJUSTE: Níveis intermediários alterados de 25% para 12.5%
+        # AJUSTE: Níveis intermediários em 12.5% do caminho entre o eixo e as extremas
         return {
-            "vivo": dolar_vivo, "fraja": dolar_fraja, "medio": dolar_medio, 
-            "v_atual": var_atual, "ewz_med": ewz_medio_dia,
-            "max": alvo_max, "min": alvo_min,
+            "vivo": dolar_vivo, "medio": dolar_medio, "fraja": dolar_vivo,
+            "ewz_med": ewz_medio_dia, "max": alvo_max, "min": alvo_min,
             "p75_up": (eixo_dol + (alvo_max - eixo_dol)*0.75), 
             "p50_up": (eixo_dol + alvo_max) / 2, 
-            "p125_up": (eixo_dol + (alvo_max - eixo_dol)*0.125), # NOVO: 12.5%
+            "p125_up": (eixo_dol + (alvo_max - eixo_dol)*0.125),
             "p75_down": (eixo_dol + (alvo_min - eixo_dol)*0.75), 
             "p50_down": (eixo_dol + alvo_min) / 2, 
-            "p125_down": (eixo_dol + (alvo_min - eixo_dol)*0.125) # NOVO: 12.5%
+            "p125_down": (eixo_dol + (alvo_min - eixo_dol)*0.125)
         }
     except: return None
 
@@ -96,60 +94,64 @@ def fetch(s):
         return {"at": d['Close'].iloc[-1], "cl": d['Close'].iloc[0], "mx": d['High'].max(), "mn": d['Low'].min()}
     except: return {"at": 0.0, "cl": 0.0, "mx": 0.0, "mn": 0.0}
 
-# --- SIDEBAR ADM ---
 eixo_sug, mx_ref, mn_ref = calcular_eixo_automatico()
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
     with st.form("ajuste_axis"):
         a_ewz = st.number_input("AXIS EWZ:", value=float(eixo_sug), format="%.2f")
         a_dol = st.number_input("AXIS DOLFUT:", value=5246.00, format="%.2f")
-        st.write(f"Ref. Sentinela: {eixo_sug:.2f}")
-        st.form_submit_button("SALVAR VARIÁVEIS")
+        st.form_submit_button("SALVAR")
 
-# --- UI HEADER ---
 tz_sp = pytz.timezone('America/Sao_Paulo')
 br_t = datetime.now(tz_sp).strftime('%H:%M')
 ny_t = datetime.now(pytz.timezone('America/New_York')).strftime('%H:%M')
 ld_t = datetime.now(pytz.timezone('Europe/London')).strftime('%H:%M')
 
-st.markdown(f"""<div class="header-bair"><div class="title-box"><span class="bair-text">BAIR</span><span class="sep-text">-</span><span class="terminal-text">TERMINAL DOLAR</span></div><div class="clock-container"><div class="clock-box"><span class="clock-label">BRASÍLIA</span><span class="clock-time">{br_t}</span></div><div class="clock-box"><span class="clock-label">NEW YORK</span><span class="clock-time">{ny_t}</span></div><div class="clock-box"><span class="clock-label">LONDRES</span><span class="clock-time">{ld_t}</span></div></div></div>""", unsafe_allow_html=True)
+st.markdown(f'<div class="header-bair"><div class="title-box"><span class="bair-text">BAIR</span><span class="sep-text">-</span><span class="terminal-text">TERMINAL DOLAR</span></div><div class="clock-container"><div class="clock-box"><span class="clock-label">BRASÍLIA</span><span class="clock-time">{br_t}</span></div><div class="clock-box"><span class="clock-label">NEW YORK</span><span class="clock-time">{ny_t}</span></div><div class="clock-box"><span class="clock-label">LONDRES</span><span class="clock-time">{ld_t}</span></div></div></div>', unsafe_allow_html=True)
 
 ewz_live = fetch("EWZ")
 if ewz_live:
     res = calcular_k97_total(a_ewz, ewz_live['at'], ewz_live['mx'], ewz_live['mn'], a_dol)
-    h1, h2 = st.columns([3, 1])
-    h1.markdown('<div class="monitor-bar">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
-    h2.markdown('<div class="monitor-bar">CÁLCULOS DE PROJEÇÕES</div>', unsafe_allow_html=True)
-
     c_main, c_side = st.columns([3, 1])
+    
     with c_main:
-        html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th style='color: #d4a017;'>Price</th><th style='color: #d4a017;'>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
+        html_table = '<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th style="color: #d4a017;">Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>'
         
-        # 1. DOLFUT CALCULADO
-        v_v = ((res['vivo']/a_dol)-1)*100
-        c_v = "#00ff00" if v_v >= 0 else "#ff0000"
-        html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col'>{(res['vivo']/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max']/1000):.4f}</td><td>{(res['min']/1000):.4f}</td><td style='color:{c_v}; font-weight:bold;'>{v_v:+.2f}%</td></tr>"
-        
-        ticker_items = [f"<span style='color:#fff;'>DOLFUT:</span> <span style='color:{c_v};'>{v_v:+.2f}%</span>"]
-        
-        outros = {"SPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
+        outros = {"DOLFUT": "DOL=F", "SPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "XAU/USD": "GC=F"}
+        ticker_items = []
         for lbl, sym in outros.items():
             d = fetch(sym)
-            f = ".4f" if "USD" in lbl or lbl == "SPOT" else ".2f"
-            
-            if lbl == "EWZ":
-                v = ((a_ewz / d['at']) - 1) * 100 if d['at'] > 0 else 0
-                ref_close = a_ewz
-            else:
-                v = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
-                ref_close = d['cl']
-                
-            c = "#00ff00" if v >= 0 else "#ff0000"
-            html_table += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col'>{d['at']:{f}}</td><td>{ref_close:{f}}</td><td>{d['cl']:{f}}</td><td>{d['mx']:{f}}</td><td>{d['mn']:{f}}</td><td style='color:{c}; font-weight:bold;'>{v:+.2f}%</td></tr>"
-            ticker_items.append(f"<span style='color:#fff;'>{lbl}:</span> <span style='color:{c};'>{v:+.2f}%</span>")
+            val = res['vivo'] if lbl == "DOLFUT" else d['at']
+            ref = a_dol if lbl == "DOLFUT" else d['cl']
+            v = ((val/ref)-1)*100
+            color = "#00ff00" if v >= 0 else "#ff0000"
+            html_table += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col'>{val:.4f}</td><td>{ref:.4f}</td><td>{d['cl']:.4f}</td><td>{d['mx']:.4f}</td><td>{d['mn']:.4f}</td><td style='color:{color};'>{v:+.2f}%</td></tr>"
+            ticker_items.append(f"<span style='color:#fff;'>{lbl}:</span> <span style='color:{color};'>{v:+.2f}%</span>")
         
         st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
 
     with c_side:
-        # PAINEL DE PROJEÇÕES K97
-        st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>75%</span> <span>{res['p75_up']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>1ª MAX</span> <span>{res['p50_up']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>12.5%</span> <span>{res['p125_up']:.2f}</span></div><div style="text-align:
+        # PAINEL DE PROJEÇÕES - CORREÇÃO DA F-STRING AQUI
+        grade_html = f"""
+        <div class="calc-panel">
+            <div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div>
+            <div class="calc-row" style="color:#ffff00;"><span>75%</span> <span>{res['p75_up']:.2f}</span></div>
+            <div class="calc-row" style="color:#ffa500;"><span>1ª MAX</span> <span>{res['p50_up']:.2f}</span></div>
+            <div class="calc-row" style="color:#ffff00;"><span>12.5%</span> <span>{res['p125_up']:.2f}</span></div>
+            <div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 18px; font-weight: bold; border-top:1.5px solid #444; border-bottom:1.5px solid #444; margin: 5px 0;">AXIS: {a_dol:.2f}</div>
+            <div class="calc-row" style="color:#ffff00;"><span>-12.5%</span> <span>{res['p125_down']:.2f}</span></div>
+            <div class="calc-row" style="color:#ffa500;"><span>1ª MIN</span> <span>{res['p50_down']:.2f}</span></div>
+            <div class="calc-row" style="color:#ffff00;"><span>-75%</span> <span>{res['p75_down']:.2f}</span></div>
+            <div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div>
+        </div>
+        """
+        st.markdown(grade_html, unsafe_allow_html=True)
+        
+        # SINTÉTICO INFERIOR
+        st.markdown(f'<div class="calc-panel"><div class="calc-row"><span>DOLFUT</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div class="calc-row"><span>MÉDIA</span> <span style="color:#ffff00;">{res['medio']:.2f}</span></div></div>', unsafe_allow_html=True)
+
+    t_html = " • ".join(ticker_items)
+    st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{t_html}</div></div>', unsafe_allow_html=True)
+
+time.sleep(2)
+st.rerun()
