@@ -37,33 +37,37 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS ---
+# --- MOTOR DE DADOS CORRIGIDO (ESTILO TRADINGVIEW) ---
 def fetch(s):
     try:
         t = yf.Ticker(s)
-        # Puxa histórico diário para pegar o fechamento de ontem real (sessão anterior)
-        hist_diario = t.history(period="2d")
-        ref_close = hist_diario['Close'].iloc[-2]
-        # Puxa dados intraday para o preço atual e limites do dia
+        # Tenta pegar o fechamento anterior oficial (ajusta GAP de abertura)
+        ref_close = t.info.get('previousClose')
+        
         d = t.history(period="1d", interval="1m", prepost=True)
+        if d.empty: 
+            return {"at": 0.0, "cl": ref_close or 0.0, "mx": 0.0, "mn": 0.0, "op": 0.0}
         
-        if d.empty: return {"at": 0.0, "cl": ref_close, "mx": 0.0, "mn": 0.0, "op": 0.0}
-        
+        if not ref_close:
+            hist_ref = t.history(period="2d")
+            ref_close = hist_ref['Close'].iloc[-2] if len(hist_ref) > 1 else d['Open'].iloc[0]
+            
         return {
             "at": d['Close'].iloc[-1],
-            "cl": ref_close,           # Referência: Fechamento Anterior
-            "op": d['Open'].iloc[0],   # Abertura de Hoje
+            "cl": ref_close,
+            "op": d['Open'].iloc[0],
             "mx": d['High'].max(), 
             "mn": d['Low'].min()
         }
     except: return {"at": 0.0, "cl": 0.0, "mx": 0.0, "mn": 0.0, "op": 0.0}
 
 @st.cache_data(ttl=600)
-def calcular_eixo_automatico():
+def calcular_sentinela():
     try:
         t = yf.Ticker("EWZ")
         df = t.history(period="7d", interval="1d")
         agora = datetime.now(pytz.timezone('America/Sao_Paulo'))
+        # Sentinela 18h: Se antes das 18h, usa máxima/mínima de ONTEM.
         idx = -2 if agora.hour < 18 else -1
         mx, mn = df['High'].iloc[idx], df['Low'].iloc[idx]
         return (mx + mn) / 2
@@ -90,14 +94,15 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
         }
     except: return None
 
-# --- SIDEBAR ---
-eixo_sug = calcular_eixo_automatico()
+# --- SIDEBAR ADM (SENTINELA RESTAURADO) ---
+eixo_sentinela = calcular_sentinela()
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
-    with st.form("ajuste"):
-        a_ewz = st.number_input("AXIS EWZ:", value=float(eixo_sug), format="%.2f")
+    with st.form("ajuste_vars"):
+        a_ewz = st.number_input("AXIS EWZ:", value=float(eixo_sentinela), format="%.2f")
         a_dol = st.number_input("AXIS DOLFUT:", value=5246.00, format="%.2f")
-        st.form_submit_button("SALVAR")
+        st.write(f"Ref. Sentinela: **{eixo_sentinela:.2f}**")
+        st.form_submit_button("SALVAR VARIÁVEIS")
 
 # --- UI HEADER ---
 tz_sp, tz_ny, tz_ld = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London')
@@ -113,13 +118,13 @@ if ewz_live:
     with c_main:
         html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th style='color: #d4a017;'>Price</th><th style='color: #d4a017;'>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
         
-        # 1. DOLFUT (Eixo Adm)
+        # DOLFUT
         v_v = ((res['vivo']/a_dol)-1)*100
         html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col'>{(res['vivo']/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max']/1000):.4f}</td><td>{(res['min']/1000):.4f}</td><td style='color:{("#00ff00" if v_v >= 0 else "#ff0000")}; font-weight:bold;'>{v_v:+.2f}%</td></tr>"
         
         ticker = [f"<span style='color:#fff;'>DOLFUT:</span> <span style='color:{("#00ff00" if v_v >= 0 else "#ff0000")};'>{v_v:+.2f}%</span>"]
         
-        # 2. DEMAIS ATIVOS (Fechamento Anterior Real)
+        # DEMAIS ATIVOS
         outros = {"SPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
         for lbl, sym in outros.items():
             d = fetch(sym)
@@ -132,9 +137,9 @@ if ewz_live:
         st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
 
     with c_side:
-        # Grade K97
+        # Grade K97 Corrigida
         st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>75%</span> <span>{res['p75_up']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>1ª MAX</span> <span>{res['p50_up']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>25%</span> <span>{res['p25_up']:.2f}</span></div><div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 18px; font-weight: bold; border-top:1.5px solid #444; border-bottom:1.5px solid #444; margin: 5px 0;">AXIS: {a_dol:.2f}</div><div class="calc-row" style="color:#ffff00;"><span>-25%</span> <span>{res['p25_down']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>1ª MIN</span> <span>{res['p50_down']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>-75%</span> <span>{res['p75_down']:.2f}</span></div><div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div></div>""", unsafe_allow_html=True)
-        # Painel Sintético
+        # Painel Sintético Inferior
         st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="padding: 10px 8px;"><span style="color:#ffffff;">DOLFUT</span> <span style="color:#00f2ff; font-size: 16px; font-weight: 950;">{res['vivo']:.2f}</span></div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOL</span> <span style="color:#00f2ff; font-size: 16px;">{res['medio']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#d4a017;">P. JUSTO</span> <span style="color:#ffffff; font-size: 16px; font-weight: bold;">{res['fraja']:.2f}</span></div><div class="ewz-mini-container"><span class="ewz-mini-val" style="color:#00ff88;">{ewz_live['mx']:.2f}</span><span class="ewz-mini-val" style="color:#00f2ff;">{res['ewz_med']:.2f}</span><span class="ewz-mini-val" style="color:#ff4d4d;">{ewz_live['mn']:.2f}</span></div></div>""", unsafe_allow_html=True)
 
     st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker)} • {" • ".join(ticker)}</div></div>', unsafe_allow_html=True)
