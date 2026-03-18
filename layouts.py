@@ -7,35 +7,62 @@ import pytz
 # Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLAR")
 
-# --- CSS: ESTILIZAÇÃO COMPACTA E ALINHAMENTO ---
+# --- CSS: AJUSTE DE ALINHAMENTO E ALTURA ---
 st.markdown("""
 <style>
     .stApp { background-color: #050a0e !important; }
-    .main-grid { border: 2.5px solid #ffffff; border-radius: 8px; overflow: hidden; font-family: 'monospace'; background-color: #0d1b22; height: 100%; }
-    .terminal-table { width: 100%; border-collapse: collapse; color: #e0e0e0; height: 100%; }
+    
+    /* Bloco Principal (Esquerda) */
+    .main-grid { 
+        border: 2.5px solid #ffffff; 
+        border-radius: 8px; 
+        overflow: hidden; 
+        font-family: 'monospace'; 
+        background-color: #0d1b22; 
+        height: 585px; /* Altura fixa para alinhar com os da direita */
+    }
+    .terminal-table { width: 100%; border-collapse: collapse; color: #e0e0e0; }
     .terminal-table th { background-color: #0a141a; color: #d4a017; border: 1px solid #ffffff; padding: 10px; text-align: center; font-size: 13px; text-transform: uppercase; }
-    .terminal-table td { border: 1px solid #ffffff; padding: 11px; text-align: center; font-size: 15px; }
+    .terminal-table td { border: 1px solid #ffffff; padding: 10px; text-align: center; font-size: 15px; }
     .asset-name { font-size: 17px; color: #fff; text-align: left; font-weight: bold; padding-left: 15px; }
     .price-col { color: #00f2ff !important; font-weight: bold; }
+
+    /* Header */
     .header-bair { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 2.5px solid #ffffff; margin-bottom: 12px; }
     .title-box { display: flex; align-items: center; gap: 8px; line-height: 1; }
     .bair-text { font-size: 46px; color: #00f2ff; font-weight: 950; font-family: 'monospace'; letter-spacing: -1px; } 
     .sep-text { font-size: 46px; color: #ffffff; font-weight: 950; margin: 0 5px; }
     .terminal-text { font-size: 46px; color: #d4a017; font-weight: 950; font-family: 'monospace'; letter-spacing: -1px; }
+    
+    /* Relógios */
     .clock-container { display: flex; gap: 10px; color: #888; font-family: 'monospace'; }
     .clock-box { text-align: center; border: 1.5px solid #ffffff; padding: 4px 10px; border-radius: 4px; background: #0a141a; min-width: 95px; }
     .clock-label { font-size: 10px; color: #d4a017; font-weight: bold; display: block; text-transform: uppercase; margin-bottom: 2px; }
     .clock-time { color: #fff; font-size: 17px; font-weight: bold; display: block; }
-    
-    /* Blocos da Direita */
-    .calc-panel { border: 2.5px solid #ffffff; border-radius: 8px; padding: 8px; background: #0a141a; font-family: monospace; margin-bottom: 12px; }
+
+    /* Blocos da Direita - Alinhamento Vertical */
+    .calc-panel { border: 2.5px solid #ffffff; border-radius: 8px; padding: 8px; background: #0a141a; font-family: monospace; margin-bottom: 8px; }
     .calc-row { display: flex; justify-content: space-between; padding: 6px 8px; border-bottom: 1px solid #444; font-size: 13px; font-weight: bold; align-items: center; }
     
-    /* Rodapé Ajustado */
-    .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 2px solid #ffffff; border-bottom: 2px solid #ffffff; padding: 8px 0; overflow: hidden; white-space: nowrap; margin-top: 5px; }
+    /* Rodapé - Subida e Proximidade */
+    .ticker-wrapper { 
+        width: 100vw; 
+        position: relative; 
+        left: 50%; 
+        right: 50%; 
+        margin-left: -50vw; 
+        margin-right: -50vw; 
+        background: #000; 
+        border-top: 2px solid #ffffff; 
+        border-bottom: 2px solid #ffffff; 
+        padding: 6px 0; 
+        overflow: hidden; 
+        white-space: nowrap; 
+        margin-top: 5px; /* Traz o rodapé para cima */
+    }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 14px; font-weight: bold; }
     @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
-    
+
     .ewz-mini-container { display: flex; justify-content: space-around; padding: 4px 0; border-top: 1px solid #444; margin-top: 4px; }
     .ewz-mini-val { font-size: 11px; font-weight: bold; font-family: monospace; }
 </style>
@@ -50,26 +77,10 @@ def fetch(s):
             hist_ref = t.history(period="2d")
             ref_close = hist_ref['Close'].iloc[-2] if len(hist_ref) > 1 else 0.0
             return {"at": 0.0, "cl": ref_close, "mx": 0.0, "mn": 0.0, "op": 0.0}
-        
         hist_ref = t.history(period="2d")
         ref_close = hist_ref['Close'].iloc[-2] if len(hist_ref) > 1 else d['Open'].iloc[0]
-        
-        return {
-            "at": d['Close'].iloc[-1], "cl": ref_close, "op": d['Open'].iloc[0],
-            "mx": d['High'].max(), "mn": d['Low'].min()
-        }
+        return {"at": d['Close'].iloc[-1], "cl": ref_close, "op": d['Open'].iloc[0], "mx": d['High'].max(), "mn": d['Low'].min()}
     except: return {"at": 0.0, "cl": 0.0, "mx": 0.0, "mn": 0.0, "op": 0.0}
-
-@st.cache_data(ttl=600)
-def calcular_sentinela():
-    try:
-        t = yf.Ticker("EWZ")
-        df = t.history(period="7d", interval="1d")
-        agora = datetime.now(pytz.timezone('America/Sao_Paulo'))
-        idx = -2 if agora.hour < 18 else -1
-        mx, mn = df['High'].iloc[idx], df['Low'].iloc[idx]
-        return (mx + mn) / 2
-    except: return 37.85
 
 def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
     try:
@@ -93,16 +104,12 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
         }
     except: return None
 
-# --- PAINEL ADM ---
-eixo_sug = calcular_sentinela()
+# --- SIDEBAR ADM ---
 with st.sidebar:
-    st.markdown("### ⚙️ PAINEL ADM")
-    with st.form("ajuste_vars"):
-        a_ewz = st.number_input("AXIS EWZ:", value=float(eixo_sug), format="%.2f")
-        a_dol = st.number_input("AXIS DOLFUT:", value=5246.00, format="%.2f")
-        st.form_submit_button("SALVAR")
+    a_ewz = st.number_input("AXIS EWZ:", value=37.85, format="%.2f")
+    a_dol = st.number_input("AXIS DOLFUT:", value=5246.00, format="%.2f")
 
-# --- UI HEADER ---
+# --- HEADER ---
 tz_sp, tz_ny, tz_ld = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London')
 st.markdown(f"""<div class="header-bair"><div class="title-box"><span class="bair-text">BAIR</span><span class="sep-text">-</span><span class="terminal-text">TERMINAL DOLAR</span></div><div class="clock-container"><div class="clock-box"><span class="clock-label">BRASÍLIA</span><span class="clock-time">{datetime.now(tz_sp).strftime('%H:%M')}</span></div><div class="clock-box"><span class="clock-label">NEW YORK</span><span class="clock-time">{datetime.now(tz_ny).strftime('%H:%M')}</span></div><div class="clock-box"><span class="clock-label">LONDRES</span><span class="clock-time">{datetime.now(tz_ld).strftime('%H:%M')}</span></div></div></div>""", unsafe_allow_html=True)
 
@@ -114,7 +121,6 @@ if res:
     with c_main:
         html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th style='color: #d4a017;'>Price</th><th style='color: #d4a017;'>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
         
-        # DOLFUT
         v_v = ((res['vivo']/a_dol)-1)*100 if a_dol > 0 else 0
         html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col'>{(res['vivo']/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max']/1000):.4f}</td><td>{(res['min']/1000):.4f}</td><td style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_v:+.2f}%</td></tr>"
         
@@ -132,12 +138,12 @@ if res:
         st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
 
     with c_side:
-        # Bloco de Alvos
+        # Primeiro Bloco
         st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>75%</span> <span>{res['p75_up']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>1ª MAX</span> <span>{res['p50_up']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>25%</span> <span>{res['p25_up']:.2f}</span></div><div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 18px; font-weight: bold; border-top:1.5px solid #444; border-bottom:1.5px solid #444; margin: 5px 0;">AXIS: {a_dol:.2f}</div><div class="calc-row" style="color:#ffff00;"><span>-25%</span> <span>{res['p25_down']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>1ª MIN</span> <span>{res['p50_down']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>-75%</span> <span>{res['p75_down']:.2f}</span></div><div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div></div>""", unsafe_allow_html=True)
-        # Bloco de Resumo
+        # Segundo Bloco (Alinhado com a base do primeiro)
         st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="padding: 10px 8px;"><span style="color:#ffffff;">DOLFUT</span> <span style="color:#00f2ff; font-size: 16px; font-weight: 950;">{res['vivo']:.2f}</span></div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOL</span> <span style="color:#00f2ff; font-size: 16px;">{res['medio']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#d4a017;">P. JUSTO</span> <span style="color:#ffffff; font-size: 16px; font-weight: bold;">{res['fraja']:.2f}</span></div><div class="ewz-mini-container"><span class="ewz-mini-val" style="color:#00ff88;">{ewz_live['mx']:.2f}</span><span class="ewz-mini-val" style="color:#00f2ff;">{res['ewz_med']:.2f}</span><span class="ewz-mini-val" style="color:#ff4d4d;">{ewz_live['mn']:.2f}</span></div></div>""", unsafe_allow_html=True)
 
-    # Rodapé Ticker
+    # Rodapé Ticker (Mais próximo dos blocos)
     st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker)} • {" • ".join(ticker)}</div></div>', unsafe_allow_html=True)
 
 time.sleep(5)
