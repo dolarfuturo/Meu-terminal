@@ -49,7 +49,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_index):
         index_fraja = eixo_index * (1 + (v_pura / 100))
         
         ewz_medio_dia = (max_ewz + min_ewz) / 2
-        var_medio = ((eixo_ewz / ewz_medio_dia) - 1) * 100 
+        var_medio = ((ewz_medio_dia / eixo_ewz) - 1) * 100 
         index_medio = eixo_index * (1 + (var_medio / 100)) 
         
         # Calibragem de Amplitude WIN (+1.22) - Mantida conforme sua estratégia
