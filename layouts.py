@@ -44,7 +44,6 @@ def fetch(s):
         tz_sp = pytz.timezone('America/Sao_Paulo')
         ref_close = t.info.get('previousClose')
         
-        # Ajuste EWZ: Fechamento das 21h (Dia Anterior)
         if s == "EWZ":
             d_hist = t.history(period="2d", interval="1m", prepost=True)
             if not d_hist.empty:
@@ -69,17 +68,26 @@ def calcular_sentinela():
     try:
         t = yf.Ticker("EWZ")
         tz_sp = pytz.timezone('America/Sao_Paulo')
-        agora = datetime.now(tz_sp)
-        periodo = "1d" if agora.hour >= 18 else "2d"
-        df = t.history(period=periodo, interval="1m")
+        # FIXO: Sempre pega os últimos 2 dias para garantir que temos o dia anterior COMPLETO
+        df = t.history(period="2d", interval="1m")
         if df.empty: return 37.85
         df.index = df.index.tz_convert(tz_sp)
-        data_alvo = df.index[-1].date()
-        # CÁLCULO AXIS MANTIDO: 10:30 às 17:00
-        mask = (df.index.date == data_alvo) & (df.index.time >= dt_time(10, 30)) & (df.index.time <= dt_time(17, 0))
+        
+        # Pega a data do dia anterior ao que está rodando agora
+        datas_disponiveis = df.index.date
+        unique_dates = sorted(list(set(datas_disponiveis)))
+        
+        # Se estamos no meio do dia, unique_dates[-1] é hoje, unique_dates[-2] é ontem.
+        # Queremos o eixo baseado em ONTEM (último dia fechado às 17h).
+        data_referencia = unique_dates[-2] if len(unique_dates) > 1 else unique_dates[0]
+        
+        mask = (df.index.date == data_referencia) & (df.index.time >= dt_time(10, 30)) & (df.index.time <= dt_time(17, 0))
         df_f = df.loc[mask]
+        
         if not df_f.empty:
-            return (df_f['High'].max() + df_f['Low'].min()) / 2
+            mx = df_f['High'].max()
+            mn = df_f['Low'].min()
+            return (mx + mn) / 2
         return 37.85
     except: return 37.85
 
@@ -134,7 +142,6 @@ if res:
         outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
         for lbl, sym in outros.items():
             d = fetch(sym)
-            # CORREÇÃO: DOLSPOT agora com 4 casas (.4f) igual ao DOLFUT
             f = ".4f" if lbl in ["DOLSPOT", "DOLFUT"] or "USD" in lbl else ".2f"
             var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
             color = "#00ff00" if var >= 0 else "#ff4d4d"
