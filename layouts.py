@@ -1,7 +1,7 @@
 import streamlit as st
 import yfinance as yf
 import time
-from datetime import datetime
+from datetime import datetime, time as dt_time
 import pytz
 
 # Configuração para Tablet
@@ -58,11 +58,29 @@ def fetch(s):
 def calcular_sentinela():
     try:
         t = yf.Ticker("EWZ")
-        df = t.history(period="7d", interval="1d")
-        agora = datetime.now(pytz.timezone('America/Sao_Paulo'))
-        idx = -2 if agora.hour < 18 else -1
-        mx, mn = df['High'].iloc[idx], df['Low'].iloc[idx]
-        return (mx + mn) / 2
+        tz_sp = pytz.timezone('America/Sao_Paulo')
+        agora = datetime.now(tz_sp)
+        
+        # Reset às 18h: se for noite, olha hoje. Se for dia, olha o pregão anterior.
+        periodo = "1d" if agora.hour >= 18 else "2d"
+        df = t.history(period=periodo, interval="1m")
+        if df.empty: return 37.85
+        
+        df.index = df.index.tz_convert(tz_sp)
+        data_alvo = df.index[-1].date()
+        
+        # Filtro estrito: 10:30 até 17:00
+        mask = (df.index.date == data_alvo) & \
+               (df.index.time >= dt_time(10, 30)) & \
+               (df.index.time <= dt_time(17, 0))
+        
+        df_filtrado = df.loc[mask]
+        
+        if not df_filtrado.empty:
+            mx = df_filtrado['High'].max()
+            mn = df_filtrado['Low'].min()
+            return (mx + mn) / 2
+        return 37.85
     except: return 37.85
 
 def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
