@@ -41,15 +41,25 @@ st.markdown("""
 def fetch(s):
     try:
         t = yf.Ticker(s)
+        tz_sp = pytz.timezone('America/Sao_Paulo')
         ref_close = t.info.get('previousClose')
+        
+        # Se for EWZ, precisamos do fechamento das 17h para a variação
+        if s == "EWZ":
+            d_hist = t.history(period="2d", interval="1m")
+            d_hist.index = d_hist.index.tz_convert(tz_sp)
+            # Tenta pegar o último preço disponível antes ou às 17:00 do dia anterior
+            data_anterior = d_hist.index[0].date()
+            f_17h = d_hist.between_time('10:30', '17:00').loc[d_hist.index.date == data_anterior]
+            if not f_17h.empty:
+                ref_close = f_17h['Close'].iloc[-1]
+
         d = t.history(period="1d", interval="1m", prepost=True)
         if d.empty: 
             return {"at": 0.0, "cl": ref_close or 0.0, "mx": 0.0, "mn": 0.0, "op": 0.0}
-        if not ref_close:
-            hist_ref = t.history(period="2d")
-            ref_close = hist_ref['Close'].iloc[-2] if len(hist_ref) > 1 else d['Open'].iloc[0]
+        
         return {
-            "at": d['Close'].iloc[-1], "cl": ref_close, "op": d['Open'].iloc[0],
+            "at": d['Close'].iloc[-1], "cl": ref_close or d['Open'].iloc[0], "op": d['Open'].iloc[0],
             "mx": d['High'].max(), "mn": d['Low'].min()
         }
     except: return {"at": 0.0, "cl": 0.0, "mx": 0.0, "mn": 0.0, "op": 0.0}
@@ -60,26 +70,15 @@ def calcular_sentinela():
         t = yf.Ticker("EWZ")
         tz_sp = pytz.timezone('America/Sao_Paulo')
         agora = datetime.now(tz_sp)
-        
-        # Reset às 18h: se for noite, olha hoje. Se for dia, olha o pregão anterior.
         periodo = "1d" if agora.hour >= 18 else "2d"
         df = t.history(period=periodo, interval="1m")
         if df.empty: return 37.85
-        
         df.index = df.index.tz_convert(tz_sp)
         data_alvo = df.index[-1].date()
-        
-        # Filtro estrito: 10:30 até 17:00
-        mask = (df.index.date == data_alvo) & \
-               (df.index.time >= dt_time(10, 30)) & \
-               (df.index.time <= dt_time(17, 0))
-        
-        df_filtrado = df.loc[mask]
-        
-        if not df_filtrado.empty:
-            mx = df_filtrado['High'].max()
-            mn = df_filtrado['Low'].min()
-            return (mx + mn) / 2
+        mask = (df.index.date == data_alvo) & (df.index.time >= dt_time(10, 30)) & (df.index.time <= dt_time(17, 0))
+        df_f = df.loc[mask]
+        if not df_f.empty:
+            return (df_f['High'].max() + df_f['Low'].min()) / 2
         return 37.85
     except: return 37.85
 
@@ -105,14 +104,13 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
         }
     except: return None
 
-# --- PAINEL ADM COM SENTINELA ---
+# --- PAINEL ADM ---
 eixo_sug = calcular_sentinela()
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
     with st.form("ajuste_vars"):
         a_ewz = st.number_input("AXIS EWZ:", value=float(eixo_sug), format="%.2f")
         a_dol = st.number_input("AXIS DOLFUT:", value=5246.00, format="%.2f")
-        st.markdown(f"<div style='color:#d4a017; font-weight:bold; margin-top:5px;'>SENTINELA: {eixo_sug:.2f}</div>", unsafe_allow_html=True)
         st.form_submit_button("SALVAR")
 
 # --- UI HEADER ---
@@ -127,21 +125,19 @@ if res:
     with c_main:
         html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th style='color: #d4a017;'>Price</th><th style='color: #d4a017;'>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
         
-        # DOLFUT
         v_v = ((res['vivo']/a_dol)-1)*100 if a_dol > 0 else 0
         html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col'>{(res['vivo']/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max']/1000):.4f}</td><td>{(res['min']/1000):.4f}</td><td style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_v:+.2f}%</td></tr>"
-        
         ticker = [f"<span style='color:#fff;'>DOLFUT:</span> <span style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")};'>{v_v:+.2f}%</span>"]
         
         outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
         for lbl, sym in outros.items():
             d = fetch(sym)
-            f = ".4f" if "USD" in lbl or lbl == "SPOT" else ".2f"
+            # DOLSPOT agora com .4f igual ao DOLFUT
+            f = ".4f" if lbl in ["DOLSPOT", "DOLFUT"] or "USD" in lbl else ".2f"
             var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
             color = "#00ff00" if var >= 0 else "#ff4d4d"
             html_table += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col'>{d['at']:{f}}</td><td>{d['cl']:{f}}</td><td>{d['op']:{f}}</td><td>{d['mx']:{f}}</td><td>{d['mn']:{f}}</td><td style='color:{color}; font-weight:bold;'>{var:+.2f}%</td></tr>"
             ticker.append(f"<span style='color:#fff;'>{lbl}:</span> <span style='color:{color};'>{var:+.2f}%</span>")
-        
         st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
 
     with c_side:
