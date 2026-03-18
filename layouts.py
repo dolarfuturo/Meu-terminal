@@ -44,13 +44,12 @@ def fetch(s):
         tz_sp = pytz.timezone('America/Sao_Paulo')
         ref_close = t.info.get('previousClose')
         
-        # Ajuste para EWZ fechar variação nas 21h (Mercado Todo)
+        # Ajuste EWZ: Fechamento das 21h (Dia Anterior)
         if s == "EWZ":
             d_hist = t.history(period="2d", interval="1m", prepost=True)
             if not d_hist.empty:
                 d_hist.index = d_hist.index.tz_convert(tz_sp)
                 data_anterior = d_hist.index[0].date()
-                # Pega o último preço até às 21:00 do dia anterior
                 f_21h = d_hist.between_time('05:00', '21:00').loc[d_hist.index.date == data_anterior]
                 if not f_21h.empty:
                     ref_close = f_21h['Close'].iloc[-1]
@@ -76,7 +75,7 @@ def calcular_sentinela():
         if df.empty: return 37.85
         df.index = df.index.tz_convert(tz_sp)
         data_alvo = df.index[-1].date()
-        # MANTIDO: CÁLCULO AXIS apenas no Regular (10:30 às 17:00)
+        # CÁLCULO AXIS MANTIDO: 10:30 às 17:00
         mask = (df.index.date == data_alvo) & (df.index.time >= dt_time(10, 30)) & (df.index.time <= dt_time(17, 0))
         df_f = df.loc[mask]
         if not df_f.empty:
@@ -135,7 +134,8 @@ if res:
         outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
         for lbl, sym in outros.items():
             d = fetch(sym)
-            f = ".2f" # Mantido conforme seu último pedido
+            # CORREÇÃO: DOLSPOT agora com 4 casas (.4f) igual ao DOLFUT
+            f = ".4f" if lbl in ["DOLSPOT", "DOLFUT"] or "USD" in lbl else ".2f"
             var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
             color = "#00ff00" if var >= 0 else "#ff4d4d"
             html_table += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col'>{d['at']:{f}}</td><td>{d['cl']:{f}}</td><td>{d['op']:{f}}</td><td>{d['mx']:{f}}</td><td>{d['mn']:{f}}</td><td style='color:{color}; font-weight:bold;'>{var:+.2f}%</td></tr>"
