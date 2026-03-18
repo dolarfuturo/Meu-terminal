@@ -7,10 +7,10 @@ import pytz
 # Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLLAR", initial_sidebar_state="expanded")
 
-# --- CSS: ESTILIZAÇÃO E REMOÇÃO DE STATUS ---
+# --- CSS: ESTILIZAÇÃO E REMOÇÃO TOTAL DE STATUS (BONEQUINHO) ---
 st.markdown("""
 <style>
-    /* REMOVE O BONEQUINHO, BARRA DE CARREGAMENTO E MENUS */
+    /* OCULTA O BONEQUINHO E A BARRA DE STATUS */
     [data-testid="stStatusWidget"] { display: none !important; visibility: hidden !important; }
     #MainMenu {visibility: hidden;} header {visibility: hidden;} footer {visibility: hidden;}
     .stDeployButton {display:none;}
@@ -39,7 +39,12 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS (FAST INFO) ---
+# --- INICIALIZAÇÃO DE ESTADOS ---
+if 'exibir_adm' not in st.session_state: st.session_state.exibir_adm = False
+if 'a_ewz' not in st.session_state: st.session_state.a_ewz = 37.85
+if 'a_dol' not in st.session_state: st.session_state.a_dol = 5246.00
+
+# --- MOTOR DE DADOS ---
 def fetch(s):
     try:
         t = yf.Ticker(s)
@@ -47,15 +52,7 @@ def fetch(s):
         return {"at": f['last_price'], "cl": f['previous_close'], "op": f['open'], "mx": f['day_high'], "mn": f['day_low']}
     except: return {"at": 0.0, "cl": 0.0, "mx": 0.0, "mn": 0.0, "op": 0.0}
 
-@st.cache_data(ttl=600)
-def calcular_sentinela():
-    try:
-        t = yf.Ticker("EWZ")
-        df = t.history(period="7d", interval="1d")
-        return (df['High'].iloc[-2] + df['Low'].iloc[-2]) / 2
-    except: return 37.85
-
-def calcular_k97_total(e_ewz, p_ewz, mx_e, mn_e, e_dol):
+def calcular_k97(e_ewz, p_ewz, mx_e, mn_e, e_dol):
     try:
         if p_ewz <= 0: return None
         v_at = ((e_ewz / p_ewz) - 1) * 100 / 1.5
@@ -73,15 +70,20 @@ def calcular_k97_total(e_ewz, p_ewz, mx_e, mn_e, e_dol):
         }
     except: return None
 
-# --- PAINEL ADM NA SIDEBAR ---
-eixo_sug = calcular_sentinela()
+# --- SIDEBAR: BOTÃO SET ADM ---
 with st.sidebar:
-    st.markdown("### ⚙️ PAINEL ADM")
-    with st.form("set_vars"):
-        a_ewz = st.number_input("AXIS EWZ:", value=float(eixo_sug), format="%.2f")
-        a_dol = st.number_input("AXIS DOLFUT:", value=5246.00, format="%.2f")
-        if st.form_submit_button("APLICAR CONFIGURAÇÃO"):
-            st.success("Setado com sucesso!")
+    st.markdown("### ⚙️ SETTINGS")
+    if st.button("🔓 ACESSAR PAINEL ADM"):
+        st.session_state.exibir_adm = not st.session_state.exibir_adm
+    
+    if st.session_state.exibir_adm:
+        st.markdown("---")
+        with st.form("form_adm"):
+            st.session_state.a_ewz = st.number_input("AXIS EWZ:", value=st.session_state.a_ewz, format="%.2f")
+            st.session_state.a_dol = st.number_input("AXIS DOLFUT:", value=st.session_state.a_dol, format="%.2f")
+            if st.form_submit_button("SALVAR E FECHAR"):
+                st.session_state.exibir_adm = False
+                st.rerun()
 
 # --- TERMINAL LOOP ---
 placeholder = st.empty()
@@ -89,19 +91,18 @@ placeholder = st.empty()
 while True:
     tz_sp, tz_ny, tz_ld = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London')
     ewz_d = fetch("EWZ")
-    res = calcular_k97_total(a_ewz, ewz_d['at'], ewz_d['mx'], ewz_d['mn'], a_dol)
+    res = calcular_k97(st.session_state.a_ewz, ewz_d['at'], ewz_d['mx'], ewz_d['mn'], st.session_state.a_dol)
 
     if res:
         with placeholder.container():
-            # Cabeçalho
             st.markdown(f"""<div class="header-bair"><div class="title-box"><span class="bair-text">BAIR</span><span class="sep-text">-</span><span class="terminal-text">TERMINAL DOLLAR</span></div><div class="clock-container"><div class="clock-box"><span class="clock-label">BRASÍLIA</span><span class="clock-time">{datetime.now(tz_sp).strftime('%H:%M:%S')}</span></div><div class="clock-box"><span class="clock-label">NEW YORK</span><span class="clock-time">{datetime.now(tz_ny).strftime('%H:%M:%S')}</span></div><div class="clock-box"><span class="clock-label">LONDRES</span><span class="clock-time">{datetime.now(tz_ld).strftime('%H:%M:%S')}</span></div></div></div>""", unsafe_allow_html=True)
 
             c_m, c_s = st.columns([3, 1])
             with c_m:
-                v_v = ((res['vivo']/a_dol)-1)*100
+                v_v = ((res['vivo']/st.session_state.a_dol)-1)*100
                 cor_v = "#00ff00" if v_v >= 0 else "#ff4d4d"
                 table = f"""<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th style='color: #d4a017;'>Price</th><th style='color: #d4a017;'>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>
-                <tr><td class='asset-name'>DOLFUT</td><td class='price-col'>{(res['vivo']/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max']/1000):.4f}</td><td>{(res['min']/1000):.4f}</td><td style='color:{cor_v}; font-weight:bold;'>{v_v:+.2f}%</td></tr>"""
+                <tr><td class='asset-name'>DOLFUT</td><td class='price-col'>{(res['vivo']/1000):.4f}</td><td>{(st.session_state.a_dol/1000):.4f}</td><td>{(st.session_state.a_dol/1000):.4f}</td><td>{(res['max']/1000):.4f}</td><td>{(res['min']/1000):.4f}</td><td style='color:{cor_v}; font-weight:bold;'>{v_v:+.2f}%</td></tr>"""
                 
                 ticker = [f"<span style='color:#fff;'>DOLFUT:</span> <span style='color:{cor_v};'>{v_v:+.2f}%</span>"]
                 outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "BRENT": "BZ=F"}
@@ -110,14 +111,12 @@ while True:
                     d = fetch(sym)
                     var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
                     color = "#00ff00" if var >= 0 else "#ff4d4d"
-                    f = ".4f" if "USD" in lbl or "DOL" in lbl else ".2f"
-                    table += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col'>{d['at']:{f}}</td><td>{d['cl']:{f}}</td><td>{d['op']:{f}}</td><td>{d['mx']:{f}}</td><td>{d['mn']:{f}}</td><td style='color:{color}; font-weight:bold;'>{var:+.2f}%</td></tr>"
+                    table += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col'>{d['at']:.4f}</td><td>{d['cl']:.4f}</td><td>{d['op']:.4f}</td><td>{d['mx']:.4f}</td><td>{d['mn']:.4f}</td><td style='color:{color}; font-weight:bold;'>{var:+.2f}%</td></tr>"
                     ticker.append(f"<span style='color:#fff;'>{lbl}:</span> <span style='color:{color};'>{var:+.2f}%</span>")
-                
                 st.markdown(table + "</tbody></table></div>", unsafe_allow_html=True)
 
             with c_s:
-                st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>75%</span> <span>{res['p75_up']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>1ª MAX</span> <span>{res['p50_up']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>25%</span> <span>{res['p25_up']:.2f}</span></div><div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 18px; font-weight: bold; border-top:1.5px solid #444; border-bottom:1.5px solid #444; margin: 5px 0;">AXIS: {a_dol:.2f}</div><div class="calc-row" style="color:#ffff00;"><span>-25%</span> <span>{res['p25_down']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>1ª MIN</span> <span>{res['p50_down']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>-75%</span> <span>{res['p75_down']:.2f}</span></div><div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div></div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>75%</span> <span>{res['p75_up']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>1ª MAX</span> <span>{res['p50_up']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>25%</span> <span>{res['p25_up']:.2f}</span></div><div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 18px; font-weight: bold; border-top:1.5px solid #444; border-bottom:1.5px solid #444; margin: 5px 0;">AXIS: {st.session_state.a_dol:.2f}</div><div class="calc-row" style="color:#ffff00;"><span>-25%</span> <span>{res['p25_down']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>1ª MIN</span> <span>{res['p50_down']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>-75%</span> <span>{res['p75_down']:.2f}</span></div><div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div></div>""", unsafe_allow_html=True)
                 st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="padding: 10px 8px;"><span style="color:#ffffff;">DOLFUT</span> <span style="color:#00f2ff; font-size: 16px; font-weight: 950;">{res['vivo']:.2f}</span></div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOL</span> <span style="color:#00f2ff; font-size: 16px;">{res['medio']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#d4a017;">P. JUSTO</span> <span style="color:#ffffff; font-size: 16px; font-weight: bold;">{res['fraja']:.2f}</span></div><div style="display: flex; justify-content: space-around; padding: 4px 0; border-top: 1px solid #444; margin-top: 4px;"><span style="font-size: 11px; font-weight: bold; color:#00ff88;">{ewz_d['mx']:.2f}</span><span style="font-size: 11px; font-weight: bold; color:#00f2ff;">{res['ewz_med']:.2f}</span><span style="font-size: 11px; font-weight: bold; color:#ff4d4d;">{ewz_d['mn']:.2f}</span></div></div>""", unsafe_allow_html=True)
 
             st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker)} • {" • ".join(ticker)}</div></div>', unsafe_allow_html=True)
