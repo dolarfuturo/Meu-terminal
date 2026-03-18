@@ -67,22 +67,24 @@ def fetch(s):
 def calcular_sentinela():
     try:
         t = yf.Ticker("EWZ")
-        tz_sp = pytz.timezone('America/Sao_Paulo')
-        df = t.history(period="5d", interval="1m") # Aumentado para 5d para segurança
+        df = t.history(period="7d", interval="1d", prepost=False)
         if df.empty: return 37.85
-        df.index = df.index.tz_convert(tz_sp)
         
-        unique_dates = sorted(list(set(df.index.date)), reverse=True)
+        tz_sp = pytz.timezone('America/Sao_Paulo')
+        agora = datetime.now(tz_sp)
+        hoje = agora.date()
+        ultima_data_yahoo = df.index[-1].date()
         
-        # Procura o último dia fechado (que tenha dados das 10h às 17h)
-        for d_ref in unique_dates:
-            if d_ref == datetime.now(tz_sp).date(): continue # Pula o dia de hoje
-            mask = (df.index.date == d_ref) & (df.index.time >= dt_time(10, 30)) & (df.index.time <= dt_time(17, 0))
-            df_f = df.loc[mask]
-            if not df_f.empty:
-                return (df_f['High'].max() + df_f['Low'].min()) / 2
+        if ultima_data_yahoo == hoje and agora.hour < 18:
+            idx = -2 
+        else:
+            idx = -1 
+            
+        mx = df['High'].iloc[idx]
+        mn = df['Low'].iloc[idx]
+        return (mx + mn) / 2
+    except: 
         return 37.85
-    except: return 37.85
 
 def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
     try:
