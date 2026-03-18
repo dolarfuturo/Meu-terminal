@@ -31,7 +31,6 @@ st.markdown("""
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 2px solid #ffffff; border-bottom: 2px solid #ffffff; padding: 8px 0; overflow: hidden; white-space: nowrap; margin-top: 15px; }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 14px; font-weight: bold; }
     @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
-    .monitor-bar { background: #0a141a; border: 2.2px solid #ffffff; padding: 6px; text-align: center; color: #00f2ff; font-weight: bold; font-family: monospace; border-radius: 4px; margin-bottom: 8px; font-size: 14px; }
     .ewz-mini-container { display: flex; justify-content: space-around; padding: 4px 0; border-top: 1px solid #444; margin-top: 4px; }
     .ewz-mini-val { font-size: 11px; font-weight: bold; font-family: monospace; }
 </style>
@@ -45,10 +44,11 @@ def fetch(s):
         ref_close = t.info.get('previousClose')
         
         if s == "EWZ":
-            d_hist = t.history(period="2d", interval="1m", prepost=True)
+            d_hist = t.history(period="3d", interval="1m", prepost=True)
             if not d_hist.empty:
                 d_hist.index = d_hist.index.tz_convert(tz_sp)
-                data_anterior = d_hist.index[0].date()
+                unique_dates = sorted(list(set(d_hist.index.date)))
+                data_anterior = unique_dates[-2] if len(unique_dates) > 1 else unique_dates[0]
                 f_21h = d_hist.between_time('05:00', '21:00').loc[d_hist.index.date == data_anterior]
                 if not f_21h.empty:
                     ref_close = f_21h['Close'].iloc[-1]
@@ -68,26 +68,19 @@ def calcular_sentinela():
     try:
         t = yf.Ticker("EWZ")
         tz_sp = pytz.timezone('America/Sao_Paulo')
-        # FIXO: Sempre pega os últimos 2 dias para garantir que temos o dia anterior COMPLETO
-        df = t.history(period="2d", interval="1m")
+        df = t.history(period="5d", interval="1m") # Aumentado para 5d para segurança
         if df.empty: return 37.85
         df.index = df.index.tz_convert(tz_sp)
         
-        # Pega a data do dia anterior ao que está rodando agora
-        datas_disponiveis = df.index.date
-        unique_dates = sorted(list(set(datas_disponiveis)))
+        unique_dates = sorted(list(set(df.index.date)), reverse=True)
         
-        # Se estamos no meio do dia, unique_dates[-1] é hoje, unique_dates[-2] é ontem.
-        # Queremos o eixo baseado em ONTEM (último dia fechado às 17h).
-        data_referencia = unique_dates[-2] if len(unique_dates) > 1 else unique_dates[0]
-        
-        mask = (df.index.date == data_referencia) & (df.index.time >= dt_time(10, 30)) & (df.index.time <= dt_time(17, 0))
-        df_f = df.loc[mask]
-        
-        if not df_f.empty:
-            mx = df_f['High'].max()
-            mn = df_f['Low'].min()
-            return (mx + mn) / 2
+        # Procura o último dia fechado (que tenha dados das 10h às 17h)
+        for d_ref in unique_dates:
+            if d_ref == datetime.now(tz_sp).date(): continue # Pula o dia de hoje
+            mask = (df.index.date == d_ref) & (df.index.time >= dt_time(10, 30)) & (df.index.time <= dt_time(17, 0))
+            df_f = df.loc[mask]
+            if not df_f.empty:
+                return (df_f['High'].max() + df_f['Low'].min()) / 2
         return 37.85
     except: return 37.85
 
@@ -98,8 +91,10 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
         dolar_vivo = eixo_dol * (1 + (var_atual / 100))
         var_fraja = ((eixo_ewz / p_ewz_atual) - 1) * 100 
         dolar_fraja = eixo_dol * (1 + (var_fraja / 100))
+        
         ewz_medio_dia = (max_ewz + min_ewz) / 2
-        var_medio = ((eixo_ewz / ewz_medio_dia) - 1) * 100 if ewz_medio_dia > 0 else 0
+        var_medio = ((p_ewz_atual / ewz_medio_dia) - 1) * 100 if ewz_medio_dia > 0 else 0
+        
         dolar_medio = eixo_dol * (1 + (var_medio / 100)) 
         v_neg = ((eixo_ewz / max_ewz) - 1) * 100 / 1.5 if max_ewz > 0 else 0
         v_pos = ((eixo_ewz / min_ewz) - 1) * 100 / 1.5 if min_ewz > 0 else 0
@@ -134,7 +129,6 @@ if res:
     c_main, c_side = st.columns([3, 1])
     with c_main:
         html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th style='color: #d4a017;'>Price</th><th style='color: #d4a017;'>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
-        
         v_v = ((res['vivo']/a_dol)-1)*100 if a_dol > 0 else 0
         html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col'>{(res['vivo']/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max']/1000):.4f}</td><td>{(res['min']/1000):.4f}</td><td style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_v:+.2f}%</td></tr>"
         ticker = [f"<span style='color:#fff;'>DOLFUT:</span> <span style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")};'>{v_v:+.2f}%</span>"]
