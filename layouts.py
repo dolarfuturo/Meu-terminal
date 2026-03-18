@@ -7,7 +7,7 @@ import pytz
 # Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLLAR")
 
-# --- CSS: ESTILIZAÇÃO COMPACTA (Carregado uma única vez) ---
+# --- CSS: ESTILIZAÇÃO (Carrega uma vez e fica fixo) ---
 st.markdown("""
 <style>
     .stApp { background-color: #050a0e !important; }
@@ -67,7 +67,7 @@ def fetch(s):
 def calcular_sentinela():
     try:
         t = yf.Ticker("EWZ")
-        df = t.history(period="7d", interval="1d", prepost=False)
+        df = t.history(period="7d", interval="1d")
         if df.empty: return 37.85
         tz_sp = pytz.timezone('America/Sao_Paulo')
         agora = datetime.now(tz_sp)
@@ -85,10 +85,8 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
         dolar_vivo = eixo_dol * (1 + (var_atual / 100))
         var_fraja = ((eixo_ewz / p_ewz_atual) - 1) * 100 
         dolar_fraja = eixo_dol * (1 + (var_fraja / 100))
-        
         ewz_medio_dia = (max_ewz + min_ewz) / 2
         var_medio = ((p_ewz_atual / ewz_medio_dia) - 1) * 100 if ewz_medio_dia > 0 else 0
-        
         dolar_medio = eixo_dol * (1 + (var_medio / 100)) 
         v_neg = ((eixo_ewz / max_ewz) - 1) * 100 / 1.5 if max_ewz > 0 else 0
         v_pos = ((eixo_ewz / min_ewz) - 1) * 100 / 1.5 if min_ewz > 0 else 0
@@ -102,7 +100,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
         }
     except: return None
 
-# --- PAINEL ADM (Fora do fragmento para evitar resets de input) ---
+# --- PAINEL ADM (Fora do fragmento para não fechar o menu) ---
 eixo_sug = calcular_sentinela()
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
@@ -112,14 +110,14 @@ with st.sidebar:
         st.markdown(f"<div style='color:#d4a017; font-weight:bold; margin-top:5px;'>SENTINELA: {eixo_sug:.2f}</div>", unsafe_allow_html=True)
         st.form_submit_button("SALVAR")
 
-# Placeholders estáticos para evitar pulos de layout
+# --- PLACEHOLDERS ---
 tz_sp, tz_ny, tz_ld = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London')
 header_placeholder = st.empty()
 
-# --- FRAGMENTO: ATUALIZAÇÃO SEM FLASH ---
-@st.fragment(run_every=10) # Atualiza a cada 10s SEM rerun total da página
-def render_terminal():
-    # Atualiza Relógios dentro do fragmento
+# --- FRAGMENTO: ATUALIZAÇÃO SEM PISCAR ---
+@st.fragment(run_every=10) # Atualiza a cada 10s SEM dar refresh na página
+def terminal_vovo():
+    # Atualiza Relógios
     header_placeholder.markdown(f"""<div class="header-bair"><div class="title-box"><span class="bair-text">BAIR</span><span class="sep-text">-</span><span class="terminal-text">TERMINAL DOLLAR</span></div><div class="clock-container"><div class="clock-box"><span class="clock-label">BRASÍLIA</span><span class="clock-time">{datetime.now(tz_sp).strftime('%H:%M')}</span></div><div class="clock-box"><span class="clock-label">NEW YORK</span><span class="clock-time">{datetime.now(tz_ny).strftime('%H:%M')}</span></div><div class="clock-box"><span class="clock-label">LONDRES</span><span class="clock-time">{datetime.now(tz_ld).strftime('%H:%M')}</span></div></div></div>""", unsafe_allow_html=True)
 
     ewz_live = fetch("EWZ")
@@ -131,8 +129,8 @@ def render_terminal():
             html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th style='color: #d4a017;'>Price</th><th style='color: #d4a017;'>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
             v_v = ((res['vivo']/a_dol)-1)*100 if a_dol > 0 else 0
             html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col'>{(res['vivo']/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max']/1000):.4f}</td><td>{(res['min']/1000):.4f}</td><td style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_v:+.2f}%</td></tr>"
-            ticker = [f"<span style='color:#fff;'>DOLFUT:</span> <span style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")};'>{v_v:+.2f}%</span>"]
             
+            ticker = []
             outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
             for lbl, sym in outros.items():
                 d = fetch(sym)
@@ -149,5 +147,5 @@ def render_terminal():
 
         st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker)} • {" • ".join(ticker)}</div></div>', unsafe_allow_html=True)
 
-# Executa o fragmento
-render_terminal()
+# Inicia o terminal
+terminal_vovo()
