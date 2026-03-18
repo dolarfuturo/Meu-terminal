@@ -39,7 +39,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
     try:
         var_atual = ((eixo_ewz / p_ewz_atual) - 1) * 100 / 1.5
         dolar_vivo = eixo_dol * (1 + (var_atual / 100))
-        var_fraja = ((eixo_ewz / p_ewz_atual) - 1) * 100 
+        var_fraja = ((eixo_ewz / p_ewz_atual) - 1) * 100 / 4.5
         dolar_fraja = eixo_dol * (1 + (var_fraja / 100))
         
         ewz_medio_dia = (max_ewz + min_ewz) / 2
