@@ -13,7 +13,7 @@ st.markdown("""
     [data-testid="stStatusWidget"] { display: none !important; visibility: hidden !important; }
     #MainMenu {visibility: hidden;} header {visibility: hidden;} footer {visibility: hidden;}
     .stDeployButton {display:none;}
-    .block-container { padding-top: 1rem !important; }
+    .block-container { padding-top: 0.5rem !important; }
 
     .stApp { background-color: #050a0e !important; }
     .main-grid { border: 2.5px solid #ffffff; border-radius: 8px; overflow: hidden; font-family: 'monospace'; background-color: #0d1b22; }
@@ -23,30 +23,30 @@ st.markdown("""
     .asset-name { font-size: 17px; color: #fff; text-align: left; font-weight: bold; padding-left: 15px; }
     .price-col { color: #00f2ff !important; font-weight: bold; }
     
-    /* Ajuste do Header para alinhar com o botão */
-    .header-bair { display: flex; align-items: center; gap: 15px; }
-    .bair-text { font-size: 46px; color: #00f2ff; font-weight: 950; font-family: 'monospace'; letter-spacing: -1px; line-height: 1; } 
-    .terminal-text { font-size: 46px; color: #d4a017; font-weight: 950; font-family: 'monospace'; letter-spacing: -1px; line-height: 1; }
+    /* Alinhamento do Título e Botão */
+    .title-wrapper { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
+    .bair-text { font-size: 42px; color: #00f2ff; font-weight: 950; font-family: 'monospace'; letter-spacing: -1px; } 
+    .terminal-text { font-size: 42px; color: #d4a017; font-weight: 950; font-family: 'monospace'; letter-spacing: -1px; }
     
-    .clock-container { display: flex; gap: 10px; color: #888; font-family: 'monospace'; justify-content: flex-end; }
-    .clock-box { text-align: center; border: 1.5px solid #ffffff; padding: 4px 10px; border-radius: 4px; background: #0a141a; min-width: 95px; }
-    .clock-label { font-size: 10px; color: #d4a017; font-weight: bold; display: block; text-transform: uppercase; margin-bottom: 2px; }
-    .clock-time { color: #fff; font-size: 17px; font-weight: bold; display: block; }
+    .clock-container { display: flex; gap: 8px; color: #888; font-family: 'monospace'; justify-content: flex-end; padding-top: 10px; }
+    .clock-box { text-align: center; border: 1.5px solid #ffffff; padding: 4px 8px; border-radius: 4px; background: #0a141a; min-width: 90px; }
+    .clock-label { font-size: 9px; color: #d4a017; font-weight: bold; display: block; text-transform: uppercase; }
+    .clock-time { color: #fff; font-size: 16px; font-weight: bold; display: block; }
     
     .calc-panel { border: 2.5px solid #ffffff; border-radius: 8px; padding: 8px; background: #0a141a; font-family: monospace; margin-bottom: 10px; }
     .calc-row { display: flex; justify-content: space-between; padding: 5px 8px; border-bottom: 1px solid #444; font-size: 13px; font-weight: bold; align-items: center; }
-    .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 2px solid #ffffff; border-bottom: 2px solid #ffffff; padding: 8px 0; overflow: hidden; white-space: nowrap; margin-top: 15px; }
+    
+    .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 2px solid #ffffff; border-bottom: 2px solid #ffffff; padding: 8px 0; overflow: hidden; white-space: nowrap; margin-top: 10px; }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 14px; font-weight: bold; }
     @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
     
     /* Estilo do botão SET */
     div.stButton > button {
-        background-color: transparent !important;
+        background-color: #0a141a !important;
         color: #d4a017 !important;
         border: 1px solid #d4a017 !important;
-        border-radius: 4px !important;
-        height: 30px !important;
-        margin-top: 10px !important;
+        font-weight: bold !important;
+        margin-top: 5px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -60,7 +60,16 @@ def fetch(s):
     try:
         t = yf.Ticker(s)
         f = t.fast_info
-        return {"at": f['last_price'], "cl": f['previous_close'], "op": f['open'], "mx": f['day_high'], "mn": f['day_low']}
+        # Proteção contra dados vazios
+        price = f['last_price'] if f['last_price'] is not None else 0.0
+        close = f['previous_close'] if f['previous_close'] is not None else price
+        return {
+            "at": price, 
+            "cl": close, 
+            "op": f.get('open', price), 
+            "mx": f.get('day_high', price), 
+            "mn": f.get('day_low', price)
+        }
     except: return {"at": 0.0, "cl": 0.0, "mx": 0.0, "mn": 0.0, "op": 0.0}
 
 def calcular_k97(e_ewz, p_ewz, mx_e, mn_e, e_dol):
@@ -90,31 +99,27 @@ while True:
 
     if res:
         with placeholder.container():
-            # --- LINHA SUPERIOR: TITULO + BOTÃO + RELÓGIOS ---
-            h_col1, h_col2, h_col3 = st.columns([1.5, 0.5, 2.5])
+            # Cabeçalho com Botão SET ao lado
+            h_col1, h_col2, h_col3 = st.columns([3, 0.5, 3])
             
             with h_col1:
-                st.markdown('<div class="header-bair"><span class="bair-text">BAIR</span><span style="color:white; font-size:46px; font-weight:950;">-</span><span class="terminal-text">TERMINAL</span></div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="title-wrapper"><span class="bair-text">BAIR</span><span style="color:white; font-size:42px;">-</span><span class="terminal-text">TERMINAL</span></div>', unsafe_allow_html=True)
             
             with h_col2:
-                # Botão SET posicionado ao lado do nome
                 if st.button("SET ⚙️"):
                     st.session_state.exibir_adm = not st.session_state.exibir_adm
 
             with h_col3:
                 st.markdown(f"""<div class="clock-container"><div class="clock-box"><span class="clock-label">BRASÍLIA</span><span class="clock-time">{datetime.now(tz_sp).strftime('%H:%M:%S')}</span></div><div class="clock-box"><span class="clock-label">NEW YORK</span><span class="clock-time">{datetime.now(tz_ny).strftime('%H:%M:%S')}</span></div><div class="clock-box"><span class="clock-label">LONDRES</span><span class="clock-time">{datetime.now(tz_ld).strftime('%H:%M:%S')}</span></div></div>""", unsafe_allow_html=True)
 
-            st.markdown('<hr style="border: 1px solid white; margin-top: 0; margin-bottom: 15px;">', unsafe_allow_html=True)
+            st.markdown('<hr style="border: 1.2px solid white; margin-top: -10px; margin-bottom: 10px;">', unsafe_allow_html=True)
 
-            # Painel ADM (abre logo abaixo do header se ativado)
             if st.session_state.exibir_adm:
-                with st.expander("PAINEL DE CONFIGURAÇÃO", expanded=True):
+                with st.expander("AJUSTE DE VARIÁVEIS", expanded=True):
                     with st.form("adm_form"):
-                        new_ewz = st.number_input("AXIS EWZ:", value=st.session_state.a_ewz, format="%.2f")
-                        new_dol = st.number_input("AXIS DOLFUT:", value=st.session_state.a_dol, format="%.2f")
-                        if st.form_submit_button("SALVAR"):
-                            st.session_state.a_ewz = new_ewz
-                            st.session_state.a_dol = new_dol
+                        st.session_state.a_ewz = st.number_input("AXIS EWZ:", value=st.session_state.a_ewz, format="%.2f")
+                        st.session_state.a_dol = st.number_input("AXIS DOLFUT:", value=st.session_state.a_dol, format="%.2f")
+                        if st.form_submit_button("APLICAR"):
                             st.session_state.exibir_adm = False
                             st.rerun()
 
@@ -131,15 +136,20 @@ while True:
                 
                 for lbl, sym in outros.items():
                     d = fetch(sym)
-                    var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
+                    # Verifica se d['at'] é número para evitar o erro da imagem
+                    p = d['at'] if isinstance(d['at'], (int, float)) else 0.0
+                    cl = d['cl'] if isinstance(d['cl'], (int, float)) else p
+                    var = ((p / cl) - 1) * 100 if cl > 0 else 0
                     color = "#00ff00" if var >= 0 else "#ff4d4d"
-                    table += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col'>{d['at']:.4f}</td><td>{d['cl']:.4f}</td><td>{d['op']:.4f}</td><td>{d['mx']:.4f}</td><td>{d['mn']:.4f}</td><td style='color:{color}; font-weight:bold;'>{var:+.2f}%</td></tr>"
+                    
+                    table += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col'>{p:.4f}</td><td>{cl:.4f}</td><td>{d['op']:.4f}</td><td>{d['mx']:.4f}</td><td>{d['mn']:.4f}</td><td style='color:{color}; font-weight:bold;'>{var:+.2f}%</td></tr>"
                     ticker.append(f"<span style='color:#fff;'>{lbl}:</span> <span style='color:{color};'>{var:+.2f}%</span>")
+                
                 st.markdown(table + "</tbody></table></div>", unsafe_allow_html=True)
 
             with c_s:
                 st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>75%</span> <span>{res['p75_up']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>1ª MAX</span> <span>{res['p50_up']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>25%</span> <span>{res['p25_up']:.2f}</span></div><div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 18px; font-weight: bold; border-top:1.5px solid #444; border-bottom:1.5px solid #444; margin: 5px 0;">AXIS: {st.session_state.a_dol:.2f}</div><div class="calc-row" style="color:#ffff00;"><span>-25%</span> <span>{res['p25_down']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>1ª MIN</span> <span>{res['p50_down']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>-75%</span> <span>{res['p75_down']:.2f}</span></div><div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div></div>""", unsafe_allow_html=True)
-                st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="padding: 10px 8px;"><span style="color:#ffffff;">DOLFUT</span> <span style="color:#00f2ff; font-size: 16px; font-weight: 950;">{res['vivo']:.2f}</span></div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOL</span> <span style="color:#00f2ff; font-size: 16px;">{res['medio']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#d4a017;">P. JUSTO</span> <span style="color:#ffffff; font-size: 16px; font-weight: bold;">{res['fraja']:.2f}</span></div><div style="display: flex; justify-content: space-around; padding: 4px 0; border-top: 1px solid #444; margin-top: 4px;"><span style="font-size: 11px; font-weight: bold; color:#00ff88;">{ewz_d['mx']:.2f}</span><span style="font-size: 11px; font-weight: bold; color:#00f2ff;">{res['ewz_med']:.2f}</span><span style="font-size: 11px; font-weight: bold; color:#ff4d4d;">{ewz_d['mn']:.2f}</span></div></div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="padding: 10px 8px;"><span style="color:#ffffff;">DOLFUT</span> <span style="color:#00f2ff; font-size: 16px; font-weight: 950;">{res['vivo']:.2f}</span></div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOL</span> <span style="color:#00f2ff; font-size: 16px;">{res['medio']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#d4a017;">P. JUSTO</span> <span style="color:#ffffff; font-size: 16px; font-weight: bold;">{res['fraja']:.2f}</span></div></div>""", unsafe_allow_html=True)
 
             st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker)} • {" • ".join(ticker)}</div></div>', unsafe_allow_html=True)
 
