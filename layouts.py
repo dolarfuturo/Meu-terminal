@@ -5,12 +5,11 @@ from datetime import datetime
 import pytz
 
 # Configuração para Tablet
-st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLLAR", initial_sidebar_state="expanded")
+st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLLAR", initial_sidebar_state="collapsed")
 
-# --- CSS: ESTILIZAÇÃO E REMOÇÃO TOTAL DE STATUS (BONEQUINHO) ---
+# --- CSS: ESTILIZAÇÃO ---
 st.markdown("""
 <style>
-    /* OCULTA O BONEQUINHO E A BARRA DE STATUS */
     [data-testid="stStatusWidget"] { display: none !important; visibility: hidden !important; }
     #MainMenu {visibility: hidden;} header {visibility: hidden;} footer {visibility: hidden;}
     .stDeployButton {display:none;}
@@ -23,28 +22,40 @@ st.markdown("""
     .terminal-table td { border: 1px solid #ffffff; padding: 12px; text-align: center; font-size: 15px; }
     .asset-name { font-size: 17px; color: #fff; text-align: left; font-weight: bold; padding-left: 15px; }
     .price-col { color: #00f2ff !important; font-weight: bold; }
-    .header-bair { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 2.5px solid #ffffff; margin-bottom: 12px; }
-    .bair-text { font-size: 46px; color: #00f2ff; font-weight: 950; font-family: 'monospace'; letter-spacing: -1px; } 
-    .sep-text { font-size: 46px; color: #ffffff; font-weight: 950; margin: 0 5px; }
-    .terminal-text { font-size: 46px; color: #d4a017; font-weight: 950; font-family: 'monospace'; letter-spacing: -1px; }
-    .clock-container { display: flex; gap: 10px; color: #888; font-family: 'monospace'; }
+    
+    /* Ajuste do Header para alinhar com o botão */
+    .header-bair { display: flex; align-items: center; gap: 15px; }
+    .bair-text { font-size: 46px; color: #00f2ff; font-weight: 950; font-family: 'monospace'; letter-spacing: -1px; line-height: 1; } 
+    .terminal-text { font-size: 46px; color: #d4a017; font-weight: 950; font-family: 'monospace'; letter-spacing: -1px; line-height: 1; }
+    
+    .clock-container { display: flex; gap: 10px; color: #888; font-family: 'monospace'; justify-content: flex-end; }
     .clock-box { text-align: center; border: 1.5px solid #ffffff; padding: 4px 10px; border-radius: 4px; background: #0a141a; min-width: 95px; }
     .clock-label { font-size: 10px; color: #d4a017; font-weight: bold; display: block; text-transform: uppercase; margin-bottom: 2px; }
     .clock-time { color: #fff; font-size: 17px; font-weight: bold; display: block; }
+    
     .calc-panel { border: 2.5px solid #ffffff; border-radius: 8px; padding: 8px; background: #0a141a; font-family: monospace; margin-bottom: 10px; }
     .calc-row { display: flex; justify-content: space-between; padding: 5px 8px; border-bottom: 1px solid #444; font-size: 13px; font-weight: bold; align-items: center; }
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 2px solid #ffffff; border-bottom: 2px solid #ffffff; padding: 8px 0; overflow: hidden; white-space: nowrap; margin-top: 15px; }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 14px; font-weight: bold; }
     @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
+    
+    /* Estilo do botão SET */
+    div.stButton > button {
+        background-color: transparent !important;
+        color: #d4a017 !important;
+        border: 1px solid #d4a017 !important;
+        border-radius: 4px !important;
+        height: 30px !important;
+        margin-top: 10px !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# --- INICIALIZAÇÃO DE ESTADOS ---
+# --- ESTADOS ---
 if 'exibir_adm' not in st.session_state: st.session_state.exibir_adm = False
 if 'a_ewz' not in st.session_state: st.session_state.a_ewz = 37.85
 if 'a_dol' not in st.session_state: st.session_state.a_dol = 5246.00
 
-# --- MOTOR DE DADOS ---
 def fetch(s):
     try:
         t = yf.Ticker(s)
@@ -70,22 +81,6 @@ def calcular_k97(e_ewz, p_ewz, mx_e, mn_e, e_dol):
         }
     except: return None
 
-# --- SIDEBAR: BOTÃO SET ADM ---
-with st.sidebar:
-    st.markdown("### ⚙️ SETTINGS")
-    if st.button("🔓 ACESSAR PAINEL ADM"):
-        st.session_state.exibir_adm = not st.session_state.exibir_adm
-    
-    if st.session_state.exibir_adm:
-        st.markdown("---")
-        with st.form("form_adm"):
-            st.session_state.a_ewz = st.number_input("AXIS EWZ:", value=st.session_state.a_ewz, format="%.2f")
-            st.session_state.a_dol = st.number_input("AXIS DOLFUT:", value=st.session_state.a_dol, format="%.2f")
-            if st.form_submit_button("SALVAR E FECHAR"):
-                st.session_state.exibir_adm = False
-                st.rerun()
-
-# --- TERMINAL LOOP ---
 placeholder = st.empty()
 
 while True:
@@ -95,8 +90,35 @@ while True:
 
     if res:
         with placeholder.container():
-            st.markdown(f"""<div class="header-bair"><div class="title-box"><span class="bair-text">BAIR</span><span class="sep-text">-</span><span class="terminal-text">TERMINAL DOLLAR</span></div><div class="clock-container"><div class="clock-box"><span class="clock-label">BRASÍLIA</span><span class="clock-time">{datetime.now(tz_sp).strftime('%H:%M:%S')}</span></div><div class="clock-box"><span class="clock-label">NEW YORK</span><span class="clock-time">{datetime.now(tz_ny).strftime('%H:%M:%S')}</span></div><div class="clock-box"><span class="clock-label">LONDRES</span><span class="clock-time">{datetime.now(tz_ld).strftime('%H:%M:%S')}</span></div></div></div>""", unsafe_allow_html=True)
+            # --- LINHA SUPERIOR: TITULO + BOTÃO + RELÓGIOS ---
+            h_col1, h_col2, h_col3 = st.columns([1.5, 0.5, 2.5])
+            
+            with h_col1:
+                st.markdown('<div class="header-bair"><span class="bair-text">BAIR</span><span style="color:white; font-size:46px; font-weight:950;">-</span><span class="terminal-text">TERMINAL</span></div>', unsafe_allow_html=True)
+            
+            with h_col2:
+                # Botão SET posicionado ao lado do nome
+                if st.button("SET ⚙️"):
+                    st.session_state.exibir_adm = not st.session_state.exibir_adm
 
+            with h_col3:
+                st.markdown(f"""<div class="clock-container"><div class="clock-box"><span class="clock-label">BRASÍLIA</span><span class="clock-time">{datetime.now(tz_sp).strftime('%H:%M:%S')}</span></div><div class="clock-box"><span class="clock-label">NEW YORK</span><span class="clock-time">{datetime.now(tz_ny).strftime('%H:%M:%S')}</span></div><div class="clock-box"><span class="clock-label">LONDRES</span><span class="clock-time">{datetime.now(tz_ld).strftime('%H:%M:%S')}</span></div></div>""", unsafe_allow_html=True)
+
+            st.markdown('<hr style="border: 1px solid white; margin-top: 0; margin-bottom: 15px;">', unsafe_allow_html=True)
+
+            # Painel ADM (abre logo abaixo do header se ativado)
+            if st.session_state.exibir_adm:
+                with st.expander("PAINEL DE CONFIGURAÇÃO", expanded=True):
+                    with st.form("adm_form"):
+                        new_ewz = st.number_input("AXIS EWZ:", value=st.session_state.a_ewz, format="%.2f")
+                        new_dol = st.number_input("AXIS DOLFUT:", value=st.session_state.a_dol, format="%.2f")
+                        if st.form_submit_button("SALVAR"):
+                            st.session_state.a_ewz = new_ewz
+                            st.session_state.a_dol = new_dol
+                            st.session_state.exibir_adm = False
+                            st.rerun()
+
+            # --- CORPO DO TERMINAL ---
             c_m, c_s = st.columns([3, 1])
             with c_m:
                 v_v = ((res['vivo']/st.session_state.a_dol)-1)*100
