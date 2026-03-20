@@ -90,29 +90,27 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, p_spot
     try:
         if p_ewz_atual == 0 or p_spot_cl == 0: return None
         
-        # --- NOVO CÁLCULO PONDERADO (60/40) ---
-        v_spot = ((p_spot_atual / p_spot_cl) - 1) * 100
-        v_ewz_inv = ((eixo_ewz / p_ewz_atual) - 1) * 100
+        # 1. VARIAÇÃO PURA DO SPOT
+        var_spot = ((p_spot_atual / p_spot_cl) - 1) * 100
         
-        # Fórmula: VAR spot x 0.6 + VAR EWZ (invertido) x 0.4
-        var_dolfut = (v_spot * 0.6) + (v_ewz_inv * 0.4)
-        dolar_vivo = eixo_dol * (1 + (var_dolfut / 100))
+        # 2. VARIAÇÃO PURA DO EWZ (Invertida para o Dólar)
+        # Se bolsa sobe (atual > eixo), dólar cai (var negativa)
+        var_ewz_dolar = ((eixo_ewz / p_ewz_atual) - 1) * 100
         
-        # Mantendo os outros campos para exibição no terminal
-        var_fraja = ((eixo_ewz / p_ewz_atual) - 1) * 100 
-        dolar_fraja = eixo_dol * (1 + (var_fraja / 100))
+        # 3. CÁLCULO DA VARIAÇÃO PONDERADA (60/40)
+        var_final = (var_spot * 0.6) + (var_ewz_dolar * 0.4)
         
-        ewz_medio_dia = (max_ewz + min_ewz) / 2
-        var_medio = ((eixo_ewz / ewz_medio_dia) - 1) * 100 
-        dolar_medio = eixo_dol * (1 + (var_medio / 100)) 
+        # 4. PREÇO VIVO BASEADO NA VARIAÇÃO SOBRE O EIXO
+        dolar_vivo = eixo_dol * (1 + (var_final / 100))
         
-        # Alvos de Máxima e Mínima (Exaustão baseada no EWZ)
+        # Alvos de Máxima e Mínima (Mantidos com base no estresse do EWZ)
         v_neg = ((eixo_ewz / max_ewz) - 1) * 100 / 1.5 if max_ewz > 0 else 0
         v_pos = ((eixo_ewz / min_ewz) - 1) * 100 / 1.5 if min_ewz > 0 else 0
         alvo_max, alvo_min = eixo_dol * (1 + (v_pos / 100)), eixo_dol * (1 + (v_neg / 100))
         
         return {
-            "vivo": dolar_vivo, "fraja": dolar_fraja, "medio": dolar_medio, "ewz_med": ewz_medio_dia,
+            "vivo": dolar_vivo, 
+            "var_pure": var_final,
             "max": alvo_max, "min": alvo_min,
             "p75_up": (eixo_dol + (alvo_max - eixo_dol)*0.75), "p50_up": (eixo_dol + alvo_max) / 2, 
             "p25_up": (eixo_dol + (alvo_max - eixo_dol)*0.25), "p75_down": (eixo_dol + (alvo_min - eixo_dol)*0.75), 
@@ -142,14 +140,15 @@ if res:
     c_main, c_side = st.columns([3, 1])
     with c_main:
         html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th style='color: #d4a017;'>Price</th><th style='color: #d4a017;'>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
-        v_v = ((res['vivo']/a_dol)-1)*100 if a_dol > 0 else 0
+        
+        # DOLFUT usa a variação pura calculada
+        v_v = res['var_pure']
         html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col'>{(res['vivo']/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max']/1000):.4f}</td><td>{(res['min']/1000):.4f}</td><td style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_v:+.2f}%</td></tr>"
         ticker = [f"<span style='color:#fff;'>DOLFUT:</span> <span style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")};'>{v_v:+.2f}%</span>"]
         
         outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
         for lbl, sym in outros.items():
-            if lbl == "DOLSPOT": d = spot_live
-            else: d = fetch(sym)
+            d = spot_live if lbl == "DOLSPOT" else fetch(sym)
             f = ".4f" if lbl in ["DOLSPOT", "DOLFUT"] or "USD" in lbl else ".2f"
             var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
             color = "#00ff00" if var >= 0 else "#ff4d4d"
@@ -159,7 +158,7 @@ if res:
 
     with c_side:
         st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>75%</span> <span>{res['p75_up']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>1ª MAX</span> <span>{res['p50_up']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>25%</span> <span>{res['p25_up']:.2f}</span></div><div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 18px; font-weight: bold; border-top:1.5px solid #444; border-bottom:1.5px solid #444; margin: 5px 0;">AXIS: {a_dol:.2f}</div><div class="calc-row" style="color:#ffff00;"><span>-25%</span> <span>{res['p25_down']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>1ª MIN</span> <span>{res['p50_down']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>-75%</span> <span>{res['p75_down']:.2f}</span></div><div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div></div>""", unsafe_allow_html=True)
-        st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="padding: 10px 8px;"><span style="color:#ffffff;">DOLFUT</span> <span style="color:#00f2ff; font-size: 16px; font-weight: 950;">{res['vivo']:.2f}</span></div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOL</span> <span style="color:#00f2ff; font-size: 16px;">{res['medio']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#d4a017;">P. JUSTO</span> <span style="color:#ffffff; font-size: 16px; font-weight: bold;">{res['fraja']:.2f}</span></div><div class="ewz-mini-container"><span class="ewz-mini-val" style="color:#00ff88;">{ewz_live['mx']:.2f}</span><span class="ewz-mini-val" style="color:#00f2ff;">{res['ewz_med']:.2f}</span><span class="ewz-mini-val" style="color:#ff4d4d;">{ewz_live['mn']:.2f}</span></div></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="padding: 10px 8px;"><span style="color:#ffffff;">DOLFUT</span> <span style="color:#00f2ff; font-size: 16px; font-weight: 950;">{res['vivo']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#d4a017;">V. PONDERADA</span> <span style="color:#ffffff; font-size: 16px; font-weight: bold;">{res['var_pure']:+.2f}%</span></div><div class="ewz-mini-container"><span class="ewz-mini-val" style="color:#00ff88;">{ewz_live['mx']:.2f}</span><span class="ewz-mini-val" style="color:#00f2ff;">{a_ewz:.2f}</span><span class="ewz-mini-val" style="color:#ff4d4d;">{ewz_live['mn']:.2f}</span></div></div>""", unsafe_allow_html=True)
 
     st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker)} • {" • ".join(ticker)}</div></div>', unsafe_allow_html=True)
 
