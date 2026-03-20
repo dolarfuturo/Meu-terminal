@@ -86,21 +86,30 @@ def calcular_sentinela():
     except: 
         return 37.85
 
-def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
+def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, p_spot_atual, p_spot_close):
     try:
-        if p_ewz_atual == 0: return None
-        var_atual = ((eixo_ewz / p_ewz_atual) - 1) * 100 / 1.5
-        dolar_vivo = eixo_dol * (1 + (var_atual / 100))
+        if p_ewz_atual == 0 or p_spot_close == 0: return None
+        
+        # --- NOVO AJUSTE: MÉDIA PONDERADA (60% SPOT / 40% EWZ) ---
+        var_spot = ((p_spot_atual / p_spot_close) - 1) * 100
+        var_ewz_inv = ((eixo_ewz / p_ewz_atual) - 1) * 100 # Invertido para o Dólar
+        
+        var_ponderada = (var_spot * 0.6) + (var_ewz_inv * 0.4)
+        dolar_vivo = eixo_dol * (1 + (var_ponderada / 100))
+        
+        # Mantendo os outros cálculos originais para os campos de apoio
         var_fraja = ((eixo_ewz / p_ewz_atual) - 1) * 100 
         dolar_fraja = eixo_dol * (1 + (var_fraja / 100))
         
         ewz_medio_dia = (max_ewz + min_ewz) / 2
         var_medio = ((eixo_ewz / ewz_medio_dia) - 1) * 100 
-        
         dolar_medio = eixo_dol * (1 + (var_medio / 100)) 
+
+        # Alvos de exaustão baseados no EWZ (Mantidos conforme solicitado)
         v_neg = ((eixo_ewz / max_ewz) - 1) * 100 / 1.5 if max_ewz > 0 else 0
         v_pos = ((eixo_ewz / min_ewz) - 1) * 100 / 1.5 if min_ewz > 0 else 0
         alvo_max, alvo_min = eixo_dol * (1 + (v_pos / 100)), eixo_dol * (1 + (v_neg / 100))
+        
         return {
             "vivo": dolar_vivo, "fraja": dolar_fraja, "medio": dolar_medio, "ewz_med": ewz_medio_dia,
             "max": alvo_max, "min": alvo_min,
@@ -125,7 +134,8 @@ tz_sp, tz_ny, tz_ld = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America
 st.markdown(f"""<div class="header-bair"><div class="title-box"><span class="bair-text">BAIR</span><span class="sep-text">-</span><span class="terminal-text">TERMINAL DOLLAR</span></div><div class="clock-container"><div class="clock-box"><span class="clock-label">BRASÍLIA</span><span class="clock-time">{datetime.now(tz_sp).strftime('%H:%M')}</span></div><div class="clock-box"><span class="clock-label">NEW YORK</span><span class="clock-time">{datetime.now(tz_ny).strftime('%H:%M')}</span></div><div class="clock-box"><span class="clock-label">LONDRES</span><span class="clock-time">{datetime.now(tz_ld).strftime('%H:%M')}</span></div></div></div>""", unsafe_allow_html=True)
 
 ewz_live = fetch("EWZ")
-res = calcular_k97_total(a_ewz, ewz_live['at'], ewz_live['mx'], ewz_live['mn'], a_dol)
+spot_live = fetch("USDBRL=X")
+res = calcular_k97_total(a_ewz, ewz_live['at'], ewz_live['mx'], ewz_live['mn'], a_dol, spot_live['at'], spot_live['cl'])
 
 if res:
     c_main, c_side = st.columns([3, 1])
@@ -137,7 +147,8 @@ if res:
         
         outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
         for lbl, sym in outros.items():
-            d = fetch(sym)
+            if lbl == "DOLSPOT": d = spot_live
+            else: d = fetch(sym)
             f = ".4f" if lbl in ["DOLSPOT", "DOLFUT"] or "USD" in lbl else ".2f"
             var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
             color = "#00ff00" if var >= 0 else "#ff4d4d"
