@@ -43,25 +43,23 @@ def fetch(s):
         tz_sp = pytz.timezone('America/Sao_Paulo')
         ref_close = t.info.get('previousClose')
         
-        # Lógica de Horário para Máxima/Mínima (10:30 - 17:00)
+        if s == "EWZ":
+            d_hist = t.history(period="3d", interval="1m", prepost=True)
+            if not d_hist.empty:
+                d_hist.index = d_hist.index.tz_convert(tz_sp)
+                unique_dates = sorted(list(set(d_hist.index.date)))
+                data_anterior = unique_dates[-2] if len(unique_dates) > 1 else unique_dates[0]
+                f_21h = d_hist.between_time('05:00', '21:00').loc[d_hist.index.date == data_anterior]
+                if not f_21h.empty:
+                    ref_close = f_21h['Close'].iloc[-1]
+
         d = t.history(period="1d", interval="1m", prepost=True)
         if d.empty: 
             return {"at": 0.0, "cl": ref_close or 0.0, "mx": 0.0, "mn": 0.0, "op": 0.0}
         
-        d.index = d.index.tz_convert(tz_sp)
-        # Filtro para Máxima e Mínima apenas do pregão regular
-        pregao = d.between_time('10:30', '17:00')
-        if pregao.empty:
-            mx, mn = d['High'].max(), d['Low'].min()
-        else:
-            mx, mn = pregao['High'].max(), pregao['Low'].min()
-
         return {
-            "at": d['Close'].iloc[-1], 
-            "cl": ref_close or d['Open'].iloc[0], 
-            "op": d['Open'].iloc[0],
-            "mx": mx, 
-            "mn": mn
+            "at": d['Close'].iloc[-1], "cl": ref_close or d['Open'].iloc[0], "op": d['Open'].iloc[0],
+            "mx": d['High'].max(), "mn": d['Low'].min()
         }
     except: return {"at": 0.0, "cl": 0.0, "mx": 0.0, "mn": 0.0, "op": 0.0}
 
@@ -71,37 +69,50 @@ def calcular_sentinela():
         t = yf.Ticker("EWZ")
         df = t.history(period="7d", interval="1d", prepost=False)
         if df.empty: return 37.85
+        
         tz_sp = pytz.timezone('America/Sao_Paulo')
         agora = datetime.now(tz_sp)
         hoje = agora.date()
         ultima_data_yahoo = df.index[-1].date()
-        idx = -2 if (ultima_data_yahoo == hoje and agora.hour < 18) else -1
-        mx, mn = df['High'].iloc[idx], df['Low'].iloc[idx]
-        return (mx + mn) / 2
-    except: return 37.85
-
-def calcular_k97_total(eixo_ewz, ewz_data, eixo_dol, spot_data):
-    try:
-        # Variações baseadas no fechamento real (cl)
-        v_spot = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
-        v_ewz = ((ewz_data['at'] / ewz_data['cl']) - 1) if ewz_data['cl'] > 0 else 0
         
-        # DOLFUT = 60% Spot + 40% EWZ
+        if ultima_data_yahoo == hoje and agora.hour < 18:
+            idx = -2 
+        else:
+            idx = -1 
+            
+        mx = df['High'].iloc[idx]
+        mn = df['Low'].iloc[idx]
+        return (mx + mn) / 2
+    except: 
+        return 37.85
+
+def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_data):
+    try:
+        if p_ewz_atual == 0: return None
+        
+        # --- CÁLCULO DAS VARIAÇÕES PONDERADAS (60/40) ---
+        v_spot = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
+        v_ewz = ((p_ewz_atual / fetch("EWZ")['cl']) - 1) if fetch("EWZ")['cl'] > 0 else 0
         v_final = (v_spot * 0.6) + (v_ewz * 0.4)
+        
+        # Dolar Vivo com base na ponderação
         dolar_vivo = eixo_dol * (1 + v_final)
         
-        # Muros (Usando as Máximas/Mínimas do pregão das 10:30-17:00)
-        v_neg = ((ewz_data['mx'] / ewz_data['cl']) - 1) / 1.5 if ewz_data['cl'] > 0 else 0
-        v_pos = ((ewz_data['mn'] / ewz_data['cl']) - 1) / 1.5 if ewz_data['cl'] > 0 else 0
+        # --- RESTANTE DO CÓDIGO ORIGINAL ---
+        var_fraja = ((eixo_ewz / p_ewz_atual) - 1) * 100 
+        dolar_fraja = eixo_dol * (1 + (var_fraja / 100))
         
-        alvo_max = eixo_dol * (1 + v_pos)
-        alvo_min = eixo_dol * (1 + v_neg)
-        ewz_med = (ewz_data['mx'] + ewz_data['mn']) / 2
+        ewz_medio_dia = (max_ewz + min_ewz) / 2
+        var_medio = ((eixo_ewz / ewz_medio_dia) - 1) * 100 
+        dolar_medio = eixo_dol * (1 + (var_medio / 100)) 
+        
+        v_neg = ((eixo_ewz / max_ewz) - 1) * 100 / 1.5 if max_ewz > 0 else 0
+        v_pos = ((eixo_ewz / min_ewz) - 1) * 100 / 1.5 if min_ewz > 0 else 0
+        alvo_max, alvo_min = eixo_dol * (1 + (v_pos / 100)), eixo_dol * (1 + (v_neg / 100))
         
         return {
-            "vivo": dolar_vivo, "max": alvo_max, "min": alvo_min, "v_v": v_final * 100,
-            "ewz_med": ewz_med, "medio": eixo_dol * (1 + (((ewz_med/ewz_data['cl'])-1))),
-            "fraja": eixo_dol * (1 + v_ewz),
+            "vivo": dolar_vivo, "fraja": dolar_fraja, "medio": dolar_medio, "ewz_med": ewz_medio_dia,
+            "max": alvo_max, "min": alvo_min, "v_v": v_final * 100,
             "p75_up": (eixo_dol + (alvo_max - eixo_dol)*0.75), "p50_up": (eixo_dol + alvo_max) / 2, 
             "p25_up": (eixo_dol + (alvo_max - eixo_dol)*0.25), "p75_down": (eixo_dol + (alvo_min - eixo_dol)*0.75), 
             "p50_down": (eixo_dol + alvo_min) / 2, "p25_down": (eixo_dol + (alvo_min - eixo_dol)*0.25)
@@ -115,9 +126,8 @@ with st.sidebar:
     with st.form("ajuste_vars"):
         a_ewz = st.number_input("AXIS EWZ:", value=float(eixo_sug), format="%.2f")
         a_dol = st.number_input("AXIS DOLFUT:", value=5246.00, format="%.2f")
-        save = st.form_submit_button("SALVAR")
-    # SENTINELA RECOLOCADO AQUI
-    st.markdown(f"<div style='color:#d4a017; font-weight:bold; margin-top:10px; border:1px solid #d4a017; padding:5px; border-radius:4px; text-align:center;'>SENTINELA: {eixo_sug:.2f}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='color:#d4a017; font-weight:bold; margin-top:5px;'>SENTINELA: {eixo_sug:.2f}</div>", unsafe_allow_html=True)
+        st.form_submit_button("SALVAR")
 
 # --- UI HEADER ---
 tz_sp, tz_ny, tz_ld = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London')
@@ -125,7 +135,7 @@ st.markdown(f"""<div class="header-bair"><div class="title-box"><span class="bai
 
 ewz_live = fetch("EWZ")
 spot_live = fetch("USDBRL=X")
-res = calcular_k97_total(a_ewz, ewz_live, a_dol, spot_live)
+res = calcular_k97_total(a_ewz, ewz_live['at'], ewz_live['mx'], ewz_live['mn'], a_dol, spot_live)
 
 if res:
     c_main, c_side = st.columns([3, 1])
