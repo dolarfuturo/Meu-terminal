@@ -69,49 +69,39 @@ def calcular_sentinela():
         t = yf.Ticker("EWZ")
         df = t.history(period="7d", interval="1d", prepost=False)
         if df.empty: return 37.85
-        
         tz_sp = pytz.timezone('America/Sao_Paulo')
         agora = datetime.now(tz_sp)
         hoje = agora.date()
         ultima_data_yahoo = df.index[-1].date()
-        
-        if ultima_data_yahoo == hoje and agora.hour < 18:
-            idx = -2 
-        else:
-            idx = -1 
-            
-        mx = df['High'].iloc[idx]
-        mn = df['Low'].iloc[idx]
+        idx = -2 if (ultima_data_yahoo == hoje and agora.hour < 18) else -1
+        mx, mn = df['High'].iloc[idx], df['Low'].iloc[idx]
         return (mx + mn) / 2
-    except: 
-        return 37.85
+    except: return 37.85
 
-def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, var_spot):
+def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_data):
     try:
-        # LÓGICA SOLICITADA: Var Spot * 0.6 + Var EWZ Invertida * 0.4
-        var_ewz_inv = ((p_ewz_atual['at'] / p_ewz_atual['cl']) - 1) * -100 if p_ewz_atual['cl'] > 0 else 0
-        v_spot_calc = ((var_spot['at'] / var_spot['cl']) - 1) * 100 if var_spot['cl'] > 0 else 0
+        if p_ewz_atual == 0: return None
+        # LÓGICA DO DOLFUT: Var Spot (60%) + Var EWZ (40%) - Sem inversão forçada, conforme seu código
+        var_spot = ((spot_data['at'] / spot_data['cl']) - 1) * 100 if spot_data['cl'] > 0 else 0
+        var_ewz = ((p_ewz_atual / eixo_ewz) - 1) * 100 # Lógica original do seu AXIS
         
-        # Variação Final para o DOLFUT
-        v_final = (v_spot_calc * 0.6) + (var_ewz_inv * 0.4)
+        v_final = (var_spot * 0.6) + (var_ewz * 0.4)
         dolar_vivo = eixo_dol * (1 + (v_final / 100))
         
-        # P. JUSTO (Apenas EWZ Invertido conforme solicitado no "inverte o EWZ")
-        dolar_fraja = eixo_dol * (1 + (var_ewz_inv / 100))
+        # O resto permanece conforme sua lógica original de K97
+        var_fraja = ((eixo_ewz / p_ewz_atual) - 1) * 100 
+        dolar_fraja = eixo_dol * (1 + (var_fraja / 100))
+        ewz_med = (max_ewz + min_ewz) / 2
+        var_medio = ((eixo_ewz / ewz_med) - 1) * 100 
+        dolar_medio = eixo_dol * (1 + (var_medio / 100)) 
         
-        # MÉDIA DOL (Baseada na média do EWZ Invertida)
-        ewz_medio_dia = (max_ewz + min_ewz) / 2
-        v_med_inv = ((ewz_medio_dia / p_ewz_atual['cl']) - 1) * -100 if p_ewz_atual['cl'] > 0 else 0
-        dolar_medio = eixo_dol * (1 + (v_med_inv / 100)) 
-        
-        # MUROS (Baseados no AXIS DOLFUT)
-        v_neg = ((max_ewz / p_ewz_atual['cl']) - 1) * -100 / 1.5 if p_ewz_atual['cl'] > 0 else 0
-        v_pos = ((min_ewz / p_ewz_atual['cl']) - 1) * -100 / 1.5 if p_ewz_atual['cl'] > 0 else 0
+        v_neg = ((eixo_ewz / max_ewz) - 1) * 100 / 1.5 if max_ewz > 0 else 0
+        v_pos = ((eixo_ewz / min_ewz) - 1) * 100 / 1.5 if min_ewz > 0 else 0
         alvo_max, alvo_min = eixo_dol * (1 + (v_pos / 100)), eixo_dol * (1 + (v_neg / 100))
         
         return {
-            "vivo": dolar_vivo, "fraja": dolar_fraja, "medio": dolar_medio, "ewz_med": ewz_medio_dia,
-            "max": alvo_max, "min": alvo_min, "var_v": v_final,
+            "vivo": dolar_vivo, "fraja": dolar_fraja, "medio": dolar_medio, "ewz_med": ewz_med,
+            "max": alvo_max, "min": alvo_min, "v_v": v_final,
             "p75_up": (eixo_dol + (alvo_max - eixo_dol)*0.75), "p50_up": (eixo_dol + alvo_max) / 2, 
             "p25_up": (eixo_dol + (alvo_max - eixo_dol)*0.25), "p75_down": (eixo_dol + (alvo_min - eixo_dol)*0.75), 
             "p50_down": (eixo_dol + alvo_min) / 2, "p25_down": (eixo_dol + (alvo_min - eixo_dol)*0.25)
@@ -125,7 +115,6 @@ with st.sidebar:
     with st.form("ajuste_vars"):
         a_ewz = st.number_input("AXIS EWZ:", value=float(eixo_sug), format="%.2f")
         a_dol = st.number_input("AXIS DOLFUT:", value=5246.00, format="%.2f")
-        st.markdown(f"<div style='color:#d4a017; font-weight:bold; margin-top:5px;'>SENTINELA: {eixo_sug:.2f}</div>", unsafe_allow_html=True)
         st.form_submit_button("SALVAR")
 
 # --- UI HEADER ---
@@ -134,15 +123,13 @@ st.markdown(f"""<div class="header-bair"><div class="title-box"><span class="bai
 
 ewz_live = fetch("EWZ")
 spot_live = fetch("USDBRL=X")
-res = calcular_k97_total(a_ewz, ewz_live, ewz_live['mx'], ewz_live['mn'], a_dol, spot_live)
+res = calcular_k97_total(a_ewz, ewz_live['at'], ewz_live['mx'], ewz_live['mn'], a_dol, spot_live)
 
 if res:
     c_main, c_side = st.columns([3, 1])
     with c_main:
         html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th style='color: #d4a017;'>Price</th><th style='color: #d4a017;'>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
-        
-        # DOLFUT CALCULADO
-        v_v = res['var_v']
+        v_v = res['v_v']
         html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col'>{(res['vivo']/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max']/1000):.4f}</td><td>{(res['min']/1000):.4f}</td><td style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_v:+.2f}%</td></tr>"
         ticker = [f"<span style='color:#fff;'>DOLFUT:</span> <span style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")};'>{v_v:+.2f}%</span>"]
         
