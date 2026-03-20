@@ -86,26 +86,27 @@ def calcular_sentinela():
     except: 
         return 37.85
 
-def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, p_spot_atual, p_spot_close):
+def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, p_spot_atual, p_spot_cl):
     try:
-        if p_ewz_atual == 0 or p_spot_close == 0: return None
+        if p_ewz_atual == 0 or p_spot_cl == 0: return None
         
-        # --- NOVO AJUSTE: MÉDIA PONDERADA (60% SPOT / 40% EWZ) ---
-        var_spot = ((p_spot_atual / p_spot_close) - 1) * 100
-        var_ewz_inv = ((eixo_ewz / p_ewz_atual) - 1) * 100 # Invertido para o Dólar
+        # --- NOVO CÁLCULO PONDERADO (60/40) ---
+        v_spot = ((p_spot_atual / p_spot_cl) - 1) * 100
+        v_ewz_inv = ((eixo_ewz / p_ewz_atual) - 1) * 100
         
-        var_ponderada = (var_spot * 0.6) + (var_ewz_inv * 0.4)
-        dolar_vivo = eixo_dol * (1 + (var_ponderada / 100))
+        # Fórmula: VAR spot x 0.6 + VAR EWZ (invertido) x 0.4
+        var_dolfut = (v_spot * 0.6) + (v_ewz_inv * 0.4)
+        dolar_vivo = eixo_dol * (1 + (var_dolfut / 100))
         
-        # Mantendo os outros cálculos originais para os campos de apoio
+        # Mantendo os outros campos para exibição no terminal
         var_fraja = ((eixo_ewz / p_ewz_atual) - 1) * 100 
         dolar_fraja = eixo_dol * (1 + (var_fraja / 100))
         
         ewz_medio_dia = (max_ewz + min_ewz) / 2
         var_medio = ((eixo_ewz / ewz_medio_dia) - 1) * 100 
         dolar_medio = eixo_dol * (1 + (var_medio / 100)) 
-
-        # Alvos de exaustão baseados no EWZ (Mantidos conforme solicitado)
+        
+        # Alvos de Máxima e Mínima (Exaustão baseada no EWZ)
         v_neg = ((eixo_ewz / max_ewz) - 1) * 100 / 1.5 if max_ewz > 0 else 0
         v_pos = ((eixo_ewz / min_ewz) - 1) * 100 / 1.5 if min_ewz > 0 else 0
         alvo_max, alvo_min = eixo_dol * (1 + (v_pos / 100)), eixo_dol * (1 + (v_neg / 100))
