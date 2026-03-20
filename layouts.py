@@ -90,8 +90,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
     try:
         if p_ewz_atual == 0: return None
         
-        # AJUSTE: INVERSÃO DO EWZ PARA O DÓLAR
-        # Se p_ewz_atual < eixo_ewz (bolsa caindo), a variação fica positiva para o dólar.
+        # --- INVERSÃO APLICADA AQUI (EIXO / ATUAL) ---
         var_atual = ((eixo_ewz / p_ewz_atual) - 1) * 100 / 1.5
         dolar_vivo = eixo_dol * (1 + (var_atual / 100))
         
@@ -101,8 +100,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol):
         ewz_medio_dia = (max_ewz + min_ewz) / 2
         var_medio = ((eixo_ewz / ewz_medio_dia) - 1) * 100 
         dolar_medio = eixo_dol * (1 + (var_medio / 100)) 
-
-        # Alvos de Máxima e Mínima (Mantendo lógica original)
+        
         v_neg = ((eixo_ewz / max_ewz) - 1) * 100 / 1.5 if max_ewz > 0 else 0
         v_pos = ((eixo_ewz / min_ewz) - 1) * 100 / 1.5 if min_ewz > 0 else 0
         alvo_max, alvo_min = eixo_dol * (1 + (v_pos / 100)), eixo_dol * (1 + (v_neg / 100))
