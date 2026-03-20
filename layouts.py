@@ -78,30 +78,32 @@ def calcular_sentinela():
         return (mx + mn) / 2
     except: return 37.85
 
-def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_data):
+def calcular_k97_total(eixo_ewz, ewz_data, eixo_dol, spot_data):
     try:
-        if p_ewz_atual == 0: return None
-        # LÓGICA DO DOLFUT: Var Spot (60%) + Var EWZ (40%) - Sem inversão forçada, conforme seu código
-        var_spot = ((spot_data['at'] / spot_data['cl']) - 1) * 100 if spot_data['cl'] > 0 else 0
-        var_ewz = ((p_ewz_atual / eixo_ewz) - 1) * 100 # Lógica original do seu AXIS
+        # CAPTURA DAS VARIAÇÕES REAIS DA TELA
+        v_spot = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
+        v_ewz = ((ewz_data['at'] / ewz_data['cl']) - 1) if ewz_data['cl'] > 0 else 0
         
-        v_final = (var_spot * 0.6) + (var_ewz * 0.4)
-        dolar_vivo = eixo_dol * (1 + (v_final / 100))
+        # CÁLCULO PONDERADO (VARIAÇÃO PURA)
+        v_final = (v_spot * 0.6) + (v_ewz * 0.4)
+        dolar_vivo = eixo_dol * (1 + v_final)
         
-        # O resto permanece conforme sua lógica original de K97
-        var_fraja = ((eixo_ewz / p_ewz_atual) - 1) * 100 
-        dolar_fraja = eixo_dol * (1 + (var_fraja / 100))
-        ewz_med = (max_ewz + min_ewz) / 2
-        var_medio = ((eixo_ewz / ewz_med) - 1) * 100 
-        dolar_medio = eixo_dol * (1 + (var_medio / 100)) 
+        # MUROS E OUTROS CÁLCULOS (MANTENDO SUA LÓGICA DE AXIS)
+        # Para que os muros não tenham o erro de 0.08, eles precisam usar a mesma base de variação
+        v_neg = ((ewz_data['mx'] / ewz_data['cl']) - 1) / 1.5 if ewz_data['cl'] > 0 else 0
+        v_pos = ((ewz_data['mn'] / ewz_data['cl']) - 1) / 1.5 if ewz_data['cl'] > 0 else 0
         
-        v_neg = ((eixo_ewz / max_ewz) - 1) * 100 / 1.5 if max_ewz > 0 else 0
-        v_pos = ((eixo_ewz / min_ewz) - 1) * 100 / 1.5 if min_ewz > 0 else 0
-        alvo_max, alvo_min = eixo_dol * (1 + (v_pos / 100)), eixo_dol * (1 + (v_neg / 100))
+        alvo_max = eixo_dol * (1 + v_pos)
+        alvo_min = eixo_dol * (1 + v_neg)
+        
+        ewz_med = (ewz_data['mx'] + ewz_data['mn']) / 2
         
         return {
-            "vivo": dolar_vivo, "fraja": dolar_fraja, "medio": dolar_medio, "ewz_med": ewz_med,
-            "max": alvo_max, "min": alvo_min, "v_v": v_final,
+            "vivo": dolar_vivo, 
+            "max": alvo_max, "min": alvo_min, "v_v": v_final * 100,
+            "ewz_med": ewz_med,
+            "medio": eixo_dol * (1 + (((ewz_med/ewz_data['cl'])-1))),
+            "fraja": eixo_dol * (1 + v_ewz),
             "p75_up": (eixo_dol + (alvo_max - eixo_dol)*0.75), "p50_up": (eixo_dol + alvo_max) / 2, 
             "p25_up": (eixo_dol + (alvo_max - eixo_dol)*0.25), "p75_down": (eixo_dol + (alvo_min - eixo_dol)*0.75), 
             "p50_down": (eixo_dol + alvo_min) / 2, "p25_down": (eixo_dol + (alvo_min - eixo_dol)*0.25)
@@ -123,12 +125,14 @@ st.markdown(f"""<div class="header-bair"><div class="title-box"><span class="bai
 
 ewz_live = fetch("EWZ")
 spot_live = fetch("USDBRL=X")
-res = calcular_k97_total(a_ewz, ewz_live['at'], ewz_live['mx'], ewz_live['mn'], a_dol, spot_live)
+res = calcular_k97_total(a_ewz, ewz_live, a_dol, spot_live)
 
 if res:
     c_main, c_side = st.columns([3, 1])
     with c_main:
         html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th style='color: #d4a017;'>Price</th><th style='color: #d4a017;'>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
+        
+        # DOLFUT
         v_v = res['v_v']
         html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col'>{(res['vivo']/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max']/1000):.4f}</td><td>{(res['min']/1000):.4f}</td><td style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_v:+.2f}%</td></tr>"
         ticker = [f"<span style='color:#fff;'>DOLFUT:</span> <span style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")};'>{v_v:+.2f}%</span>"]
