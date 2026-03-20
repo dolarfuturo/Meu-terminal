@@ -43,23 +43,25 @@ def fetch(s):
         tz_sp = pytz.timezone('America/Sao_Paulo')
         ref_close = t.info.get('previousClose')
         
-        if s == "EWZ":
-            d_hist = t.history(period="3d", interval="1m", prepost=True)
-            if not d_hist.empty:
-                d_hist.index = d_hist.index.tz_convert(tz_sp)
-                unique_dates = sorted(list(set(d_hist.index.date)))
-                data_anterior = unique_dates[-2] if len(unique_dates) > 1 else unique_dates[0]
-                f_21h = d_hist.between_time('05:00', '21:00').loc[d_hist.index.date == data_anterior]
-                if not f_21h.empty:
-                    ref_close = f_21h['Close'].iloc[-1]
-
+        # Lógica de Horário para Máxima/Mínima (10:30 - 17:00)
         d = t.history(period="1d", interval="1m", prepost=True)
         if d.empty: 
             return {"at": 0.0, "cl": ref_close or 0.0, "mx": 0.0, "mn": 0.0, "op": 0.0}
         
+        d.index = d.index.tz_convert(tz_sp)
+        # Filtro para Máxima e Mínima apenas do pregão regular
+        pregao = d.between_time('10:30', '17:00')
+        if pregao.empty:
+            mx, mn = d['High'].max(), d['Low'].min()
+        else:
+            mx, mn = pregao['High'].max(), pregao['Low'].min()
+
         return {
-            "at": d['Close'].iloc[-1], "cl": ref_close or d['Open'].iloc[0], "op": d['Open'].iloc[0],
-            "mx": d['High'].max(), "mn": d['Low'].min()
+            "at": d['Close'].iloc[-1], 
+            "cl": ref_close or d['Open'].iloc[0], 
+            "op": d['Open'].iloc[0],
+            "mx": mx, 
+            "mn": mn
         }
     except: return {"at": 0.0, "cl": 0.0, "mx": 0.0, "mn": 0.0, "op": 0.0}
 
@@ -80,29 +82,25 @@ def calcular_sentinela():
 
 def calcular_k97_total(eixo_ewz, ewz_data, eixo_dol, spot_data):
     try:
-        # CAPTURA DAS VARIAÇÕES REAIS DA TELA
+        # Variações baseadas no fechamento real (cl)
         v_spot = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         v_ewz = ((ewz_data['at'] / ewz_data['cl']) - 1) if ewz_data['cl'] > 0 else 0
         
-        # CÁLCULO PONDERADO (VARIAÇÃO PURA)
+        # DOLFUT = 60% Spot + 40% EWZ
         v_final = (v_spot * 0.6) + (v_ewz * 0.4)
         dolar_vivo = eixo_dol * (1 + v_final)
         
-        # MUROS E OUTROS CÁLCULOS (MANTENDO SUA LÓGICA DE AXIS)
-        # Para que os muros não tenham o erro de 0.08, eles precisam usar a mesma base de variação
+        # Muros (Usando as Máximas/Mínimas do pregão das 10:30-17:00)
         v_neg = ((ewz_data['mx'] / ewz_data['cl']) - 1) / 1.5 if ewz_data['cl'] > 0 else 0
         v_pos = ((ewz_data['mn'] / ewz_data['cl']) - 1) / 1.5 if ewz_data['cl'] > 0 else 0
         
         alvo_max = eixo_dol * (1 + v_pos)
         alvo_min = eixo_dol * (1 + v_neg)
-        
         ewz_med = (ewz_data['mx'] + ewz_data['mn']) / 2
         
         return {
-            "vivo": dolar_vivo, 
-            "max": alvo_max, "min": alvo_min, "v_v": v_final * 100,
-            "ewz_med": ewz_med,
-            "medio": eixo_dol * (1 + (((ewz_med/ewz_data['cl'])-1))),
+            "vivo": dolar_vivo, "max": alvo_max, "min": alvo_min, "v_v": v_final * 100,
+            "ewz_med": ewz_med, "medio": eixo_dol * (1 + (((ewz_med/ewz_data['cl'])-1))),
             "fraja": eixo_dol * (1 + v_ewz),
             "p75_up": (eixo_dol + (alvo_max - eixo_dol)*0.75), "p50_up": (eixo_dol + alvo_max) / 2, 
             "p25_up": (eixo_dol + (alvo_max - eixo_dol)*0.25), "p75_down": (eixo_dol + (alvo_min - eixo_dol)*0.75), 
@@ -117,7 +115,9 @@ with st.sidebar:
     with st.form("ajuste_vars"):
         a_ewz = st.number_input("AXIS EWZ:", value=float(eixo_sug), format="%.2f")
         a_dol = st.number_input("AXIS DOLFUT:", value=5246.00, format="%.2f")
-        st.form_submit_button("SALVAR")
+        save = st.form_submit_button("SALVAR")
+    # SENTINELA RECOLOCADO AQUI
+    st.markdown(f"<div style='color:#d4a017; font-weight:bold; margin-top:10px; border:1px solid #d4a017; padding:5px; border-radius:4px; text-align:center;'>SENTINELA: {eixo_sug:.2f}</div>", unsafe_allow_html=True)
 
 # --- UI HEADER ---
 tz_sp, tz_ny, tz_ld = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London')
@@ -131,8 +131,6 @@ if res:
     c_main, c_side = st.columns([3, 1])
     with c_main:
         html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th style='color: #d4a017;'>Price</th><th style='color: #d4a017;'>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
-        
-        # DOLFUT
         v_v = res['v_v']
         html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col'>{(res['vivo']/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max']/1000):.4f}</td><td>{(res['min']/1000):.4f}</td><td style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_v:+.2f}%</td></tr>"
         ticker = [f"<span style='color:#fff;'>DOLFUT:</span> <span style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")};'>{v_v:+.2f}%</span>"]
