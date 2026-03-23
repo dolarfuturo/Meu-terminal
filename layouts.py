@@ -100,7 +100,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         
         # --- AJUSTE SOLICITADO: P. JUSTO COM REGRA /4 ---
         # Substituindo a variação do Fraja pela Variação DOLFUT / 4 aplicada ao AXIS
-        dolar_fraja = eixo_dol * (1 + (v_final / 1.5))
+        dolar_fraja = eixo_dol * (1 + (v_final / 2))
         
         ewz_medio_dia = (max_ewz + min_ewz) / 2
         var_medio = ((eixo_ewz / ewz_medio_dia) - 1) * 100 
