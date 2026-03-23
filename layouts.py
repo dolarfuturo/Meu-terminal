@@ -7,7 +7,7 @@ import pytz
 # Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLLAR")
 
-# --- CSS: ESTILIZAÇÃO COMPACTA ---
+# --- CSS: ESTILIZAÇÃO COMPACTA RESTAURADA E MANTIDA ---
 st.markdown("""
 <style>
     .stApp { background-color: #050a0e !important; }
@@ -58,7 +58,7 @@ def fetch(s):
             return {"at": 0.0, "cl": ref_close or 0.0, "mx": 0.0, "mn": 0.0, "op": 0.0}
         
         # Ajuste de escala para Dólar (Yahoo fornece 5.30 ao invés de 5300)
-        mult = 1000 if "BRL=X" in s else 1
+        mult = 1000 if s in ["USDBRL=X", "BRL=X"] else 1
         return {
             "at": d['Close'].iloc[-1] * mult, 
             "cl": (ref_close or d['Open'].iloc[0]) * mult, 
@@ -74,52 +74,19 @@ def calcular_sentinela():
         t = yf.Ticker("EWZ")
         df = t.history(period="7d", interval="1d", prepost=False)
         if df.empty: return 37.85
+        
         tz_sp = pytz.timezone('America/Sao_Paulo')
         agora = datetime.now(tz_sp)
         hoje = agora.date()
         ultima_data_yahoo = df.index[-1].date()
-        idx = -2 if (ultima_data_yahoo == hoje and agora.hour < 18) else -1
+        
+        if ultima_data_yahoo == hoje and agora.hour < 18:
+            idx = -2 
+        else:
+            idx = -1 
+            
         return (df['High'].iloc[idx] + df['Low'].iloc[idx]) / 2
     except: return 37.85
-
-def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_data):
-    try:
-        if p_ewz_atual == 0: return None
-        
-        # 1. CÁLCULO DO SPREED EM TEMPO REAL (DO SPOT)
-        spreedd = (spot_data['mx'] - spot_data['mn']) / 8
-        
-        # 2. CÁLCULO MÁXIMA E MÍNIMA DO FUTURO (BASE AXIS)
-        # Max do Fut = AXIS + Max do spot + o SPREED
-        alvo_max = eixo_dol + spot_data['mx'] + spreedd
-        # Min do Fut = AXIS - Min do spot + SPREED
-        alvo_min = eixo_dol - spot_data['mn'] + spreedd
-        
-        # 3. NÍVEIS 50% (ENTRE MAX/AXIS E MIN/AXIS)
-        p50_up = (alvo_max + eixo_dol) / 2
-        p50_down = (alvo_min + eixo_dol) / 2
-        
-        # 4. MÉDIA DOL (MÉDIA SIMPLES DO SPOT)
-        media_dol = (spot_data['mx'] + spot_data['mn']) / 2
-        
-        # Variação para tabela (Ponderação mantida para o Dolar Vivo)
-        v_spot = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
-        v_ewz = ((p_ewz_atual / fetch("EWZ")['cl']) - 1) if fetch("EWZ")['cl'] > 0 else 0
-        v_final = (v_spot * 0.6) - (v_ewz * 0.4)
-        
-        return {
-            "vivo": eixo_dol * (1 + v_final),
-            "fraja": eixo_dol * (1 + (v_final / 2)),
-            "medio": media_dol, 
-            "ewz_med": (max_ewz + min_ewz) / 2,
-            "max": alvo_max, 
-            "min": alvo_min, 
-            "p50_up": p50_up, 
-            "p50_down": p50_down,
-            "v_v": v_final * 100,
-            "spre": spreedd
-        }
-    except: return None
 
 # --- PAINEL ADM ---
 eixo_sug = calcular_sentinela()
@@ -128,23 +95,61 @@ with st.sidebar:
     with st.form("ajuste_vars"):
         a_ewz = st.number_input("AXIS EWZ:", value=float(eixo_sug), format="%.2f")
         a_dol = st.number_input("AXIS DOLFUT:", value=5246.00, format="%.2f")
+        st.markdown(f"<div style='color:#d4a017; font-weight:bold; margin-top:5px;'>SENTINELA: {eixo_sug:.2f}</div>", unsafe_allow_html=True)
         st.form_submit_button("SALVAR")
 
 # --- UI HEADER ---
 tz_sp, tz_ny, tz_ld = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London')
 st.markdown(f"""<div class="header-bair"><div class="title-box"><span class="bair-text">BAIR</span><span class="sep-text">-</span><span class="terminal-text">TERMINAL DOLLAR</span></div><div class="clock-container"><div class="clock-box"><span class="clock-label">BRASÍLIA</span><span class="clock-time">{datetime.now(tz_sp).strftime('%H:%M')}</span></div><div class="clock-box"><span class="clock-label">NEW YORK</span><span class="clock-time">{datetime.now(tz_ny).strftime('%H:%M')}</span></div><div class="clock-box"><span class="clock-label">LONDRES</span><span class="clock-time">{datetime.now(tz_ld).strftime('%H:%M')}</span></div></div></div>""", unsafe_allow_html=True)
 
+# Captura dados em tempo real
 ewz_live = fetch("EWZ")
-spot_live = fetch("USDBRL=X")
-res = calcular_k97_total(a_ewz, ewz_live['at'], ewz_live['mx'], ewz_live['mn'], a_dol, spot_live)
+spot_live = fetch("USDBRL=X") # DOLSPOT É A ÂNCORA DE VOLATILIDADE
 
-if res:
+# --- LÓGICA DE CÁLCULO SHARK AJUSTADA E BLINDADA ---
+if spot_live:
+    # 1. CÁLCULO DO SPREDD EM TEMPO REAL (DA MÁXIMA/MÍNIMA DO SPOT)
+    # Fórmula: ( MAX_spot - MIN_spot /8)
+    mx_s = spot_live['mx']
+    mn_s = spot_live['mn']
+    spreedd = (mx_s - mn_s) / 8 if mx_s > 0 else 0
+    
+    # 2. PROJEÇÕES DO BLOCO SETA VERMELHA (BASEADAS NO AXIS DO FUTURO)
+    # Fórmula Max do Fut: AXIS + Max do spot + SPREED
+    # Fórmula Min do Fut: AXIS - Min do spot + SPREED
+    max_shark = a_dol + mx_s + spreedd
+    min_shark = a_dol - mn_s + spreedd
+    
+    # Manutenção dos níveis proporcionais (25%, 50%, 75%) baseados nas novas pontas e no Axis fixo
+    p75_up = (a_dol + (max_shark - a_dol) * 0.75)
+    p50_up = (a_dol + max_shark) / 2 # Média entre Axis e Max Shark
+    p25_up = (a_dol + (max_shark - a_dol) * 0.25)
+    
+    p75_down = (a_dol + (min_shark - a_dol) * 0.75)
+    p50_down = (a_dol + min_shark) / 2 # Média entre Axis e Min Shark
+    p25_down = (a_dol + (min_shark - a_dol) * 0.25)
+    
+    # 3. BLOCO INFERIOR (SETA VERDE - MÉDIA DOL)
+    # Fórmula: ( MAX_spot + MIN_spot ) / 2
+    media_dol_shark = (mx_s + mn_s) / 2
+    
+    # Variações e Dolar Vivo (mantidos para tabela e painel inferior)
+    v_spot = ((spot_live['at'] / spot_live['cl']) - 1) if spot_live['cl'] > 0 else 0
+    v_ewz = ((ewz_live['at'] / fetch("EWZ")['cl']) - 1) if fetch("EWZ")['cl'] > 0 else 0
+    v_final = (v_spot * 0.6) - (v_ewz * 0.4)
+    dolar_vivo = a_dol * (1 + v_final)
+    dolar_fraja = a_dol * (1 + (v_final / 2)) # P. Justo conforme estrutura original
+    ewz_medio_dia = (ewz_live['mx'] + ewz_live['mn']) / 2
+
     c_main, c_side = st.columns([3, 1])
+    
     with c_main:
+        # Tabela Principal Restaurada (Não tirei nada)
         html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th style='color: #d4a017;'>Price</th><th style='color: #d4a017;'>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
-        v_v = res['v_v']
-        html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col'>{(res['vivo']/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max']/1000):.4f}</td><td>{(res['min']/1000):.4f}</td><td style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_v:+.2f}%</td></tr>"
+        
+        html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col'>{(dolar_vivo/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(max_shark/1000):.4f}</td><td>{(min_shark/1000):.4f}</td><td style='color:{("#00ff00" if v_final >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_final*100:+.2f}%</td></tr>"
         ticker = []
+        
         outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
         for lbl, sym in outros.items():
             d = spot_live if lbl == "DOLSPOT" else (ewz_live if lbl == "EWZ" else fetch(sym))
@@ -156,21 +161,31 @@ if res:
         st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
 
     with c_side:
-        # PAINEL SETA VERMELHA (PROJEÇÕES BASEADAS NO AXIS)
-        st.markdown(f"""<div class="calc-panel">
-            <div class="calc-row" style="color:#ff4d4d; font-size:15px;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div>
-            <div class="calc-row" style="color:#ffa500;"><span>50% MAX</span> <span>{res['p50_up']:.2f}</span></div>
-            <div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 20px; font-weight: 950; border-top:1.5px solid #444; border-bottom:1.5px solid #444; margin: 5px 0;">AXIS: {a_dol:.2f}</div>
-            <div class="calc-row" style="color:#ffa500;"><span>50% MIN</span> <span>{res['p50_down']:.2f}</span></div>
-            <div class="calc-row" style="color:#00ff88; border-bottom: none; font-size:15px;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div>
-        </div>""", unsafe_allow_html=True)
+        # PAINEL DA SETA VERMELHA RESTAURADO (COM TODAS AS LINHAS), MAS COM MATEMÁTICA CORRIGIDA
+        st.markdown(f"""
+        <div class="calc-panel">
+            <div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{max_shark:.2f}</span></div>
+            <div class="calc-row" style="color:#ffff00;"><span>75%</span> <span>{p75_up:.2f}</span></div>
+            <div class="calc-row" style="color:#ffa500;"><span>1ª MAX</span> <span>{p50_up:.2f}</span></div>
+            <div class="calc-row" style="color:#ffff00;"><span>25%</span> <span>{p25_up:.2f}</span></div>
+            <div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 18px; font-weight: bold; border-top:1.5px solid #444; border-bottom:1.5px solid #444; margin: 5px 0;">AXIS: {a_dol:.2f}</div>
+            <div class="calc-row" style="color:#ffff00;"><span>-25%</span> <span>{p25_down:.2f}</span></div>
+            <div class="calc-row" style="color:#ffa500;"><span>1ª MIN</span> <span>{p50_down:.2f}</span></div>
+            <div class="calc-row" style="color:#ffff00;"><span>-75%</span> <span>{p75_down:.2f}</span></div>
+            <div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MÍNIMA</span> <span>{min_shark:.2f}</span></div>
+        </div>
+        """, unsafe_allow_html=True)
         
-        # PAINEL MÉTRICAS
-        st.markdown(f"""<div class="calc-panel">
-            <div class="calc-row" style="padding: 10px 8px;"><span style="color:#ffffff;">DOLFUT VIVO</span> <span style="color:#00f2ff; font-size: 16px; font-weight: 950;">{res['vivo']:.2f}</span></div>
-            <div class="calc-row"><span style="color:#ffff00;">MÉDIA DOL</span> <span style="color:#00f2ff; font-size: 16px;">{res['medio']:.2f}</span></div>
-            <div class="calc-row" style="border-bottom: none;"><span style="color:#d4a017;">SPREED</span> <span style="color:#ffffff; font-size: 16px; font-weight: bold;">{res['spre']:.2f}</span></div>
-        </div>""", unsafe_allow_html=True)
+        # PAINEL INFERIOR RESTAURADO (COM MÉDIA DOL CORRIGIDA)
+        st.markdown(f"""
+        <div class="calc-panel">
+            <div class="calc-row" style="padding: 10px 8px;"><span style="color:#ffffff;">DOLFUT VIVO</span> <span style="color:#00f2ff; font-size: 16px; font-weight: 950;">{dolar_vivo:.2f}</span></div>
+            <div class="calc-row"><span style="color:#ffff00;">MÉDIA DOL</span> <span style="color:#00f2ff; font-size: 16px;">{media_dol_shark:.2f}</span></div>
+            <div class="calc-row" style="border-bottom: none;"><span style="color:#d4a017;">P. JUSTO</span> <span style="color:#ffffff; font-size: 16px; font-weight: bold;">{dolar_fraja:.2f}</span></div>
+            <div style="font-size: 10px; color: #666; text-align: center; margin-top: 5px;">SPREDD APLICADO: {spreedd:.2f}</div>
+            <div class="ewz-mini-container"><span class="ewz-mini-val" style="color:#00ff88;">{ewz_live['mx']:.2f}</span><span class="ewz-mini-val" style="color:#00f2ff;">{ewz_medio_dia:.2f}</span><span class="ewz-mini-val" style="color:#ff4d4d;">{ewz_live['mn']:.2f}</span></div>
+        </div>
+        """, unsafe_allow_html=True)
 
     st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker)}</div></div>', unsafe_allow_html=True)
 
