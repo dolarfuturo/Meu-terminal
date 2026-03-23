@@ -20,27 +20,28 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- BUSCA DE DADOS (SPOT) ---
+# --- BUSCA DE DADOS ---
 def get_spot():
     try:
         t = yf.Ticker("USDBRL=X")
         d = t.history(period="1d", interval="1m")
         if d.empty: return {"mx": 0.0, "mn": 0.0}
-        # Multiplicado por 1000 para escala de milhar
-        return {"mx": d['High'].max() * 1000, "mn": d['Low'].min() * 1000}
+        # VALOR BRUTO DO YAHOO (SEM MULTIPLICAR)
+        return {"mx": d['High'].max(), "mn": d['Low'].min()}
     except: return {"mx": 0.0, "mn": 0.0}
 
 # --- ENTRADA DE DADOS ---
 with st.sidebar:
+    st.header("⚙️ CONFIGURAÇÃO")
     a_dol = st.number_input("AXIS DOLFUT:", value=5308.00)
     st.button("ATUALIZAR")
 
 spot = get_spot()
 
 if spot["mx"] > 0:
-    # --- EXECUÇÃO DAS SUAS INSTRUÇÕES ---
+    # --- EXECUÇÃO DIRETA DO SEU COMANDO ---
     
-    # 1. SPREED (Amplitude do spot / 8)
+    # 1. SPREED
     v_spreed = (spot['mx'] - spot['mn']) / 8
     
     # 2. MÁXIMA = AXIS + MAX SPOT + SPREED
@@ -66,8 +67,8 @@ if spot["mx"] > 0:
                 <tr>
                     <td style="color:#fff; font-weight:bold;">DOLFUT</td>
                     <td class="price-col">{a_dol:.2f}</td>
-                    <td>{spot['mx']:.2f}</td>
-                    <td>{spot['mn']:.2f}</td>
+                    <td>{spot['mx']:.4f}</td>
+                    <td>{spot['mn']:.4f}</td>
                 </tr>
             </table>
         </div>
@@ -83,10 +84,9 @@ if spot["mx"] > 0:
             <div class="calc-row" style="color:#00ff88; border-bottom:none;"><span>MÍNIMA</span> <span>{min_final:.2f}</span></div>
         </div>
         <div class="calc-panel" style="margin-top:10px;">
-            <div class="calc-row" style="border-bottom:none;"><span>SPREED</span> <span style="color:#00f2ff;">{v_spreed:.2f}</span></div>
+            <div class="calc-row" style="border-bottom:none;"><span>SPREED</span> <span style="color:#00f2ff;">{v_spreed:.4f}</span></div>
         </div>
         """, unsafe_allow_html=True)
 
-# Auto-refresh
 time.sleep(5)
 st.rerun()
