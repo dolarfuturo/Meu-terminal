@@ -7,7 +7,7 @@ import pytz
 # Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLLAR")
 
-# --- CSS: ESTILIZAÇÃO COMPACTA ---
+# --- CSS: ESTILIZAÇÃO ---
 st.markdown("""
 <style>
     .stApp { background-color: #050a0e !important; }
@@ -18,19 +18,10 @@ st.markdown("""
     .asset-name { font-size: 17px; color: #fff; text-align: left; font-weight: bold; padding-left: 15px; }
     .price-col { color: #00f2ff !important; font-weight: bold; }
     .header-bair { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 2.5px solid #ffffff; margin-bottom: 12px; }
-    .title-box { display: flex; align-items: center; gap: 8px; line-height: 1; }
-    .bair-text { font-size: 46px; color: #00f2ff; font-weight: 950; font-family: 'monospace'; letter-spacing: -1px; } 
-    .sep-text { font-size: 46px; color: #ffffff; font-weight: 950; margin: 0 5px; }
-    .terminal-text { font-size: 46px; color: #d4a017; font-weight: 950; font-family: 'monospace'; letter-spacing: -1px; }
-    .clock-container { display: flex; gap: 10px; color: #888; font-family: 'monospace'; }
-    .clock-box { text-align: center; border: 1.5px solid #ffffff; padding: 4px 10px; border-radius: 4px; background: #0a141a; min-width: 95px; }
-    .clock-label { font-size: 10px; color: #d4a017; font-weight: bold; display: block; text-transform: uppercase; margin-bottom: 2px; }
-    .clock-time { color: #fff; font-size: 17px; font-weight: bold; display: block; }
+    .bair-text { font-size: 46px; color: #00f2ff; font-weight: 950; font-family: 'monospace'; } 
+    .terminal-text { font-size: 46px; color: #d4a017; font-weight: 950; font-family: 'monospace'; }
     .calc-panel { border: 2.5px solid #ffffff; border-radius: 8px; padding: 8px; background: #0a141a; font-family: monospace; margin-bottom: 10px; }
-    .calc-row { display: flex; justify-content: space-between; padding: 8px 8px; border-bottom: 1px solid #444; font-size: 14px; font-weight: bold; align-items: center; }
-    .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 2px solid #ffffff; border-bottom: 2px solid #ffffff; padding: 8px 0; overflow: hidden; white-space: nowrap; margin-top: 15px; }
-    .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 14px; font-weight: bold; }
-    @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
+    .calc-row { display: flex; justify-content: space-between; padding: 10px 8px; border-bottom: 1px solid #444; font-size: 14px; font-weight: bold; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -39,86 +30,77 @@ def fetch(s):
     try:
         t = yf.Ticker(s)
         d = t.history(period="1d", interval="1m", prepost=True)
-        cl = t.info.get('previousClose', d['Close'].iloc[0] if not d.empty else 0)
-        if d.empty: return {"at": 0.0, "cl": cl, "mx": 0.0, "mn": 0.0, "op": 0.0}
-        return {"at": d['Close'].iloc[-1], "cl": cl, "op": d['Open'].iloc[0], "mx": d['High'].max(), "mn": d['Low'].min()}
+        if d.empty: return {"at": 0.0, "cl": 0.0, "mx": 0.0, "mn": 0.0, "op": 0.0}
+        return {"at": d['Close'].iloc[-1], "cl": t.info.get('previousClose', d['Close'].iloc[0]), "mx": d['High'].max(), "mn": d['Low'].min()}
     except: return {"at": 0.0, "cl": 0.0, "mx": 0.0, "mn": 0.0, "op": 0.0}
 
-def calcular_k97_total(a_dol, spot_data):
+# --- CÁLCULOS SOLICITADOS ---
+def calcular_terminal(a_dol, spot):
     try:
-        # Converter spot para escala milhar
-        s_at = spot_data['at'] * 1000
-        s_mx = spot_data['mx'] * 1000
-        s_mn = spot_data['mn'] * 1000
-        s_cl = spot_data['cl'] * 1000
-
-        # --- REGRAS DO USUÁRIO ---
-        spreed = (s_mx - s_mn) / 8
-        max_fut = a_dol + s_mx + spreed
-        min_fut = a_dol - s_mn + spreed
-        dolar_medio = (s_mx + s_mn) / 2
+        # Pega os valores reais do spot (ex: 5.31)
+        s_mx = spot['mx']
+        s_mn = spot['mn']
         
-        # Dolfut Vivo (Variação Spot aplicada ao AXIS)
-        v_final = (s_at / s_cl) - 1 if s_cl > 0 else 0
-        dolar_vivo = a_dol * (1 + v_final)
-
+        # 1. SPREED = (Max - Min / 8 do spot)
+        spreed = (s_mx - s_mn) / 8
+        
+        # 2. MAX FUT = AXIS + Max do spot + SPREED
+        max_fut = a_dol + s_mx + spreed
+        
+        # 3. MIN FUT = AXIS - Min do spot + SPREED
+        min_fut = a_dol - s_mn + spreed
+        
+        # 4. MEDIA DOL = (Max + Min do spot / 2)
+        media_dol = (s_mx + s_mn) / 2
+        
+        # Para o Dolfut Vivo, mantemos a variação do Spot aplicada ao AXIS
+        var_spot = (spot['at'] / spot['cl']) - 1 if spot['cl'] > 0 else 0
+        dolfut_vivo = a_dol * (1 + var_spot)
+        
         return {
-            "vivo": dolar_vivo,
-            "medio": dolar_medio, 
-            "max": max_fut, 
-            "min": min_fut, 
-            "v_v": v_final * 100,
-            "p50_up": (a_dol + max_fut) / 2,
-            "p50_down": (a_dol + min_fut) / 2
+            "max": max_fut,
+            "min": min_fut,
+            "medio": media_dol,
+            "vivo": dolfut_vivo,
+            "p50_max": (a_dol + max_fut) / 2,
+            "p50_min": (a_dol + min_fut) / 2,
+            "var": var_spot * 100
         }
     except: return None
 
-# --- PAINEL ADM ---
+# --- UI ---
 with st.sidebar:
-    st.markdown("### ⚙️ PAINEL ADM")
     a_dol = st.number_input("AXIS DOLFUT:", value=5308.00, format="%.2f")
 
-# --- UI HEADER ---
-tz_sp = pytz.timezone('America/Sao_Paulo')
-st.markdown(f"""<div class="header-bair"><div class="title-box"><span class="bair-text">BAIR</span><span class="sep-text">-</span><span class="terminal-text">TERMINAL DOLLAR</span></div><div class="clock-container"><div class="clock-box"><span class="clock-label">BRASÍLIA</span><span class="clock-time">{datetime.now(tz_sp).strftime('%H:%M')}</span></div></div></div>""", unsafe_allow_html=True)
+st.markdown(f"""<div class="header-bair"><div><span class="bair-text">BAIR</span><span style="color:white; font-size:46px;">-</span><span class="terminal-text">TERMINAL</span></div></div>""", unsafe_allow_html=True)
 
-spot_live = fetch("USDBRL=X")
-res = calcular_k97_total(a_dol, spot_live)
+spot_data = fetch("USDBRL=X")
+res = calcular_terminal(a_dol, spot_data)
 
 if res:
-    c_main, c_side = st.columns([3, 1])
-    with c_main:
-        html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th style='color: #d4a017;'>Price</th><th style='color: #d4a017;'>Close</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
-        html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col'>{res['vivo']:.2f}</td><td>{a_dol:.2f}</td><td>{res['max']:.2f}</td><td>{res['min']:.2f}</td><td style='color:{("#00ff00" if res['v_v'] >= 0 else "#ff4d4d")}; font-weight:bold;'>{res['v_v']:+.2f}%</td></tr>"
-        
-        outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ"}
-        ticker = []
-        for lbl, sym in outros.items():
-            d = spot_live if lbl == "DOLSPOT" else fetch(sym)
-            var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
-            color = "#00ff00" if var >= 0 else "#ff4d4d"
-            html_table += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col'>{d['at']:.4f}</td><td>{d['cl']:.4f}</td><td>{d['mx']:.4f}</td><td>{d['mn']:.4f}</td><td style='color:{color}; font-weight:bold;'>{var:+.2f}%</td></tr>"
-            ticker.append(f"<span style='color:#fff;'>{lbl}:</span> <span style='color:{color};'>{var:+.2f}%</span>")
-        
-        st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
+    c1, c2 = st.columns([3, 1])
+    with c1:
+        # Tabela Principal
+        html = f"""<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Max Spot</th><th>Min Spot</th><th>Var %</th></tr></thead><tbody>
+        <tr><td class="asset-name">DOLFUT (Calculado)</td><td class="price-col">{res['vivo']:.2f}</td><td>{spot_data['mx']:.4f}</td><td>{spot_data['mn']:.4f}</td><td>{res['var']:+.2f}%</td></tr>
+        </tbody></table></div>"""
+        st.markdown(html, unsafe_allow_html=True)
 
-    with c_side:
-        # BLOCO SETA VERMELHA (LIMPO)
+    with c2:
+        # BLOCO SETA VERMELHA
         st.markdown(f"""<div class="calc-panel">
             <div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div>
-            <div class="calc-row" style="color:#ffa500;"><span>1ª MAX (50%)</span> <span>{res['p50_up']:.2f}</span></div>
-            <div style="text-align:center; padding: 15px; color: #00f2ff; font-size: 20px; font-weight: bold; border-top:1.5px solid #ffffff; border-bottom:1.5px solid #ffffff; margin: 10px 0;">AXIS: {a_dol:.2f}</div>
-            <div class="calc-row" style="color:#ffa500;"><span>1ª MIN (50%)</span> <span>{res['p50_down']:.2f}</span></div>
-            <div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div>
+            <div class="calc-row" style="color:#ffa500;"><span>50% ALVO</span> <span>{res['p50_max']:.2f}</span></div>
+            <div style="text-align:center; padding:15px; color:#00f2ff; font-size:20px; font-weight:bold; border-y:2px solid #fff; margin:10px 0;">AXIS: {a_dol:.2f}</div>
+            <div class="calc-row" style="color:#ffa500;"><span>50% ALVO</span> <span>{res['p50_min']:.2f}</span></div>
+            <div class="calc-row" style="color:#00ff88; border-bottom:none;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div>
         </div>""", unsafe_allow_html=True)
         
-        # BLOCO SETA VERDE (MÉDIA DOL CORRIGIDA)
+        # BLOCO SETA VERDE
         st.markdown(f"""<div class="calc-panel">
-            <div class="calc-row" style="padding: 10px 8px;"><span style="color:#ffffff;">DOLFUT VIVO</span> <span style="color:#00f2ff; font-size: 16px; font-weight: 950;">{res['vivo']:.2f}</span></div>
-            <div class="calc-row" style="border-bottom: none; background: #0a221a;"><span style="color:#ffff00;">MÉDIA DOL</span> <span style="color:#00f2ff; font-size: 16px;">{res['medio']:.2f}</span></div>
+            <div class="calc-row"><span>DOLFUT VIVO</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div>
+            <div class="calc-row" style="border-bottom:none; background:#112211;"><span style="color:#ffff00;">MÉDIA DOL</span> <span style="color:#00f2ff;">{res['medio']:.4f}</span></div>
         </div>""", unsafe_allow_html=True)
-
-    st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker)}</div></div>', unsafe_allow_html=True)
 
 time.sleep(5)
 st.rerun()
