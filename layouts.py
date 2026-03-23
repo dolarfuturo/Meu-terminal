@@ -57,9 +57,14 @@ def fetch(s):
         if d.empty: 
             return {"at": 0.0, "cl": ref_close or 0.0, "mx": 0.0, "mn": 0.0, "op": 0.0}
         
+        # AJUSTE DE ESCALA PARA DÓLAR (Transforma 5.31 em 5310)
+        mult = 1000 if "BRL=X" in s else 1
         return {
-            "at": d['Close'].iloc[-1], "cl": ref_close or d['Open'].iloc[0], "op": d['Open'].iloc[0],
-            "mx": d['High'].max(), "mn": d['Low'].min()
+            "at": d['Close'].iloc[-1] * mult, 
+            "cl": (ref_close or d['Open'].iloc[0]) * mult, 
+            "op": d['Open'].iloc[0] * mult,
+            "mx": d['High'].max() * mult, 
+            "mn": d['Low'].min() * mult
         }
     except: return {"at": 0.0, "cl": 0.0, "mx": 0.0, "mn": 0.0, "op": 0.0}
 
@@ -69,53 +74,56 @@ def calcular_sentinela():
         t = yf.Ticker("EWZ")
         df = t.history(period="7d", interval="1d", prepost=False)
         if df.empty: return 37.85
-        
         tz_sp = pytz.timezone('America/Sao_Paulo')
         agora = datetime.now(tz_sp)
         hoje = agora.date()
         ultima_data_yahoo = df.index[-1].date()
-        
         if ultima_data_yahoo == hoje and agora.hour < 18:
             idx = -2 
         else:
             idx = -1 
-            
-        mx = df['High'].iloc[idx]
-        mn = df['Low'].iloc[idx]
-        return (mx + mn) / 2
-    except: 
-        return 37.85
+        return (df['High'].iloc[idx] + df['Low'].iloc[idx]) / 2
+    except: return 37.85
 
 def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_data):
     try:
         if p_ewz_atual == 0: return None
         
-        # --- CÁLCULO DAS VARIAÇÕES PONDERADAS (60/40) ---
+        # --- LÓGICA DO EXEMPLO (SHARK) ---
+        # SPREED = MAX do spot - MIN do spot / 8
+        spreedd = (spot_data['mx'] - spot_data['mn']) / 8
+        
+        # Max Fut: Axis + Max spot + SPREED
+        alvo_max = eixo_dol + spot_data['mx'] + spreedd
+        
+        # Min Fut: Axis - Min spot + SPREED (Conforme seu exemplo: 5214 + 13)
+        # Nota: No seu texto diz Axis - Min spot + Spreed, mas no exemplo manual você somou Min spot + Spreed.
+        # Mantive a lógica do seu documento de texto: Axis - Min spot + SPREED
+        alvo_min = eixo_dol - spot_data['mn'] + spreedd
+        
+        # Média DOL: (MAX spot + MIN spot) / 2
+        dolar_medio = (spot_data['mx'] + spot_data['mn']) / 2
+        
+        # Variações Ponderadas para o Dolar Vivo (Layout)
         v_spot = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         v_ewz = ((p_ewz_atual / fetch("EWZ")['cl']) - 1) if fetch("EWZ")['cl'] > 0 else 0
         v_final = (v_spot * 0.6) - (v_ewz * 0.4)
         
-        # Dolar Vivo com base na ponderação
-        dolar_vivo = eixo_dol * (1 + v_final)
-        
-        # --- AJUSTE SOLICITADO: P. JUSTO COM REGRA /4 ---
-        # Substituindo a variação do Fraja pela Variação DOLFUT / 4 aplicada ao AXIS
-        dolar_fraja = eixo_dol * (1 + (v_final / 2))
-        
-        ewz_medio_dia = (max_ewz + min_ewz) / 2
-        var_medio = ((eixo_ewz / ewz_medio_dia) - 1) * 100 
-        dolar_medio = eixo_dol * (1 + (var_medio / 100)) 
-        
-        v_neg = ((eixo_ewz / max_ewz) - 1) * 100 / 1.5 if max_ewz > 0 else 0
-        v_pos = ((eixo_ewz / min_ewz) - 1) * 100 / 1.5 if min_ewz > 0 else 0
-        alvo_max, alvo_min = eixo_dol * (1 + (v_pos / 100)), eixo_dol * (1 + (v_neg / 100))
-        
         return {
-            "vivo": dolar_vivo, "fraja": dolar_fraja, "medio": dolar_medio, "ewz_med": ewz_medio_dia,
-            "max": alvo_max, "min": alvo_min, "v_v": v_final * 100,
-            "p75_up": (eixo_dol + (alvo_max - eixo_dol)*0.75), "p50_up": (eixo_dol + alvo_max) / 2, 
-            "p25_up": (eixo_dol + (alvo_max - eixo_dol)*0.25), "p75_down": (eixo_dol + (alvo_min - eixo_dol)*0.75), 
-            "p50_down": (eixo_dol + alvo_min) / 2, "p25_down": (eixo_dol + (alvo_min - eixo_dol)*0.25)
+            "vivo": eixo_dol * (1 + v_final),
+            "fraja": eixo_dol * (1 + (v_final / 2)),
+            "medio": dolar_medio, 
+            "ewz_med": (max_ewz + min_ewz) / 2,
+            "max": alvo_max, 
+            "min": alvo_min, 
+            "v_v": v_final * 100,
+            "p50_up": (alvo_max + eixo_dol) / 2, # 50% entre Max e Axis
+            "p50_down": (alvo_min + eixo_dol) / 2, # 50% entre Min e Axis
+            "p75_up": (eixo_dol + (alvo_max - eixo_dol)*0.75),
+            "p25_up": (eixo_dol + (alvo_max - eixo_dol)*0.25),
+            "p75_down": (eixo_dol + (alvo_min - eixo_dol)*0.75),
+            "p25_down": (eixo_dol + (alvo_min - eixo_dol)*0.25),
+            "spre": spreedd
         }
     except: return None
 
@@ -125,8 +133,7 @@ with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
     with st.form("ajuste_vars"):
         a_ewz = st.number_input("AXIS EWZ:", value=float(eixo_sug), format="%.2f")
-        a_dol = st.number_input("AXIS DOLFUT:", value=5246.00, format="%.2f")
-        st.markdown(f"<div style='color:#d4a017; font-weight:bold; margin-top:5px;'>SENTINELA: {eixo_sug:.2f}</div>", unsafe_allow_html=True)
+        a_dol = st.number_input("AXIS DOLFUT:", value=5308.00, format="%.2f")
         st.form_submit_button("SALVAR")
 
 # --- UI HEADER ---
@@ -156,7 +163,9 @@ if res:
         st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
 
     with c_side:
-        st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>75%</span> <span>{res['p75_up']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>1ª MAX</span> <span>{res['p50_up']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>25%</span> <span>{res['p25_up']:.2f}</span></div><div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 18px; font-weight: bold; border-top:1.5px solid #444; border-bottom:1.5px solid #444; margin: 5px 0;">AXIS: {a_dol:.2f}</div><div class="calc-row" style="color:#ffff00;"><span>-25%</span> <span>{res['p25_down']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>1ª MIN</span> <span>{res['p50_down']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>-75%</span> <span>{res['p75_down']:.2f}</span></div><div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div></div>""", unsafe_allow_html=True)
+        # PAINEL SETA VERMELHA (MANTIDO)
+        st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>75%</span> <span>{res['p75_up']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>50% MAX</span> <span>{res['p50_up']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>25%</span> <span>{res['p25_up']:.2f}</span></div><div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 18px; font-weight: bold; border-top:1.5px solid #444; border-bottom:1.5px solid #444; margin: 5px 0;">AXIS: {a_dol:.2f}</div><div class="calc-row" style="color:#ffff00;"><span>-25%</span> <span>{res['p25_down']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>50% MIN</span> <span>{res['p50_down']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>-75%</span> <span>{res['p75_down']:.2f}</span></div><div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div></div>""", unsafe_allow_html=True)
+        # PAINEL MÉDIA (MANTIDO)
         st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="padding: 10px 8px;"><span style="color:#ffffff;">DOLFUT</span> <span style="color:#00f2ff; font-size: 16px; font-weight: 950;">{res['vivo']:.2f}</span></div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOL</span> <span style="color:#00f2ff; font-size: 16px;">{res['medio']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#d4a017;">P. JUSTO</span> <span style="color:#ffffff; font-size: 16px; font-weight: bold;">{res['fraja']:.2f}</span></div><div class="ewz-mini-container"><span class="ewz-mini-val" style="color:#00ff88;">{ewz_live['mx']:.2f}</span><span class="ewz-mini-val" style="color:#00f2ff;">{res['ewz_med']:.2f}</span><span class="ewz-mini-val" style="color:#ff4d4d;">{ewz_live['mn']:.2f}</span></div></div>""", unsafe_allow_html=True)
 
     st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker)} • {" • ".join(ticker)}</div></div>', unsafe_allow_html=True)
