@@ -92,18 +92,15 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         v_ewz = ((p_ewz_atual / fetch("EWZ")['cl']) - 1) if fetch("EWZ")['cl'] > 0 else 0
         v_final = (v_spot * 0.6) - (v_ewz * 0.4)
         
-        dolar_vivo = spot_data['at'] # Mantendo DOLFUT baseado no Spot atual conforme terminal
+        dolar_vivo = spot_data['at'] 
         dolar_fraja = eixo_dol * (1 + (v_final / 2))
         
-        # --- AJUSTES CONFORME IMAGEM E INSTRUÇÃO ---
-        dolar_medio = (spot_data['mx'] + spot_data['mx']) / 2 # (MAX SPOT + MAX SPOT) / 2
+        # --- AJUSTE SOLICITADO: MÉDIA DOL = (MAX SPOT + MIN SPOT) / 2 ---
+        dolar_medio = (spot_data['mx'] + spot_data['mn']) / 2
         
-        # MÁXIMA FINAL = MAX SPOT + SPREED
+        # --- CÁLCULOS DA IMAGEM ---
         alvo_max = spot_data['mx'] + v_spreed
-        # MÍNIMA FINAL = MIN SPOT + SPREED
         alvo_min = spot_data['mn'] + v_spreed
-        
-        # 50% = (ALVO + AXIS) / 2
         p50_up = (alvo_max + eixo_dol) / 2
         p50_down = (alvo_min + eixo_dol) / 2
         
@@ -152,9 +149,9 @@ if res:
         st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
 
     with c_side:
-        # PAINEL LATERAL AJUSTADO CONFORME IMAGEM (SOMENTE MÁXIMA, 50%, AXIS, 50%, MÍNIMA)
+        # PAINEL LATERAL LIMPO
         st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>50% Alta</span> <span>{res['p50_up']:.2f}</span></div><div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 18px; font-weight: bold; border-top:1.5px solid #444; border-bottom:1.5px solid #444; margin: 5px 0;">AXIS: {a_dol:.2f}</div><div class="calc-row" style="color:#ffa500;"><span>50% Baixa</span> <span>{res['p50_down']:.2f}</span></div><div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div></div>""", unsafe_allow_html=True)
-        # PAINEL INFERIOR
+        # PAINEL INFERIOR COM EWZ MINI
         st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="padding: 10px 8px;"><span style="color:#ffffff;">DOLFUT</span> <span style="color:#00f2ff; font-size: 16px; font-weight: 950;">{res['vivo']:.2f}</span></div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOL</span> <span style="color:#00f2ff; font-size: 16px;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">P. JUSTO</span> <span style="color:#ffffff; font-size: 16px; font-weight: bold;">{res['fraja']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff; font-size: 16px; font-weight: bold;">{res['spreed']:.2f}</span></div><div class="ewz-mini-container"><span class="ewz-mini-val" style="color:#00ff88;">{ewz_live['mx']:.2f}</span><span class="ewz-mini-val" style="color:#00f2ff;">{res['ewz_med']:.2f}</span><span class="ewz-mini-val" style="color:#ff4d4d;">{ewz_live['mn']:.2f}</span></div></div>""", unsafe_allow_html=True)
 
     st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker)} • {" • ".join(ticker)}</div></div>', unsafe_allow_html=True)
