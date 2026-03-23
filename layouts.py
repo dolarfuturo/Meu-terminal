@@ -28,6 +28,14 @@ st.markdown("""
     .clock-time { color: #fff; font-size: 17px; font-weight: bold; display: block; }
     .calc-panel { border: 2.5px solid #ffffff; border-radius: 8px; padding: 8px; background: #0a141a; font-family: monospace; margin-bottom: 10px; }
     .calc-row { display: flex; justify-content: space-between; padding: 5px 8px; border-bottom: 1px solid #444; font-size: 13px; font-weight: bold; align-items: center; }
+    
+    /* ESTILO DA BARRA DE FORÇA E SINAIS */
+    .force-container { background: #111; border: 1px solid #444; height: 16px; width: 100%; border-radius: 8px; position: relative; overflow: hidden; margin: 8px 0; }
+    .force-bar { height: 100%; transition: width 0.4s ease-in-out; }
+    .sinal-indicator { font-size: 32px; font-weight: bold; line-height: 1; margin-top: 5px; }
+    .blink { animation: blinker 1s linear infinite; }
+    @keyframes blinker { 50% { opacity: 0.2; } }
+
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 2px solid #ffffff; border-bottom: 2px solid #ffffff; padding: 8px 0; overflow: hidden; white-space: nowrap; margin-top: 15px; }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 14px; font-weight: bold; }
     @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
@@ -84,30 +92,43 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
     try:
         if p_ewz_atual == 0: return None
         
-        # --- CÁLCULO SPREED ---
         v_spreed = (spot_data['mx'] - spot_data['mn']) / 8
-        
-        # --- CÁLCULO DAS VARIAÇÕES PONDERADAS (60/40) ---
         v_spot = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         v_ewz = ((p_ewz_atual / fetch("EWZ")['cl']) - 1) if fetch("EWZ")['cl'] > 0 else 0
         v_final = (v_spot * 0.6) - (v_ewz * 0.4)
         
         dolar_vivo = spot_data['at'] 
         dolar_fraja = eixo_dol * (1 + (v_final / 2))
-        
-        # --- AJUSTE SOLICITADO: MÉDIA DOL = (MAX SPOT + MIN SPOT) / 2 ---
         dolar_medio = (spot_data['mx'] + spot_data['mn']) / 2
-        
-        # --- CÁLCULOS DA IMAGEM ---
         alvo_max = spot_data['mx'] + v_spreed
         alvo_min = spot_data['mn'] + v_spreed
         p50_up = (alvo_max + eixo_dol) / 2
         p50_down = (alvo_min + eixo_dol) / 2
+
+        # --- LÓGICA DE FORÇA DO SPOT ---
+        if spot_data['at'] >= eixo_dol:
+            range_total = alvo_max - eixo_dol
+            pct_forca = min(100, max(0, ((spot_data['at'] - eixo_dol) / range_total) * 100)) if range_total > 0 else 0
+            cor_forca = "#ff4d4d"
+        else:
+            range_total = eixo_dol - alvo_min
+            pct_forca = min(100, max(0, ((eixo_dol - spot_data['at']) / range_total) * 100)) if range_total > 0 else 0
+            cor_forca = "#00ff00"
+
+        # --- LÓGICA DAS SETAS ---
+        seta_txt, seta_cor = "•", "#888"
+        # 1. SPOT ACIMA DA MÍNIMA DO FUTURO E APONTANDO PRA CIMA
+        if spot_data['at'] > alvo_min:
+            seta_txt, seta_cor = "▲ COMPRA", "#00ff00"
+        # 2. SPOT ABAIXO DE 50% DE ALTA E APONTANDO PRA BAIXO
+        if spot_data['at'] < p50_up and spot_data['at'] > eixo_dol:
+            seta_txt, seta_cor = "▼ VENDA", "#ff4d4d"
         
         return {
             "vivo": dolar_vivo, "fraja": dolar_fraja, "medio": dolar_medio, "ewz_med": (max_ewz + min_ewz) / 2,
             "max": alvo_max, "min": alvo_min, "v_v": v_final * 100, "spreed": v_spreed,
-            "p50_up": p50_up, "p50_down": p50_down
+            "p50_up": p50_up, "p50_down": p50_down,
+            "forca_pct": pct_forca, "forca_cor": cor_forca, "seta": seta_txt, "seta_cor": seta_cor
         }
     except: return None
 
@@ -118,7 +139,6 @@ with st.sidebar:
     with st.form("ajuste_vars"):
         a_ewz = st.number_input("AXIS EWZ:", value=float(eixo_sug), format="%.2f")
         a_dol = st.number_input("AXIS DOLFUT:", value=5246.00, format="%.2f")
-        st.markdown(f"<div style='color:#d4a017; font-weight:bold; margin-top:5px;'>SENTINELA: {eixo_sug:.2f}</div>", unsafe_allow_html=True)
         st.form_submit_button("SALVAR")
 
 # --- UI HEADER ---
@@ -149,10 +169,22 @@ if res:
         st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
 
     with c_side:
-        # PAINEL LATERAL LIMPO
+        # PAINEL LATERAL 1: ALVOS
         st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>50% Alta</span> <span>{res['p50_up']:.2f}</span></div><div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 18px; font-weight: bold; border-top:1.5px solid #444; border-bottom:1.5px solid #444; margin: 5px 0;">AXIS: {a_dol:.2f}</div><div class="calc-row" style="color:#ffa500;"><span>50% Baixa</span> <span>{res['p50_down']:.2f}</span></div><div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div></div>""", unsafe_allow_html=True)
-        # PAINEL INFERIOR COM EWZ MINI
+        
+        # PAINEL LATERAL 2: DADOS E EWZ
         st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="padding: 10px 8px;"><span style="color:#ffffff;">DOLFUT</span> <span style="color:#00f2ff; font-size: 16px; font-weight: 950;">{res['vivo']:.2f}</span></div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOL</span> <span style="color:#00f2ff; font-size: 16px;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">P. JUSTO</span> <span style="color:#ffffff; font-size: 16px; font-weight: bold;">{res['fraja']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff; font-size: 16px; font-weight: bold;">{res['spreed']:.2f}</span></div><div class="ewz-mini-container"><span class="ewz-mini-val" style="color:#00ff88;">{ewz_live['mx']:.2f}</span><span class="ewz-mini-val" style="color:#00f2ff;">{res['ewz_med']:.2f}</span><span class="ewz-mini-val" style="color:#ff4d4d;">{ewz_live['mn']:.2f}</span></div></div>""", unsafe_allow_html=True)
+
+        # NOVO BLOCO: BARRA DE FORÇA E SETA (FORA DO BLOCO DO SPREED)
+        st.markdown(f"""
+        <div style="text-align: center; margin-top: 15px; font-family: monospace;">
+            <span style="color:#d4a017; font-size:11px; font-weight:bold;">PRESSÃO SPOT (EXAUSTÃO)</span>
+            <div class="force-container">
+                <div class="force-bar" style="width: {res['forca_pct']}%; background-color: {res['forca_cor']};"></div>
+            </div>
+            <div class="sinal-indicator blink" style="color:{res['seta_cor']};">{res['seta']}</div>
+        </div>
+        """, unsafe_allow_html=True)
 
     st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker)} • {" • ".join(ticker)}</div></div>', unsafe_allow_html=True)
 
