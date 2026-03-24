@@ -29,7 +29,7 @@ st.markdown("""
     .calc-panel { border: 2.5px solid #ffffff; border-radius: 8px; padding: 8px; background: #0a141a; font-family: monospace; margin-bottom: 10px; }
     .calc-row { display: flex; justify-content: space-between; padding: 5px 8px; border-bottom: 1px solid #444; font-size: 13px; font-weight: bold; align-items: center; }
     
-    /* BARRA DE EXAUSTÃO K97 */
+    /* ADIÇÃO: BARRA K97 E SETA */
     .bar-wrapper-dual { background: #0a141a; padding: 15px 10px 10px 10px; border: 2.5px solid #ffffff; border-radius: 8px; margin-top: 10px; text-align: center; position: relative; }
     .marker-container { display: flex; justify-content: space-between; position: absolute; width: calc(100% - 20px); top: 2px; font-size: 9px; color: #888; font-weight: bold; }
     .force-container-dual { background: #111; height: 18px; width: 100%; border-radius: 4px; position: relative; overflow: hidden; display: flex; border: 1px solid #444; margin: 5px 0; }
@@ -37,9 +37,9 @@ st.markdown("""
     .bar-side { width: 50%; height: 100%; position: relative; background: #050a0e; }
     .fill-green { background: #00ff88; float: right; height: 100%; transition: width 0.4s; }
     .fill-red { background: #ff4d4d; float: left; height: 100%; transition: width 0.4s; }
-    .sinal-indicator { font-size: 38px; font-weight: 900; line-height: 1; margin-top: 5px; }
+    .sinal-indicator { font-size: 38px; font-weight: 950; line-height: 1; margin-top: 5px; }
     .blink { animation: blinker 1s linear infinite; }
-    @keyframes blinker { 50% { opacity: 0.1; } }
+    @keyframes blinker { 50% { opacity: 0.2; } }
 
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 2px solid #ffffff; border-bottom: 2px solid #ffffff; padding: 8px 0; overflow: hidden; white-space: nowrap; margin-top: 15px; }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 14px; font-weight: bold; }
@@ -80,7 +80,8 @@ def calcular_sentinela():
         hoje = agora.date()
         ultima_data_yahoo = df.index[-1].date()
         idx = -2 if (ultima_data_yahoo == hoje and agora.hour < 18) else -1
-        return (df['High'].iloc[idx] + df['Low'].iloc[idx]) / 2
+        mx, mn = df['High'].iloc[idx], df['Low'].iloc[idx]
+        return (mx + mn) / 2
     except: return 37.85
 
 def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_data):
@@ -94,19 +95,18 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         dolar_vivo = spot_data['at'] 
         dolar_fraja = eixo_dol * (1 + (v_final / 2))
         dolar_medio = (spot_data['mx'] + spot_data['mn']) / 2
-        alvo_max = spot_data['mx'] + v_spreed
-        alvo_min = spot_data['mn'] + v_spreed
-        p50_up = (alvo_max + eixo_dol) / 2
-        p50_down = (alvo_min + eixo_dol) / 2
+        alvo_max, alvo_min = spot_data['mx'] + v_spreed, spot_data['mn'] + v_spreed
+        p50_up, p50_down = (alvo_max + eixo_dol) / 2, (alvo_min + eixo_dol) / 2
 
-        # BARRA: DISTÂNCIA AXIS -> MÉDIA DOL X 2
+        # BARRA: BASEADA NO AXIS, MÉDIA E SPOT
         dist_base = abs(eixo_dol - dolar_medio)
         diff = spot_data['at'] - eixo_dol
         p_v, p_r = 0, 0
-        if diff < 0: p_v = min(100, (abs(diff)/(dist_base*2))*100) if dist_base > 0 else 0
-        else: p_r = min(100, (abs(diff)/(dist_base*2))*100) if dist_base > 0 else 0
+        if dist_base > 0:
+            if diff < 0: p_v = min(100, (abs(diff)/(dist_base*2))*100)
+            else: p_r = min(100, (abs(diff)/(dist_base*2))*100)
 
-        # SETA FIXA: MÍNIMA FUTURO E 50% ALTA FUTURO
+        # SETA: REVERSÃO FIXA
         seta_txt, seta_cor = "•", "#444"
         if spot_data['at'] > alvo_min: seta_txt, seta_cor = "▲ COMPRA", "#00ff88"
         if spot_data['at'] < p50_up and spot_data['at'] > eixo_dol: seta_txt, seta_cor = "▼ VENDA", "#ff4d4d"
@@ -143,7 +143,7 @@ if res:
         html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col'>{(res['vivo']/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max']/1000):.4f}</td><td>{(res['min']/1000):.4f}</td><td style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_v:+.2f}%</td></tr>"
         ticker = [f"DOLFUT: {v_v:+.2f}%"]
         
-        outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "BRENT": "BZ=F"}
+        outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
         for lbl, sym in outros.items():
             d = spot_live if lbl == "DOLSPOT" else (ewz_live if lbl == "EWZ" else fetch(sym))
             f = ".4f" if lbl in ["DOLSPOT", "DOLFUT"] or "USD" in lbl else ".2f"
@@ -154,12 +154,11 @@ if res:
         st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
 
     with c_side:
-        # ALVOS
+        # ALVOS E DADOS ORIGINAIS
         st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>50% Alta</span> <span>{res['p50_up']:.2f}</span></div><div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 18px; font-weight: bold; border-top:1.5px solid #444; border-bottom:1.5px solid #444; margin: 5px 0;">AXIS: {a_dol:.2f}</div><div class="calc-row" style="color:#ffa500;"><span>50% Baixa</span> <span>{res['p50_down']:.2f}</span></div><div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div></div>""", unsafe_allow_html=True)
-        # DADOS
-        st.markdown(f"""<div class="calc-panel"><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOL</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="ewz-mini-container"><span class="ewz-mini-val" style="color:#00ff88;">{ewz_live['mx']:.2f}</span><span class="ewz-mini-val" style="color:#00f2ff;">{res['ewz_med']:.2f}</span><span class="ewz-mini-val" style="color:#ff4d4d;">{ewz_live['mn']:.2f}</span></div></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="padding: 10px 8px;"><span style="color:#ffffff;">DOLFUT</span> <span style="color:#00f2ff; font-size: 16px; font-weight: 950;">{res['vivo']:.2f}</span></div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOL</span> <span style="color:#00f2ff; font-size: 16px;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">P. JUSTO</span> <span style="color:#ffffff; font-size: 16px; font-weight: bold;">{res['fraja']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff; font-size: 16px; font-weight: bold;">{res['spreed']:.2f}</span></div><div class="ewz-mini-container"><span class="ewz-mini-val" style="color:#00ff88;">{ewz_live['mx']:.2f}</span><span class="ewz-mini-val" style="color:#00f2ff;">{res['ewz_med']:.2f}</span><span class="ewz-mini-val" style="color:#ff4d4d;">{ewz_live['mn']:.2f}</span></div></div>""", unsafe_allow_html=True)
 
-        # BARRA K97 E SETA ABAIXO
+        # ADIÇÃO: BARRA BIDIRECIONAL COM MARCAÇÕES E SETA
         st.markdown(f"""
         <div class="bar-wrapper-dual">
             <div class="marker-container">
@@ -176,7 +175,7 @@ if res:
         </div>
         """, unsafe_allow_html=True)
 
-    st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker)}</div></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker)} • {" • ".join(ticker)}</div></div>', unsafe_allow_html=True)
 
 time.sleep(5)
 st.rerun()
