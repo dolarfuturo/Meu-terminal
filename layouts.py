@@ -38,7 +38,7 @@ st.markdown("""
     .fill-green { background: #00ff88; float: right; height: 100%; transition: width 0.4s; }
     .fill-red { background: #ff4d4d; float: left; height: 100%; transition: width 0.4s; }
     
-    .sinal-indicator { font-size: 16px; font-weight: 950; line-height: 1; margin-top: 5px; }
+    .sinal-indicator { font-size: 16px; font-weight: 950; line-height: 1; margin-top: 5px; min-height: 16px; }
     .blink { animation: blinker 1s linear infinite; }
     @keyframes blinker { 50% { opacity: 0.1; } }
 
@@ -111,18 +111,21 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
             if diff < 0: p_v = min(100, (abs(diff)/(dist_base*2))*100)
             else: p_r = min(100, (abs(diff)/(dist_base*2))*100)
 
-        # --- NOVA LÓGICA DA SETA DISCRETA (EXAUSTÃO) ---
+        # --- AJUSTE SETA: APENAS EM 100% ---
         seta_txt, seta_cor = "", "#000000"
-        if p_v >= 70: 
+        if p_v >= 100: 
             seta_txt, seta_cor = "▲ COMPRA", "#00ff88"
-        elif p_r >= 70:
+        elif p_r >= 100:
             seta_txt, seta_cor = "▼ VENDA", "#ff4d4d"
+        
+        # Variação DOLFUT vs AXIS
+        var_axis = ((spot_data['at'] + v_spreed) / eixo_dol - 1) * 100
         
         return {
             "vivo": dolar_vivo, "fraja": dolar_fraja, "medio": dolar_medio, "ewz_med": (max_ewz + min_ewz) / 2,
             "max_fut": max_fut, "p75_up": p75_up, "p25_up": p25_up,
             "p25_down": p25_down, "p75_down": p75_down, "min_fut": min_fut,
-            "v_v": v_final * 100, "spreed": v_spreed,
+            "v_v": v_final * 100, "spreed": v_spreed, "var_axis": var_axis,
             "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor
         }
     except: return None
@@ -177,8 +180,17 @@ if res:
             <div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MIN FUT</span> <span>{res['min_fut']:.2f}</span></div>
         </div>""", unsafe_allow_html=True)
         
+        # BLOCO DOLFUT COM VARIAÇÃO DO AXIS
         st.markdown(f"""<div class="calc-panel">
-            <div class="calc-row" style="padding: 10px 8px;"><span style="color:#ffffff;">DOLFUT</span> <span style="color:#00f2ff; font-size: 16px; font-weight: 950;">{dolfut_com_spread:.2f}</span></div>
+            <div style="padding: 10px 8px; border-bottom: 1px solid #444;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color:#ffffff; font-weight: bold;">DOLFUT</span> 
+                    <span style="color:#00f2ff; font-size: 18px; font-weight: 950;">{dolfut_com_spread:.2f}</span>
+                </div>
+                <div style="text-align: right; color: #d4a017; font-size: 11px; font-weight: bold; margin-top: 2px;">
+                    VAR AXIS: {res['var_axis']:+.2f}%
+                </div>
+            </div>
             <div class="calc-row"><span style="color:#ffff00;">MÉDIA DOL</span> <span style="color:#00f2ff; font-size: 16px;">{res['medio']:.2f}</span></div>
             <div class="calc-row"><span style="color:#d4a017;">P. JUSTO</span> <span style="color:#ffffff; font-size: 16px; font-weight: bold;">{res['fraja']:.2f}</span></div>
             <div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff; font-size: 16px; font-weight: bold;">{res['spreed']:.2f}</span></div>
