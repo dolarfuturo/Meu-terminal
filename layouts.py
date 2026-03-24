@@ -93,7 +93,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         if p_ewz_atual == 0: return None
         v_spreed = (spot_data['mx'] - spot_data['mn']) / 8
         
-        # VARIAÇÃO BASEADA NO AXIS DOLFUT (eixo_dol)
+        # --- AJUSTE: PONTO 0 BASEADO NO AXIS ---
         v_spot = ((spot_data['at'] / eixo_dol) - 1) if eixo_dol > 0 else 0
         v_ewz = ((p_ewz_atual / fetch("EWZ")['cl']) - 1) if fetch("EWZ")['cl'] > 0 else 0
         v_final = (v_spot * 0.6) - (v_ewz * 0.4)
@@ -120,7 +120,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         
         return {
             "vivo": dolar_vivo, "fraja": dolar_fraja, "medio": dolar_medio, "ewz_med": (max_ewz + min_ewz) / 2,
-            "max": alvo_max, "min": alvo_min, "v_v": v_spot * 100, "spreed": v_spreed,
+            "max": alvo_max, "min": alvo_min, "v_v": v_final * 100, "spreed": v_spreed,
             "p50_up": p50_up, "p50_down": p50_down, "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor
         }
     except: return None
