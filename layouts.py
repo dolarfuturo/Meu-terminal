@@ -38,9 +38,9 @@ st.markdown("""
     .fill-green { background: #00ff88; float: right; height: 100%; transition: width 0.4s; }
     .fill-red { background: #ff4d4d; float: left; height: 100%; transition: width 0.4s; }
     
-    .sinal-indicator { font-size: 20px; font-weight: 950; line-height: 1; margin-top: 2px; }
+    .sinal-indicator { font-size: 16px; font-weight: 950; line-height: 1; margin-top: 5px; }
     .blink { animation: blinker 1s linear infinite; }
-    @keyframes blinker { 50% { opacity: 0.2; } }
+    @keyframes blinker { 50% { opacity: 0.1; } }
 
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 2px solid #ffffff; border-bottom: 2px solid #ffffff; padding: 8px 0; overflow: hidden; white-space: nowrap; margin-top: 10px; }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 14px; font-weight: bold; color: #fff; }
@@ -97,13 +97,11 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         dolar_fraja = eixo_dol * (1 + (v_final / 2))
         dolar_medio = (spot_data['mx'] + spot_data['mn']) / 2
         
-        # --- NOVOS CÁLCULOS BASEADOS NA IMAGEM ---
         max_fut = spot_data['mx'] + v_spreed
-        p75_alta = max_fut - v_spreed
-        p25_alta = eixo_dol + v_spreed
-        
-        p25_baixa = eixo_dol - v_spreed
-        p75_baixa = (spot_data['mn'] + v_spreed) + v_spreed
+        p75_up = max_fut - v_spreed
+        p25_up = eixo_dol + v_spreed
+        p25_down = eixo_dol - v_spreed
+        p75_down = (spot_data['mn'] + v_spreed) + v_spreed
         min_fut = spot_data['mn'] + v_spreed
         
         dist_base = abs(eixo_dol - dolar_medio)
@@ -113,15 +111,17 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
             if diff < 0: p_v = min(100, (abs(diff)/(dist_base*2))*100)
             else: p_r = min(100, (abs(diff)/(dist_base*2))*100)
 
-        if spot_data['at'] < (max_fut + eixo_dol)/2: # Ajuste leve na lógica da seta
-            seta_txt, seta_cor = "▼ VENDA", "#ff4d4d"
-        else:
+        # --- NOVA LÓGICA DA SETA DISCRETA (EXAUSTÃO) ---
+        seta_txt, seta_cor = "", "#000000"
+        if p_v >= 70: 
             seta_txt, seta_cor = "▲ COMPRA", "#00ff88"
+        elif p_r >= 70:
+            seta_txt, seta_cor = "▼ VENDA", "#ff4d4d"
         
         return {
             "vivo": dolar_vivo, "fraja": dolar_fraja, "medio": dolar_medio, "ewz_med": (max_ewz + min_ewz) / 2,
-            "max_fut": max_fut, "p75_up": p75_alta, "p25_up": p25_alta,
-            "p25_down": p25_baixa, "p75_down": p75_baixa, "min_fut": min_fut,
+            "max_fut": max_fut, "p75_up": p75_up, "p25_up": p25_up,
+            "p25_down": p25_down, "p75_down": p75_down, "min_fut": min_fut,
             "v_v": v_final * 100, "spreed": v_spreed,
             "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor
         }
@@ -153,7 +153,6 @@ if res:
         html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th style='color: #d4a017;'>Price</th><th style='color: #d4a017;'>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
         v_v = res['v_v']
         html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col'>{(dolfut_calc/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max_fut']/1000):.4f}</td><td>{(res['min_fut']/1000):.4f}</td><td style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_v:+.2f}%</td></tr>"
-        
         ticker_items = [f"DOLFUT: <span style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")};'>{v_v:+.2f}%</span>"]
         
         outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
@@ -165,11 +164,9 @@ if res:
             p_val = d['at']/1000 if lbl == "DOLSPOT" else d['at']
             html_table += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col'>{p_val:{f}}</td><td>{(d['cl']/1000 if lbl=='DOLSPOT' else d['cl']):{f}}</td><td>{(d['op']/1000 if lbl=='DOLSPOT' else d['op']):{f}}</td><td>{(d['mx']/1000 if lbl=='DOLSPOT' else d['mx']):{f}}</td><td>{(d['mn']/1000 if lbl=='DOLSPOT' else d['mn']):{f}}</td><td style='color:{color}; font-weight:bold;'>{var:+.2f}%</td></tr>"
             ticker_items.append(f"{lbl}: <span style='color:{color};'>{var:+.2f}%</span>")
-        
         st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
 
     with c_side:
-        # BLOCO CONFORME A IMAGEM ENVIADA
         st.markdown(f"""<div class="calc-panel">
             <div class="calc-row" style="color:#ff4d4d;"><span>MAX FUT</span> <span>{res['max_fut']:.2f}</span></div>
             <div class="calc-row" style="color:#ffa500;"><span>75%</span> <span>{res['p75_up']:.2f}</span></div>
