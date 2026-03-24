@@ -88,7 +88,7 @@ def calcular_sentinela():
 def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_data):
     try:
         if p_ewz_atual == 0: return None
-        v_spreed = (spot_data['mx'] - spot_data['mn']) / 7
+        v_spreed = (spot_data['mx'] - spot_data['mn']) / 8
         v_spot = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         v_ewz = ((p_ewz_atual / fetch("EWZ")['cl']) - 1) if fetch("EWZ")['cl'] > 0 else 0
         v_final = (v_spot * 0.6) - (v_ewz * 0.4)
