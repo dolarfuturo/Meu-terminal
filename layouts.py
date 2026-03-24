@@ -29,18 +29,18 @@ st.markdown("""
     .calc-panel { border: 2.5px solid #ffffff; border-radius: 8px; padding: 8px; background: #0a141a; font-family: monospace; margin-bottom: 10px; }
     .calc-row { display: flex; justify-content: space-between; padding: 5px 8px; border-bottom: 1px solid #444; font-size: 13px; font-weight: bold; align-items: center; }
     
-    /* NOVA BARRA BIDIRECIONAL */
-    .bar-wrapper-dual { background: #0a141a; padding: 10px; border: 2px solid #ffffff; border-radius: 8px; margin-top: 10px; text-align: center; }
-    .force-container-dual { background: #111; height: 18px; width: 100%; border-radius: 4px; position: relative; overflow: hidden; display: flex; border: 1px solid #444; }
+    /* ESTILO DA BARRA DUAL COM MARCAÇÕES */
+    .bar-wrapper-dual { background: #0a141a; padding: 15px 10px 10px 10px; border: 2.5px solid #ffffff; border-radius: 8px; margin-top: 10px; text-align: center; position: relative; }
+    .marker-container { display: flex; justify-content: space-between; position: absolute; width: calc(100% - 20px); top: 2px; font-size: 9px; color: #666; font-weight: bold; }
+    .force-container-dual { background: #111; height: 18px; width: 100%; border-radius: 4px; position: relative; overflow: hidden; display: flex; border: 1px solid #444; margin: 5px 0; }
     .center-line { position: absolute; left: 50%; top: 0; width: 2px; height: 100%; background: #fff; z-index: 10; }
     .bar-side { width: 50%; height: 100%; position: relative; background: #050a0e; }
     .fill-green { background: #00ff88; float: right; height: 100%; transition: width 0.4s; }
     .fill-red { background: #ff4d4d; float: left; height: 100%; transition: width 0.4s; }
-    .label-row { display: flex; justify-content: space-between; font-size: 9px; color: #888; font-weight: bold; margin-bottom: 4px; }
 
-    .sinal-indicator { font-size: 32px; font-weight: bold; line-height: 1; margin-top: 5px; }
+    .sinal-indicator { font-size: 36px; font-weight: 900; line-height: 1; margin-top: 5px; }
     .blink { animation: blinker 1s linear infinite; }
-    @keyframes blinker { 50% { opacity: 0.2; } }
+    @keyframes blinker { 50% { opacity: 0.1; } }
 
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 2px solid #ffffff; border-bottom: 2px solid #ffffff; padding: 8px 0; overflow: hidden; white-space: nowrap; margin-top: 15px; }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 14px; font-weight: bold; }
@@ -56,7 +56,6 @@ def fetch(s):
         t = yf.Ticker(s)
         tz_sp = pytz.timezone('America/Sao_Paulo')
         ref_close = t.info.get('previousClose')
-        
         if s == "EWZ":
             d_hist = t.history(period="3d", interval="1m", prepost=True)
             if not d_hist.empty:
@@ -64,18 +63,11 @@ def fetch(s):
                 unique_dates = sorted(list(set(d_hist.index.date)))
                 data_anterior = unique_dates[-2] if len(unique_dates) > 1 else unique_dates[0]
                 f_21h = d_hist.between_time('05:00', '21:00').loc[d_hist.index.date == data_anterior]
-                if not f_21h.empty:
-                    ref_close = f_21h['Close'].iloc[-1]
-
+                if not f_21h.empty: ref_close = f_21h['Close'].iloc[-1]
         d = t.history(period="1d", interval="1m", prepost=True)
-        if d.empty: 
-            return {"at": 0.0, "cl": ref_close or 0.0, "mx": 0.0, "mn": 0.0, "op": 0.0}
-        
+        if d.empty: return {"at": 0.0, "cl": ref_close or 0.0, "mx": 0.0, "mn": 0.0, "op": 0.0}
         m = 1000 if s == "USDBRL=X" else 1
-        return {
-            "at": d['Close'].iloc[-1] * m, "cl": (ref_close or d['Open'].iloc[0]) * m, "op": d['Open'].iloc[0] * m,
-            "mx": d['High'].max() * m, "mn": d['Low'].min() * m
-        }
+        return {"at": d['Close'].iloc[-1]*m, "cl": (ref_close or d['Open'].iloc[0])*m, "op": d['Open'].iloc[0]*m, "mx": d['High'].max()*m, "mn": d['Low'].min()*m}
     except: return {"at": 0.0, "cl": 0.0, "mx": 0.0, "mn": 0.0, "op": 0.0}
 
 @st.cache_data(ttl=600)
@@ -89,15 +81,12 @@ def calcular_sentinela():
         hoje = agora.date()
         ultima_data_yahoo = df.index[-1].date()
         idx = -2 if (ultima_data_yahoo == hoje and agora.hour < 18) else -1
-        mx = df['High'].iloc[idx]
-        mn = df['Low'].iloc[idx]
-        return (mx + mn) / 2
+        return (df['High'].iloc[idx] + df['Low'].iloc[idx]) / 2
     except: return 37.85
 
 def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_data):
     try:
         if p_ewz_atual == 0: return None
-        
         v_spreed = (spot_data['mx'] - spot_data['mn']) / 8
         v_spot = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         v_ewz = ((p_ewz_atual / fetch("EWZ")['cl']) - 1) if fetch("EWZ")['cl'] > 0 else 0
@@ -111,14 +100,15 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         p50_up = (alvo_max + eixo_dol) / 2
         p50_down = (alvo_min + eixo_dol) / 2
 
-        # --- LÓGICA DA BARRA BIDIRECIONAL ---
-        dist_x = abs(eixo_dol - p50_down)
+        # LÓGICA DA BARRA (AXIS, MÉDIA DOL, SPOT PREÇO ATUAL)
+        dist_base = abs(eixo_dol - dolar_medio)
         diff = spot_data['at'] - eixo_dol
         p_v, p_r = 0, 0
-        if diff < 0: p_v = min(100, (abs(diff)/(dist_x*2))*100)
-        else: p_r = min(100, (abs(diff)/(dist_x*2))*100)
+        if diff < 0: p_v = min(100, (abs(diff)/(dist_base*2))*100)
+        else: p_r = min(100, (abs(diff)/(dist_base*2))*100)
 
-        seta_txt, seta_cor = "•", "#888"
+        # SETA FIXA (MÍNIMA FUTURO E 50% ALTA FUTURO)
+        seta_txt, seta_cor = "•", "#444"
         if spot_data['at'] > alvo_min: seta_txt, seta_cor = "▲ COMPRA", "#00ff00"
         if spot_data['at'] < p50_up and spot_data['at'] > eixo_dol: seta_txt, seta_cor = "▼ VENDA", "#ff4d4d"
         
@@ -132,15 +122,11 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
 # --- PAINEL ADM ---
 eixo_sug = calcular_sentinela()
 with st.sidebar:
-    st.markdown("### ⚙️ PAINEL ADM")
-    with st.form("ajuste_vars"):
-        a_ewz = st.number_input("AXIS EWZ:", value=float(eixo_sug), format="%.2f")
-        a_dol = st.number_input("AXIS DOLFUT:", value=5246.00, format="%.2f")
-        st.form_submit_button("SALVAR")
+    a_ewz = st.number_input("AXIS EWZ:", value=float(eixo_sug))
+    a_dol = st.number_input("AXIS DOLFUT:", value=5246.00)
 
-# --- UI HEADER ---
-tz_sp, tz_ny, tz_ld = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London')
-st.markdown(f"""<div class="header-bair"><div class="title-box"><span class="bair-text">BAIR</span><span class="sep-text">-</span><span class="terminal-text">TERMINAL DOLLAR</span></div><div class="clock-container"><div class="clock-box"><span class="clock-label">BRASÍLIA</span><span class="clock-time">{datetime.now(tz_sp).strftime('%H:%M')}</span></div><div class="clock-box"><span class="clock-label">NEW YORK</span><span class="clock-time">{datetime.now(tz_ny).strftime('%H:%M')}</span></div><div class="clock-box"><span class="clock-label">LONDRES</span><span class="clock-time">{datetime.now(tz_ld).strftime('%H:%M')}</span></div></div></div>""", unsafe_allow_html=True)
+tz_sp = pytz.timezone('America/Sao_Paulo')
+st.markdown(f"""<div class="header-bair"><div class="title-box"><span class="bair-text">BAIR</span><span class="sep-text">-</span><span class="terminal-text">TERMINAL DOLLAR</span></div><div class="clock-container"><div class="clock-box"><span class="clock-label">BRASÍLIA</span><span class="clock-time">{datetime.now(tz_sp).strftime('%H:%M')}</span></div></div></div>""", unsafe_allow_html=True)
 
 ewz_live = fetch("EWZ")
 spot_live = fetch("USDBRL=X")
@@ -149,32 +135,35 @@ res = calcular_k97_total(a_ewz, ewz_live['at'], ewz_live['mx'], ewz_live['mn'], 
 if res:
     c_main, c_side = st.columns([3, 1])
     with c_main:
-        html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th style='color: #d4a017;'>Price</th><th style='color: #d4a017;'>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
-        v_v = res['v_v']
-        html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col'>{(res['vivo']/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max']/1000):.4f}</td><td>{(res['min']/1000):.4f}</td><td style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_v:+.2f}%</td></tr>"
-        ticker = [f"<span style='color:#fff;'>DOLFUT:</span> <span style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")};'>{v_v:+.2f}%</span>"]
-        
-        outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
+        html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
+        ticker = []
+        outros = {"DOLFUT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "XAU/USD": "GC=F"}
         for lbl, sym in outros.items():
-            d = spot_live if lbl == "DOLSPOT" else (ewz_live if lbl == "EWZ" else fetch(sym))
-            f = ".4f" if lbl in ["DOLSPOT", "DOLFUT"] or "USD" in lbl else ".2f"
+            d = spot_live if lbl == "DOLFUT" else fetch(sym)
             var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
-            color = "#00ff00" if var >= 0 else "#ff4d4d"
-            p_val = d['at']/1000 if lbl == "DOLSPOT" else d['at']
-            html_table += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col'>{p_val:{f}}</td><td>{(d['cl']/1000 if lbl=='DOLSPOT' else d['cl']):{f}}</td><td>{(d['op']/1000 if lbl=='DOLSPOT' else d['op']):{f}}</td><td>{(d['mx']/1000 if lbl=='DOLSPOT' else d['mx']):{f}}</td><td>{(d['mn']/1000 if lbl=='DOLSPOT' else d['mn']):{f}}</td><td style='color:{color}; font-weight:bold;'>{var:+.2f}%</td></tr>"
-            ticker.append(f"<span style='color:#fff;'>{lbl}:</span> <span style='color:{color};'>{var:+.2f}%</span>")
+            p_val = d['at']/1000 if lbl == "DOLFUT" else d['at']
+            html_table += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col'>{p_val:.4f}</td><td>{(d['cl']/1000 if lbl=='DOLFUT' else d['cl']):.4f}</td><td>{(d['mx']/1000 if lbl=='DOLFUT' else d['mx']):.4f}</td><td>{(d['mn']/1000 if lbl=='DOLFUT' else d['mn']):.4f}</td><td style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</td></tr>"
+            ticker.append(f"{lbl}: {var:+.2f}%")
         st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
 
     with c_side:
         # ALVOS
         st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="color:#ff4d4d;"><span>MÁXIMA</span> <span>{res['max']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>50% Alta</span> <span>{res['p50_up']:.2f}</span></div><div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 18px; font-weight: bold; border-top:1.5px solid #444; border-bottom:1.5px solid #444; margin: 5px 0;">AXIS: {a_dol:.2f}</div><div class="calc-row" style="color:#ffa500;"><span>50% Baixa</span> <span>{res['p50_down']:.2f}</span></div><div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MÍNIMA</span> <span>{res['min']:.2f}</span></div></div>""", unsafe_allow_html=True)
         # DADOS
-        st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="padding: 10px 8px;"><span style="color:#ffffff;">DOLFUT</span> <span style="color:#00f2ff; font-size: 16px; font-weight: 950;">{res['vivo']:.2f}</span></div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOL</span> <span style="color:#00f2ff; font-size: 16px;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">P. JUSTO</span> <span style="color:#ffffff; font-size: 16px; font-weight: bold;">{res['fraja']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff; font-size: 16px; font-weight: bold;">{res['spreed']:.2f}</span></div><div class="ewz-mini-container"><span class="ewz-mini-val" style="color:#00ff88;">{ewz_live['mx']:.2f}</span><span class="ewz-mini-val" style="color:#00f2ff;">{res['ewz_med']:.2f}</span><span class="ewz-mini-val" style="color:#ff4d4d;">{ewz_live['mn']:.2f}</span></div></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="calc-panel"><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOL</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="ewz-mini-container"><span class="ewz-mini-val" style="color:#00ff88;">{ewz_live['mx']:.2f}</span><span class="ewz-mini-val" style="color:#00f2ff;">{res['ewz_med']:.2f}</span><span class="ewz-mini-val" style="color:#ff4d4d;">{ewz_live['mn']:.2f}</span></div></div>""", unsafe_allow_html=True)
 
-        # BARRA BIDIRECIONAL E SETA ABAIXO DE TUDO (FORA DOS BLOCOS)
+        # BARRA BIDIRECIONAL COM MARCAÇÕES 30% 50% 80% E SETA FIXA
         st.markdown(f"""
         <div class="bar-wrapper-dual">
-            <div class="label-row"><span style="color:#00ff88;">EXAUST</span><span style="color:#fff;">AXIS</span><span style="color:#ff4d4d;">EXAUST</span></div>
+            <div class="marker-container">
+                <div style="width: 50%; display: flex; justify-content: space-around; flex-direction: row-reverse;">
+                    <span>80%</span><span>50%</span><span>30%</span>
+                </div>
+                <div style="width: 2px;">|</div>
+                <div style="width: 50%; display: flex; justify-content: space-around;">
+                    <span>30%</span><span>50%</span><span>80%</span>
+                </div>
+            </div>
             <div class="force-container-dual">
                 <div class="center-line"></div>
                 <div class="bar-side"><div class="fill-green" style="width: {res['p_v']}%;"></div></div>
@@ -184,7 +173,7 @@ if res:
         </div>
         """, unsafe_allow_html=True)
 
-    st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker)} • {" • ".join(ticker)}</div></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker)}</div></div>', unsafe_allow_html=True)
 
 time.sleep(5)
 st.rerun()
