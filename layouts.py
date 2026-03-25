@@ -1,16 +1,16 @@
 import streamlit as st
 import yfinance as yf
 import time
-from datetime import datetime, time as dt_time
+from datetime import datetime
 import pytz
 
-# 1. CONFIGURAÇÃO E ESTILO (SEU CSS ORIGINAL)
+# 1. CONFIGURAÇÃO (TABLET)
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLLAR", initial_sidebar_state="collapsed")
 
+# --- CSS ORIGINAL (MANTIDO) ---
 st.markdown("""
 <style>
     #MainMenu {visibility: hidden;} header {visibility: hidden;} footer {visibility: hidden;}
-    .stDeployButton {display:none;}
     .stApp { background-color: #050a0e !important; }
     .main-grid { border: 2.5px solid #ffffff; border-radius: 8px; overflow: hidden; font-family: 'monospace'; background-color: #0d1b22; }
     .terminal-table { width: 100%; border-collapse: collapse; color: #e0e0e0; }
@@ -41,12 +41,10 @@ st.markdown("""
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 2px solid #ffffff; border-bottom: 2px solid #ffffff; padding: 8px 0; overflow: hidden; white-space: nowrap; margin-top: 10px; }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 14px; font-weight: bold; color: #fff; }
     @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
-    .ewz-mini-container { display: flex; justify-content: space-around; padding: 4px 0; border-top: 1px solid #444; margin-top: 4px; }
-    .ewz-mini-val { font-size: 11px; font-weight: bold; font-family: monospace; }
 </style>
 """, unsafe_allow_html=True)
 
-# 2. MOTOR DE DADOS ORIGINAL
+# --- MOTOR DE DADOS ORIGINAL ---
 def fetch(s):
     try:
         t = yf.Ticker(s)
@@ -81,7 +79,7 @@ def calcular_sentinela():
         return (mx + mn) / 2
     except: return 37.85
 
-# SUAS FÓRMULAS ORIGINAIS (SEM ALTERAÇÃO)
+# --- SUA FUNÇÃO DE CÁLCULO ORIGINAL (MANTIDA) ---
 def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_data):
     try:
         if p_ewz_atual == 0: return None
@@ -115,7 +113,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         }
     except: return None
 
-# 3. SET DO PAINEL ADM (USANDO SESSION STATE)
+# --- [SET] PAINEL ADM COM SESSION STATE ---
 if 'a_ewz' not in st.session_state:
     st.session_state.a_ewz = float(calcular_sentinela())
 if 'a_dol' not in st.session_state:
@@ -123,24 +121,23 @@ if 'a_dol' not in st.session_state:
 
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
-    with st.form("set_adm"):
-        input_ewz = st.number_input("AXIS EWZ:", value=st.session_state.a_ewz, format="%.2f")
-        input_dol = st.number_input("AXIS DOLFUT:", value=st.session_state.a_dol, format="%.2f")
-        if st.form_submit_button("SALVAR E ATUALIZAR"):
-            st.session_state.a_ewz = input_ewz
-            st.session_state.a_dol = input_dol
+    with st.form("set_vars"):
+        new_ewz = st.number_input("AXIS EWZ:", value=st.session_state.a_ewz, format="%.2f")
+        new_dol = st.number_input("AXIS DOLFUT:", value=st.session_state.a_dol, format="%.2f")
+        if st.form_submit_button("SALVAR"):
+            st.session_state.a_ewz = new_ewz
+            st.session_state.a_dol = new_dol
             st.rerun()
 
-# 4. MOTOR NEXUS (LISO E SEM PISCAR)
+# --- MOTOR NEXUS (LOOP LISO) ---
 placeholder = st.empty()
 
 while True:
-    # Captura de dados e fusos horários
     tz_sp, tz_ny, tz_ld = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London')
     ewz_live = fetch("EWZ")
     spot_live = fetch("USDBRL=X")
     
-    # Cálculos usando os valores do Painel ADM (Session State)
+    # Executa o cálculo usando os valores do Session State (SET)
     res = calcular_k97_total(st.session_state.a_ewz, ewz_live['at'], ewz_live['mx'], ewz_live['mn'], st.session_state.a_dol, spot_live)
 
     with placeholder.container():
@@ -148,7 +145,7 @@ while True:
             dolfut_calc = st.session_state.a_dol * (1 + (res['v_v'] / 100))
             dolfut_com_spread = res['vivo'] + res['spreed']
             
-            # HEADER E RELÓGIOS
+            # HEADER
             st.markdown(f"""<div class="header-bair"><div class="title-box"><span class="bair-text">BAIR</span><span class="sep-text">-</span><span class="terminal-text">TERMINAL DOLLAR</span></div><div class="clock-container"><div class="clock-box"><span class="clock-label">BRASÍLIA</span><span class="clock-time">{datetime.now(tz_sp).strftime('%H:%M')}</span></div><div class="clock-box"><span class="clock-label">NEW YORK</span><span class="clock-time">{datetime.now(tz_ny).strftime('%H:%M')}</span></div><div class="clock-box"><span class="clock-label">LONDRES</span><span class="clock-time">{datetime.now(tz_ld).strftime('%H:%M')}</span></div></div></div>""", unsafe_allow_html=True)
             
             c_main, c_side = st.columns([3, 1])
@@ -171,7 +168,7 @@ while True:
                 st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
 
             with c_side:
-                # PAINÉIS LATERAIS DE CÁLCULO
+                # PAINEL LATERAIS
                 st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="color:#ff4d4d;"><span>MAX FUT</span> <span>{res['max_fut']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>75%</span> <span>{res['p75_up']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>25%</span> <span>{res['p25_up']:.2f}</span></div><div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 18px; font-weight: bold; border-top:1.5px solid #444; border-bottom:1.5px solid #444; margin: 5px 0;">AXIS: {st.session_state.a_dol:.2f}</div><div class="calc-row" style="color:#ffa500;"><span>25%</span> <span>{res['p25_down']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>75%</span> <span>{res['p75_down']:.2f}</span></div><div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MIN FUT</span> <span>{res['min_fut']:.2f}</span></div></div>""", unsafe_allow_html=True)
                 st.markdown(f"""<div class="calc-panel"><div style="padding: 10px 8px; border-bottom: 1px solid #444;"><div style="display: flex; justify-content: space-between; align-items: center;"><span style="color:#ffffff; font-weight: bold;">DOLFUT</span><span style="color:#00f2ff; font-size: 18px; font-weight: 950;">{dolfut_com_spread:.2f}</span></div><div style="text-align: right; color: #d4a017; font-size: 11px; font-weight: bold; margin-top: 2px;">VAR AXIS: {res['var_axis']:+.2f}%</div></div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOL</span> <span style="color:#00f2ff; font-size: 16px;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">P. JUSTO</span> <span style="color:#ffffff; font-size: 16px; font-weight: bold;">{res['fraja']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff; font-size: 16px; font-weight: bold;">{res['spreed']:.2f}</span></div><div class="ewz-mini-container"><span class="ewz-mini-val" style="color:#00ff88;">{ewz_live['mx']:.2f}</span><span class="ewz-mini-val" style="color:#00f2ff;">{res['ewz_med']:.2f}</span><span class="ewz-mini-val" style="color:#ff4d4d;">{ewz_live['mn']:.2f}</span></div></div>""", unsafe_allow_html=True)
                 st.markdown(f"""<div class="bar-wrapper-dual"><div class="marker-container"><div style="width: 50%; display: flex; justify-content: space-around; flex-direction: row-reverse;"><span>80%</span><span>50%</span><span>30%</span></div><div style="width: 2px; color:#fff;">|</div><div style="width: 50%; display: flex; justify-content: space-around;"><span>30%</span><span>50%</span><span>80%</span></div></div><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res['p_v']}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res['p_r']}%;"></div></div></div><div class="sinal-indicator blink" style="color:{res['seta_cor']};">{res['seta']}</div></div>""", unsafe_allow_html=True)
@@ -180,4 +177,4 @@ while True:
             ticker_html = " • ".join(ticker_items)
             st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{ticker_html} • {ticker_html}</div></div>', unsafe_allow_html=True)
     
-    time.sleep(2) # Pausa curta para atualizar sem sobrecarga
+    time.sleep(2) # Atualização a cada 2 segundos sem piscar a tela
