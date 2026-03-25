@@ -7,22 +7,19 @@ import pytz
 # Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLLAR", initial_sidebar_state="collapsed")
 
-# --- CSS: ESTILIZAÇÃO E LIMPEZA TOTAL DA BARRA SUPERIOR ---
+# --- CSS: LIMPEZA TOTAL (SEM BONECOS / SEM CARREGAMENTO / COM ACESSO ADM) ---
 st.markdown("""
 <style>
-    /* MATA A LINHA DE CARREGAMENTO (RUNNING...) E BONECOS */
+    /* 1. MATA A BARRA DE CARREGAMENTO NO TOPO */
     [data-testid="stStatusWidget"] { display: none !important; }
-    .stDeployButton { display: none !important; }
-    #MainMenu { visibility: hidden !important; }
-    footer { visibility: hidden !important; }
+    .stProgress > div > div > div > div { display: none !important; }
     
-    /* TORNA O HEADER INVISÍVEL MAS MANTÉM O BOTÃO DA SIDEBAR ATIVO */
-    header[data-testid="stHeader"] {
-        background: rgba(0,0,0,0) !important;
-        color: rgba(0,0,0,0) !important;
-    }
+    /* 2. MATA BONECOS E BOTÃO DE DEPLOY */
+    .stDeployButton { display: none !important; }
+    #MainMenu { visibility: hidden; }
+    footer { visibility: hidden; }
 
-    /* ESTILO ORIGINAL MANTIDO */
+    /* 3. ESTILIZAÇÃO DO TERMINAL (K97) */
     .stApp { background-color: #050a0e !important; }
     .main-grid { border: 2.5px solid #ffffff; border-radius: 8px; overflow: hidden; font-family: 'monospace'; background-color: #0d1b22; }
     .terminal-table { width: 100%; border-collapse: collapse; color: #e0e0e0; }
@@ -83,14 +80,9 @@ def fetch(s):
 def calcular_sentinela():
     try:
         t = yf.Ticker("EWZ")
-        df = t.history(period="7d", interval="1d", prepost=False)
+        df = t.history(period="7d", interval="1d")
         if df.empty: return 37.85
-        tz_sp = pytz.timezone('America/Sao_Paulo')
-        agora = datetime.now(tz_sp)
-        hoje = agora.date()
-        ultima_data_yahoo = df.index[-1].date()
-        idx = -2 if (ultima_data_yahoo == hoje and agora.hour < 18) else -1
-        return (df['High'].iloc[idx] + df['Low'].iloc[idx]) / 2
+        return (df['High'].iloc[-2] + df['Low'].iloc[-2]) / 2
     except: return 37.85
 
 def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_data):
@@ -98,8 +90,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         if p_ewz_atual == 0: return None
         v_spreed = (spot_data['mx'] - spot_data['mn']) / 8
         v_spot = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
-        v_ewz_ref = fetch("EWZ")['cl']
-        v_ewz = ((p_ewz_atual / v_ewz_ref) - 1) if v_ewz_ref > 0 else 0
+        v_ewz = ((p_ewz_atual / fetch("EWZ")['cl']) - 1) if fetch("EWZ")['cl'] > 0 else 0
         v_final = (v_spot * 0.6) - (v_ewz * 0.4)
         dolar_vivo = spot_data['at'] 
         dolar_fraja = eixo_dol * (1 + (v_final / 2))
@@ -126,11 +117,10 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         }
     except: return None
 
-# --- SIDEBAR (ADM) ---
+# --- ESTADO INICIAL E SIDEBAR ---
 eixo_sug = calcular_sentinela()
-# Uso de Session State para evitar tela preta por conflito de leitura no loop
-if 'a_dol' not in st.session_state: st.session_state.a_dol = 5246.00
 if 'a_ewz' not in st.session_state: st.session_state.a_ewz = eixo_sug
+if 'a_dol' not in st.session_state: st.session_state.a_dol = 5246.00
 
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
@@ -139,7 +129,7 @@ with st.sidebar:
     st.button("SALVAR")
     st.markdown(f'<div style="border: 1px solid #d4a017; padding: 10px; border-radius: 5px; background: #0a141a; text-align: center; margin-top: 10px;"><span style="color: #d4a017; font-size: 10px; font-weight: bold; display: block;">SENTINELA EWZ</span><span style="color: #ffffff; font-size: 18px; font-weight: bold;">{eixo_sug:.2f}</span></div>', unsafe_allow_html=True)
 
-# --- PLACEHOLDER ---
+# --- LOOP PRINCIPAL ---
 placeholder = st.empty()
 
 while True:
