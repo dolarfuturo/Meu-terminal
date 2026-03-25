@@ -7,15 +7,16 @@ import pytz
 # Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLLAR", initial_sidebar_state="collapsed")
 
-# --- CSS: ESTILIZAÇÃO E LIMPEZA DE INTERFACE ---
+# --- CSS: LIMPEZA CIRÚRGICA (MANTÉM O ACESSO AO PAINEL ADM) ---
 st.markdown("""
 <style>
-    /* REMOVE BONEQUINHOS E BOTÕES DO TOPO */
-    header {visibility: hidden;}
+    /* ESCONDE APENAS OS ÍCONES DE COLABORAÇÃO E MENU, MANTÉM O BOTÃO DA SIDEBAR */
+    [data-testid="stStatusWidget"] {display: none;}
+    .stDeployButton {display:none;}
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    .stDeployButton {display:none;}
     
+    /* ESTILIZAÇÃO DO TERMINAL */
     .stApp { background-color: #050a0e !important; }
     .main-grid { border: 2.5px solid #ffffff; border-radius: 8px; overflow: hidden; font-family: 'monospace'; background-color: #0d1b22; }
     .terminal-table { width: 100%; border-collapse: collapse; color: #e0e0e0; }
@@ -47,8 +48,6 @@ st.markdown("""
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 2px solid #ffffff; border-bottom: 2px solid #ffffff; padding: 8px 0; overflow: hidden; white-space: nowrap; margin-top: 10px; }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 14px; font-weight: bold; color: #fff; }
     @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
-    .ewz-mini-container { display: flex; justify-content: space-around; padding: 4px 0; border-top: 1px solid #444; margin-top: 4px; }
-    .ewz-mini-val { font-size: 11px; font-weight: bold; font-family: monospace; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -118,7 +117,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         }
     except: return None
 
-# --- SIDEBAR ADM ---
+# --- SIDEBAR ADM (RESTAURADA) ---
 eixo_sug = calcular_sentinela()
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
@@ -127,7 +126,7 @@ with st.sidebar:
     st.button("SALVAR")
     st.markdown(f'<div style="border: 1px solid #d4a017; padding: 10px; border-radius: 5px; background: #0a141a; text-align: center; margin-top: 10px;"><span style="color: #d4a017; font-size: 10px; font-weight: bold; display: block;">SENTINELA EWZ</span><span style="color: #ffffff; font-size: 18px; font-weight: bold;">{eixo_sug:.2f}</span></div>', unsafe_allow_html=True)
 
-# --- PLACEHOLDER DE RENDERIZAÇÃO ---
+# --- PLACEHOLDER ---
 placeholder = st.empty()
 
 while True:
