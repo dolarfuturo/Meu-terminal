@@ -7,9 +7,15 @@ import pytz
 # Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLLAR", initial_sidebar_state="collapsed")
 
-# --- CSS: ESTILIZAÇÃO COMPACTA (MANTIDO ORIGINAL) ---
+# --- CSS: ESTILIZAÇÃO E LIMPEZA DE INTERFACE ---
 st.markdown("""
 <style>
+    /* REMOVE BONEQUINHOS E BOTÕES DO TOPO */
+    header {visibility: hidden;}
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    .stDeployButton {display:none;}
+    
     .stApp { background-color: #050a0e !important; }
     .main-grid { border: 2.5px solid #ffffff; border-radius: 8px; overflow: hidden; font-family: 'monospace'; background-color: #0d1b22; }
     .terminal-table { width: 100%; border-collapse: collapse; color: #e0e0e0; }
@@ -112,7 +118,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         }
     except: return None
 
-# --- SIDEBAR (MANTIDO SEM FORM PARA NÃO TRAVAR) ---
+# --- SIDEBAR ADM ---
 eixo_sug = calcular_sentinela()
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
@@ -121,7 +127,7 @@ with st.sidebar:
     st.button("SALVAR")
     st.markdown(f'<div style="border: 1px solid #d4a017; padding: 10px; border-radius: 5px; background: #0a141a; text-align: center; margin-top: 10px;"><span style="color: #d4a017; font-size: 10px; font-weight: bold; display: block;">SENTINELA EWZ</span><span style="color: #ffffff; font-size: 18px; font-weight: bold;">{eixo_sug:.2f}</span></div>', unsafe_allow_html=True)
 
-# --- PLACEHOLDER LISO ---
+# --- PLACEHOLDER DE RENDERIZAÇÃO ---
 placeholder = st.empty()
 
 while True:
