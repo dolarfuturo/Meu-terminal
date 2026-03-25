@@ -1,3 +1,4 @@
+# --- CÓDIGO ATUALIZADO COM SENTINELA ---
 import streamlit as st
 import yfinance as yf
 import time
@@ -90,7 +91,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         if p_ewz_atual == 0: return None
         v_spreed = (spot_data['mx'] - spot_data['mn']) / 8
         v_spot = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
-        v_ewz = ((p_ewz_atual / fetch("EWZ")['cl']) - 1) if fetch("EWZ")['cl'] > 0 else 0
+        v_ewz = ((p_ewz_atual / eixo_ewz) - 1) if eixo_ewz > 0 else 0
         v_final = (v_spot * 0.6) - (v_ewz * 0.4)
         
         dolar_vivo = spot_data['at'] 
@@ -111,14 +112,10 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
             if diff < 0: p_v = min(100, (abs(diff)/(dist_base*2))*100)
             else: p_r = min(100, (abs(diff)/(dist_base*2))*100)
 
-        # --- AJUSTE SETA: APENAS EM 100% ---
         seta_txt, seta_cor = "", "#000000"
-        if p_v >= 100: 
-            seta_txt, seta_cor = "▲ COMPRA", "#00ff88"
-        elif p_r >= 100:
-            seta_txt, seta_cor = "▼ VENDA", "#ff4d4d"
+        if p_v >= 100: seta_txt, seta_cor = "▲ COMPRA", "#00ff88"
+        elif p_r >= 100: seta_txt, seta_cor = "▼ VENDA", "#ff4d4d"
         
-        # Variação DOLFUT vs AXIS
         var_axis = ((spot_data['at'] + v_spreed) / eixo_dol - 1) * 100
         
         return {
@@ -137,6 +134,7 @@ with st.sidebar:
     with st.form("ajuste_vars"):
         a_ewz = st.number_input("AXIS EWZ:", value=float(eixo_sug), format="%.2f")
         a_dol = st.number_input("AXIS DOLFUT:", value=5246.00, format="%.2f")
+        st.markdown(f"<small>Sentinela sugerida: {eixo_sug:.2f}</small>", unsafe_allow_html=True)
         st.form_submit_button("SALVAR")
 
 # --- UI HEADER ---
@@ -148,21 +146,19 @@ spot_live = fetch("USDBRL=X")
 res = calcular_k97_total(a_ewz, ewz_live['at'], ewz_live['mx'], ewz_live['mn'], a_dol, spot_live)
 
 if res:
-    dolfut_calc = a_dol * (1 + (res['v_v'] / 100))
     dolfut_com_spread = res['vivo'] + res['spreed']
-    
     c_main, c_side = st.columns([3, 1])
     with c_main:
         html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th style='color: #d4a017;'>Price</th><th style='color: #d4a017;'>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
         v_v = res['v_v']
-        html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col'>{(dolfut_calc/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max_fut']/1000):.4f}</td><td>{(res['min_fut']/1000):.4f}</td><td style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_v:+.2f}%</td></tr>"
+        html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col'>{(dolfut_com_spread/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max_fut']/1000):.4f}</td><td>{(res['min_fut']/1000):.4f}</td><td style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_v:+.2f}%</td></tr>"
         ticker_items = [f"DOLFUT: <span style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")};'>{v_v:+.2f}%</span>"]
         
         outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
         for lbl, sym in outros.items():
             d = spot_live if lbl == "DOLSPOT" else (ewz_live if lbl == "EWZ" else fetch(sym))
             f = ".4f" if lbl in ["DOLSPOT", "DOLFUT"] or "USD" in lbl else ".2f"
-            var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
+            var = ((d['at'] / (d['cl'] if d['cl']>0 else 1)) - 1) * 100
             color = "#00ff00" if var >= 0 else "#ff4d4d"
             p_val = d['at']/1000 if lbl == "DOLSPOT" else d['at']
             html_table += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col'>{p_val:{f}}</td><td>{(d['cl']/1000 if lbl=='DOLSPOT' else d['cl']):{f}}</td><td>{(d['op']/1000 if lbl=='DOLSPOT' else d['op']):{f}}</td><td>{(d['mx']/1000 if lbl=='DOLSPOT' else d['mx']):{f}}</td><td>{(d['mn']/1000 if lbl=='DOLSPOT' else d['mn']):{f}}</td><td style='color:{color}; font-weight:bold;'>{var:+.2f}%</td></tr>"
@@ -180,7 +176,6 @@ if res:
             <div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MIN FUT</span> <span>{res['min_fut']:.2f}</span></div>
         </div>""", unsafe_allow_html=True)
         
-        # BLOCO DOLFUT COM VARIAÇÃO DO AXIS
         st.markdown(f"""<div class="calc-panel">
             <div style="padding: 10px 8px; border-bottom: 1px solid #444;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
