@@ -4,13 +4,17 @@ import time
 from datetime import datetime, time as dt_time
 import pytz
 
-# 1. CONFIGURAÇÃO E ESTILO (SEU CSS ORIGINAL)
-st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLLAR", initial_sidebar_state="collapsed")
+# 1. CONFIGURAÇÃO (ABERTA POR PADRÃO)
+st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLLAR", initial_sidebar_state="expanded")
 
 st.markdown("""
 <style>
     #MainMenu {visibility: hidden;} header {visibility: hidden;} footer {visibility: hidden;}
     .stApp { background-color: #050a0e !important; }
+    /* Estilização da Barra Lateral (Preta) */
+    [data-testid="stSidebar"] { background-color: #000000 !important; border-right: 2px solid #d4a017; }
+    [data-testid="stSidebar"] .stMarkdown h3 { color: #d4a017 !important; }
+    
     .main-grid { border: 2.5px solid #ffffff; border-radius: 8px; overflow: hidden; font-family: 'monospace'; background-color: #0d1b22; }
     .terminal-table { width: 100%; border-collapse: collapse; color: #e0e0e0; }
     .terminal-table th { background-color: #0a141a; color: #d4a017; border: 1px solid #ffffff; padding: 10px; text-align: center; font-size: 13px; text-transform: uppercase; }
@@ -46,7 +50,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 2. SEU MOTOR DE DADOS ORIGINAL
+# 2. MOTOR DE DADOS ORIGINAL (SEM MEXER)
 def fetch(s):
     try:
         t = yf.Ticker(s)
@@ -81,7 +85,6 @@ def calcular_sentinela():
         return (mx + mn) / 2
     except: return 37.85
 
-# SUAS FÓRMULAS ORIGINAIS (SEM NENHUMA ALTERAÇÃO)
 def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_data):
     try:
         if p_ewz_atual == 0: return None
@@ -108,14 +111,10 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         if p_v >= 100: seta_txt, seta_cor = "▲ COMPRA", "#00ff88"
         elif p_r >= 100: seta_txt, seta_cor = "▼ VENDA", "#ff4d4d"
         var_axis = ((spot_data['at'] + v_spreed) / eixo_dol - 1) * 100
-        return {
-            "vivo": dolar_vivo, "fraja": dolar_fraja, "medio": dolar_medio, "ewz_med": (max_ewz + min_ewz) / 2,
-            "max_fut": max_fut, "p75_up": p75_up, "p25_up": p25_up, "p25_down": p25_down, "p75_down": p75_down, "min_fut": min_fut,
-            "v_v": v_final * 100, "spreed": v_spreed, "var_axis": var_axis, "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor
-        }
+        return {"vivo": dolar_vivo, "fraja": dolar_fraja, "medio": dolar_medio, "ewz_med": (max_ewz + min_ewz) / 2, "max_fut": max_fut, "p75_up": p75_up, "p25_up": p25_up, "p25_down": p25_down, "p75_down": p75_down, "min_fut": min_fut, "v_v": v_final * 100, "spreed": v_spreed, "var_axis": var_axis, "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor}
     except: return None
 
-# 3. SIDEBAR (CONTROLE DE ESTADO)
+# 3. PAINEL ADM NA BARRA LATERAL (FIXO)
 if 'a_ewz' not in st.session_state: st.session_state.a_ewz = float(calcular_sentinela())
 if 'a_dol' not in st.session_state: st.session_state.a_dol = 5246.00
 
@@ -124,12 +123,14 @@ with st.sidebar:
     with st.form("set_nexus"):
         new_ewz = st.number_input("AXIS EWZ:", value=st.session_state.a_ewz, format="%.2f")
         new_dol = st.number_input("AXIS DOLFUT:", value=st.session_state.a_dol, format="%.2f")
-        if st.form_submit_button("SALVAR E REINICIAR"):
+        if st.form_submit_button("SALVAR AXIS"):
             st.session_state.a_ewz = new_ewz
             st.session_state.a_dol = new_dol
             st.rerun()
+    st.markdown("---")
+    st.write("Configurações do Chassi Nexus ativas.")
 
-# 4. ESTRUTURA NEXUS (RODA LISO)
+# 4. LOOP DO TERMINAL
 placeholder = st.empty()
 
 while True:
@@ -142,8 +143,6 @@ while True:
         if res:
             dolfut_calc = st.session_state.a_dol * (1 + (res['v_v'] / 100))
             dolfut_com_spread = res['vivo'] + res['spreed']
-            
-            # HEADER
             st.markdown(f"""<div class="header-bair"><div class="title-box"><span class="bair-text">BAIR</span><span class="sep-text">-</span><span class="terminal-text">TERMINAL DOLLAR</span></div><div class="clock-container"><div class="clock-box"><span class="clock-label">BRASÍLIA</span><span class="clock-time">{datetime.now(tz_sp).strftime('%H:%M:%S')}</span></div><div class="clock-box"><span class="clock-label">NEW YORK</span><span class="clock-time">{datetime.now(tz_ny).strftime('%H:%M')}</span></div><div class="clock-box"><span class="clock-label">LONDRES</span><span class="clock-time">{datetime.now(tz_ld).strftime('%H:%M')}</span></div></div></div>""", unsafe_allow_html=True)
             
             c_main, c_side = st.columns([3, 1])
