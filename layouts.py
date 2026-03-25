@@ -43,10 +43,12 @@ st.markdown("""
     @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
     .ewz-mini-container { display: flex; justify-content: space-around; padding: 4px 0; border-top: 1px solid #444; margin-top: 4px; }
     .ewz-mini-val { font-size: 11px; font-weight: bold; font-family: monospace; }
+    /* Estilo para o botão de salvar na sidebar */
+    div.stButton > button { background-color: #d4a017; color: black; font-weight: bold; width: 100%; border: none; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS (MANTIDO ORIGINAL) ---
+# --- MOTOR DE DADOS ---
 def fetch(s):
     try:
         t = yf.Ticker(s)
@@ -116,17 +118,25 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         }
     except: return None
 
-# --- INICIALIZAÇÃO DE SESSÃO (ESTILO NEXUS) ---
-if 'a_ewz' not in st.session_state: st.session_state.a_ewz = float(calcular_sentinela())
+# --- INICIALIZAÇÃO E PAINEL ADM NA SIDEBAR ---
+eixo_sug = calcular_sentinela()
+if 'a_ewz' not in st.session_state: st.session_state.a_ewz = float(eixo_sug)
 if 'a_dol' not in st.session_state: st.session_state.a_dol = 5246.00
 
-# --- PAINEL ADM (SIDEBAR) ---
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
-    st.session_state.a_ewz = st.number_input("AXIS EWZ:", value=st.session_state.a_ewz, format="%.2f")
-    st.session_state.a_dol = st.number_input("AXIS DOLFUT:", value=st.session_state.a_dol, format="%.2f")
+    with st.form("ajuste_vars"):
+        st.session_state.a_ewz = st.number_input("AXIS EWZ:", value=st.session_state.a_ewz, format="%.2f")
+        st.session_state.a_dol = st.number_input("AXIS DOLFUT:", value=st.session_state.a_dol, format="%.2f")
+        st.form_submit_button("SALVAR")
+    st.markdown(f"""
+        <div style="border: 1px solid #d4a017; padding: 10px; border-radius: 5px; background: #0a141a; text-align: center; margin-top: 10px;">
+            <span style="color: #d4a017; font-size: 10px; font-weight: bold; display: block;">SENTINELA EWZ</span>
+            <span style="color: #ffffff; font-size: 18px; font-weight: bold;">{eixo_sug:.2f}</span>
+        </div>
+    """, unsafe_allow_html=True)
 
-# --- PLACEHOLDER DE RENDERIZAÇÃO LISO ---
+# --- PLACEHOLDER LISO ---
 placeholder = st.empty()
 
 while True:
@@ -142,6 +152,7 @@ while True:
             dolfut_calc = st.session_state.a_dol * (1 + (res['v_v'] / 100))
             dolfut_com_spread = res['vivo'] + res['spreed']
             c_main, c_side = st.columns([3, 1])
+            
             with c_main:
                 html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th style='color: #d4a017;'>Price</th><th style='color: #d4a017;'>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
                 v_v = res['v_v']
@@ -157,6 +168,7 @@ while True:
                     html_table += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col'>{p_val:{f}}</td><td>{(d['cl']/1000 if lbl=='DOLSPOT' else d['cl']):{f}}</td><td>{(d['op']/1000 if lbl=='DOLSPOT' else d['op']):{f}}</td><td>{(d['mx']/1000 if lbl=='DOLSPOT' else d['mx']):{f}}</td><td>{(d['mn']/1000 if lbl=='DOLSPOT' else d['mn']):{f}}</td><td style='color:{color}; font-weight:bold;'>{var:+.2f}%</td></tr>"
                     ticker_items.append(f"{lbl}: <span style='color:{color};'>{var:+.2f}%</span>")
                 st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
+
             with c_side:
                 st.markdown(f"""<div class="calc-panel">
                     <div class="calc-row" style="color:#ff4d4d;"><span>MAX FUT</span> <span>{res['max_fut']:.2f}</span></div>
@@ -185,7 +197,8 @@ while True:
                     <div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res['p_v']}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res['p_r']}%;"></div></div></div>
                     <div class="sinal-indicator blink" style="color:{res['seta_cor']};">{res['seta']}</div>
                 </div>""", unsafe_allow_html=True)
+
             ticker_html = " • ".join(ticker_items)
             st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{ticker_html} • {ticker_html}</div></div>', unsafe_allow_html=True)
-    
+
     time.sleep(2)
