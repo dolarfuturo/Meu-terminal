@@ -4,68 +4,75 @@ import time
 from datetime import datetime
 import pytz
 
-# Configuração para Tablet - Forçando o layout a não quebrar
+# Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLLAR", initial_sidebar_state="collapsed")
 
-# --- CSS: COMPRESSÃO REAL SEM SUMIR DADOS ---
+# --- CSS: COMPRESSÃO PARA 10CM E REMOÇÃO DE FUNDO BRANCO ---
 st.markdown("""
 <style>
-    html, body, [data-testid="stAppViewContainer"] {
+    /* Trava o fundo e remove scroll */
+    html, body, [data-testid="stAppViewContainer"], .main {
         background-color: #050a0e !important;
-        overflow: hidden !important; /* Trava o scroll */
+        overflow: hidden !important;
+        height: 100vh !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
-    .block-container { 
-        padding: 0.2rem 0.5rem !important; 
-        max-height: 100vh;
-    }
+    .block-container { padding: 0.2rem 0.5rem !important; }
 
-    /* Cabeçalho ultra compacto */
-    .header-container { text-align: center; padding: 2px 0; border-bottom: 2px solid #FFD700; margin-bottom: 5px; }
-    .main-title { margin: 0; line-height: 1.0; font-size: 24px; font-family: monospace; }
+    /* Cabeçalho Compacto */
+    .header-container { text-align: center; padding: 2px 0px; border-bottom: 2px solid #FFD700; background-color: #050a0e; margin-bottom: 5px; }
+    .main-title { margin: 0px; line-height: 1.0; font-size: 24px; font-family: monospace; }
     .bair-blue { color: #00BFFF; font-weight: bold; }
     .terminal-gold { color: #FFD700; font-weight: bold; }
-    .clock-row { display: flex; justify-content: center; gap: 15px; font-size: 10px; font-family: monospace; color: #AAA; }
+    
+    .clock-row { display: flex; justify-content: center; gap: 20px; padding: 2px 0; font-weight: bold; font-size: 11px; font-family: monospace; }
+    .clock-item { color: #AAA; }
+    .br-green { color: #00ff00; }
+    .white-time { color: #ffffff; }
 
-    /* Grades e Tabelas */
     .section-title { 
         border: 1px solid #ffffff; color: #00f2ff; text-align: center; 
         font-weight: bold; font-family: monospace; padding: 2px; 
-        margin-bottom: 4px; font-size: 11px;
+        margin-bottom: 4px; text-transform: uppercase; font-size: 11px;
     }
-    .main-grid { border: 1.5px solid #ffffff; border-radius: 4px; background-color: #0d1b22; margin-bottom: 5px; overflow: hidden; }
-    .terminal-table { width: 100%; border-collapse: collapse; font-family: monospace; }
-    .terminal-table th { background-color: #0a141a; color: #d4a017; border: 1px solid #ffffff; padding: 3px; font-size: 9px; }
-    .terminal-table td { border: 1px solid #ffffff; padding: 4px; text-align: center; font-size: 11px; color: #e0e0e0; }
-    .asset-name { font-size: 11px; color: #fff; text-align: left !important; font-weight: bold; padding-left: 5px !important; }
 
-    /* Projeções */
-    .calc-panel { border: 1.5px solid #ffffff; border-radius: 4px; padding: 3px; background: #0a141a; font-family: monospace; margin-bottom: 3px; }
-    .calc-row { display: flex; justify-content: space-between; padding: 2px 4px; border-bottom: 1px solid #444; font-size: 10px; font-weight: bold; }
-    .axis-box { text-align:center; padding: 5px; color: #00f2ff; font-size: 15px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444; margin: 3px 0; }
+    /* Grade Principal Comprimida */
+    .main-grid { border: 2px solid #ffffff; border-radius: 4px; overflow: hidden; font-family: 'monospace'; background-color: #0d1b22; }
+    .terminal-table { width: 100%; border-collapse: collapse; color: #e0e0e0; }
+    .terminal-table th { background-color: #0a141a; color: #d4a017; border: 1px solid #ffffff; padding: 4px; text-align: center; font-size: 9px; }
+    .terminal-table td { border: 1px solid #ffffff; padding: 5px; text-align: center; font-size: 11px; }
+    .asset-name { font-size: 11px; color: #fff; text-align: left; font-weight: bold; padding-left: 8px; }
+    .price-col { font-weight: bold; color: #ffffff !important; }
 
-    /* BARRA DE FORÇA COM PORCENTAGENS */
-    .bar-wrapper-dual { background: #0a141a; padding: 4px; border: 1.5px solid #ffffff; border-radius: 4px; text-align: center; }
+    /* Painéis de Projeção */
+    .calc-panel { border: 2px solid #ffffff; border-radius: 4px; padding: 3px; background: #0a141a; font-family: monospace; margin-bottom: 3px; }
+    .calc-row { display: flex; justify-content: space-between; padding: 2px 6px; border-bottom: 1px solid #444; font-size: 10px; font-weight: bold; align-items: center; }
+    .axis-box { text-align:center; padding: 5px; color: #00f2ff; font-size: 15px; font-weight: bold; border-top:1.2px solid #444; border-bottom:1.2px solid #444; margin: 3px 0; }
+
+    /* Barra de Força */
+    .bar-wrapper-dual { background: #0a141a; padding: 6px 6px 4px 6px; border: 2px solid #ffffff; border-radius: 4px; text-align: center; }
     .force-scale { display: flex; justify-content: space-between; font-size: 9px; font-family: monospace; font-weight: bold; margin-bottom: 2px; }
     .scale-left { color: #00ff88; width: 50%; display: flex; justify-content: space-around; }
     .scale-right { color: #ff4d4d; width: 50%; display: flex; justify-content: space-around; }
-    
-    .force-container-dual { background: #111; height: 12px; width: 100%; border-radius: 2px; position: relative; display: flex; border: 1px solid #444; }
+    .force-container-dual { background: #111; height: 12px; width: 100%; border-radius: 3px; position: relative; display: flex; border: 1px solid #444; margin: 2px 0; }
     .center-line { position: absolute; left: 50%; top: 0; width: 2px; height: 100%; background: #fff; z-index: 10; }
     .bar-side { width: 50%; height: 100%; position: relative; background: #050a0e; }
     .fill-green { background: #00ff88; float: right; height: 100%; transition: width 0.4s; }
     .fill-red { background: #ff4d4d; float: left; height: 100%; transition: width 0.4s; }
     
-    .sinal-indicator { font-size: 12px; font-weight: 950; margin-top: 2px; min-height: 14px; }
+    .sinal-indicator { font-size: 12px; font-weight: 950; line-height: 1; margin-top: 3px; min-height: 12px; }
     .blink { animation: blinker 1s linear infinite; }
     @keyframes blinker { 50% { opacity: 0.1; } }
 
-    /* Ticker */
-    .ticker-wrapper { position: fixed; bottom: 0; left: 0; width: 100%; background: #000; border-top: 1.5px solid #ffffff; padding: 3px 0; }
-    .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: monospace; font-size: 11px; font-weight: bold; color: #fff; }
+    /* Ticker Fixo no Rodapé */
+    .ticker-wrapper { position: fixed; bottom: 0; left: 0; width: 100%; background: #000; border-top: 2px solid #ffffff; padding: 4px 0; overflow: hidden; z-index: 999; }
+    .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 11px; font-weight: bold; color: #fff; }
+    @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS ---
+# --- MOTOR DE DADOS (SEU CÓDIGO) ---
 def fetch(s):
     try:
         t = yf.Ticker(s)
@@ -115,6 +122,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
             if diff < 0: p_v = min(100, (abs(diff)/(dist_base*2))*100)
             else: p_r = min(100, (abs(diff)/(dist_base*2))*100)
         seta_txt, seta_cor = "", "#000000"
+        # AJUSTE DO NOME SOLICITADO
         if p_v >= 100: seta_txt, seta_cor = "▲ REGIÃO DE COMPRA", "#00ff88"
         elif p_r >= 100: seta_txt, seta_cor = "▼ REGIÃO DE VENDA", "#ff4d4d"
         var_axis = ((spot_data['at'] + v_spreed) / eixo_dol - 1) * 100
@@ -130,46 +138,46 @@ with st.sidebar:
 placeholder = st.empty()
 
 while True:
-    ewz_live = fetch("EWZ")
-    spot_live = fetch("USDBRL=X")
+    tz_sp, tz_ny, tz_ld = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London')
+    ewz_live, spot_live = fetch("EWZ"), fetch("USDBRL=X")
     res = calcular_k97_total(a_ewz, ewz_live['at'], ewz_live['mx'], ewz_live['mn'], a_dol, spot_live)
-    now = datetime.now(pytz.timezone('America/Sao_Paulo'))
+    now = datetime.now()
 
     with placeholder.container():
-        st.markdown(f'<div class="header-container"><h1 class="main-title"><span class="bair-blue">BAIR</span><span class="terminal-gold"> - TERMINAL DOLLAR</span></h1><div class="clock-row"><span>🇧🇷 {now.strftime("%H:%M:%S")}</span></div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="header-container"><h1 class="main-title"><span class="bair-blue">BAIR</span><span class="terminal-gold"> - TERMINAL DOLLAR</span></h1><div class="clock-row"><span class="clock-item">🇧🇷 BR: <span class="br-green">{now.astimezone(tz_sp).strftime("%H:%M:%S")}</span></span><span class="clock-item">🇺🇸 NY: <span class="white-time">{now.astimezone(tz_ny).strftime("%H:%M:%S")}</span></span><span class="clock-item">🇬🇧 LD: <span class="white-time">{now.astimezone(tz_ld).strftime("%H:%M:%S")}</span></span></div></div>', unsafe_allow_html=True)
 
         if res:
             dolfut_calc = a_dol * (1 + (res['v_v'] / 100))
+            dolfut_com_spread = res['vivo'] + res['spreed']
             c_main, c_side = st.columns([3, 1])
             
             with c_main:
                 st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
                 html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
+                bg_dol = "background-color:rgba(0, 255, 0, 0.4);" if res['v_v'] >= 0 else "background-color:rgba(255, 0, 0, 0.4);"
+                html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col' style='{bg_dol}'>{(dolfut_calc/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max_fut']/1000):.4f}</td><td>{(res['min_fut']/1000):.4f}</td><td style='color:{("#00ff00" if res['v_v'] >= 0 else "#ff4d4d")}; font-weight:bold;'>{res['v_v']:+.2f}%</td></tr>"
                 
-                # DOLFUT
-                html_table += f"<tr><td class='asset-name'>DOLFUT</td><td style='background:rgba(0,255,255,0.2)'>{(dolfut_calc/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max_fut']/1000):.4f}</td><td>{(res['min_fut']/1000):.4f}</td><td style='color:#0f0;'>{res['v_v']:+.2f}%</td></tr>"
-                
-                # TODOS OS ATIVOS RESTAURADOS
-                outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "EUR/USD": "EURUSD=X", "PETROLEO": "BZ=F"}
+                outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "BRENT": "BZ=F"}
                 ticker_items = []
                 for lbl, sym in outros.items():
                     d = spot_live if lbl == "DOLSPOT" else (ewz_live if lbl == "EWZ" else fetch(sym))
+                    f, p_val = (".4f", d['at']/1000) if lbl == "DOLSPOT" else (".2f", d['at'])
                     var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
                     color = "#00ff00" if var >= 0 else "#ff4d4d"
-                    html_table += f"<tr><td class='asset-name'>{lbl}</td><td>{d['at']/1000 if lbl=='DOLSPOT' else d['at']:.2f}</td><td>{d['cl']/1000 if lbl=='DOLSPOT' else d['cl']:.2f}</td><td>{d['op']/1000 if lbl=='DOLSPOT' else d['op']:.2f}</td><td>{d['mx']/1000 if lbl=='DOLSPOT' else d['mx']:.2f}</td><td>{d['mn']/1000 if lbl=='DOLSPOT' else d['mn']:.2f}</td><td style='color:{color};'>{var:+.2f}%</td></tr>"
+                    bg_item = f"background-color:rgba({('0, 255, 0' if var>=0 else '255, 0, 0')}, 0.4);"
+                    html_table += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col' style='{bg_item}'>{p_val:{f}}</td><td>{(d['cl']/1000 if lbl=='DOLSPOT' else d['cl']):{f}}</td><td>{(d['op']/1000 if lbl=='DOLSPOT' else d['op']):{f}}</td><td>{(d['mx']/1000 if lbl=='DOLSPOT' else d['mx']):{f}}</td><td>{(d['mn']/1000 if lbl=='DOLSPOT' else d['mn']):{f}}</td><td style='color:{color}; font-weight:bold;'>{var:+.2f}%</td></tr>"
                     ticker_items.append(f"{lbl}: {var:+.2f}%")
-                
                 st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
             
             with c_side:
-                st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
-                # BLOCO DE PROJEÇÕES COMPLETO
-                st.markdown(f'<div class="calc-panel"><div class="calc-row" style="color:#f44;"><span>MAX</span> <span>{res["max_fut"]:.2f}</span></div><div class="calc-row"><span>75%</span> <span>{res["p75_up"]:.2f}</span></div><div class="calc-row"><span>25%</span> <span>{res["p25_up"]:.2f}</span></div><div class="axis-box">AXIS: {a_dol:.2f}</div><div class="calc-row"><span>25%</span> <span>{res["p25_down"]:.2f}</span></div><div class="calc-row"><span>75%</span> <span>{res["p75_down"]:.2f}</span></div><div class="calc-row" style="color:#0f8; border-bottom:none;"><span>MIN</span> <span>{res["min_fut"]:.2f}</span></div></div>', unsafe_allow_html=True)
+                st.markdown('<div class="section-title">PROJEÇÕES</div>', unsafe_allow_html=True)
+                st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="color:#ff4d4d;"><span>MAX</span> <span>{res['max_fut']:.2f}</span></div><div class="calc-row"><span>75%</span> <span>{res['p75_up']:.2f}</span></div><div class="calc-row"><span>25%</span> <span>{res['p25_up']:.2f}</span></div><div class="axis-box">AXIS: {a_dol:.2f}</div><div class="calc-row"><span>25%</span> <span>{res['p25_down']:.2f}</span></div><div class="calc-row"><span>75%</span> <span>{res['p75_down']:.2f}</span></div><div class="calc-row" style="color:#00ff88; border-bottom:none;"><span>MIN</span> <span>{res['min_fut']:.2f}</span></div></div>""", unsafe_allow_html=True)
                 
-                # BARRA DE FORÇA COM PORCENTAGENS E SETA "REGIÃO DE..."
+                st.markdown(f"""<div class="calc-panel"><div class="calc-row"><span>DOLFUT</span> <span style="color:#00f2ff; font-size:14px;">{dolfut_com_spread:.2f}</span></div><div class="calc-row"><span>MÉDIA</span> <span>{res['medio']:.2f}</span></div><div class="calc-row" style="border-bottom:none;"><span>JUSTO</span> <span>{res['fraja']:.2f}</span></div></div>""", unsafe_allow_html=True)
+                
                 st.markdown(f"""<div class="bar-wrapper-dual">
                     <div class="force-scale"><div class="scale-left"><span>100%</span><span>80%</span><span>50%</span><span>30%</span></div><div class="scale-right"><span>30%</span><span>50%</span><span>80%</span><span>100%</span></div></div>
-                    <div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width:{res['p_v']}%;"></div></div><div class="fill-red" style="width:{res['p_r']}%;"></div></div>
+                    <div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res['p_v']}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res['p_r']}%;"></div></div></div>
                     <div class="sinal-indicator blink" style="color:{res['seta_cor']};">{res['seta']}</div>
                 </div>""", unsafe_allow_html=True)
 
