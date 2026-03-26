@@ -7,7 +7,7 @@ import pytz
 # Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLLAR", initial_sidebar_state="collapsed")
 
-# --- CSS: ESTILIZAÇÃO (AJUSTADO APENAS NOME E RELÓGIOS PARA PADRÃO CRYPTO) ---
+# --- CSS: ESTILIZAÇÃO ---
 st.markdown("""
 <style>
     .stApp { background-color: #050a0e !important; }
@@ -18,13 +18,26 @@ st.markdown("""
     .bair-blue { color: #00BFFF; font-weight: bold; }
     .terminal-gold { color: #FFD700; font-weight: bold; }
     
-    /* RELÓGIOS COM BANDEIRAS PADRÃO CRYPTO */
+    /* RELÓGIOS */
     .clock-row { display: flex; justify-content: center; gap: 30px; padding: 10px 0; font-weight: bold; font-size: 14px; font-family: monospace; }
     .clock-item { color: #AAA; }
     .br-green { color: #00ff00; }
     .white-time { color: #ffffff; }
 
-    /* MANUTENÇÃO DOS ELEMENTOS ORIGINAIS DO DOLLAR */
+    /* FAIXAS DE TÍTULO SOLICITADAS */
+    .section-title { 
+        border: 2px solid #ffffff; 
+        color: #00f2ff; 
+        text-align: center; 
+        font-weight: bold; 
+        font-family: monospace; 
+        padding: 5px; 
+        margin-bottom: 8px; 
+        text-transform: uppercase;
+        font-size: 14px;
+    }
+
+    /* ELEMENTOS DA GRADE */
     .main-grid { border: 2.5px solid #ffffff; border-radius: 8px; overflow: hidden; font-family: 'monospace'; background-color: #0d1b22; }
     .terminal-table { width: 100%; border-collapse: collapse; color: #e0e0e0; }
     .terminal-table th { background-color: #0a141a; color: #d4a017; border: 1px solid #ffffff; padding: 10px; text-align: center; font-size: 13px; text-transform: uppercase; }
@@ -48,7 +61,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS (MANTIDO) ---
+# --- MOTOR DE DADOS ---
 def fetch(s):
     try:
         t = yf.Ticker(s)
@@ -114,7 +127,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         }
     except: return None
 
-# --- SIDEBAR ADM (MANTIDO) ---
+# --- SIDEBAR ADM ---
 eixo_sug = calcular_sentinela()
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
@@ -132,7 +145,7 @@ while True:
     now = datetime.now()
 
     with placeholder.container():
-        # --- CABEÇALHO PADRONIZADO (IGUAL AO CRYPTO) ---
+        # CABEÇALHO PADRONIZADO
         st.markdown(f"""
             <div class="header-container">
                 <h1 class="main-title">
@@ -150,7 +163,10 @@ while True:
         if res:
             dolfut_calc, dolfut_com_spread = a_dol * (1 + (res['v_v'] / 100)), res['vivo'] + res['spreed']
             c_main, c_side = st.columns([3, 1])
+            
             with c_main:
+                # TÍTULO DA GRADE
+                st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
                 html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
                 v_v = res['v_v']
                 html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col'>{(dolfut_calc/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max_fut']/1000):.4f}</td><td>{(res['min_fut']/1000):.4f}</td><td style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_v:+.2f}%</td></tr>"
@@ -164,10 +180,14 @@ while True:
                     html_table += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col'>{p_val:{f}}</td><td>{(d['cl']/1000 if lbl=='DOLSPOT' else d['cl']):{f}}</td><td>{(d['op']/1000 if lbl=='DOLSPOT' else d['op']):{f}}</td><td>{(d['mx']/1000 if lbl=='DOLSPOT' else d['mx']):{f}}</td><td>{(d['mn']/1000 if lbl=='DOLSPOT' else d['mn']):{f}}</td><td style='color:{color}; font-weight:bold;'>{var:+.2f}%</td></tr>"
                     ticker_items.append(f"{lbl}: <span style='color:{color};'>{var:+.2f}%</span>")
                 st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
+            
             with c_side:
+                # TÍTULO DAS PROJEÇÕES
+                st.markdown('<div class="section-title">CÁLCULOS DE PROJEÇÕES</div>', unsafe_allow_html=True)
                 st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="color:#ff4d4d;"><span>MAX FUT</span> <span>{res['max_fut']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>75%</span> <span>{res['p75_up']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>25%</span> <span>{res['p25_up']:.2f}</span></div><div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 18px; font-weight: bold; border-top:1.5px solid #444; border-bottom:1.5px solid #444; margin: 5px 0;">AXIS: {a_dol:.2f}</div><div class="calc-row" style="color:#ffa500;"><span>25%</span> <span>{res['p25_down']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>75%</span> <span>{res['p75_down']:.2f}</span></div><div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MIN FUT</span> <span>{res['min_fut']:.2f}</span></div></div>""", unsafe_allow_html=True)
                 st.markdown(f"""<div class="calc-panel"><div style="padding: 10px 8px; border-bottom: 1px solid #444;"><div style="display: flex; justify-content: space-between; align-items: center;"><span style="color:#ffffff; font-weight: bold;">DOLFUT</span> <span style="color:#00f2ff; font-size: 18px; font-weight: 950;">{dolfut_com_spread:.2f}</span></div><div style="text-align: right; color: #d4a017; font-size: 11px; font-weight: bold; margin-top: 2px;">VAR AXIS: {res['var_axis']:+.2f}%</div></div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOL</span> <span style="color:#00f2ff; font-size: 16px;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">P. JUSTO</span> <span style="color:#ffffff; font-size: 16px; font-weight: bold;">{res['fraja']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff; font-size: 16px; font-weight: bold;">{res['spreed']:.2f}</span></div></div>""", unsafe_allow_html=True)
                 st.markdown(f"""<div class="bar-wrapper-dual"><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res['p_v']}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res['p_r']}%;"></div></div></div><div class="sinal-indicator blink" style="color:{res['seta_cor']};">{res['seta']}</div></div>""", unsafe_allow_html=True)
+            
             ticker_html = " • ".join(ticker_items)
             st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{ticker_html} • {ticker_html}</div></div>', unsafe_allow_html=True)
     time.sleep(2)
