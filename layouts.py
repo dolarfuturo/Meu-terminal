@@ -81,15 +81,14 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
     try:
         if not spot_data or p_ewz_atual == 0: return None
         
-        # --- CÁLCULOS ATUALIZADOS COM A NOVA FÓRMULA ---
+        # --- CÁLCULOS ATUALIZADOS: -23% / -77% ---
         amp = spot_data['mx'] - spot_data['mn']
         v_spreed = amp / 8
         
-        # X1 = (MAX SPOT - MIN SPOT - 25%) -> Amplitude Total - 25%
-        x1 = amp * 0.75
-        
-        # X2 = (MAX SPOT - MIN SPOT - 75%) -> Amplitude Total - 75%
-        x2 = amp * 0.25
+        # X1 (-23%) -> Sobram 77% da Amplitude
+        x1 = amp * 0.77
+        # X2 (-77%) -> Sobram 23% da Amplitude
+        x2 = amp * 0.23
         
         max_f = eixo_dol + x1
         min_f = eixo_dol - x2
@@ -101,7 +100,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         dolb3 = eixo_dol + (eixo_dol * v_spot_pct)
 
-        # Preço Justo (Fraja) para cálculo da barra de força
+        # Preço Justo (Fraja)
         ewz_ref = st.session_state.market_data.get("EWZ", {}).get('cl', 1)
         v_ewz = ((p_ewz_atual / ewz_ref) - 1) if ewz_ref > 0 else 0
         v_final = (v_spot_pct * 0.6) - (v_ewz * 0.4)
@@ -118,16 +117,17 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         if p_v >= 100: seta_txt, seta_cor = "▲ REGIÃO DE COMPRA", "#00ff88"
         elif p_r >= 100: seta_txt, seta_cor = "▼ REGIÃO DE VENDA", "#ff4d4d"
         
+        # --- BLOCO INTERNO AJUSTADO COM SPREED ---
         return {
             "vivo": dolb3,
             "fraja": eixo_dol * (1 + (v_final / 2)),
             "medio": med_d,
             "max_fut": max_f, 
             "min_fut": min_f,
-            "p75_up": max_f - (x1 * 0.2), # Escalonamento proporcional para preencher a grade
-            "p25_up": eixo_dol + (x1 * 0.4),
-            "p25_down": eixo_dol - (x2 * 0.4),
-            "p75_down": min_f + (x2 * 0.2),
+            "p75_up": max_f - v_spreed,      # MAX FUT - SPREED
+            "p25_up": eixo_dol + v_spreed,   # AXIS + SPREED
+            "p25_down": eixo_dol - v_spreed, # AXIS - SPREED
+            "p75_down": min_f + v_spreed,    # MIN FUT + SPREED
             "v_v": v_spot_pct * 100, 
             "spreed": v_spreed, "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor
         }
