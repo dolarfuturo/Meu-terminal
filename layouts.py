@@ -7,54 +7,34 @@ import pytz
 # Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLLAR", initial_sidebar_state="collapsed")
 
-# --- CSS: AJUSTE APENAS DE NOME, RELÓGIOS E FONTE CRYPTO ---
+# --- CSS: FONTE CRYPTO E CABEÇALHO CONFORME IMAGEM ---
 st.markdown("""
 <style>
-    /* FONTE CRYPTO EM TUDO */
-    * { font-family: 'Courier New', Courier, monospace !important; }
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@800&display=swap');
 
+    * { font-family: 'JetBrains Mono', monospace !important; }
     .stApp { background-color: #050a0e !important; }
-    
-    /* CABEÇALHO CENTRALIZADO */
-    .header-container {
-        text-align: center;
-        padding: 15px 0px;
-        border-bottom: 2.5px solid #ffffff;
-        margin-bottom: 15px;
-        background-color: #050a0e;
-    }
-    .bair-title {
-        font-size: 48px;
-        font-weight: 950;
-        margin-bottom: 10px;
-        letter-spacing: -1px;
-    }
-    .clock-row {
-        display: flex;
-        justify-content: center;
-        gap: 25px;
-        margin-top: 5px;
-    }
-    .clock-item {
-        background: #0a141a;
-        border: 1px solid #ffffff;
-        padding: 5px 15px;
-        border-radius: 4px;
-        min-width: 120px;
-    }
-    .clock-label {
-        font-size: 10px;
-        color: #d4a017;
-        font-weight: bold;
-        display: block;
-    }
-    .clock-time {
-        font-size: 18px;
-        color: #ffffff;
-        font-weight: bold;
-    }
 
-    /* RESTANTE DO DESIGN ORIGINAL PRESERVADO */
+    /* CABEÇALHO CONFORME AS IMAGENS */
+    .header-bair { 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        padding: 5px 15px; 
+        border-bottom: 2px solid #FFD700; /* Linha Amarela da Imagem */
+        margin-bottom: 10px; 
+    }
+    .title-box { display: flex; align-items: center; gap: 10px; }
+    .bair-text { font-size: 38px; color: #00f2ff; font-weight: 900; }
+    .sep-text { font-size: 38px; color: #ffffff; font-weight: 900; }
+    .terminal-text { font-size: 38px; color: #d4a017; font-weight: 900; }
+
+    .clock-container { display: flex; gap: 15px; }
+    .clock-box { text-align: center; background: transparent; padding: 2px 5px; }
+    .clock-label { font-size: 11px; color: #ffffff; font-weight: bold; display: block; text-align: center; margin-bottom: 2px; }
+    .clock-time { color: #00ff00; font-size: 19px; font-weight: bold; display: block; }
+
+    /* MANTER O RESTANTE ORIGINAL */
     .main-grid { border: 2.5px solid #ffffff; border-radius: 8px; overflow: hidden; background-color: #0d1b22; }
     .terminal-table { width: 100%; border-collapse: collapse; color: #e0e0e0; }
     .terminal-table th { background-color: #0a141a; color: #d4a017; border: 1px solid #ffffff; padding: 10px; text-align: center; font-size: 13px; text-transform: uppercase; }
@@ -147,7 +127,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         }
     except: return None
 
-# --- SIDEBAR (MANTIDO ORIGINAL) ---
+# --- SIDEBAR (MANTIDO CONFORME ORIGINAL) ---
 eixo_sug = calcular_sentinela()
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
@@ -166,18 +146,18 @@ while True:
     res = calcular_k97_total(a_ewz, ewz_live['at'], ewz_live['mx'], ewz_live['mn'], a_dol, spot_live)
 
     with placeholder.container():
-        # CABEÇALHO CENTRALIZADO COM RELÓGIOS
+        # CABEÇALHO CONFORME AS IMAGENS ENVIADAS
         st.markdown(f"""
-            <div class="header-container">
-                <div class="bair-title">
-                    <span style='color: #00f2ff;'>BAIR</span> 
-                    <span style='color: #ffffff;'>-</span>
-                    <span style='color: #d4a017;'>TERMINAL DOLLAR</span>
+            <div class="header-bair">
+                <div class="title-box">
+                    <span class="bair-text">BAIR</span>
+                    <span class="sep-text">-</span>
+                    <span class="terminal-text">TERMINAL DOLLAR</span>
                 </div>
-                <div class="clock-row">
-                    <div class="clock-item"><span class="clock-label">🇧🇷 BRASÍLIA</span><span class="clock-time">{datetime.now(tz_sp).strftime('%H:%M:%S')}</span></div>
-                    <div class="clock-item"><span class="clock-label">🇺🇸 NEW YORK</span><span class="clock-time">{datetime.now(tz_ny).strftime('%H:%M:%S')}</span></div>
-                    <div class="clock-item"><span class="clock-label">🇬🇧 LONDON</span><span class="clock-time">{datetime.now(tz_ld).strftime('%H:%M:%S')}</span></div>
+                <div class="clock-container">
+                    <div class="clock-box"><span class="clock-label">🇧🇷 BRASÍLIA</span><span class="clock-time">{datetime.now(tz_sp).strftime('%H:%M:%S')}</span></div>
+                    <div class="clock-box"><span class="clock-label">🇺🇸 NEW YORK</span><span class="clock-time">{datetime.now(tz_ny).strftime('%H:%M:%S')}</span></div>
+                    <div class="clock-box"><span class="clock-label">🇬🇧 LONDRES</span><span class="clock-time">{datetime.now(tz_ld).strftime('%H:%M:%S')}</span></div>
                 </div>
             </div>
         """, unsafe_allow_html=True)
