@@ -7,26 +7,63 @@ import pytz
 # Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLLAR", initial_sidebar_state="collapsed")
 
-# --- CSS: ESTILIZAÇÃO COMPACTA ---
+# --- CSS: AJUSTE APENAS DE NOME, RELÓGIOS E FONTE CRYPTO ---
 st.markdown("""
 <style>
-    #MainMenu {visibility: hidden;} header {visibility: hidden;} footer {visibility: hidden;}
+    /* FONTE CRYPTO EM TUDO */
+    * { font-family: 'Courier New', Courier, monospace !important; }
+
     .stApp { background-color: #050a0e !important; }
-    .main-grid { border: 2.5px solid #ffffff; border-radius: 8px; overflow: hidden; font-family: 'monospace'; background-color: #0d1b22; }
+    
+    /* CABEÇALHO CENTRALIZADO */
+    .header-container {
+        text-align: center;
+        padding: 15px 0px;
+        border-bottom: 2.5px solid #ffffff;
+        margin-bottom: 15px;
+        background-color: #050a0e;
+    }
+    .bair-title {
+        font-size: 48px;
+        font-weight: 950;
+        margin-bottom: 10px;
+        letter-spacing: -1px;
+    }
+    .clock-row {
+        display: flex;
+        justify-content: center;
+        gap: 25px;
+        margin-top: 5px;
+    }
+    .clock-item {
+        background: #0a141a;
+        border: 1px solid #ffffff;
+        padding: 5px 15px;
+        border-radius: 4px;
+        min-width: 120px;
+    }
+    .clock-label {
+        font-size: 10px;
+        color: #d4a017;
+        font-weight: bold;
+        display: block;
+    }
+    .clock-time {
+        font-size: 18px;
+        color: #ffffff;
+        font-weight: bold;
+    }
+
+    /* RESTANTE DO DESIGN ORIGINAL PRESERVADO */
+    .main-grid { border: 2.5px solid #ffffff; border-radius: 8px; overflow: hidden; background-color: #0d1b22; }
     .terminal-table { width: 100%; border-collapse: collapse; color: #e0e0e0; }
     .terminal-table th { background-color: #0a141a; color: #d4a017; border: 1px solid #ffffff; padding: 10px; text-align: center; font-size: 13px; text-transform: uppercase; }
     .terminal-table td { border: 1px solid #ffffff; padding: 12px; text-align: center; font-size: 15px; }
     .asset-name { font-size: 17px; color: #fff; text-align: left; font-weight: bold; padding-left: 15px; }
     .price-col { color: #00f2ff !important; font-weight: bold; }
-    
-    /* CABEÇALHO PADRONIZADO BAIR */
-    .header-container { text-align: center; padding: 10px 0px; border-bottom: 2px solid #FFD700; background-color: #050a0e; margin-bottom: 10px; }
-    .bair-title { margin: 0px; line-height: 1.1; font-size: 40px; font-family: 'monospace'; font-weight: 950; }
-    .clock-row { display: flex; justify-content: center; gap: 30px; padding: 5px 0; font-weight: bold; font-size: 15px; color: #AAA; font-family: 'monospace'; }
-    
-    .calc-panel { border: 2.5px solid #ffffff; border-radius: 8px; padding: 6px; background: #0a141a; font-family: monospace; margin-bottom: 4px; }
+    .calc-panel { border: 2.5px solid #ffffff; border-radius: 8px; padding: 6px; background: #0a141a; margin-bottom: 4px; }
     .calc-row { display: flex; justify-content: space-between; padding: 4px 8px; border-bottom: 1px solid #444; font-size: 13px; font-weight: bold; align-items: center; }
-    .bar-wrapper-dual { background: #0a141a; padding: 12px 10px 6px 10px; border: 2.5px solid #ffffff; border-radius: 8px; margin-top: 0px; text-align: center; position: relative; }
+    .bar-wrapper-dual { background: #0a141a; padding: 12px 10px 6px 10px; border: 2.5px solid #ffffff; border-radius: 8px; text-align: center; position: relative; }
     .marker-container { display: flex; justify-content: space-between; position: absolute; width: calc(100% - 20px); top: 2px; font-size: 9px; color: #888; font-weight: bold; }
     .force-container-dual { background: #111; height: 16px; width: 100%; border-radius: 4px; position: relative; overflow: hidden; display: flex; border: 1px solid #444; margin: 4px 0; }
     .center-line { position: absolute; left: 50%; top: 0; width: 2px; height: 100%; background: #fff; z-index: 10; }
@@ -37,10 +74,10 @@ st.markdown("""
     .blink { animation: blinker 1s linear infinite; }
     @keyframes blinker { 50% { opacity: 0.1; } }
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 2px solid #ffffff; border-bottom: 2px solid #ffffff; padding: 8px 0; overflow: hidden; white-space: nowrap; margin-top: 10px; }
-    .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 14px; font-weight: bold; color: #fff; }
+    .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-size: 14px; font-weight: bold; color: #fff; }
     @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
     .ewz-mini-container { display: flex; justify-content: space-around; padding: 4px 0; border-top: 1px solid #444; margin-top: 4px; }
-    .ewz-mini-val { font-size: 11px; font-weight: bold; font-family: monospace; }
+    .ewz-mini-val { font-size: 11px; font-weight: bold; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -110,7 +147,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         }
     except: return None
 
-# --- SIDEBAR (MANTIDO CONFORME ORIGINAL) ---
+# --- SIDEBAR (MANTIDO ORIGINAL) ---
 eixo_sug = calcular_sentinela()
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
@@ -129,7 +166,7 @@ while True:
     res = calcular_k97_total(a_ewz, ewz_live['at'], ewz_live['mx'], ewz_live['mn'], a_dol, spot_live)
 
     with placeholder.container():
-        # NOVO CABEÇALHO PADRÃO CENTRALIZADO
+        # CABEÇALHO CENTRALIZADO COM RELÓGIOS
         st.markdown(f"""
             <div class="header-container">
                 <div class="bair-title">
@@ -138,9 +175,9 @@ while True:
                     <span style='color: #d4a017;'>TERMINAL DOLLAR</span>
                 </div>
                 <div class="clock-row">
-                    <span>🇧🇷 BRASÍLIA: <span style='color: #00ff00;'>{datetime.now(tz_sp).strftime('%H:%M:%S')}</span></span>
-                    <span>🇺🇸 NEW YORK: <span style='color: #ffffff;'>{datetime.now(tz_ny).strftime('%H:%M:%S')}</span></span>
-                    <span>🇬🇧 LONDRES: <span style='color: #ffffff;'>{datetime.now(tz_ld).strftime('%H:%M:%S')}</span></span>
+                    <div class="clock-item"><span class="clock-label">🇧🇷 BRASÍLIA</span><span class="clock-time">{datetime.now(tz_sp).strftime('%H:%M:%S')}</span></div>
+                    <div class="clock-item"><span class="clock-label">🇺🇸 NEW YORK</span><span class="clock-time">{datetime.now(tz_ny).strftime('%H:%M:%S')}</span></div>
+                    <div class="clock-item"><span class="clock-label">🇬🇧 LONDON</span><span class="clock-time">{datetime.now(tz_ld).strftime('%H:%M:%S')}</span></div>
                 </div>
             </div>
         """, unsafe_allow_html=True)
