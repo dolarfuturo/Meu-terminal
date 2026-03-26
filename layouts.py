@@ -34,13 +34,12 @@ st.markdown("""
     .asset-name { font-size: 13px; color: #fff; text-align: left; font-weight: bold; padding-left: 10px; }
     .price-col { font-weight: bold; color: #ffffff !important; }
     
-    /* Cores de Flash por Tique */
     .flash-up { background-color: #008f39 !important; color: white !important; }
     .flash-down { background-color: #b90000 !important; color: white !important; }
     
     .calc-panel { border: 1.5px solid #ffffff; border-radius: 4px; padding: 4px; background: #0a141a; font-family: monospace; margin-bottom: 4px; }
     .calc-row { display: flex; justify-content: space-between; padding: 3px 6px; border-bottom: 1px solid #444; font-size: 11px; font-weight: bold; align-items: center; }
-    .bar-wrapper-dual { background: #0a141a; padding: 8px 8px 4px 8px; border: 1.5px solid #ffffff; border-radius: 4px; text-align: center; position: relative; }
+    .bar-wrapper-dual { background: #0a141a; padding: 8px 8px 4px 8px; border: 1.5px solid #ffffff; border-radius: 4px; text-align: center; position: relative; margin-bottom: 4px;}
     .force-scale { display: flex; justify-content: space-between; font-size: 9px; font-family: monospace; color: #AAA; margin-bottom: 2px; padding: 0 2px; }
     .force-container-dual { background: #111; height: 12px; width: 100%; border-radius: 2px; position: relative; overflow: hidden; display: flex; border: 1px solid #444; margin: 2px 0; }
     .center-line { position: absolute; left: 50%; top: 0; width: 1px; height: 100%; background: #fff; z-index: 10; }
@@ -56,7 +55,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS ---
 def fetch(s):
     try:
         t = yf.Ticker(s)
@@ -136,7 +134,8 @@ while True:
             st.markdown(f'<div class="header-container"><h1 class="main-title"><span class="bair-blue">BAIR</span><span class="terminal-gold"> - TERMINAL DOLLAR</span></h1><div class="clock-row"><span class="clock-item">🇧🇷 BRASÍLIA: <span class="br-green">{now.astimezone(tz_sp).strftime("%H:%M:%S")}</span></span><span class="clock-item">🇺🇸 NEW YORK: <span class="white-time">{now.astimezone(tz_ny).strftime("%H:%M:%S")}</span></span><span class="clock-item">🇬🇧 LONDON: <span class="white-time">{now.astimezone(tz_ld).strftime("%H:%M:%S")}</span></span></div></div>', unsafe_allow_html=True)
 
             if res:
-                dolfut_calc = a_dol * (1 + (res['v_v'] / 100))
+                v_v = res['v_v']
+                dolfut_calc = a_dol * (1 + (v_v / 100))
                 c_main, c_side = st.columns([3.2, 0.8])
                 
                 with c_main:
@@ -148,30 +147,25 @@ while True:
 
                     for lbl, sym in ativos_lista.items():
                         if lbl == "DOLFUT":
-                            p_v, p_c, p_o, p_mx, p_mn, var = dolfut_calc/1000, a_dol/1000, a_dol/1000, res['max_fut']/1000, res['min_fut']/1000, res['v_v']
+                            p_v, p_c, p_o, p_mx, p_mn, var_at = dolfut_calc/1000, a_dol/1000, a_dol/1000, res['max_fut']/1000, res['min_fut']/1000, v_v
                             f = ".4f"
                         else:
                             d = fetch(sym)
                             if not d: continue
-                            # Define precisão de 4 casas para os pares de moedas específicos
                             f = ".4f" if lbl in ["GBP/USD", "JPY/USD", "EUR/USD", "DOLSPOT"] else ".2f"
                             m_div = 1000 if lbl == "DOLSPOT" else 1
                             p_v, p_c, p_o, p_mx, p_mn = d['at']/m_div, d['cl']/m_div, d['op']/m_div, d['mx']/m_div, d['mn']/m_div
-                            var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
+                            var_at = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
                         
-                        # Lógica de Flash por Oscilação
-                        flash_class = ""
                         last_p = st.session_state.last_prices.get(lbl, p_v)
-                        if p_v > last_p: flash_class = "flash-up"
-                        elif p_v < last_p: flash_class = "flash-down"
-                        else: flash_class = ""
+                        flash_class = "flash-up" if p_v > last_p else "flash-down" if p_v < last_p else ""
                         st.session_state.last_prices[lbl] = p_v
                         
-                        bg_base = f"background-color:rgba({('0,255,0' if var >= 0 else '255,0,0')}, 0.3);"
-                        color_var = "#00ff00" if var >= 0 else "#ff4d4d"
+                        bg_base = f"background-color:rgba({('0,255,0' if var_at >= 0 else '255,0,0')}, 0.3);"
+                        color_var = "#00ff00" if var_at >= 0 else "#ff4d4d"
                         
-                        html_table += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col {flash_class}' style='{bg_base}'>{p_v:{f}}</td><td>{p_c:{f}}</td><td>{p_o:{f}}</td><td>{p_mx:{f}}</td><td>{p_mn:{f}}</td><td style='color:{color_var}; font-weight:bold;'>{var:+.2f}%</td></tr>"
-                        ticker_items.append(f"{lbl}: <span style='color:{color_var};'>{var:+.2f}%</span>")
+                        html_table += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col {flash_class}' style='{bg_base}'>{p_v:{f}}</td><td>{p_c:{f}}</td><td>{p_o:{f}}</td><td>{p_mx:{f}}</td><td>{p_mn:{f}}</td><td style='color:{color_var}; font-weight:bold;'>{var_at:+.2f}%</td></tr>"
+                        ticker_items.append(f"{lbl}: <span style='color:{color_var};'>{var_at:+.2f}%</span>")
 
                     st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
 
@@ -186,7 +180,17 @@ while True:
                         <div class="calc-row"><span>75% DN</span> <span>{res['p75_down']:.2f}</span></div>
                         <div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MIN</span> <span>{res['min_fut']:.2f}</span></div>
                     </div>""", unsafe_allow_html=True)
+                    
                     st.markdown(f'<div class="bar-wrapper-dual"><div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div></div><div class="sinal-indicator blink" style="color:{res["seta_cor"]};">{res["seta"]}</div></div>', unsafe_allow_html=True)
+                    
+                    # --- BLOCO DOLB3 RECUPERADO ---
+                    st.markdown(f"""<div class="calc-panel">
+                        <div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">DOLB3</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div>
+                        <div style="text-align:right; font-size:10px; padding-right:6px; color:{("#00ff00" if v_v >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{v_v:+.2f}%</div>
+                        <div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div>
+                        <div class="calc-row"><span style="color:#d4a017;">PREÇO JUSTO</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div>
+                        <div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div>
+                    </div>""", unsafe_allow_html=True)
 
                 st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
     
