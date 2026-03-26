@@ -21,8 +21,8 @@ st.markdown("""
     
     /* CABEÇALHO PADRONIZADO BAIR */
     .header-container { text-align: center; padding: 10px 0px; border-bottom: 2px solid #FFD700; background-color: #050a0e; margin-bottom: 10px; }
-    .bair-title { margin: 0px; line-height: 1.1; font-size: 35px; font-family: 'monospace'; }
-    .clock-row { display: flex; justify-content: center; gap: 30px; padding: 10px 0; font-weight: bold; font-size: 14px; color: #AAA; font-family: 'monospace'; }
+    .bair-title { margin: 0px; line-height: 1.1; font-size: 40px; font-family: 'monospace'; font-weight: 950; }
+    .clock-row { display: flex; justify-content: center; gap: 30px; padding: 5px 0; font-weight: bold; font-size: 15px; color: #AAA; font-family: 'monospace'; }
     
     .calc-panel { border: 2.5px solid #ffffff; border-radius: 8px; padding: 6px; background: #0a141a; font-family: monospace; margin-bottom: 4px; }
     .calc-row { display: flex; justify-content: space-between; padding: 4px 8px; border-bottom: 1px solid #444; font-size: 13px; font-weight: bold; align-items: center; }
@@ -34,7 +34,7 @@ st.markdown("""
     .fill-green { background: #00ff88; float: right; height: 100%; transition: width 0.4s; }
     .fill-red { background: #ff4d4d; float: left; height: 100%; transition: width 0.4s; }
     .sinal-indicator { font-size: 16px; font-weight: 950; line-height: 1; margin-top: 5px; min-height: 16px; }
-    .blink { animation: blinker 1.5s linear infinite; }
+    .blink { animation: blinker 1s linear infinite; }
     @keyframes blinker { 50% { opacity: 0.1; } }
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 2px solid #ffffff; border-bottom: 2px solid #ffffff; padding: 8px 0; overflow: hidden; white-space: nowrap; margin-top: 10px; }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 14px; font-weight: bold; color: #fff; }
@@ -110,7 +110,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         }
     except: return None
 
-# --- SIDEBAR (PAINEL ADM RECOLOCADO) ---
+# --- SIDEBAR (MANTIDO CONFORME ORIGINAL) ---
 eixo_sug = calcular_sentinela()
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
@@ -132,14 +132,15 @@ while True:
         # NOVO CABEÇALHO PADRÃO CENTRALIZADO
         st.markdown(f"""
             <div class="header-container">
-                <h1 class="bair-title">
-                    <span style='color: #00f2ff; font-weight: bold;'>BAIR</span> 
-                    <span style='color: #FFD700; font-weight: bold;'> - TERMINAL DOLLAR</span>
-                </h1>
+                <div class="bair-title">
+                    <span style='color: #00f2ff;'>BAIR</span> 
+                    <span style='color: #ffffff;'>-</span>
+                    <span style='color: #d4a017;'>TERMINAL DOLLAR</span>
+                </div>
                 <div class="clock-row">
                     <span>🇧🇷 BRASÍLIA: <span style='color: #00ff00;'>{datetime.now(tz_sp).strftime('%H:%M:%S')}</span></span>
                     <span>🇺🇸 NEW YORK: <span style='color: #ffffff;'>{datetime.now(tz_ny).strftime('%H:%M:%S')}</span></span>
-                    <span>🇬🇧 LONDON: <span style='color: #ffffff;'>{datetime.now(tz_ld).strftime('%H:%M:%S')}</span></span>
+                    <span>🇬🇧 LONDRES: <span style='color: #ffffff;'>{datetime.now(tz_ld).strftime('%H:%M:%S')}</span></span>
                 </div>
             </div>
         """, unsafe_allow_html=True)
