@@ -123,8 +123,8 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
             if diff < 0: p_v = min(100, (abs(diff)/(dist_base*2))*100)
             else: p_r = min(100, (abs(diff)/(dist_base*2))*100)
         seta_txt, seta_cor = "", "#000000"
-        if p_v >= 100: seta_txt, seta_cor = "▲ COMPRA", "#00ff88"
-        elif p_r >= 100: seta_txt, seta_cor = "▼ VENDA", "#ff4d4d"
+        if p_v >= 100: seta_txt, seta_cor = "▲ REGIÃO DE COMPRA", "#00ff88"
+        elif p_r >= 100: seta_txt, seta_cor = "▼ REGIÃO DE VENDA", "#ff4d4d"
         var_axis = ((spot_data['at'] + v_spreed) / eixo_dol - 1) * 100
         return {
             "vivo": dolar_vivo, "fraja": dolar_fraja, "medio": dolar_medio, "ewz_med": (max_ewz + min_ewz) / 2,
