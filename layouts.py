@@ -7,9 +7,10 @@ import pytz
 # Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLLAR", initial_sidebar_state="collapsed")
 
-# --- CSS: ESTILIZAÇÃO COMPACTA (MANTIDO ORIGINAL) ---
+# --- CSS: ESTILIZAÇÃO COMPACTA ---
 st.markdown("""
 <style>
+    #MainMenu {visibility: hidden;} header {visibility: hidden;} footer {visibility: hidden;}
     .stApp { background-color: #050a0e !important; }
     .main-grid { border: 2.5px solid #ffffff; border-radius: 8px; overflow: hidden; font-family: 'monospace'; background-color: #0d1b22; }
     .terminal-table { width: 100%; border-collapse: collapse; color: #e0e0e0; }
@@ -17,15 +18,12 @@ st.markdown("""
     .terminal-table td { border: 1px solid #ffffff; padding: 12px; text-align: center; font-size: 15px; }
     .asset-name { font-size: 17px; color: #fff; text-align: left; font-weight: bold; padding-left: 15px; }
     .price-col { color: #00f2ff !important; font-weight: bold; }
-    .header-bair { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 2.5px solid #ffffff; margin-bottom: 8px; }
-    .title-box { display: flex; align-items: center; gap: 8px; line-height: 1; }
-    .bair-text { font-size: 46px; color: #00f2ff; font-weight: 950; font-family: 'monospace'; letter-spacing: -1px; } 
-    .sep-text { font-size: 46px; color: #ffffff; font-weight: 950; margin: 0 5px; }
-    .terminal-text { font-size: 46px; color: #d4a017; font-weight: 950; font-family: 'monospace'; letter-spacing: -1px; }
-    .clock-container { display: flex; gap: 10px; color: #888; font-family: 'monospace'; }
-    .clock-box { text-align: center; border: 1.5px solid #ffffff; padding: 4px 10px; border-radius: 4px; background: #0a141a; min-width: 95px; }
-    .clock-label { font-size: 10px; color: #d4a017; font-weight: bold; display: block; text-transform: uppercase; margin-bottom: 2px; }
-    .clock-time { color: #fff; font-size: 17px; font-weight: bold; display: block; }
+    
+    /* CABEÇALHO PADRONIZADO BAIR */
+    .header-container { text-align: center; padding: 10px 0px; border-bottom: 2px solid #FFD700; background-color: #050a0e; margin-bottom: 10px; }
+    .bair-title { margin: 0px; line-height: 1.1; font-size: 35px; font-family: 'monospace'; }
+    .clock-row { display: flex; justify-content: center; gap: 30px; padding: 10px 0; font-weight: bold; font-size: 14px; color: #AAA; font-family: 'monospace'; }
+    
     .calc-panel { border: 2.5px solid #ffffff; border-radius: 8px; padding: 6px; background: #0a141a; font-family: monospace; margin-bottom: 4px; }
     .calc-row { display: flex; justify-content: space-between; padding: 4px 8px; border-bottom: 1px solid #444; font-size: 13px; font-weight: bold; align-items: center; }
     .bar-wrapper-dual { background: #0a141a; padding: 12px 10px 6px 10px; border: 2.5px solid #ffffff; border-radius: 8px; margin-top: 0px; text-align: center; position: relative; }
@@ -36,7 +34,7 @@ st.markdown("""
     .fill-green { background: #00ff88; float: right; height: 100%; transition: width 0.4s; }
     .fill-red { background: #ff4d4d; float: left; height: 100%; transition: width 0.4s; }
     .sinal-indicator { font-size: 16px; font-weight: 950; line-height: 1; margin-top: 5px; min-height: 16px; }
-    .blink { animation: blinker 1s linear infinite; }
+    .blink { animation: blinker 1.5s linear infinite; }
     @keyframes blinker { 50% { opacity: 0.1; } }
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 2px solid #ffffff; border-bottom: 2px solid #ffffff; padding: 8px 0; overflow: hidden; white-space: nowrap; margin-top: 10px; }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 14px; font-weight: bold; color: #fff; }
@@ -112,7 +110,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         }
     except: return None
 
-# --- SIDEBAR (MANTIDO SEM FORM PARA NÃO TRAVAR) ---
+# --- SIDEBAR ---
 eixo_sug = calcular_sentinela()
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
@@ -131,7 +129,21 @@ while True:
     res = calcular_k97_total(a_ewz, ewz_live['at'], ewz_live['mx'], ewz_live['mn'], a_dol, spot_live)
 
     with placeholder.container():
-        st.markdown(f"""<div class="header-bair"><div class="title-box"><span class="bair-text">BAIR</span><span class="sep-text">-</span><span class="terminal-text">TERMINAL DOLLAR</span></div><div class="clock-container"><div class="clock-box"><span class="clock-label">BRASÍLIA</span><span class="clock-time">{datetime.now(tz_sp).strftime('%H:%M:%S')}</span></div><div class="clock-box"><span class="clock-label">NEW YORK</span><span class="clock-time">{datetime.now(tz_ny).strftime('%H:%M:%S')}</span></div><div class="clock-box"><span class="clock-label">LONDRES</span><span class="clock-time">{datetime.now(tz_ld).strftime('%H:%M:%S')}</span></div></div></div>""", unsafe_allow_html=True)
+        # NOVO CABEÇALHO PADRÃO CENTRALIZADO
+        st.markdown(f"""
+            <div class="header-container">
+                <h1 class="bair-title">
+                    <span style='color: #00f2ff; font-weight: bold;'>BAIR</span> 
+                    <span style='color: #FFD700; font-weight: bold;'> - TERMINAL DOLLAR</span>
+                </h1>
+                <div class="clock-row">
+                    <span>🇧🇷 BRASÍLIA: <span style='color: #00ff00;'>{datetime.now(tz_sp).strftime('%H:%M:%S')}</span></span>
+                    <span>🇺🇸 NEW YORK: <span style='color: #ffffff;'>{datetime.now(tz_ny).strftime('%H:%M:%S')}</span></span>
+                    <span>🇬🇧 LONDON: <span style='color: #ffffff;'>{datetime.now(tz_ld).strftime('%H:%M:%S')}</span></span>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
         if res:
             dolfut_calc, dolfut_com_spread = a_dol * (1 + (res['v_v'] / 100)), res['vivo'] + res['spreed']
             c_main, c_side = st.columns([3, 1])
