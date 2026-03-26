@@ -7,19 +7,19 @@ import pytz
 # Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLLAR", initial_sidebar_state="collapsed")
 
-# --- CSS: ESTILIZAÇÃO (APENAS AJUSTE DE TAMANHO DE FONTE) ---
+# --- CSS: ESTILIZAÇÃO (AJUSTADO PARA TAMANHO CRYPTO) ---
 st.markdown("""
 <style>
     .stApp { background-color: #050a0e !important; }
     
     /* CABEÇALHO CENTRALIZADO PADRÃO CRYPTO */
     .header-container { text-align: center; padding: 10px 0px; border-bottom: 2px solid #FFD700; background-color: #050a0e; margin-bottom: 15px; }
-    .main-title { margin: 0px; line-height: 1.1; font-size: 35px; font-family: monospace; } /* AJUSTADO PARA 35px */
+    .main-title { margin: 0px; line-height: 1.1; font-size: 35px; font-family: monospace; }
     .bair-blue { color: #00BFFF; font-weight: bold; }
     .terminal-gold { color: #FFD700; font-weight: bold; }
     
     /* RELÓGIOS */
-    .clock-row { display: flex; justify-content: center; gap: 30px; padding: 10px 0; font-weight: bold; font-size: 14px; font-family: monospace; } /* AJUSTADO PARA 14px */
+    .clock-row { display: flex; justify-content: center; gap: 30px; padding: 10px 0; font-weight: bold; font-size: 14px; font-family: monospace; }
     .clock-item { color: #AAA; }
     .br-green { color: #00ff00; }
     .white-time { color: #ffffff; }
@@ -34,18 +34,18 @@ st.markdown("""
         padding: 5px; 
         margin-bottom: 8px; 
         text-transform: uppercase;
-        font-size: 14px; /* AJUSTADO PARA 14px */
+        font-size: 14px;
     }
 
     /* ELEMENTOS DA GRADE */
     .main-grid { border: 2.5px solid #ffffff; border-radius: 8px; overflow: hidden; font-family: 'monospace'; background-color: #0d1b22; }
     .terminal-table { width: 100%; border-collapse: collapse; color: #e0e0e0; }
-    .terminal-table th { background-color: #0a141a; color: #d4a017; border: 1px solid #ffffff; padding: 10px; text-align: center; font-size: 11px; text-transform: uppercase; } /* AJUSTADO PARA 11px */
-    .terminal-table td { border: 1px solid #ffffff; padding: 12px; text-align: center; font-size: 13px; font-weight: bold; } /* AJUSTADO PARA 13px E BOLD */
-    .asset-name { font-size: 13px; color: #fff; text-align: left; font-weight: bold; padding-left: 15px; } /* AJUSTADO PARA 13px */
+    .terminal-table th { background-color: #0a141a; color: #d4a017; border: 1px solid #ffffff; padding: 10px; text-align: center; font-size: 11px; text-transform: uppercase; }
+    .terminal-table td { border: 1px solid #ffffff; padding: 12px; text-align: center; font-size: 13px; font-weight: bold; }
+    .asset-name { font-size: 13px; color: #fff; text-align: left; font-weight: bold; padding-left: 15px; }
     .price-col { font-weight: bold; color: #ffffff !important; }
     .calc-panel { border: 2.5px solid #ffffff; border-radius: 8px; padding: 6px; background: #0a141a; font-family: monospace; margin-bottom: 4px; }
-    .calc-row { display: flex; justify-content: space-between; padding: 4px 8px; border-bottom: 1px solid #444; font-size: 13px; font-weight: bold; align-items: center; } /* MANTIDO 13px DO ORIGINAL */
+    .calc-row { display: flex; justify-content: space-between; padding: 4px 8px; border-bottom: 1px solid #444; font-size: 13px; font-weight: bold; align-items: center; }
     
     /* BARRA DE FORÇA COM PORCENTAGENS */
     .bar-wrapper-dual { background: #0a141a; padding: 12px 10px 6px 10px; border: 2.5px solid #ffffff; border-radius: 8px; text-align: center; position: relative; }
