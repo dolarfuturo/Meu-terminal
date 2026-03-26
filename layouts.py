@@ -199,10 +199,10 @@ while True:
                 color_axis = "#00ff00" if var_axis >= 0 else "#ff4d4d"
                 
                 st.markdown(f"""<div class="calc-panel">
-                    <div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">DOLFUT</span> <span style="color:#00f2ff;">{dolfut_com_spread:.2f}</span></div>
+                    <div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">DOLB3</span> <span style="color:#00f2ff;">{dolfut_com_spread:.2f}</span></div>
                     <div style="text-align:right; font-size:10px; padding-right:6px; color:{color_axis}; font-weight:bold; margin-bottom:4px;">{var_axis:+.2f}%</div>
-                    <div class="calc-row"><span style="color:#ffff00;">MÉDIA</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div>
-                    <div class="calc-row"><span style="color:#d4a017;">FRAJA</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div>
+                    <div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div>
+                    <div class="calc-row"><span style="color:#d4a017;">PREÇO JUSTO</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div>
                     <div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div>
                 </div>""", unsafe_allow_html=True)
                 
