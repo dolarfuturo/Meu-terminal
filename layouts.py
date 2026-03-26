@@ -7,7 +7,7 @@ import pytz
 # Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLLAR", initial_sidebar_state="collapsed")
 
-# --- CSS: FONTE CRYPTO E CABEÇALHO CONFORME IMAGEM ---
+# --- CSS: DESIGN PADRÃO TERMINAL CRYPTO ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@800&display=swap');
@@ -15,26 +15,37 @@ st.markdown("""
     * { font-family: 'JetBrains Mono', monospace !important; }
     .stApp { background-color: #050a0e !important; }
 
-    /* CABEÇALHO CONFORME AS IMAGENS */
-    .header-bair { 
-        display: flex; 
-        justify-content: space-between; 
-        align-items: center; 
-        padding: 5px 15px; 
-        border-bottom: 2px solid #FFD700; /* Linha Amarela da Imagem */
-        margin-bottom: 10px; 
+    /* CABEÇALHO CENTRALIZADO */
+    .header-container {
+        text-align: center;
+        padding-top: 15px;
+        background-color: #050a0e;
     }
-    .title-box { display: flex; align-items: center; gap: 10px; }
-    .bair-text { font-size: 38px; color: #00f2ff; font-weight: 900; }
-    .sep-text { font-size: 38px; color: #ffffff; font-weight: 900; }
-    .terminal-text { font-size: 38px; color: #d4a017; font-weight: 900; }
+    .main-title { font-size: 42px; font-weight: 900; margin-bottom: 0px; letter-spacing: -1px; }
+    .bair-blue { color: #00f2ff; }
+    .sep-white { color: #ffffff; }
+    .terminal-gold { color: #ffd700; }
 
-    .clock-container { display: flex; gap: 15px; }
-    .clock-box { text-align: center; background: transparent; padding: 2px 5px; }
-    .clock-label { font-size: 11px; color: #ffffff; font-weight: bold; display: block; text-align: center; margin-bottom: 2px; }
-    .clock-time { color: #00ff00; font-size: 19px; font-weight: bold; display: block; }
+    /* RELÓGIOS COM BANDEIRAS */
+    .clock-row {
+        display: flex;
+        justify-content: center;
+        gap: 30px;
+        margin: 15px 0;
+        font-size: 16px;
+        font-weight: bold;
+    }
+    .clock-item { display: flex; align-items: center; gap: 8px; color: #ffffff; }
+    .time-val { color: #ffffff; }
 
-    /* MANTER O RESTANTE ORIGINAL */
+    /* LINHA AMARELA FINA */
+    .yellow-divider {
+        border-bottom: 1.5px solid #ffd700;
+        width: 100%;
+        margin-bottom: 15px;
+    }
+
+    /* RESTANTE DO CÓDIGO ORIGINAL PRESERVADO */
     .main-grid { border: 2.5px solid #ffffff; border-radius: 8px; overflow: hidden; background-color: #0d1b22; }
     .terminal-table { width: 100%; border-collapse: collapse; color: #e0e0e0; }
     .terminal-table th { background-color: #0a141a; color: #d4a017; border: 1px solid #ffffff; padding: 10px; text-align: center; font-size: 13px; text-transform: uppercase; }
@@ -44,7 +55,6 @@ st.markdown("""
     .calc-panel { border: 2.5px solid #ffffff; border-radius: 8px; padding: 6px; background: #0a141a; margin-bottom: 4px; }
     .calc-row { display: flex; justify-content: space-between; padding: 4px 8px; border-bottom: 1px solid #444; font-size: 13px; font-weight: bold; align-items: center; }
     .bar-wrapper-dual { background: #0a141a; padding: 12px 10px 6px 10px; border: 2.5px solid #ffffff; border-radius: 8px; text-align: center; position: relative; }
-    .marker-container { display: flex; justify-content: space-between; position: absolute; width: calc(100% - 20px); top: 2px; font-size: 9px; color: #888; font-weight: bold; }
     .force-container-dual { background: #111; height: 16px; width: 100%; border-radius: 4px; position: relative; overflow: hidden; display: flex; border: 1px solid #444; margin: 4px 0; }
     .center-line { position: absolute; left: 50%; top: 0; width: 2px; height: 100%; background: #fff; z-index: 10; }
     .bar-side { width: 50%; height: 100%; position: relative; background: #050a0e; }
@@ -56,8 +66,6 @@ st.markdown("""
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 2px solid #ffffff; border-bottom: 2px solid #ffffff; padding: 8px 0; overflow: hidden; white-space: nowrap; margin-top: 10px; }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-size: 14px; font-weight: bold; color: #fff; }
     @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
-    .ewz-mini-container { display: flex; justify-content: space-around; padding: 4px 0; border-top: 1px solid #444; margin-top: 4px; }
-    .ewz-mini-val { font-size: 11px; font-weight: bold; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -127,16 +135,14 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         }
     except: return None
 
-# --- SIDEBAR (MANTIDO CONFORME ORIGINAL) ---
+# --- SIDEBAR ADM (PRESERVADO) ---
 eixo_sug = calcular_sentinela()
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
     a_ewz = st.number_input("AXIS EWZ:", value=float(eixo_sug), format="%.2f")
     a_dol = st.number_input("AXIS DOLFUT:", value=5246.00, format="%.2f")
     st.button("SALVAR")
-    st.markdown(f'<div style="border: 1px solid #d4a017; padding: 10px; border-radius: 5px; background: #0a141a; text-align: center; margin-top: 10px;"><span style="color: #d4a017; font-size: 10px; font-weight: bold; display: block;">SENTINELA EWZ</span><span style="color: #ffffff; font-size: 18px; font-weight: bold;">{eixo_sug:.2f}</span></div>', unsafe_allow_html=True)
 
-# --- PLACEHOLDER LISO ---
 placeholder = st.empty()
 
 while True:
@@ -146,19 +152,29 @@ while True:
     res = calcular_k97_total(a_ewz, ewz_live['at'], ewz_live['mx'], ewz_live['mn'], a_dol, spot_live)
 
     with placeholder.container():
-        # CABEÇALHO CONFORME AS IMAGENS ENVIADAS
+        # CABEÇALHO PADRONIZADO IGUAL TERMINAL CRYPTO
         st.markdown(f"""
-            <div class="header-bair">
-                <div class="title-box">
-                    <span class="bair-text">BAIR</span>
-                    <span class="sep-text">-</span>
-                    <span class="terminal-text">TERMINAL DOLLAR</span>
+            <div class="header-container">
+                <div class="main-title">
+                    <span class="bair-blue">BAIR</span> 
+                    <span class="sep-white">-</span> 
+                    <span class="terminal-gold">TERMINAL DOLLAR</span>
                 </div>
-                <div class="clock-container">
-                    <div class="clock-box"><span class="clock-label">🇧🇷 BRASÍLIA</span><span class="clock-time">{datetime.now(tz_sp).strftime('%H:%M:%S')}</span></div>
-                    <div class="clock-box"><span class="clock-label">🇺🇸 NEW YORK</span><span class="clock-time">{datetime.now(tz_ny).strftime('%H:%M:%S')}</span></div>
-                    <div class="clock-box"><span class="clock-label">🇬🇧 LONDRES</span><span class="clock-time">{datetime.now(tz_ld).strftime('%H:%M:%S')}</span></div>
+                <div class="clock-row">
+                    <div class="clock-item">
+                        <span>🇧🇷</span> <span>BRASÍLIA:</span> 
+                        <span class="time-val">{datetime.now(tz_sp).strftime('%H:%M:%S')}</span>
+                    </div>
+                    <div class="clock-item">
+                        <span>🇺🇸</span> <span>NEW YORK:</span> 
+                        <span class="time-val">{datetime.now(tz_ny).strftime('%H:%M:%S')}</span>
+                    </div>
+                    <div class="clock-item">
+                        <span>🇬🇧</span> <span>LONDON:</span> 
+                        <span class="time-val">{datetime.now(tz_ld).strftime('%H:%M:%S')}</span>
+                    </div>
                 </div>
+                <div class="yellow-divider"></div>
             </div>
         """, unsafe_allow_html=True)
 
@@ -181,8 +197,8 @@ while True:
                 st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
             with c_side:
                 st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="color:#ff4d4d;"><span>MAX FUT</span> <span>{res['max_fut']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>75%</span> <span>{res['p75_up']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>25%</span> <span>{res['p25_up']:.2f}</span></div><div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 18px; font-weight: bold; border-top:1.5px solid #444; border-bottom:1.5px solid #444; margin: 5px 0;">AXIS: {a_dol:.2f}</div><div class="calc-row" style="color:#ffa500;"><span>25%</span> <span>{res['p25_down']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>75%</span> <span>{res['p75_down']:.2f}</span></div><div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MIN FUT</span> <span>{res['min_fut']:.2f}</span></div></div>""", unsafe_allow_html=True)
-                st.markdown(f"""<div class="calc-panel"><div style="padding: 10px 8px; border-bottom: 1px solid #444;"><div style="display: flex; justify-content: space-between; align-items: center;"><span style="color:#ffffff; font-weight: bold;">DOLFUT</span> <span style="color:#00f2ff; font-size: 18px; font-weight: 950;">{dolfut_com_spread:.2f}</span></div><div style="text-align: right; color: #d4a017; font-size: 11px; font-weight: bold; margin-top: 2px;">VAR AXIS: {res['var_axis']:+.2f}%</div></div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOL</span> <span style="color:#00f2ff; font-size: 16px;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">P. JUSTO</span> <span style="color:#ffffff; font-size: 16px; font-weight: bold;">{res['fraja']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff; font-size: 16px; font-weight: bold;">{res['spreed']:.2f}</span></div><div class="ewz-mini-container"><span class="ewz-mini-val" style="color:#00ff88;">{ewz_live['mx']:.2f}</span><span class="ewz-mini-val" style="color:#00f2ff;">{res['ewz_med']:.2f}</span><span class="ewz-mini-val" style="color:#ff4d4d;">{ewz_live['mn']:.2f}</span></div></div>""", unsafe_allow_html=True)
-                st.markdown(f"""<div class="bar-wrapper-dual"><div class="marker-container"><div style="width: 50%; display: flex; justify-content: space-around; flex-direction: row-reverse;"><span>80%</span><span>50%</span><span>30%</span></div><div style="width: 2px; color:#fff;">|</div><div style="width: 50%; display: flex; justify-content: space-around;"><span>30%</span><span>50%</span><span>80%</span></div></div><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res['p_v']}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res['p_r']}%;"></div></div></div><div class="sinal-indicator blink" style="color:{res['seta_cor']};">{res['seta']}</div></div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div class="calc-panel"><div style="padding: 10px 8px; border-bottom: 1px solid #444;"><div style="display: flex; justify-content: space-between; align-items: center;"><span style="color:#ffffff; font-weight: bold;">DOLFUT</span> <span style="color:#00f2ff; font-size: 18px; font-weight: 950;">{dolfut_com_spread:.2f}</span></div><div style="text-align: right; color: #d4a017; font-size: 11px; font-weight: bold; margin-top: 2px;">VAR AXIS: {res['var_axis']:+.2f}%</div></div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOL</span> <span style="color:#00f2ff; font-size: 16px;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">P. JUSTO</span> <span style="color:#ffffff; font-size: 16px; font-weight: bold;">{res['fraja']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff; font-size: 16px; font-weight: bold;">{res['spreed']:.2f}</span></div></div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div class="bar-wrapper-dual"><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res['p_v']}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res['p_r']}%;"></div></div></div><div class="sinal-indicator blink" style="color:{res['seta_cor']};">{res['seta']}</div></div>""", unsafe_allow_html=True)
             ticker_html = " • ".join(ticker_items)
             st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{ticker_html} • {ticker_html}</div></div>', unsafe_allow_html=True)
     time.sleep(2)
