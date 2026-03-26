@@ -7,22 +7,26 @@ import pytz
 # Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLLAR", initial_sidebar_state="collapsed")
 
-# --- CSS: AJUSTE VERTICAL 11CM + ESCALA DA BARRA ---
+# --- CSS: TRAVA DE ALTURA E REMOÇÃO DE ESPAÇO BRANCO ---
 st.markdown("""
 <style>
-    /* Trava o scroll para evitar fundo branco */
-    html, body, [data-testid="stAppViewContainer"] { 
-        overflow: hidden; 
-        background-color: #050a0e !important; 
+    /* REMOVE ESPAÇOS E BLOQUEIA SCROLL */
+    html, body, [data-testid="stAppViewContainer"], .main, .block-container {
+        overflow: hidden !important;
+        height: 100vh !important;
+        background-color: #050a0e !important;
+        margin: 0 !important;
+        padding-bottom: 0 !important;
     }
-    .block-container { padding-top: 0.5rem !important; padding-bottom: 0rem !important; }
+    .block-container { padding-top: 0.5rem !important; }
 
+    /* CABEÇALHO */
     .header-container { text-align: center; padding: 5px 0px; border-bottom: 2px solid #FFD700; background-color: #050a0e; margin-bottom: 8px; }
-    .main-title { margin: 0px; line-height: 1.0; font-size: 28px; font-family: monospace; }
+    .main-title { margin: 0px; line-height: 1.0; font-size: 26px; font-family: monospace; }
     .bair-blue { color: #00BFFF; font-weight: bold; }
     .terminal-gold { color: #FFD700; font-weight: bold; }
     
-    .clock-row { display: flex; justify-content: center; gap: 20px; padding: 4px 0; font-weight: bold; font-size: 12px; font-family: monospace; }
+    .clock-row { display: flex; justify-content: center; gap: 20px; padding: 4px 0; font-weight: bold; font-size: 11px; font-family: monospace; }
     .clock-item { color: #AAA; }
     .br-green { color: #00ff00; }
     .white-time { color: #ffffff; }
@@ -30,41 +34,48 @@ st.markdown("""
     .section-title { 
         border: 2px solid #ffffff; color: #00f2ff; text-align: center; 
         font-weight: bold; font-family: monospace; padding: 3px; 
-        margin-bottom: 5px; text-transform: uppercase; font-size: 12px;
+        margin-bottom: 5px; text-transform: uppercase; font-size: 11px;
     }
 
+    /* GRADE */
     .main-grid { border: 2px solid #ffffff; border-radius: 6px; overflow: hidden; font-family: 'monospace'; background-color: #0d1b22; }
     .terminal-table { width: 100%; border-collapse: collapse; color: #e0e0e0; }
-    .terminal-table th { background-color: #0a141a; color: #d4a017; border: 1px solid #ffffff; padding: 6px; text-align: center; font-size: 11px; }
-    .terminal-table td { border: 1px solid #ffffff; padding: 7px; text-align: center; font-size: 13px; }
-    .asset-name { font-size: 14px; color: #fff; text-align: left; font-weight: bold; padding-left: 10px; }
+    .terminal-table th { background-color: #0a141a; color: #d4a017; border: 1px solid #ffffff; padding: 5px; text-align: center; font-size: 10px; }
+    .terminal-table td { border: 1px solid #ffffff; padding: 6px; text-align: center; font-size: 12px; }
+    .asset-name { font-size: 13px; color: #fff; text-align: left; font-weight: bold; padding-left: 10px; }
     .price-col { font-weight: bold; color: #ffffff !important; }
 
+    /* PAINÉIS */
     .calc-panel { border: 2px solid #ffffff; border-radius: 6px; padding: 4px; background: #0a141a; font-family: monospace; margin-bottom: 3px; }
-    .calc-row { display: flex; justify-content: space-between; padding: 3px 6px; border-bottom: 1px solid #444; font-size: 11px; font-weight: bold; }
+    .calc-row { display: flex; justify-content: space-between; padding: 3px 6px; border-bottom: 1px solid #444; font-size: 10px; font-weight: bold; }
     
-    /* ESCALA DA BARRA DE FORÇA */
+    /* ESCALA DA BARRA */
     .force-scale { display: flex; justify-content: space-between; font-size: 9px; font-family: monospace; font-weight: bold; margin-bottom: 2px; }
-    .scale-pos { color: #00ff88; width: 50%; display: flex; justify-content: space-around; }
-    .scale-neg { color: #ff4d4d; width: 50%; display: flex; justify-content: space-around; }
+    .scale-pos { color: #00ff88; width: 50%; display: flex; justify-content: space-around; padding-right: 2px; }
+    .scale-neg { color: #ff4d4d; width: 50%; display: flex; justify-content: space-around; padding-left: 2px; }
 
-    .bar-wrapper-dual { background: #0a141a; padding: 6px; border: 2px solid #ffffff; border-radius: 6px; text-align: center; }
-    .force-container-dual { background: #111; height: 14px; width: 100%; border-radius: 3px; position: relative; overflow: hidden; display: flex; border: 1px solid #444; }
+    .bar-wrapper-dual { background: #0a141a; padding: 5px; border: 2px solid #ffffff; border-radius: 6px; text-align: center; }
+    .force-container-dual { background: #111; height: 12px; width: 100%; border-radius: 3px; position: relative; overflow: hidden; display: flex; border: 1px solid #444; }
     .center-line { position: absolute; left: 50%; top: 0; width: 2px; height: 100%; background: #fff; z-index: 10; }
     .bar-side { width: 50%; height: 100%; position: relative; background: #050a0e; }
     .fill-green { background: #00ff88; float: right; height: 100%; transition: width 0.4s; }
     .fill-red { background: #ff4d4d; float: left; height: 100%; transition: width 0.4s; }
     
-    .sinal-indicator { font-size: 14px; font-weight: 950; margin-top: 4px; }
+    .sinal-indicator { font-size: 13px; font-weight: 950; margin-top: 3px; line-height: 1; }
     .blink { animation: blinker 1s linear infinite; }
     @keyframes blinker { 50% { opacity: 0.1; } }
 
-    .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 2px solid #ffffff; border-bottom: 2px solid #ffffff; padding: 5px 0; overflow: hidden; white-space: nowrap; margin-top: 5px; }
-    .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 12px; font-weight: bold; color: #fff; }
+    /* TICKER RODAPÉ */
+    .ticker-wrapper { 
+        position: fixed; bottom: 0; left: 0; width: 100%; 
+        background: #000; border-top: 2px solid #ffffff; 
+        padding: 4px 0; overflow: hidden; white-space: nowrap; z-index: 999;
+    }
+    .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 11px; font-weight: bold; color: #fff; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS ---
+# --- FUNÇÕES DE DADOS (MANTIDAS INTEGRALMENTE) ---
 def fetch(s):
     try:
         t = yf.Ticker(s)
@@ -109,8 +120,6 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         dolar_fraja = eixo_dol * (1 + (v_final / 2))
         dolar_medio = (spot_data['mx'] + spot_data['mn']) / 2
         max_fut = spot_data['mx'] + v_spreed
-        p75_up, p25_up = max_fut - v_spreed, eixo_dol + v_spreed
-        p25_down, p75_down = eixo_dol - v_spreed, (spot_data['mn'] + v_spreed) + v_spreed
         min_fut = spot_data['mn'] + v_spreed
         dist_base = abs(eixo_dol - dolar_medio)
         diff = spot_data['at'] - eixo_dol
@@ -122,12 +131,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         if p_v >= 100: seta_txt, seta_cor = "▲ COMPRA", "#00ff88"
         elif p_r >= 100: seta_txt, seta_cor = "▼ VENDA", "#ff4d4d"
         var_axis = ((spot_data['at'] + v_spreed) / eixo_dol - 1) * 100
-        return {
-            "vivo": dolar_vivo, "fraja": dolar_fraja, "medio": dolar_medio, "ewz_med": (max_ewz + min_ewz) / 2,
-            "max_fut": max_fut, "p75_up": p75_up, "p25_up": p25_up, "p25_down": p25_down, "p75_down": p75_down, 
-            "min_fut": min_fut, "v_v": v_final * 100, "spreed": v_spreed, "var_axis": var_axis,
-            "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor
-        }
+        return {"vivo": dolar_vivo, "fraja": dolar_fraja, "medio": dolar_medio, "max_fut": max_fut, "min_fut": min_fut, "v_v": v_final * 100, "spreed": v_spreed, "var_axis": var_axis, "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor}
     except: return None
 
 # --- SIDEBAR ADM ---
@@ -155,13 +159,13 @@ while True:
             c_main, c_side = st.columns([3.2, 1])
             
             with c_main:
-                st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
+                st.markdown('<div class="section-title">GRADE PRINCIPAL</div>', unsafe_allow_html=True)
                 html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
                 v_v = res['v_v']
                 bg_color_dol = "background-color:rgba(0, 255, 0, 0.4);" if v_v >= 0 else "background-color:rgba(255, 0, 0, 0.4);"
                 html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col' style='{bg_color_dol}'>{(dolfut_calc/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max_fut']/1000):.4f}</td><td>{(res['min_fut']/1000):.4f}</td><td style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_v:+.2f}%</td></tr>"
                 
-                ticker_items = [f"DOLFUT: <span style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")};'>{v_v:+.2f}%</span>"]
+                ticker_items = []
                 outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
                 for lbl, sym in outros.items():
                     d = spot_live if lbl == "DOLSPOT" else (ewz_live if lbl == "EWZ" else fetch(sym))
@@ -175,12 +179,11 @@ while True:
             
             with c_side:
                 st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
-                st.markdown(f'<div class="calc-panel"><div class="calc-row" style="color:#ff4d4d;"><span>MAX</span><span>{res["max_fut"]:.2f}</span></div><div style="text-align:center; padding: 5px; color: #00f2ff; font-size: 14px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444; margin: 3px 0;">AXIS: {a_dol:.2f}</div><div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MIN</span><span>{res["min_fut"]:.2f}</span></div></div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="calc-panel"><div class="calc-row" style="color:#ff4d4d;"><span>MAX</span><span>{res["max_fut"]:.2f}</span></div><div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 13px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444; margin: 2px 0;">AXIS: {a_dol:.2f}</div><div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MIN</span><span>{res["min_fut"]:.2f}</span></div></div>', unsafe_allow_html=True)
                 
                 color_var_axis = "#00ff00" if res['var_axis'] >= 0 else "#ff4d4d"
-                st.markdown(f'<div class="calc-panel"><div style="padding: 4px 6px; border-bottom: 1px solid #444; display: flex; justify-content: space-between;"><span style="color:#fff; font-size:11px;">DOLFUT</span><span style="color:#00f2ff; font-size:14px; font-weight:950;">{dolfut_com_spread:.2f}</span></div><div class="calc-row" style="border-bottom:none;"><span style="color:#d4a017;">JUSTO</span><span style="color:#fff;">{res["fraja"]:.2f}</span></div></div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="calc-panel"><div style="padding: 3px 5px; border-bottom: 1px solid #444; display: flex; justify-content: space-between;"><span style="color:#fff; font-size:10px;">DOLFUT</span><span style="color:#00f2ff; font-size:13px; font-weight:950;">{dolfut_com_spread:.2f}</span></div><div class="calc-row" style="border-bottom:none;"><span style="color:#d4a017;">JUSTO</span><span style="color:#fff;">{res["fraja"]:.2f}</span></div></div>', unsafe_allow_html=True)
                 
-                # BARRA COM ESCALA SOLICITADA
                 st.markdown(f"""
                 <div class="bar-wrapper-dual">
                     <div class="force-scale">
