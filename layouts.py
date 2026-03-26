@@ -7,11 +7,11 @@ import pytz
 # Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLLAR", initial_sidebar_state="collapsed")
 
-# --- CSS: ESTILIZAÇÃO AJUSTADA PARA ESCALA COMPACTA ---
+# --- CSS: MANTIDO ESCALA ORIGINAL + TOPO SOLTO ---
 st.markdown("""
 <style>
-    /* Ajuste para colar no topo e remover espaços inúteis */
-    .block-container { padding-top: 0rem !important; padding-bottom: 0rem !important; }
+    /* Layout solto para evitar corte no topo - Ajuste o padding conforme desejar */
+    .block-container { padding-top: 1.5rem; padding-bottom: 0rem; }
     .stApp { background-color: #050a0e !important; }
     
     /* CABEÇALHO CENTRALIZADO COMPACTO */
@@ -53,7 +53,6 @@ st.markdown("""
     
     /* BARRA DE FORÇA AJUSTADA */
     .bar-wrapper-dual { background: #0a141a; padding: 8px 8px 4px 8px; border: 1.5px solid #ffffff; border-radius: 4px; text-align: center; position: relative; }
-    .force-scale { display: flex; justify-content: space-between; font-size: 9px; font-family: monospace; font-weight: bold; margin-bottom: 3px; }
     .force-container-dual { background: #111; height: 12px; width: 100%; border-radius: 2px; position: relative; overflow: hidden; display: flex; border: 1px solid #444; margin: 2px 0; }
     .center-line { position: absolute; left: 50%; top: 0; width: 1px; height: 100%; background: #fff; z-index: 10; }
     .bar-side { width: 50%; height: 100%; position: relative; background: #050a0e; }
@@ -146,7 +145,7 @@ with st.sidebar:
 placeholder = st.empty()
 
 while True:
-    tz_sp, tz_ny, tz_ld = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London')
+    tz_sp, tz_ny = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York')
     ewz_live = fetch("EWZ")
     spot_live = fetch("USDBRL=X")
     res = calcular_k97_total(a_ewz, ewz_live['at'], ewz_live['mx'], ewz_live['mn'], a_dol, spot_live)
@@ -174,7 +173,6 @@ while True:
                 st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
                 html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
                 v_v = res['v_v']
-                
                 bg_color_dol = "background-color:rgba(0, 255, 0, 0.4);" if v_v >= 0 else "background-color:rgba(255, 0, 0, 0.4);"
                 html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col' style='{bg_color_dol}'>{(dolfut_calc/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max_fut']/1000):.4f}</td><td>{(res['min_fut']/1000):.4f}</td><td style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_v:+.2f}%</td></tr>"
                 
@@ -186,16 +184,30 @@ while True:
                     var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
                     color = "#00ff00" if var >= 0 else "#ff4d4d"
                     bg_color_item = "background-color:rgba(0, 255, 0, 0.4);" if var >= 0 else "background-color:rgba(255, 0, 0, 0.4);"
-                    
                     html_table += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col' style='{bg_color_item}'>{p_val:{f}}</td><td>{(d['cl']/1000 if lbl=='DOLSPOT' else d['cl']):{f}}</td><td>{(d['op']/1000 if lbl=='DOLSPOT' else d['op']):{f}}</td><td>{(d['mx']/1000 if lbl=='DOLSPOT' else d['mx']):{f}}</td><td>{(d['mn']/1000 if lbl=='DOLSPOT' else d['mn']):{f}}</td><td style='color:{color}; font-weight:bold;'>{var:+.2f}%</td></tr>"
                     ticker_items.append(f"{lbl}: <span style='color:{color};'>{var:+.2f}%</span>")
                 st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
             
             with c_side:
                 st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
-                st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="color:#ff4d4d;"><span>MAX</span> <span>{res['max_fut']:.2f}</span></div><div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 13px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444; margin: 3px 0;">AXIS: {a_dol:.2f}</div><div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MIN</span> <span>{res['min_fut']:.2f}</span></div></div>""", unsafe_allow_html=True)
+                # Bloco 1: Projeções
+                st.markdown(f"""<div class="calc-panel">
+                    <div class="calc-row" style="color:#ff4d4d;"><span>MAX</span> <span>{res['max_fut']:.2f}</span></div>
+                    <div class="calc-row"><span>75% UP</span> <span>{res['p75_up']:.2f}</span></div>
+                    <div class="calc-row"><span>25% UP</span> <span>{res['p25_up']:.2f}</span></div>
+                    <div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 11px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444; margin: 3px 0;">AXIS: {a_dol:.2f}</div>
+                    <div class="calc-row"><span>25% DN</span> <span>{res['p25_down']:.2f}</span></div>
+                    <div class="calc-row"><span>75% DN</span> <span>{res['p75_down']:.2f}</span></div>
+                    <div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MIN</span> <span>{res['min_fut']:.2f}</span></div>
+                </div>""", unsafe_allow_html=True)
                 
-                st.markdown(f"""<div class="calc-panel"><div class="calc-row"><span style="color:#ffffff;">DOLFUT</span> <span style="color:#00f2ff; font-size: 13px;">{dolfut_com_spread:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#d4a017;">FRAJA</span> <span style="color:#ffffff; font-size: 13px;">{res['fraja']:.2f}</span></div></div>""", unsafe_allow_html=True)
+                # Bloco 2: Médias e Spreed
+                st.markdown(f"""<div class="calc-panel">
+                    <div class="calc-row"><span style="color:#ffffff;">DOLFUT</span> <span style="color:#00f2ff;">{dolfut_com_spread:.2f}</span></div>
+                    <div class="calc-row"><span style="color:#ffff00;">MÉDIA</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div>
+                    <div class="calc-row"><span style="color:#d4a017;">FRAJA</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div>
+                    <div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div>
+                </div>""", unsafe_allow_html=True)
                 
                 st.markdown(f"""
                 <div class="bar-wrapper-dual">
