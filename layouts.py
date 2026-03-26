@@ -7,7 +7,7 @@ import pytz
 # Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLLAR", initial_sidebar_state="collapsed")
 
-# --- CSS: ESTILIZAÇÃO (AJUSTADO PARA TAMANHO CRYPTO) ---
+# --- CSS: ESTILIZAÇÃO ---
 st.markdown("""
 <style>
     .stApp { background-color: #050a0e !important; }
@@ -40,9 +40,9 @@ st.markdown("""
     /* ELEMENTOS DA GRADE */
     .main-grid { border: 2.5px solid #ffffff; border-radius: 8px; overflow: hidden; font-family: 'monospace'; background-color: #0d1b22; }
     .terminal-table { width: 100%; border-collapse: collapse; color: #e0e0e0; }
-    .terminal-table th { background-color: #0a141a; color: #d4a017; border: 1px solid #ffffff; padding: 10px; text-align: center; font-size: 11px; text-transform: uppercase; }
-    .terminal-table td { border: 1px solid #ffffff; padding: 12px; text-align: center; font-size: 13px; font-weight: bold; }
-    .asset-name { font-size: 13px; color: #fff; text-align: left; font-weight: bold; padding-left: 15px; }
+    .terminal-table th { background-color: #0a141a; color: #d4a017; border: 1px solid #ffffff; padding: 10px; text-align: center; font-size: 13px; text-transform: uppercase; }
+    .terminal-table td { border: 1px solid #ffffff; padding: 12px; text-align: center; font-size: 15px; }
+    .asset-name { font-size: 17px; color: #fff; text-align: left; font-weight: bold; padding-left: 15px; }
     .price-col { font-weight: bold; color: #ffffff !important; }
     .calc-panel { border: 2.5px solid #ffffff; border-radius: 8px; padding: 6px; background: #0a141a; font-family: monospace; margin-bottom: 4px; }
     .calc-row { display: flex; justify-content: space-between; padding: 4px 8px; border-bottom: 1px solid #444; font-size: 13px; font-weight: bold; align-items: center; }
