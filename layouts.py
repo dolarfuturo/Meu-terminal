@@ -49,16 +49,13 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS COM PERSISTÊNCIA ---
+# --- MOTOR DE DADOS ---
 def fetch(s):
     try:
         t = yf.Ticker(s)
         tz_sp = pytz.timezone('America/Sao_Paulo')
         d = t.history(period="1d", interval="1m", prepost=True)
-        
-        if d.empty:
-            return st.session_state.market_data.get(s) # Retorna o último valor salvo se falhar
-        
+        if d.empty: return st.session_state.market_data.get(s)
         ref_close = t.info.get('previousClose')
         if s == "EWZ":
             d_hist = t.history(period="3d", interval="1m", prepost=True)
@@ -68,7 +65,6 @@ def fetch(s):
                 data_anterior = unique_dates[-2] if len(unique_dates) > 1 else unique_dates[0]
                 f_21h = d_hist.between_time('05:00', '21:00').loc[d_hist.index.date == data_anterior]
                 if not f_21h.empty: ref_close = f_21h['Close'].iloc[-1]
-        
         m = 1000 if s == "USDBRL=X" else 1
         data = {
             "at": d['Close'].iloc[-1] * m, 
@@ -77,12 +73,9 @@ def fetch(s):
             "mx": d['High'].max() * m, 
             "mn": d['Low'].min() * m
         }
-        
-        # Salva no cache global
         st.session_state.market_data[s] = data
         return data
-    except:
-        return st.session_state.market_data.get(s)
+    except: return st.session_state.market_data.get(s)
 
 @st.cache_data(ttl=600)
 def calcular_sentinela():
@@ -100,13 +93,33 @@ def calcular_sentinela():
 def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_data):
     try:
         if not spot_data or p_ewz_atual == 0: return None
-        v_spreed = (spot_data['mx'] - spot_data['mn']) / 8
-        v_spot = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
+        
+        # --- NOVOS CÁLCULOS BASEADOS NA SUA FÓRMULA ---
+        amplitude_spot = spot_data['mx'] - spot_data['mn']
+        v_spreed = amplitude_spot / 8
+        
+        # X1 = (MAX SPOT - MIN SPOT / 2 - 25%) 
+        x1 = (amplitude_spot / 2) * 0.75
+        
+        # X2 = (MAX SPOT - MIN SPOT - 75%) -> Interpretado como 25% da Amplitude
+        x2 = amplitude_spot * 0.25
+        
+        max_fut = eixo_dol + x1
+        min_fut = eixo_dol - x2
+        
+        # MÉDIA DOLAR: (MAX FUT + MIN FUT / 2 - SPREED)
+        dolar_medio = ((max_fut + min_fut) / 2) - v_spreed
+        
+        # DOLB3: AXIS + VAR SPOT
+        v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
+        dolb3 = eixo_dol + (eixo_dol * v_spot_pct)
+
+        # FRAJA (Preço Justo) mantido como referência de volatilidade EWZ/SPOT
         ewz_ref = st.session_state.market_data.get("EWZ", {}).get('cl', 1)
         v_ewz = ((p_ewz_atual / ewz_ref) - 1) if ewz_ref > 0 else 0
-        v_final = (v_spot * 0.6) - (v_ewz * 0.4)
-        dolar_medio = (spot_data['mx'] + spot_data['mn']) / 2
+        v_final = (v_spot_pct * 0.6) - (v_ewz * 0.4)
         
+        # Força de agressão (Barra)
         dist_base = abs(eixo_dol - dolar_medio)
         diff = spot_data['at'] - eixo_dol
         p_v, p_r = 0, 0
@@ -119,11 +132,17 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         elif p_r >= 100: seta_txt, seta_cor = "▼ REGIÃO DE VENDA", "#ff4d4d"
         
         return {
-            "vivo": spot_data['at'], "fraja": eixo_dol * (1 + (v_final / 2)), "medio": dolar_medio,
-            "max_fut": spot_data['mx'] + v_spreed, "p75_up": (spot_data['mx'] + v_spreed) - v_spreed, 
-            "p25_up": eixo_dol + v_spreed, "p25_down": eixo_dol - v_spreed, 
-            "p75_down": (spot_data['mn'] + v_spreed) + v_spreed, "min_fut": spot_data['mn'] + v_spreed, 
-            "v_v": v_final * 100, "spreed": v_spreed, "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor
+            "vivo": dolb3, # DOLB3
+            "fraja": eixo_dol * (1 + (v_final / 2)),
+            "medio": dolar_medio,
+            "max_fut": max_fut, 
+            "min_fut": min_fut,
+            "p75_up": max_fut - (x1 * 0.5), # Pontos intermediários mantidos proporcionais
+            "p25_up": eixo_dol + (x1 * 0.3),
+            "p25_down": eixo_dol - (x2 * 0.3),
+            "p75_down": min_fut + (x2 * 0.5),
+            "v_v": v_spot_pct * 100, 
+            "spreed": v_spreed, "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor
         }
     except: return None
 
@@ -132,15 +151,13 @@ eixo_sug = calcular_sentinela()
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
     a_ewz = st.number_input("AXIS EWZ:", value=float(eixo_sug), format="%.2f")
-    a_dol = st.number_input("AXIS DOLFUT:", value=5246.00, format="%.2f")
+    a_dol = st.number_input("AXIS DOLFUT:", value=5264.50, format="%.2f") # Atualizado conforme sua sugestão
     st.button("SALVAR")
 
 placeholder = st.empty()
 
 while True:
     tz_sp = pytz.timezone('America/Sao_Paulo'); tz_ny = pytz.timezone('America/New_York'); tz_ld = pytz.timezone('Europe/London')
-    
-    # Fetch e atualização de cache
     spot_live = fetch("USDBRL=X")
     ewz_live = fetch("EWZ")
     
@@ -152,7 +169,8 @@ while True:
             st.markdown(f'<div class="header-container"><h1 class="main-title"><span class="bair-blue">BAIR</span><span class="terminal-gold"> - TERMINAL DOLLAR</span></h1><div class="clock-row"><span class="clock-item">🇧🇷 BRASÍLIA: <span class="br-green">{now.astimezone(tz_sp).strftime("%H:%M:%S")}</span></span><span class="clock-item">🇺🇸 NEW YORK: <span class="white-time">{now.astimezone(tz_ny).strftime("%H:%M:%S")}</span></span><span class="clock-item">🇬🇧 LONDON: <span class="white-time">{now.astimezone(tz_ld).strftime("%H:%M:%S")}</span></span></div></div>', unsafe_allow_html=True)
 
             if res:
-                dolfut_calc, dolfut_com_spread = a_dol * (1 + (res['v_v'] / 100)), res['vivo'] + res['spreed']
+                # DOLFUT Preço reflete a variação do Spot sobre o AXIS
+                dolfut_calc = a_dol * (1 + (res['v_v'] / 100))
                 c_main, c_side = st.columns([3.2, 0.8])
                 
                 with c_main:
@@ -189,10 +207,10 @@ while True:
                         <div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MIN</span> <span>{res['min_fut']:.2f}</span></div>
                     </div>""", unsafe_allow_html=True)
                     
-                    v_ax = ((dolfut_com_spread / a_dol) - 1) * 100
+                    # DOLB3 agora usa o cálculo de variação SPOT sobre AXIS
                     st.markdown(f"""<div class="calc-panel">
-                        <div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">DOLB3</span> <span style="color:#00f2ff;">{dolfut_com_spread:.2f}</span></div>
-                        <div style="text-align:right; font-size:10px; padding-right:6px; color:{("#00ff00" if v_ax >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{v_ax:+.2f}%</div>
+                        <div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">DOLB3</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div>
+                        <div style="text-align:right; font-size:10px; padding-right:6px; color:{("#00ff00" if v_v >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{v_v:+.2f}%</div>
                         <div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div>
                         <div class="calc-row"><span style="color:#d4a017;">PREÇO JUSTO</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div>
                         <div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div>
