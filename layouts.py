@@ -12,19 +12,16 @@ st.markdown("""
 <style>
     .stApp { background-color: #050a0e !important; }
     
-    /* CABEÇALHO CENTRALIZADO PADRÃO CRYPTO */
     .header-container { text-align: center; padding: 10px 0px; border-bottom: 2px solid #FFD700; background-color: #050a0e; margin-bottom: 15px; }
     .main-title { margin: 0px; line-height: 1.1; font-size: 35px; font-family: monospace; }
     .bair-blue { color: #00BFFF; font-weight: bold; }
     .terminal-gold { color: #FFD700; font-weight: bold; }
     
-    /* RELÓGIOS */
     .clock-row { display: flex; justify-content: center; gap: 30px; padding: 10px 0; font-weight: bold; font-size: 14px; font-family: monospace; }
     .clock-item { color: #AAA; }
     .br-green { color: #00ff00; }
     .white-time { color: #ffffff; }
 
-    /* FAIXAS DE TÍTULO SOLICITADAS */
     .section-title { 
         border: 2px solid #ffffff; 
         color: #00f2ff; 
@@ -37,13 +34,15 @@ st.markdown("""
         font-size: 14px;
     }
 
-    /* ELEMENTOS DA GRADE */
     .main-grid { border: 2.5px solid #ffffff; border-radius: 8px; overflow: hidden; font-family: 'monospace'; background-color: #0d1b22; }
     .terminal-table { width: 100%; border-collapse: collapse; color: #e0e0e0; }
     .terminal-table th { background-color: #0a141a; color: #d4a017; border: 1px solid #ffffff; padding: 10px; text-align: center; font-size: 13px; text-transform: uppercase; }
     .terminal-table td { border: 1px solid #ffffff; padding: 12px; text-align: center; font-size: 15px; }
     .asset-name { font-size: 17px; color: #fff; text-align: left; font-weight: bold; padding-left: 15px; }
-    .price-col { color: #00f2ff !important; font-weight: bold; }
+    
+    /* REMOVIDA COR FIXA DO PRICE PARA PERMITIR SINALIZAÇÃO DINÂMICA */
+    .price-col { font-weight: bold; color: #000; } 
+
     .calc-panel { border: 2.5px solid #ffffff; border-radius: 8px; padding: 6px; background: #0a141a; font-family: monospace; margin-bottom: 4px; }
     .calc-row { display: flex; justify-content: space-between; padding: 4px 8px; border-bottom: 1px solid #444; font-size: 13px; font-weight: bold; align-items: center; }
     .bar-wrapper-dual { background: #0a141a; padding: 12px 10px 6px 10px; border: 2.5px solid #ffffff; border-radius: 8px; text-align: center; position: relative; }
@@ -76,10 +75,12 @@ def fetch(s):
                 f_21h = d_hist.between_time('05:00', '21:00').loc[d_hist.index.date == data_anterior]
                 if not f_21h.empty: ref_close = f_21h['Close'].iloc[-1]
         d = t.history(period="1d", interval="1m", prepost=True)
-        if d.empty: return {"at": 0.0, "cl": ref_close or 0.0, "mx": 0.0, "mn": 0.0, "op": 0.0}
+        if d.empty: return {"at": 0.0, "cl": ref_close or 0.0, "mx": 0.0, "mn": 0.0, "op": 0.0, "p_ant": 0.0}
         m = 1000 if s == "USDBRL=X" else 1
-        return {"at": d['Close'].iloc[-1] * m, "cl": (ref_close or d['Open'].iloc[0]) * m, "op": d['Open'].iloc[0] * m, "mx": d['High'].max() * m, "mn": d['Low'].min() * m}
-    except: return {"at": 0.0, "cl": 0.0, "mx": 0.0, "mn": 0.0, "op": 0.0}
+        p_atual = d['Close'].iloc[-1] * m
+        p_anterior = d['Close'].iloc[-2] * m if len(d) > 1 else p_atual
+        return {"at": p_atual, "p_ant": p_anterior, "cl": (ref_close or d['Open'].iloc[0]) * m, "op": d['Open'].iloc[0] * m, "mx": d['High'].max() * m, "mn": d['Low'].min() * m}
+    except: return {"at": 0.0, "cl": 0.0, "mx": 0.0, "mn": 0.0, "op": 0.0, "p_ant": 0.0}
 
 @st.cache_data(ttl=600)
 def calcular_sentinela():
@@ -145,7 +146,6 @@ while True:
     now = datetime.now()
 
     with placeholder.container():
-        # CABEÇALHO PADRONIZADO
         st.markdown(f"""
             <div class="header-container">
                 <h1 class="main-title">
@@ -165,27 +165,40 @@ while True:
             c_main, c_side = st.columns([3, 1])
             
             with c_main:
-                # TÍTULO DA GRADE
                 st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
                 html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
-                v_v = res['v_v']
-                html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col'>{(dolfut_calc/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max_fut']/1000):.4f}</td><td>{(res['min_fut']/1000):.4f}</td><td style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_v:+.2f}%</td></tr>"
-                ticker_items = [f"DOLFUT: <span style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")};'>{v_v:+.2f}%</span>"]
+                
+                # LOGICA SINALIZAÇÃO PRICE DOLFUT
+                p_atual_dol = dolfut_calc/1000
+                bg_dol = "rgba(0, 255, 0, 0.4)" if res['v_v'] > 0 else "rgba(255, 0, 0, 0.4)" if res['v_v'] < 0 else "none"
+                
+                html_table += f"<tr><td class='asset-name'>DOLFUT</td><td style='background-color:{bg_dol}; color:white; font-weight:bold;'>{p_atual_dol:.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max_fut']/1000):.4f}</td><td>{(res['min_fut']/1000):.4f}</td><td style='color:{("#00ff00" if res['v_v'] >= 0 else "#ff4d4d")}; font-weight:bold;'>{res['v_v']:+.2f}%</td></tr>"
+                
+                ticker_items = [f"DOLFUT: <span style='color:{("#00ff00" if res['v_v'] >= 0 else "#ff4d4d")};'>{res['v_v']:+.2f}%</span>"]
                 outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
+                
                 for lbl, sym in outros.items():
                     d = spot_live if lbl == "DOLSPOT" else (ewz_live if lbl == "EWZ" else fetch(sym))
                     f, p_val = (".4f", d['at']/1000) if lbl == "DOLSPOT" else (".2f", d['at'])
                     var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
                     color = "#00ff00" if var >= 0 else "#ff4d4d"
-                    html_table += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col'>{p_val:{f}}</td><td>{(d['cl']/1000 if lbl=='DOLSPOT' else d['cl']):{f}}</td><td>{(d['op']/1000 if lbl=='DOLSPOT' else d['op']):{f}}</td><td>{(d['mx']/1000 if lbl=='DOLSPOT' else d['mx']):{f}}</td><td>{(d['mn']/1000 if lbl=='DOLSPOT' else d['mn']):{f}}</td><td style='color:{color}; font-weight:bold;'>{var:+.2f}%</td></tr>"
+                    
+                    # SINALIZAÇÃO DE COR NO PRICE
+                    bg_price = "rgba(0, 255, 0, 0.4)" if d['at'] > d['p_ant'] else "rgba(255, 0, 0, 0.4)" if d['at'] < d['p_ant'] else "none"
+                    
+                    html_table += f"<tr><td class='asset-name'>{lbl}</td><td style='background-color:{bg_price}; color:white; font-weight:bold;'>{p_val:{f}}</td><td>{(d['cl']/1000 if lbl=='DOLSPOT' else d['cl']):{f}}</td><td>{(d['op']/1000 if lbl=='DOLSPOT' else d['op']):{f}}</td><td>{(d['mx']/1000 if lbl=='DOLSPOT' else d['mx']):{f}}</td><td>{(d['mn']/1000 if lbl=='DOLSPOT' else d['mn']):{f}}</td><td style='color:{color}; font-weight:bold;'>{var:+.2f}%</td></tr>"
                     ticker_items.append(f"{lbl}: <span style='color:{color};'>{var:+.2f}%</span>")
+                
                 st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
             
             with c_side:
-                # TÍTULO DAS PROJEÇÕES
                 st.markdown('<div class="section-title">CÁLCULOS DE PROJEÇÕES</div>', unsafe_allow_html=True)
                 st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="color:#ff4d4d;"><span>MAX FUT</span> <span>{res['max_fut']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>75%</span> <span>{res['p75_up']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>25%</span> <span>{res['p25_up']:.2f}</span></div><div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 18px; font-weight: bold; border-top:1.5px solid #444; border-bottom:1.5px solid #444; margin: 5px 0;">AXIS: {a_dol:.2f}</div><div class="calc-row" style="color:#ffa500;"><span>25%</span> <span>{res['p25_down']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>75%</span> <span>{res['p75_down']:.2f}</span></div><div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MIN FUT</span> <span>{res['min_fut']:.2f}</span></div></div>""", unsafe_allow_html=True)
-                st.markdown(f"""<div class="calc-panel"><div style="padding: 10px 8px; border-bottom: 1px solid #444;"><div style="display: flex; justify-content: space-between; align-items: center;"><span style="color:#ffffff; font-weight: bold;">DOLFUT</span> <span style="color:#00f2ff; font-size: 18px; font-weight: 950;">{dolfut_com_spread:.2f}</span></div><div style="text-align: right; color: #d4a017; font-size: 11px; font-weight: bold; margin-top: 2px;">VAR AXIS: {res['var_axis']:+.2f}%</div></div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOL</span> <span style="color:#00f2ff; font-size: 16px;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">P. JUSTO</span> <span style="color:#ffffff; font-size: 16px; font-weight: bold;">{res['fraja']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff; font-size: 16px; font-weight: bold;">{res['spreed']:.2f}</span></div></div>""", unsafe_allow_html=True)
+                
+                # AJUSTE VAR AXIS: REMOVIDO TEXTO, MANTIDA APENAS PORCENTAGEM COLORIDA
+                color_var_axis = "#00ff00" if res['var_axis'] >= 0 else "#ff4d4d"
+                st.markdown(f"""<div class="calc-panel"><div style="padding: 10px 8px; border-bottom: 1px solid #444;"><div style="display: flex; justify-content: space-between; align-items: center;"><span style="color:#ffffff; font-weight: bold;">DOLFUT</span> <span style="color:#00f2ff; font-size: 18px; font-weight: 950;">{dolfut_com_spread:.2f}</span></div><div style="text-align: right; color: {color_var_axis}; font-size: 11px; font-weight: bold; margin-top: 2px;">{res['var_axis']:+.2f}%</div></div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOL</span> <span style="color:#00f2ff; font-size: 16px;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">P. JUSTO</span> <span style="color:#ffffff; font-size: 16px; font-weight: bold;">{res['fraja']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff; font-size: 16px; font-weight: bold;">{res['spreed']:.2f}</span></div></div>""", unsafe_allow_html=True)
+                
                 st.markdown(f"""<div class="bar-wrapper-dual"><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res['p_v']}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res['p_r']}%;"></div></div></div><div class="sinal-indicator blink" style="color:{res['seta_cor']};">{res['seta']}</div></div>""", unsafe_allow_html=True)
             
             ticker_html = " • ".join(ticker_items)
