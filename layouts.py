@@ -110,7 +110,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         }
     except: return None
 
-# --- SIDEBAR ---
+# --- SIDEBAR (PAINEL ADM RECOLOCADO) ---
 eixo_sug = calcular_sentinela()
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
