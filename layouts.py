@@ -219,4 +219,4 @@ while True:
             
             ticker_html = " • ".join(ticker_items)
             st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{ticker_html}</div></div>', unsafe_allow_html=True)
-    time.sleep(2)
+    time.sleep(5)
