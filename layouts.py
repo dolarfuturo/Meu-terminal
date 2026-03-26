@@ -7,22 +7,26 @@ import pytz
 # Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLLAR", initial_sidebar_state="collapsed")
 
-# --- CSS: ESCALA PRESERVADA + RELÓGIOS + PORCENTAGENS NA BARRA ---
+# --- CSS: MANTIDO ESCALA ORIGINAL + TOPO SOLTO ---
 st.markdown("""
 <style>
+    /* Layout solto para evitar corte no topo - Ajuste o padding conforme desejar */
     .block-container { padding-top: 1.5rem; padding-bottom: 0rem; }
     .stApp { background-color: #050a0e !important; }
     
+    /* CABEÇALHO CENTRALIZADO COMPACTO */
     .header-container { text-align: center; padding: 5px 0px; border-bottom: 2px solid #FFD700; background-color: #050a0e; margin-bottom: 8px; }
     .main-title { margin: 0px; line-height: 1.0; font-size: 28px; font-family: monospace; }
     .bair-blue { color: #00BFFF; font-weight: bold; }
     .terminal-gold { color: #FFD700; font-weight: bold; }
     
-    .clock-row { display: flex; justify-content: center; gap: 15px; padding: 5px 0; font-weight: bold; font-size: 11px; font-family: monospace; }
+    /* RELÓGIOS COMPACTOS */
+    .clock-row { display: flex; justify-content: center; gap: 20px; padding: 5px 0; font-weight: bold; font-size: 11px; font-family: monospace; }
     .clock-item { color: #AAA; }
     .br-green { color: #00ff00; }
     .white-time { color: #ffffff; }
 
+    /* FAIXAS DE TÍTULO COMPACTAS (11px) */
     .section-title { 
         border: 1px solid #ffffff; 
         color: #00f2ff; 
@@ -35,6 +39,7 @@ st.markdown("""
         font-size: 11px;
     }
 
+    /* GRADE DE DADOS (FONTES 11px/13px) */
     .main-grid { border: 1.5px solid #ffffff; border-radius: 4px; overflow: hidden; font-family: 'monospace'; background-color: #0d1b22; }
     .terminal-table { width: 100%; border-collapse: collapse; color: #e0e0e0; }
     .terminal-table th { background-color: #0a141a; color: #d4a017; border: 1px solid #ffffff; padding: 6px; text-align: center; font-size: 11px; text-transform: uppercase; }
@@ -42,13 +47,13 @@ st.markdown("""
     .asset-name { font-size: 13px; color: #fff; text-align: left; font-weight: bold; padding-left: 10px; }
     .price-col { font-weight: bold; color: #ffffff !important; }
 
+    /* PAINÉIS LATERAIS COMPACTOS */
     .calc-panel { border: 1.5px solid #ffffff; border-radius: 4px; padding: 4px; background: #0a141a; font-family: monospace; margin-bottom: 4px; }
     .calc-row { display: flex; justify-content: space-between; padding: 3px 6px; border-bottom: 1px solid #444; font-size: 11px; font-weight: bold; align-items: center; }
     
-    /* BARRA DE FORÇA COM PORCENTAGENS */
-    .bar-wrapper-dual { background: #0a141a; padding: 5px 8px 4px 8px; border: 1.5px solid #ffffff; border-radius: 4px; text-align: center; }
-    .force-scale { display: flex; justify-content: space-between; font-size: 9px; font-family: monospace; color: #aaa; margin-bottom: 2px; font-weight: bold; }
-    .force-container-dual { background: #111; height: 12px; width: 100%; border-radius: 2px; position: relative; overflow: hidden; display: flex; border: 1px solid #444; }
+    /* BARRA DE FORÇA AJUSTADA */
+    .bar-wrapper-dual { background: #0a141a; padding: 8px 8px 4px 8px; border: 1.5px solid #ffffff; border-radius: 4px; text-align: center; position: relative; }
+    .force-container-dual { background: #111; height: 12px; width: 100%; border-radius: 2px; position: relative; overflow: hidden; display: flex; border: 1px solid #444; margin: 2px 0; }
     .center-line { position: absolute; left: 50%; top: 0; width: 1px; height: 100%; background: #fff; z-index: 10; }
     .bar-side { width: 50%; height: 100%; position: relative; background: #050a0e; }
     .fill-green { background: #00ff88; float: right; height: 100%; transition: width 0.4s; }
@@ -104,6 +109,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         v_spot = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         v_ewz = ((p_ewz_atual / fetch("EWZ")['cl']) - 1) if fetch("EWZ")['cl'] > 0 else 0
         v_final = (v_spot * 0.6) - (v_ewz * 0.4)
+        dolar_vivo = spot_data['at'] 
         dolar_fraja = eixo_dol * (1 + (v_final / 2))
         dolar_medio = (spot_data['mx'] + spot_data['mn']) / 2
         max_fut = spot_data['mx'] + v_spreed
@@ -116,28 +122,30 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         if dist_base > 0:
             if diff < 0: p_v = min(100, (abs(diff)/(dist_base*2))*100)
             else: p_r = min(100, (abs(diff)/(dist_base*2))*100)
-        seta_txt, seta_cor = "AGUARDAR", "#ffffff"
-        if p_v >= 80: seta_txt, seta_cor = "▲ REGIÃO DE COMPRA", "#00ff88"
-        elif p_r >= 80: seta_txt, seta_cor = "▼ REGIÃO DE VENDA", "#ff4d4d"
+        seta_txt, seta_cor = "", "#000000"
+        if p_v >= 100: seta_txt, seta_cor = "▲ REGIÃO DE COMPRA", "#00ff88"
+        elif p_r >= 100: seta_txt, seta_cor = "▼ REGIÃO DE VENDA", "#ff4d4d"
+        var_axis = ((spot_data['at'] + v_spreed) / eixo_dol - 1) * 100
         return {
-            "vivo": spot_data['at'], "fraja": dolar_fraja, "medio": dolar_medio, 
+            "vivo": dolar_vivo, "fraja": dolar_fraja, "medio": dolar_medio, "ewz_med": (max_ewz + min_ewz) / 2,
             "max_fut": max_fut, "p75_up": p75_up, "p25_up": p25_up, "p25_down": p25_down, "p75_down": p75_down, 
-            "min_fut": min_fut, "v_v": v_final * 100, "spreed": v_spreed,
+            "min_fut": min_fut, "v_v": v_final * 100, "spreed": v_spreed, "var_axis": var_axis,
             "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor
         }
     except: return None
 
-# --- SIDEBAR ---
+# --- SIDEBAR ADM ---
 eixo_sug = calcular_sentinela()
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
     a_ewz = st.number_input("AXIS EWZ:", value=float(eixo_sug), format="%.2f")
     a_dol = st.number_input("AXIS DOLFUT:", value=5246.00, format="%.2f")
+    st.button("SALVAR")
 
 placeholder = st.empty()
 
 while True:
-    tz_sp, tz_ny, tz_ld = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London')
+    tz_sp, tz_ny = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York')
     ewz_live = fetch("EWZ")
     spot_live = fetch("USDBRL=X")
     res = calcular_k97_total(a_ewz, ewz_live['at'], ewz_live['mx'], ewz_live['mn'], a_dol, spot_live)
@@ -146,40 +154,43 @@ while True:
     with placeholder.container():
         st.markdown(f"""
             <div class="header-container">
-                <h1 class="main-title"><span class="bair-blue">BAIR</span><span class="terminal-gold"> - TERMINAL DOLLAR</span></h1>
+                <h1 class="main-title">
+                    <span class="bair-blue">BAIR</span> 
+                    <span class="terminal-gold"> - TERMINAL DOLLAR</span>
+                </h1>
                 <div class="clock-row">
                     <span class="clock-item">🇧🇷 BRASÍLIA: <span class="br-green">{now.astimezone(tz_sp).strftime('%H:%M:%S')}</span></span>
-                    <span class="clock-item">🇺🇸 NY: <span class="white-time">{now.astimezone(tz_ny).strftime('%H:%M:%S')}</span></span>
-                    <span class="clock-item">🇬🇧 LONDON: <span class="white-time">{now.astimezone(tz_ld).strftime('%H:%M:%S')}</span></span>
+                    <span class="clock-item">🇺🇸 NEW YORK: <span class="white-time">{now.astimezone(tz_ny).strftime('%H:%M:%S')}</span></span>
                 </div>
             </div>
         """, unsafe_allow_html=True)
 
         if res:
-            dolfut_calc = a_dol * (1 + (res['v_v'] / 100))
+            dolfut_calc, dolfut_com_spread = a_dol * (1 + (res['v_v'] / 100)), res['vivo'] + res['spreed']
             c_main, c_side = st.columns([3.2, 0.8])
             
             with c_main:
                 st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
-                html = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
+                html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
                 v_v = res['v_v']
-                bg_dol = "background-color:rgba(0,255,0,0.4);" if v_v >= 0 else "background-color:rgba(255,0,0,0.4);"
-                html += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col' style='{bg_dol}'>{(dolfut_calc/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max_fut']/1000):.4f}</td><td>{(res['min_fut']/1000):.4f}</td><td style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_v:+.2f}%</td></tr>"
+                bg_color_dol = "background-color:rgba(0, 255, 0, 0.4);" if v_v >= 0 else "background-color:rgba(255, 0, 0, 0.4);"
+                html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col' style='{bg_color_dol}'>{(dolfut_calc/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max_fut']/1000):.4f}</td><td>{(res['min_fut']/1000):.4f}</td><td style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_v:+.2f}%</td></tr>"
                 
-                outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "EUR/USD": "EURUSD=X", "PETROLEO": "BZ=F"}
-                ticker_items = [f"DOLFUT: {v_v:+.2f}%"]
+                ticker_items = [f"DOLFUT: <span style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")};'>{v_v:+.2f}%</span>"]
+                outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
                 for lbl, sym in outros.items():
                     d = spot_live if lbl == "DOLSPOT" else (ewz_live if lbl == "EWZ" else fetch(sym))
                     f, p_val = (".4f", d['at']/1000) if lbl == "DOLSPOT" else (".2f", d['at'])
                     var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
                     color = "#00ff00" if var >= 0 else "#ff4d4d"
-                    bg_item = f"background-color:rgba({('0,255,0' if var>=0 else '255,0,0')},0.4);"
-                    html += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col' style='{bg_item}'>{p_val:{f}}</td><td>{(d['cl']/1000 if lbl=='DOLSPOT' else d['cl']):{f}}</td><td>{(d['op']/1000 if lbl=='DOLSPOT' else d['op']):{f}}</td><td>{(d['mx']/1000 if lbl=='DOLSPOT' else d['mx']):{f}}</td><td>{(d['mn']/1000 if lbl=='DOLSPOT' else d['mn']):{f}}</td><td style='color:{color}; font-weight:bold;'>{var:+.2f}%</td></tr>"
-                    ticker_items.append(f"{lbl}: {var:+.2f}%")
-                st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
+                    bg_color_item = "background-color:rgba(0, 255, 0, 0.4);" if var >= 0 else "background-color:rgba(255, 0, 0, 0.4);"
+                    html_table += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col' style='{bg_color_item}'>{p_val:{f}}</td><td>{(d['cl']/1000 if lbl=='DOLSPOT' else d['cl']):{f}}</td><td>{(d['op']/1000 if lbl=='DOLSPOT' else d['op']):{f}}</td><td>{(d['mx']/1000 if lbl=='DOLSPOT' else d['mx']):{f}}</td><td>{(d['mn']/1000 if lbl=='DOLSPOT' else d['mn']):{f}}</td><td style='color:{color}; font-weight:bold;'>{var:+.2f}%</td></tr>"
+                    ticker_items.append(f"{lbl}: <span style='color:{color};'>{var:+.2f}%</span>")
+                st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
             
             with c_side:
                 st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
+                # Bloco 1: Projeções
                 st.markdown(f"""<div class="calc-panel">
                     <div class="calc-row" style="color:#ff4d4d;"><span>MAX</span> <span>{res['max_fut']:.2f}</span></div>
                     <div class="calc-row"><span>75% UP</span> <span>{res['p75_up']:.2f}</span></div>
@@ -187,18 +198,19 @@ while True:
                     <div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 11px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444; margin: 3px 0;">AXIS: {a_dol:.2f}</div>
                     <div class="calc-row"><span>25% DN</span> <span>{res['p25_down']:.2f}</span></div>
                     <div class="calc-row"><span>75% DN</span> <span>{res['p75_down']:.2f}</span></div>
-                    <div class="calc-row" style="color:#00ff88; border:none;"><span>MIN</span> <span>{res['min_fut']:.2f}</span></div>
+                    <div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MIN</span> <span>{res['min_fut']:.2f}</span></div>
                 </div>""", unsafe_allow_html=True)
                 
+                # Bloco 2: Médias e Spreed
                 st.markdown(f"""<div class="calc-panel">
-                    <div class="calc-row"><span>MÉDIA</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div>
-                    <div class="calc-row"><span>FRAJA</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div>
-                    <div class="calc-row" style="border:none;"><span>SPREED</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div>
+                    <div class="calc-row"><span style="color:#ffffff;">DOLFUT</span> <span style="color:#00f2ff;">{dolfut_com_spread:.2f}</span></div>
+                    <div class="calc-row"><span style="color:#ffff00;">MÉDIA</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div>
+                    <div class="calc-row"><span style="color:#d4a017;">FRAJA</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div>
+                    <div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div>
                 </div>""", unsafe_allow_html=True)
                 
                 st.markdown(f"""
                 <div class="bar-wrapper-dual">
-                    <div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div>
                     <div class="force-container-dual">
                         <div class="center-line"></div>
                         <div class="bar-side"><div class="fill-green" style="width: {res['p_v']}%;"></div></div>
