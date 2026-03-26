@@ -46,7 +46,14 @@ st.markdown("""
     .price-col { font-weight: bold; color: #ffffff !important; }
     .calc-panel { border: 2.5px solid #ffffff; border-radius: 8px; padding: 6px; background: #0a141a; font-family: monospace; margin-bottom: 4px; }
     .calc-row { display: flex; justify-content: space-between; padding: 4px 8px; border-bottom: 1px solid #444; font-size: 13px; font-weight: bold; align-items: center; }
+    
+    /* BARRA DE FORÇA COM PORCENTAGENS */
     .bar-wrapper-dual { background: #0a141a; padding: 12px 10px 6px 10px; border: 2.5px solid #ffffff; border-radius: 8px; text-align: center; position: relative; }
+    
+    .force-scale { display: flex; justify-content: space-between; font-size: 10px; font-family: monospace; font-weight: bold; margin-bottom: 4px; }
+    .scale-left { color: #00ff88; width: 50%; display: flex; justify-content: space-around; padding-right: 2px; }
+    .scale-right { color: #ff4d4d; width: 50%; display: flex; justify-content: space-around; padding-left: 2px; }
+
     .force-container-dual { background: #111; height: 16px; width: 100%; border-radius: 4px; position: relative; overflow: hidden; display: flex; border: 1px solid #444; margin: 4px 0; }
     .center-line { position: absolute; left: 50%; top: 0; width: 2px; height: 100%; background: #fff; z-index: 10; }
     .bar-side { width: 50%; height: 100%; position: relative; background: #050a0e; }
@@ -194,11 +201,24 @@ while True:
                 st.markdown('<div class="section-title">CÁLCULOS DE PROJEÇÕES</div>', unsafe_allow_html=True)
                 st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="color:#ff4d4d;"><span>MAX FUT</span> <span>{res['max_fut']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>75%</span> <span>{res['p75_up']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>25%</span> <span>{res['p25_up']:.2f}</span></div><div style="text-align:center; padding: 10px; color: #00f2ff; font-size: 18px; font-weight: bold; border-top:1.5px solid #444; border-bottom:1.5px solid #444; margin: 5px 0;">AXIS: {a_dol:.2f}</div><div class="calc-row" style="color:#ffa500;"><span>25%</span> <span>{res['p25_down']:.2f}</span></div><div class="calc-row" style="color:#ffa500;"><span>75%</span> <span>{res['p75_down']:.2f}</span></div><div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MIN FUT</span> <span>{res['min_fut']:.2f}</span></div></div>""", unsafe_allow_html=True)
                 
-                # BLOCO DOLFUT - REMOVIDO "VAR AXIS:"
+                # BLOCO DOLFUT
                 color_var_axis = "#00ff00" if res['var_axis'] >= 0 else "#ff4d4d"
                 st.markdown(f"""<div class="calc-panel"><div style="padding: 10px 8px; border-bottom: 1px solid #444;"><div style="display: flex; justify-content: space-between; align-items: center;"><span style="color:#ffffff; font-weight: bold;">DOLFUT</span> <span style="color:#00f2ff; font-size: 18px; font-weight: 950;">{dolfut_com_spread:.2f}</span></div><div style="text-align: right; color: {color_var_axis}; font-size: 11px; font-weight: bold; margin-top: 2px;">{res['var_axis']:+.2f}%</div></div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOL</span> <span style="color:#00f2ff; font-size: 16px;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">P. JUSTO</span> <span style="color:#ffffff; font-size: 16px; font-weight: bold;">{res['fraja']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff; font-size: 16px; font-weight: bold;">{res['spreed']:.2f}</span></div></div>""", unsafe_allow_html=True)
                 
-                st.markdown(f"""<div class="bar-wrapper-dual"><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res['p_v']}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res['p_r']}%;"></div></div></div><div class="sinal-indicator blink" style="color:{res['seta_cor']};">{res['seta']}</div></div>""", unsafe_allow_html=True)
+                # BARRA DE FORÇA COM PORCENTAGENS EM CIMA
+                st.markdown(f"""
+                <div class="bar-wrapper-dual">
+                    <div class="force-scale">
+                        <div class="scale-left"><span>100%</span><span>80%</span><span>50%</span><span>30%</span></div>
+                        <div class="scale-right"><span>30%</span><span>50%</span><span>80%</span><span>100%</span></div>
+                    </div>
+                    <div class="force-container-dual">
+                        <div class="center-line"></div>
+                        <div class="bar-side"><div class="fill-green" style="width: {res['p_v']}%;"></div></div>
+                        <div class="bar-side"><div class="fill-red" style="width: {res['p_r']}%;"></div></div>
+                    </div>
+                    <div class="sinal-indicator blink" style="color:{res['seta_cor']};">{res['seta']}</div>
+                </div>""", unsafe_allow_html=True)
             
             ticker_html = " • ".join(ticker_items)
             st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{ticker_html} • {ticker_html}</div></div>', unsafe_allow_html=True)
