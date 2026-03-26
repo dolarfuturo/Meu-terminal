@@ -53,6 +53,7 @@ st.markdown("""
     
     /* BARRA DE FORÇA AJUSTADA */
     .bar-wrapper-dual { background: #0a141a; padding: 8px 8px 4px 8px; border: 1.5px solid #ffffff; border-radius: 4px; text-align: center; position: relative; }
+    .force-scale { display: flex; justify-content: space-between; font-size: 9px; font-family: monospace; color: #AAA; margin-bottom: 2px; padding: 0 2px; }
     .force-container-dual { background: #111; height: 12px; width: 100%; border-radius: 2px; position: relative; overflow: hidden; display: flex; border: 1px solid #444; margin: 2px 0; }
     .center-line { position: absolute; left: 50%; top: 0; width: 1px; height: 100%; background: #fff; z-index: 10; }
     .bar-side { width: 50%; height: 100%; position: relative; background: #050a0e; }
@@ -145,7 +146,9 @@ with st.sidebar:
 placeholder = st.empty()
 
 while True:
-    tz_sp, tz_ny = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York')
+    tz_sp = pytz.timezone('America/Sao_Paulo')
+    tz_ny = pytz.timezone('America/New_York')
+    tz_ld = pytz.timezone('Europe/London')
     ewz_live = fetch("EWZ")
     spot_live = fetch("USDBRL=X")
     res = calcular_k97_total(a_ewz, ewz_live['at'], ewz_live['mx'], ewz_live['mn'], a_dol, spot_live)
@@ -161,6 +164,7 @@ while True:
                 <div class="clock-row">
                     <span class="clock-item">🇧🇷 BRASÍLIA: <span class="br-green">{now.astimezone(tz_sp).strftime('%H:%M:%S')}</span></span>
                     <span class="clock-item">🇺🇸 NEW YORK: <span class="white-time">{now.astimezone(tz_ny).strftime('%H:%M:%S')}</span></span>
+                    <span class="clock-item">🇬🇧 LONDON: <span class="white-time">{now.astimezone(tz_ld).strftime('%H:%M:%S')}</span></span>
                 </div>
             </div>
         """, unsafe_allow_html=True)
@@ -211,6 +215,7 @@ while True:
                 
                 st.markdown(f"""
                 <div class="bar-wrapper-dual">
+                    <div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div>
                     <div class="force-container-dual">
                         <div class="center-line"></div>
                         <div class="bar-side"><div class="fill-green" style="width: {res['p_v']}%;"></div></div>
