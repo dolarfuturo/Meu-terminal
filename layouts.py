@@ -10,23 +10,19 @@ st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLLAR", initial_s
 # --- CSS: MANTIDO ESCALA ORIGINAL + TOPO SOLTO ---
 st.markdown("""
 <style>
-    /* Layout solto para evitar corte no topo - Ajuste o padding conforme desejar */
     .block-container { padding-top: 1.5rem; padding-bottom: 0rem; }
     .stApp { background-color: #050a0e !important; }
     
-    /* CABEÇALHO CENTRALIZADO COMPACTO */
     .header-container { text-align: center; padding: 5px 0px; border-bottom: 2px solid #FFD700; background-color: #050a0e; margin-bottom: 8px; }
     .main-title { margin: 0px; line-height: 1.0; font-size: 28px; font-family: monospace; }
     .bair-blue { color: #00BFFF; font-weight: bold; }
     .terminal-gold { color: #FFD700; font-weight: bold; }
     
-    /* RELÓGIOS COMPACTOS */
     .clock-row { display: flex; justify-content: center; gap: 20px; padding: 5px 0; font-weight: bold; font-size: 11px; font-family: monospace; }
     .clock-item { color: #AAA; }
     .br-green { color: #00ff00; }
     .white-time { color: #ffffff; }
 
-    /* FAIXAS DE TÍTULO COMPACTAS (11px) */
     .section-title { 
         border: 1px solid #ffffff; 
         color: #00f2ff; 
@@ -39,7 +35,6 @@ st.markdown("""
         font-size: 11px;
     }
 
-    /* GRADE DE DADOS (FONTES 11px/13px) */
     .main-grid { border: 1.5px solid #ffffff; border-radius: 4px; overflow: hidden; font-family: 'monospace'; background-color: #0d1b22; }
     .terminal-table { width: 100%; border-collapse: collapse; color: #e0e0e0; }
     .terminal-table th { background-color: #0a141a; color: #d4a017; border: 1px solid #ffffff; padding: 6px; text-align: center; font-size: 11px; text-transform: uppercase; }
@@ -47,11 +42,9 @@ st.markdown("""
     .asset-name { font-size: 13px; color: #fff; text-align: left; font-weight: bold; padding-left: 10px; }
     .price-col { font-weight: bold; color: #ffffff !important; }
 
-    /* PAINÉIS LATERAIS COMPACTOS */
     .calc-panel { border: 1.5px solid #ffffff; border-radius: 4px; padding: 4px; background: #0a141a; font-family: monospace; margin-bottom: 4px; }
     .calc-row { display: flex; justify-content: space-between; padding: 3px 6px; border-bottom: 1px solid #444; font-size: 11px; font-weight: bold; align-items: center; }
     
-    /* BARRA DE FORÇA AJUSTADA */
     .bar-wrapper-dual { background: #0a141a; padding: 8px 8px 4px 8px; border: 1.5px solid #ffffff; border-radius: 4px; text-align: center; position: relative; }
     .force-scale { display: flex; justify-content: space-between; font-size: 9px; font-family: monospace; color: #AAA; margin-bottom: 2px; padding: 0 2px; }
     .force-container-dual { background: #111; height: 12px; width: 100%; border-radius: 2px; position: relative; overflow: hidden; display: flex; border: 1px solid #444; margin: 2px 0; }
@@ -157,10 +150,7 @@ while True:
     with placeholder.container():
         st.markdown(f"""
             <div class="header-container">
-                <h1 class="main-title">
-                    <span class="bair-blue">BAIR</span> 
-                    <span class="terminal-gold"> - TERMINAL DOLLAR</span>
-                </h1>
+                <h1 class="main-title"><span class="bair-blue">BAIR</span><span class="terminal-gold"> - TERMINAL DOLLAR</span></h1>
                 <div class="clock-row">
                     <span class="clock-item">🇧🇷 BRASÍLIA: <span class="br-green">{now.astimezone(tz_sp).strftime('%H:%M:%S')}</span></span>
                     <span class="clock-item">🇺🇸 NEW YORK: <span class="white-time">{now.astimezone(tz_ny).strftime('%H:%M:%S')}</span></span>
@@ -194,7 +184,6 @@ while True:
             
             with c_side:
                 st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
-                # Bloco 1: Projeções
                 st.markdown(f"""<div class="calc-panel">
                     <div class="calc-row" style="color:#ff4d4d;"><span>MAX</span> <span>{res['max_fut']:.2f}</span></div>
                     <div class="calc-row"><span>75% UP</span> <span>{res['p75_up']:.2f}</span></div>
@@ -205,11 +194,13 @@ while True:
                     <div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MIN</span> <span>{res['min_fut']:.2f}</span></div>
                 </div>""", unsafe_allow_html=True)
                 
-                # Bloco 2: Médias e Spreed
-                var_color = "#00ff00" if res['v_v'] >= 0 else "#ff4d4d"
+                # VARIAÇÃO COM BASE NO EIXO
+                var_axis = ((dolfut_com_spread / a_dol) - 1) * 100
+                color_axis = "#00ff00" if var_axis >= 0 else "#ff4d4d"
+                
                 st.markdown(f"""<div class="calc-panel">
                     <div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">DOLFUT</span> <span style="color:#00f2ff;">{dolfut_com_spread:.2f}</span></div>
-                    <div style="text-align:right; font-size:10px; padding-right:6px; color:{var_color}; font-weight:bold; margin-bottom:4px;">{res['v_v']:+.2f}%</div>
+                    <div style="text-align:right; font-size:10px; padding-right:6px; color:{color_axis}; font-weight:bold; margin-bottom:4px;">{var_axis:+.2f}%</div>
                     <div class="calc-row"><span style="color:#ffff00;">MÉDIA</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div>
                     <div class="calc-row"><span style="color:#d4a017;">FRAJA</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div>
                     <div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div>
