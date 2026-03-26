@@ -4,72 +4,70 @@ import time
 from datetime import datetime
 import pytz
 
-# Configuração para Tablet
+# Configuração para Tablet - Modo Wide
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLLAR", initial_sidebar_state="collapsed")
 
-# --- CSS: ESTILIZAÇÃO AJUSTADA PARA ESCALA COMPACTA ---
+# --- CSS: AJUSTADO PARA ESCALA COMPACTA (PADRÃO CRYPTO) ---
 st.markdown("""
 <style>
-    /* Ajuste para colar no topo e remover espaços inúteis */
-    .block-container { padding-top: 0rem !important; padding-bottom: 0rem !important; }
+    /* Remove espaços vazios no topo e fundo */
+    .block-container { padding-top: 0rem !important; padding-bottom: 0rem !important; padding-left: 1rem !important; padding-right: 1rem !important; }
     .stApp { background-color: #050a0e !important; }
     
-    /* CABEÇALHO CENTRALIZADO COMPACTO */
-    .header-container { text-align: center; padding: 5px 0px; border-bottom: 2px solid #FFD700; background-color: #050a0e; margin-bottom: 8px; }
+    /* CABEÇALHO COMPACTO */
+    .header-container { text-align: center; padding: 5px 0px; border-bottom: 2px solid #FFD700; background-color: #050a0e; margin-bottom: 10px; }
     .main-title { margin: 0px; line-height: 1.0; font-size: 28px; font-family: monospace; }
     .bair-blue { color: #00BFFF; font-weight: bold; }
     .terminal-gold { color: #FFD700; font-weight: bold; }
     
-    /* RELÓGIOS COMPACTOS */
+    /* RELÓGIOS */
     .clock-row { display: flex; justify-content: center; gap: 20px; padding: 5px 0; font-weight: bold; font-size: 11px; font-family: monospace; }
     .clock-item { color: #AAA; }
     .br-green { color: #00ff00; }
     .white-time { color: #ffffff; }
 
-    /* FAIXAS DE TÍTULO COMPACTAS (11px) */
+    /* FAIXAS DE TÍTULO (TAMANHO REDUZIDO) */
     .section-title { 
         border: 1px solid #ffffff; 
         color: #00f2ff; 
         text-align: center; 
         font-weight: bold; 
         font-family: monospace; 
-        padding: 3px; 
-        margin-bottom: 5px; 
+        padding: 4px; 
+        margin-bottom: 6px; 
         text-transform: uppercase;
         font-size: 11px;
     }
 
-    /* GRADE DE DADOS (FONTES 11px/13px) */
-    .main-grid { border: 1.5px solid #ffffff; border-radius: 4px; overflow: hidden; font-family: 'monospace'; background-color: #0d1b22; }
+    /* GRADE PRINCIPAL (FONTES 11px E 13px) */
+    .main-grid { border: 1.5px solid #ffffff; overflow: hidden; font-family: 'monospace'; background-color: #0d1b22; }
     .terminal-table { width: 100%; border-collapse: collapse; color: #e0e0e0; }
-    .terminal-table th { background-color: #0a141a; color: #d4a017; border: 1px solid #ffffff; padding: 6px; text-align: center; font-size: 11px; text-transform: uppercase; }
+    .terminal-table th { background-color: #0a141a; color: #d4a017; border: 1px solid #ffffff; padding: 6px; text-align: center; font-size: 11px; }
     .terminal-table td { border: 1px solid #ffffff; padding: 6px; text-align: center; font-size: 13px; }
-    .asset-name { font-size: 13px; color: #fff; text-align: left; font-weight: bold; padding-left: 10px; }
+    .asset-name { font-size: 13px; color: #fff; text-align: left; font-weight: bold; padding-left: 10px !important; }
     .price-col { font-weight: bold; color: #ffffff !important; }
 
-    /* PAINÉIS LATERAIS COMPACTOS */
-    .calc-panel { border: 1.5px solid #ffffff; border-radius: 4px; padding: 4px; background: #0a141a; font-family: monospace; margin-bottom: 4px; }
-    .calc-row { display: flex; justify-content: space-between; padding: 3px 6px; border-bottom: 1px solid #444; font-size: 11px; font-weight: bold; align-items: center; }
+    /* PAINÉIS LATERAIS E CÁLCULOS */
+    .calc-panel { border: 1.5px solid #ffffff; padding: 4px; background: #0a141a; font-family: monospace; margin-bottom: 4px; }
+    .calc-row { display: flex; justify-content: space-between; padding: 3px 6px; border-bottom: 1px solid #444; font-size: 11px; font-weight: bold; }
     
-    /* BARRA DE FORÇA AJUSTADA */
-    .bar-wrapper-dual { background: #0a141a; padding: 8px 8px 4px 8px; border: 1.5px solid #ffffff; border-radius: 4px; text-align: center; position: relative; }
-    .force-scale { display: flex; justify-content: space-between; font-size: 9px; font-family: monospace; font-weight: bold; margin-bottom: 3px; }
-    .force-container-dual { background: #111; height: 12px; width: 100%; border-radius: 2px; position: relative; overflow: hidden; display: flex; border: 1px solid #444; margin: 2px 0; }
+    /* BARRA DE FORÇA COMPACTA */
+    .bar-wrapper-dual { background: #0a141a; padding: 8px 6px 4px 6px; border: 1.5px solid #ffffff; text-align: center; }
+    .force-scale { display: flex; justify-content: space-between; font-size: 9px; font-family: monospace; margin-bottom: 3px; }
+    .force-container-dual { background: #111; height: 12px; width: 100%; position: relative; display: flex; border: 1px solid #444; margin: 2px 0; }
     .center-line { position: absolute; left: 50%; top: 0; width: 1px; height: 100%; background: #fff; z-index: 10; }
-    .bar-side { width: 50%; height: 100%; position: relative; background: #050a0e; }
-    .fill-green { background: #00ff88; float: right; height: 100%; transition: width 0.4s; }
-    .fill-red { background: #ff4d4d; float: left; height: 100%; transition: width 0.4s; }
-    .sinal-indicator { font-size: 13px; font-weight: 900; line-height: 1; margin-top: 4px; min-height: 14px; }
-    
-    .blink { animation: blinker 1s linear infinite; }
-    @keyframes blinker { 50% { opacity: 0.1; } }
-    .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 1.5px solid #ffffff; border-bottom: 1.5px solid #ffffff; padding: 5px 0; overflow: hidden; white-space: nowrap; margin-top: 8px; }
-    .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 12px; font-weight: bold; color: #fff; }
-    @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
+    .bar-side { width: 50%; height: 100%; position: relative; }
+    .fill-green { background: #00ff88; float: right; height: 100%; }
+    .fill-red { background: #ff4d4d; float: left; height: 100%; }
+    .sinal-indicator { font-size: 13px; font-weight: 900; margin-top: 4px; }
+
+    /* TICKER */
+    .ticker-wrapper { background: #000; border-top: 1.5px solid #ffffff; border-bottom: 1.5px solid #ffffff; padding: 4px 0; margin-top: 8px; overflow: hidden; }
+    .ticker-text { font-size: 11px; font-family: monospace; color: #fff; white-space: nowrap; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS ---
+# --- FUNÇÕES DE DADOS (PRESERVADAS) ---
 def fetch(s):
     try:
         t = yf.Ticker(s)
@@ -114,99 +112,50 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         dolar_fraja = eixo_dol * (1 + (v_final / 2))
         dolar_medio = (spot_data['mx'] + spot_data['mn']) / 2
         max_fut = spot_data['mx'] + v_spreed
-        p75_up, p25_up = max_fut - v_spreed, eixo_dol + v_spreed
-        p25_down, p75_down = eixo_dol - v_spreed, (spot_data['mn'] + v_spreed) + v_spreed
         min_fut = spot_data['mn'] + v_spreed
-        dist_base = abs(eixo_dol - dolar_medio)
-        diff = spot_data['at'] - eixo_dol
-        p_v, p_r = 0, 0
-        if dist_base > 0:
-            if diff < 0: p_v = min(100, (abs(diff)/(dist_base*2))*100)
-            else: p_r = min(100, (abs(diff)/(dist_base*2))*100)
-        seta_txt, seta_cor = "", "#000000"
-        if p_v >= 100: seta_txt, seta_cor = "▲ REGIÃO DE COMPRA", "#00ff88"
-        elif p_r >= 100: seta_txt, seta_cor = "▼ REGIÃO DE VENDA", "#ff4d4d"
-        var_axis = ((spot_data['at'] + v_spreed) / eixo_dol - 1) * 100
-        return {
-            "vivo": dolar_vivo, "fraja": dolar_fraja, "medio": dolar_medio, "ewz_med": (max_ewz + min_ewz) / 2,
-            "max_fut": max_fut, "p75_up": p75_up, "p25_up": p25_up, "p25_down": p25_down, "p75_down": p75_down, 
-            "min_fut": min_fut, "v_v": v_final * 100, "spreed": v_spreed, "var_axis": var_axis,
-            "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor
-        }
+        p_v = min(100, (abs(spot_data['at'] - eixo_dol)/20)*100) if spot_data['at'] < eixo_dol else 0
+        p_r = min(100, (abs(spot_data['at'] - eixo_dol)/20)*100) if spot_data['at'] > eixo_dol else 0
+        seta = "▲ COMPRA" if p_v > 80 else "▼ VENDA" if p_r > 80 else "AGUARDAR"
+        seta_cor = "#00ff88" if p_v > 80 else "#ff4d4d" if p_r > 80 else "#ffffff"
+        return {"vivo": dolar_vivo, "fraja": dolar_fraja, "medio": dolar_medio, "max_fut": max_fut, "min_fut": min_fut, "v_v": v_final * 100, "spreed": v_spreed, "p_v": p_v, "p_r": p_r, "seta": seta, "seta_cor": seta_cor}
     except: return None
 
 # --- SIDEBAR ADM ---
 eixo_sug = calcular_sentinela()
 with st.sidebar:
-    st.markdown("### ⚙️ PAINEL ADM")
     a_ewz = st.number_input("AXIS EWZ:", value=float(eixo_sug), format="%.2f")
     a_dol = st.number_input("AXIS DOLFUT:", value=5246.00, format="%.2f")
-    st.button("SALVAR")
 
 placeholder = st.empty()
 
 while True:
-    tz_sp, tz_ny, tz_ld = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London')
+    tz_sp, tz_ny = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York')
     ewz_live = fetch("EWZ")
     spot_live = fetch("USDBRL=X")
     res = calcular_k97_total(a_ewz, ewz_live['at'], ewz_live['mx'], ewz_live['mn'], a_dol, spot_live)
     now = datetime.now()
 
     with placeholder.container():
-        st.markdown(f"""
-            <div class="header-container">
-                <h1 class="main-title">
-                    <span class="bair-blue">BAIR</span> 
-                    <span class="terminal-gold"> - TERMINAL DOLLAR</span>
-                </h1>
-                <div class="clock-row">
-                    <span class="clock-item">🇧🇷 BRASÍLIA: <span class="br-green">{now.astimezone(tz_sp).strftime('%H:%M:%S')}</span></span>
-                    <span class="clock-item">🇺🇸 NEW YORK: <span class="white-time">{now.astimezone(tz_ny).strftime('%H:%M:%S')}</span></span>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f'<div class="header-container"><h1 class="main-title"><span class="bair-blue">BAIR</span> <span class="terminal-gold">- TERMINAL DOLLAR</span></h1><div class="clock-row"><span>🇧🇷 BRASÍLIA: <span class="br-green">{now.astimezone(tz_sp).strftime("%H:%M:%S")}</span></span><span>🇺🇸 NEW YORK: <span class="white-time">{now.astimezone(tz_ny).strftime("%H:%M:%S")}</span></span></div></div>', unsafe_allow_html=True)
 
         if res:
-            dolfut_calc, dolfut_com_spread = a_dol * (1 + (res['v_v'] / 100)), res['vivo'] + res['spreed']
             c_main, c_side = st.columns([3.2, 0.8])
-            
             with c_main:
-                st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
-                html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
-                v_v = res['v_v']
-                
-                bg_color_dol = "background-color:rgba(0, 255, 0, 0.4);" if v_v >= 0 else "background-color:rgba(255, 0, 0, 0.4);"
-                html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col' style='{bg_color_dol}'>{(dolfut_calc/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max_fut']/1000):.4f}</td><td>{(res['min_fut']/1000):.4f}</td><td style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_v:+.2f}%</td></tr>"
-                
-                ticker_items = [f"DOLFUT: <span style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")};'>{v_v:+.2f}%</span>"]
-                outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
+                st.markdown('<div class="section-title">GRADE PRINCIPAL</div>', unsafe_allow_html=True)
+                html = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
+                outros = {"DOLFUT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "EUR/USD": "EURUSD=X", "PETROLEO": "BZ=F"}
                 for lbl, sym in outros.items():
-                    d = spot_live if lbl == "DOLSPOT" else (ewz_live if lbl == "EWZ" else fetch(sym))
-                    f, p_val = (".4f", d['at']/1000) if lbl == "DOLSPOT" else (".2f", d['at'])
+                    d = spot_live if lbl == "DOLFUT" else fetch(sym)
                     var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
-                    color = "#00ff00" if var >= 0 else "#ff4d4d"
-                    bg_color_item = "background-color:rgba(0, 255, 0, 0.4);" if var >= 0 else "background-color:rgba(255, 0, 0, 0.4);"
-                    
-                    html_table += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col' style='{bg_color_item}'>{p_val:{f}}</td><td>{(d['cl']/1000 if lbl=='DOLSPOT' else d['cl']):{f}}</td><td>{(d['op']/1000 if lbl=='DOLSPOT' else d['op']):{f}}</td><td>{(d['mx']/1000 if lbl=='DOLSPOT' else d['mx']):{f}}</td><td>{(d['mn']/1000 if lbl=='DOLSPOT' else d['mn']):{f}}</td><td style='color:{color}; font-weight:bold;'>{var:+.2f}%</td></tr>"
-                    ticker_items.append(f"{lbl}: <span style='color:{color};'>{var:+.2f}%</span>")
-                st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
+                    p_val = d['at']/1000 if lbl == "DOLFUT" else d['at']
+                    bg = "rgba(0,255,0,0.3)" if var >= 0 else "rgba(255,0,0,0.3)"
+                    html += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col' style='background:{bg}'>{p_val:.4f if lbl=='DOLFUT' else p_val:.2f}</td><td>{d['cl']/1000 if lbl=='DOLFUT' else d['cl']:.2f}</td><td>{d['op']/1000 if lbl=='DOLFUT' else d['op']:.2f}</td><td>{d['mx']/1000 if lbl=='DOLFUT' else d['mx']:.2f}</td><td>{d['mn']/1000 if lbl=='DOLFUT' else d['mn']:.2f}</td><td style='color:{("#00ff00" if var>=0 else "#ff4d4d")}'>{var:+.2f}%</td></tr>"
+                st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
             
             with c_side:
-                st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
-                st.markdown(f"""<div class="calc-panel"><div class="calc-row" style="color:#ff4d4d;"><span>MAX</span> <span>{res['max_fut']:.2f}</span></div><div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 13px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444; margin: 3px 0;">AXIS: {a_dol:.2f}</div><div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MIN</span> <span>{res['min_fut']:.2f}</span></div></div>""", unsafe_allow_html=True)
-                
-                st.markdown(f"""<div class="calc-panel"><div class="calc-row"><span style="color:#ffffff;">DOLFUT</span> <span style="color:#00f2ff; font-size: 13px;">{dolfut_com_spread:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#d4a017;">FRAJA</span> <span style="color:#ffffff; font-size: 13px;">{res['fraja']:.2f}</span></div></div>""", unsafe_allow_html=True)
-                
-                st.markdown(f"""
-                <div class="bar-wrapper-dual">
-                    <div class="force-container-dual">
-                        <div class="center-line"></div>
-                        <div class="bar-side"><div class="fill-green" style="width: {res['p_v']}%;"></div></div>
-                        <div class="bar-side"><div class="fill-red" style="width: {res['p_r']}%;"></div></div>
-                    </div>
-                    <div class="sinal-indicator blink" style="color:{res['seta_cor']};">{res['seta']}</div>
-                </div>""", unsafe_allow_html=True)
-            
-            ticker_html = " • ".join(ticker_items)
-            st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{ticker_html}</div></div>', unsafe_allow_html=True)
-    time.sleep(2)
+                st.markdown('<div class="section-title">PROJEÇÕES</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="calc-panel"><div class="calc-row" style="color:#ff4d4d;"><span>MAX</span> <span>{res["max_fut"]:.2f}</span></div><div style="text-align:center; padding:5px; color:#00f2ff; font-weight:bold; font-size:12px;">AXIS: {a_dol:.2f}</div><div class="calc-row" style="color:#00ff88; border:none;"><span>MIN</span> <span>{res["min_fut"]:.2f}</span></div></div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="calc-panel"><div class="calc-row"><span>JUSTO</span> <span>{res["fraja"]:.2f}</span></div><div class="calc-row" style="border:none;"><span>MÉDIA</span> <span>{res["medio"]:.2f}</span></div></div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="bar-wrapper-dual"><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width:{res["p_v"]}%"></div></div><div class="bar-side"><div class="fill-red" style="width:{res["p_r"]}%"></div></div></div><div class="sinal-indicator" style="color:{res["seta_cor"]}">{res["seta"]}</div></div>', unsafe_allow_html=True)
+
+    time.sleep(5)
