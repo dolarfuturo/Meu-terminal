@@ -81,15 +81,15 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
     try:
         if not spot_data or p_ewz_atual == 0: return None
         
-        # --- CÁLCULOS ATUALIZADOS COM AJUSTE DE PORCENTAGEM (-23% / -77%) ---
+        # --- CÁLCULOS ATUALIZADOS COM A NOVA FÓRMULA ---
         amp = spot_data['mx'] - spot_data['mn']
         v_spreed = amp / 8
         
-        # X1 = (MAX SPOT - MIN SPOT - 23%) -> Sobram 77% da Amplitude
-        x1 = amp * 0.77
+        # X1 = (MAX SPOT - MIN SPOT - 25%) -> Amplitude Total - 25%
+        x1 = amp * 0.75
         
-        # X2 = (MAX SPOT - MIN SPOT - 77%) -> Sobram 23% da Amplitude
-        x2 = amp * 0.23
+        # X2 = (MAX SPOT - MIN SPOT - 75%) -> Amplitude Total - 75%
+        x2 = amp * 0.25
         
         max_f = eixo_dol + x1
         min_f = eixo_dol - x2
@@ -101,11 +101,12 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         dolb3 = eixo_dol + (eixo_dol * v_spot_pct)
 
-        # Barra de Força baseada no Preço Justo (Fraja)
+        # Preço Justo (Fraja) para cálculo da barra de força
         ewz_ref = st.session_state.market_data.get("EWZ", {}).get('cl', 1)
         v_ewz = ((p_ewz_atual / ewz_ref) - 1) if ewz_ref > 0 else 0
         v_final = (v_spot_pct * 0.6) - (v_ewz * 0.4)
         
+        # Barra de Força
         dist_base = abs(eixo_dol - med_d)
         diff = spot_data['at'] - eixo_dol
         p_v, p_r = 0, 0
@@ -123,7 +124,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
             "medio": med_d,
             "max_fut": max_f, 
             "min_fut": min_f,
-            "p75_up": max_f - (x1 * 0.2), 
+            "p75_up": max_f - (x1 * 0.2), # Escalonamento proporcional para preencher a grade
             "p25_up": eixo_dol + (x1 * 0.4),
             "p25_down": eixo_dol - (x2 * 0.4),
             "p75_down": min_f + (x2 * 0.2),
@@ -164,7 +165,9 @@ while True:
                     bg_dol = "background-color:rgba(0, 255, 0, 0.4);" if v_v >= 0 else "background-color:rgba(255, 0, 0, 0.4);"
                     html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col' style='{bg_dol}'>{(dolfut_calc/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max_fut']/1000):.4f}</td><td>{(res['min_fut']/1000):.4f}</td><td style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_v:+.2f}%</td></tr>"
                     
+                    ticker_items = [f"DOLFUT: <span style='color:{("#00ff00" if v_v >= 0 else "#ff4d4d")};'>{v_v:+.2f}%</span>"]
                     outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
+                    
                     for lbl, sym in outros.items():
                         d = fetch(sym)
                         if d:
@@ -173,6 +176,7 @@ while True:
                             color = "#00ff00" if var >= 0 else "#ff4d4d"
                             bg_item = "background-color:rgba(0, 255, 0, 0.4);" if var >= 0 else "background-color:rgba(255, 0, 0, 0.4);"
                             html_table += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col' style='{bg_item}'>{p_val:{f}}</td><td>{(d['cl']/1000 if lbl=='DOLSPOT' else d['cl']):{f}}</td><td>{(d['op']/1000 if lbl=='DOLSPOT' else d['op']):{f}}</td><td>{(d['mx']/1000 if lbl=='DOLSPOT' else d['mx']):{f}}</td><td>{(d['mn']/1000 if lbl=='DOLSPOT' else d['mn']):{f}}</td><td style='color:{color}; font-weight:bold;'>{var:+.2f}%</td></tr>"
+                            ticker_items.append(f"{lbl}: <span style='color:{color};'>{var:+.2f}%</span>")
                     st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
 
                 with c_side:
@@ -195,5 +199,8 @@ while True:
                         <div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div>
                     </div>""", unsafe_allow_html=True)
                     st.markdown(f'<div class="bar-wrapper-dual"><div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div></div><div class="sinal-indicator blink" style="color:{res["seta_cor"]};">{res["seta"]}</div></div>', unsafe_allow_html=True)
+                
+                ticker_html = " • ".join(ticker_items)
+                st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{ticker_html}</div></div>', unsafe_allow_html=True)
     
     time.sleep(5)
