@@ -57,14 +57,6 @@ def fetch(s):
         d = t.history(period="1d", interval="1m", prepost=True)
         if d.empty: return st.session_state.market_data.get(s)
         ref_close = t.info.get('previousClose')
-        if s == "EWZ":
-            d_hist = t.history(period="3d", interval="1m", prepost=True)
-            if not d_hist.empty:
-                d_hist.index = d_hist.index.tz_convert(tz_sp)
-                unique_dates = sorted(list(set(d_hist.index.date)))
-                data_anterior = unique_dates[-2] if len(unique_dates) > 1 else unique_dates[0]
-                f_21h = d_hist.between_time('05:00', '21:00').loc[d_hist.index.date == data_anterior]
-                if not f_21h.empty: ref_close = f_21h['Close'].iloc[-1]
         m = 1000 if s == "USDBRL=X" else 1
         data = {
             "at": d['Close'].iloc[-1] * m, 
@@ -77,19 +69,19 @@ def fetch(s):
         return data
     except: return st.session_state.market_data.get(s)
 
-def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_data):
+def calcular_k97_total(eixo_ewz, p_ewz_atual, eixo_dol, spot_data):
     try:
         if not spot_data or p_ewz_atual == 0: return None
         
-        # --- CÁLCULOS ATUALIZADOS COM AJUSTE DE PORCENTAGEM (-23% / -77%) ---
+        # --- CÁLCULOS COM OS NOVOS PERCENTUAIS (-22% / -78%) ---
         amp = spot_data['mx'] - spot_data['mn']
         v_spreed = amp / 8
         
-        # X1 = (MAX SPOT - MIN SPOT - 23%) -> Sobram 77% da Amplitude
-        x1 = amp * 0.77
+        # X1 = (Amplitude - 22%) -> Sobram 78% da Amplitude
+        x1 = amp * 0.78
         
-        # X2 = (MAX SPOT - MIN SPOT - 77%) -> Sobram 23% da Amplitude
-        x2 = amp * 0.23
+        # X2 = (Amplitude - 78%) -> Sobram 22% da Amplitude
+        x2 = amp * 0.22
         
         max_f = eixo_dol + x1
         min_f = eixo_dol - x2
@@ -101,17 +93,16 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         dolb3 = eixo_dol + (eixo_dol * v_spot_pct)
 
-        # Barra de Força baseada no Preço Justo (Fraja)
+        # Referência de força (Fraja)
         ewz_ref = st.session_state.market_data.get("EWZ", {}).get('cl', 1)
         v_ewz = ((p_ewz_atual / ewz_ref) - 1) if ewz_ref > 0 else 0
         v_final = (v_spot_pct * 0.6) - (v_ewz * 0.4)
         
-        dist_base = abs(eixo_dol - med_d)
+        dist_base = abs(eixo_dol - med_d) if abs(eixo_dol - med_d) != 0 else 1
         diff = spot_data['at'] - eixo_dol
         p_v, p_r = 0, 0
-        if dist_base > 0:
-            if diff < 0: p_v = min(100, (abs(diff)/(dist_base*2))*100)
-            else: p_r = min(100, (abs(diff)/(dist_base*2))*100)
+        if diff < 0: p_v = min(100, (abs(diff)/(dist_base*2))*100)
+        else: p_r = min(100, (abs(diff)/(dist_base*2))*100)
         
         seta_txt, seta_cor = "", "#000000"
         if p_v >= 100: seta_txt, seta_cor = "▲ REGIÃO DE COMPRA", "#00ff88"
@@ -147,7 +138,7 @@ while True:
     ewz_live = fetch("EWZ")
     
     if spot_live and ewz_live:
-        res = calcular_k97_total(a_ewz, ewz_live['at'], ewz_live['mx'], ewz_live['mn'], a_dol, spot_live)
+        res = calcular_k97_total(a_ewz, ewz_live['at'], a_dol, spot_live)
         now = datetime.now()
 
         with placeholder.container():
