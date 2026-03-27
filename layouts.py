@@ -88,12 +88,13 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         amp = spot_data['mx'] - spot_data['mn']
         v_spreed = amp / 8
         
-        # MÉDIA DOLAR
+        # --- MEDIA PURA DO SPOT (CALIBRAGEM SOLICITADA) ---
+        dolar_medio = (spot_data['mx'] + spot_data['mn']) / 2
+        
+        # --- MANTIDO LOGICA DE BLOCO X (GRADE) ---
         x1, x2 = amp * 0.77, amp * 0.23
         max_original, min_original = eixo_dol + x1, eixo_dol - x2
-        dolar_medio = ((max_original + min_original) / 2) - v_spreed
         
-        # --- LÓGICA DE BLOCO X ---
         x_val = abs(eixo_dol - dolar_medio)
         m_fut = eixo_dol + (x_val * 4)
         m_med = m_fut - x_val  
@@ -110,7 +111,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         v_final = (v_spot_pct * 0.6) - (v_ewz * 0.4)
         dolfut_arbitrado = eixo_dol * (1 + v_final)
         
-        # --- CÁLCULO DA BARRA (COPIADO DO CÓDIGO MEMORIZADO) ---
+        # --- CÁLCULO DA BARRA (CALIBRADA COM MEDIA PURA) ---
         dist_base = abs(eixo_dol - dolar_medio)
         diff = spot_data['at'] - eixo_dol
         p_v, p_r = 0, 0
@@ -121,7 +122,6 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         seta_txt, seta_cor = "", "#000000"
         if p_v >= 100: seta_txt, seta_cor = "▲ REGIÃO DE COMPRA", "#00ff88"
         elif p_r >= 100: seta_txt, seta_cor = "▼ REGIÃO DE VENDA", "#ff4d4d"
-        # -------------------------------------------------------
 
         return {
             "vivo": dolb3, "dolfut_calc": dolfut_arbitrado, "fraja": eixo_dol * (1 + (v_final / 2)), "medio": dolar_medio,
@@ -133,6 +133,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         }
     except: return None
 
+# --- SIDEBAR ADM ---
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
     a_ewz = st.number_input("AXIS EWZ:", value=37.85, format="%.2f")
