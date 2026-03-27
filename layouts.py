@@ -81,40 +81,60 @@ def fetch(s):
         return data
     except: return st.session_state.market_data.get(s)
 
-def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_data):
+def calcular_k97_total(eixo_ewz, p_ewz_atual, eixo_dol, spot_data):
     try:
-        if not spot_data or p_ewz_atual == 0: return None
-        amp = spot_data['mx'] - spot_data['mn']
-        v_spreed = amp / 8
-        x1, x2 = amp * 0.77, amp * 0.23
-        max_f, min_f = eixo_dol + x1, eixo_dol - x2
-        med_d = ((max_f + min_f) / 2) - v_spreed
+        if not spot_data: return None
         
-        # --- AJUSTE: DOLB3 (AXIS + VAR DO SPOT) ---
+        # --- 1. CÁLCULO DA MÉDIA DOL ---
+        med_d = (spot_data['mx'] + spot_data['mn']) / 2
+        
+        # --- 2. DEFINIÇÃO DO BLOCO X (MEMORIZADO) ---
+        x_bloco = abs(eixo_dol - med_d)
+        
+        # --- 3. ALVOS BASEADOS EM BLOCOS (MEMORIZADO) ---
+        # Partindo da média, empilhando X
+        max_f = med_d + (x_bloco * 2)  # Alvo 2 pra cima
+        target_up_1 = med_d + x_bloco  # Alvo 1 (Equivale ao AXIS se a média estiver abaixo)
+        
+        min_f = med_d - (x_bloco * 2)  # Alvo 2 pra baixo
+        target_down_1 = med_d - x_bloco # Alvo 1
+        
+        # --- 4. ARBITRAGEM DOLFUT (MANTIDO 60/40) ---
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
-        dolb3 = eixo_dol * (1 + v_spot_pct)
-        
-        # --- AJUSTE: DOLFUT (CALCULO SPOT 0.6 / EWZ 0.4) ---
         ewz_ref = st.session_state.market_data.get("EWZ", {}).get('cl', 1)
         v_ewz = ((p_ewz_atual / ewz_ref) - 1) if ewz_ref > 0 else 0
         v_final = (v_spot_pct * 0.6) - (v_ewz * 0.4)
         dolfut_arbitrado = eixo_dol * (1 + v_final)
         
-        dist_base = abs(eixo_dol - med_d)
-        diff = spot_data['at'] - eixo_dol
+        # --- 5. BARRA DE FORÇA (CALIBRAGEM CÓDIGO 1: X * 2) ---
+        diff = dolfut_arbitrado - eixo_dol
         p_v, p_r = 0, 0
-        if dist_base > 0:
-            if diff < 0: p_v = min(100, (abs(diff)/(dist_base*2))*100)
-            else: p_r = min(100, (abs(diff)/(dist_base*2))*100)
+        # O limite é o dobro da folga (x_bloco * 2)
+        limite_exaustao = x_bloco * 2
+        
+        if limite_exaustao > 0:
+            if diff < 0: # Compra
+                p_v = min(100, (abs(diff) / limite_exaustao) * 100)
+            else: # Venda
+                p_r = min(100, (abs(diff) / limite_exaustao) * 100)
+                
         seta_txt, seta_cor = "", "#000000"
         if p_v >= 100: seta_txt, seta_cor = "▲ REGIÃO DE COMPRA", "#00ff88"
         elif p_r >= 100: seta_txt, seta_cor = "▼ REGIÃO DE VENDA", "#ff4d4d"
+        
         return {
-            "vivo": dolb3, "dolfut_calc": dolfut_arbitrado, "fraja": eixo_dol * (1 + (v_final / 2)), "medio": med_d,
-            "max_fut": max_f, "min_fut": min_f, "p75_up": max_f - v_spreed,
-            "p25_up": eixo_dol + v_spreed, "p25_down": eixo_dol - v_spreed,
-            "p75_down": min_f + v_spreed, "v_v": v_final * 100, "v_spot": v_spot_pct * 100,
-            "spreed": v_spreed, "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor
+            "vivo": eixo_dol * (1 + v_spot_pct), 
+            "dolfut_calc": dolfut_arbitrado, 
+            "fraja": eixo_dol * (1 + (v_final / 2)), 
+            "medio": med_d,
+            "max_fut": max_f, 
+            "min_fut": min_f, 
+            "target_up_1": target_up_1,
+            "target_down_1": target_down_1, 
+            "v_v": v_final * 100, 
+            "v_spot": v_spot_pct * 100,
+            "x_bloco": x_bloco, 
+            "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor
         }
     except: return None
 
@@ -132,7 +152,7 @@ while True:
     ewz_live = fetch("EWZ")
     
     if spot_live and ewz_live:
-        res = calcular_k97_total(a_ewz, ewz_live['at'], ewz_live['mx'], ewz_live['mn'], a_dol, spot_live)
+        res = calcular_k97_total(a_ewz, ewz_live['at'], a_dol, spot_live)
         now = datetime.now()
 
         with placeholder.container():
@@ -173,25 +193,22 @@ while True:
                     st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
 
                 with c_side:
-                    st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
+                    st.markdown('<div class="section-title">ALVOS DE VOLATILIDADE</div>', unsafe_allow_html=True)
                     st.markdown(f"""<div class="calc-panel">
-                        <div class="calc-row" style="color:#ff4d4d;"><span>MAX</span> <span>{res['max_fut']:.2f}</span></div>
-                        <div class="calc-row"><span>75% UP</span> <span>{res['p75_up']:.2f}</span></div>
-                        <div class="calc-row"><span>25% UP</span> <span>{res['p25_up']:.2f}</span></div>
+                        <div class="calc-row" style="color:#ff4d4d;"><span>ALVO 2 (MAX)</span> <span>{res['max_fut']:.2f}</span></div>
+                        <div class="calc-row"><span>ALVO 1 (X)</span> <span>{res['target_up_1']:.2f}</span></div>
                         <div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 11px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444; margin: 3px 0;">AXIS: {a_dol:.2f}</div>
-                        <div class="calc-row"><span>25% DN</span> <span>{res['p25_down']:.2f}</span></div>
-                        <div class="calc-row"><span>75% DN</span> <span>{res['p75_down']:.2f}</span></div>
-                        <div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MIN</span> <span>{res['min_fut']:.2f}</span></div>
+                        <div class="calc-row"><span>ALVO 1 (X)</span> <span>{res['target_down_1']:.2f}</span></div>
+                        <div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>ALVO 2 (MIN)</span> <span>{res['min_fut']:.2f}</span></div>
                     </div>""", unsafe_allow_html=True)
                     
-                    # DOLB3 agora usa AXIS + VAR SPOT direto
                     v_spot_print = res['v_spot']
                     st.markdown(f"""<div class="calc-panel">
                         <div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">DOLB3</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div>
                         <div style="text-align:right; font-size:10px; padding-right:6px; color:{("#00ff00" if v_spot_print >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{v_spot_print:+.2f}%</div>
                         <div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div>
                         <div class="calc-row"><span style="color:#d4a017;">PREÇO JUSTO</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div>
-                        <div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div>
+                        <div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">X (BLOCO)</span> <span style="color:#00f2ff;">{res['x_bloco']:.2f}</span></div>
                     </div>""", unsafe_allow_html=True)
                     st.markdown(f'<div class="bar-wrapper-dual"><div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div></div><div class="sinal-indicator blink" style="color:{res["seta_cor"]};">{res["seta"]}</div></div>', unsafe_allow_html=True)
                 
