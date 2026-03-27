@@ -86,19 +86,20 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         if not spot_data or p_ewz_atual == 0: return None
         amp = spot_data['mx'] - spot_data['mn']
         v_spreed = amp / 8
+        
+        # MANTENDO A MÉDIA DOLAR ORIGINAL DO SEU CÓDIGO
         x1, x2 = amp * 0.77, amp * 0.23
-        max_f, min_f = eixo_dol + x1, eixo_dol - x2
+        max_original, min_original = eixo_dol + x1, eixo_dol - x2
+        med_d = ((max_original + min_original) / 2) - v_spreed
         
-        # MANUTENÇÃO DA SUA MÉDIA ORIGINAL
-        med_d = ((max_f + min_f) / 2) - v_spreed
-        
-        # --- AJUSTE BLOCOS X (SOLICITADO) ---
+        # --- LÓGICA DE BLOCO X (SÓ ALTERA AS EXTREMIDADES) ---
         x_val = abs(eixo_dol - med_d)
-        target_up_2 = med_d + (x_val * 2)
-        target_up_1 = med_d + x_val
-        target_dn_1 = med_d - x_val
-        target_dn_2 = med_d - (x_val * 2)
+        max_fut_x4 = eixo_dol + (x_val * 4)
+        max_1_x2   = eixo_dol + (x_val * 2)
+        min_1_x2   = eixo_dol - (x_val * 2)
+        min_fut_x4 = eixo_dol - (x_val * 4)
         
+        # --- DOLB3 E ARBITRAGEM (MANTIDOS) ---
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         dolb3 = eixo_dol * (1 + v_spot_pct)
         
@@ -107,8 +108,8 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         v_final = (v_spot_pct * 0.6) - (v_ewz * 0.4)
         dolfut_arbitrado = eixo_dol * (1 + v_final)
         
-        # --- AJUSTE BARRA DE FORÇA (AXIS - MEDIA DOL X 2) ---
-        dist_base = abs(eixo_dol - med_d)
+        # --- BARRA DE FORÇA (CALIBRADA EM X*2) ---
+        dist_base = x_val
         diff = dolfut_arbitrado - eixo_dol
         p_v, p_r = 0, 0
         if dist_base > 0:
@@ -121,10 +122,11 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         
         return {
             "vivo": dolb3, "dolfut_calc": dolfut_arbitrado, "fraja": eixo_dol * (1 + (v_final / 2)), "medio": med_d,
-            "max_fut": max_f, "min_fut": min_f, 
-            "up2": target_up_2, "up1": target_up_1, "dn1": target_dn_1, "dn2": target_dn_2,
+            "max_fut_x4": max_fut_x4, "max_1_x2": max_1_x2, 
+            "min_1_x2": min_1_x2, "min_fut_x4": min_fut_x4,
             "v_v": v_final * 100, "v_spot": v_spot_pct * 100,
-            "spreed": v_spreed, "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor
+            "spreed": v_spreed, "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor,
+            "max_grade": max_original, "min_grade": min_original # Para a tabela não quebrar
         }
     except: return None
 
@@ -162,7 +164,7 @@ while True:
                     st.session_state.last_p['DF'] = dolfut_calc_val/1000
                     
                     bg_dol = "background-color:rgba(0, 255, 0, 0.2);" if v_final_pct >= 0 else "background-color:rgba(255, 0, 0, 0.2);"
-                    html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col {cl_df}' style='{bg_dol}'>{(dolfut_calc_val/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max_fut']/1000):.4f}</td><td>{(res['min_fut']/1000):.4f}</td><td style='color:{("#00ff00" if v_final_pct >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_final_pct:+.2f}%</td></tr>"
+                    html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col {cl_df}' style='{bg_dol}'>{(dolfut_calc_val/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max_grade']/1000):.4f}</td><td>{(res['min_grade']/1000):.4f}</td><td style='color:{("#00ff00" if v_final_pct >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_final_pct:+.2f}%</td></tr>"
                     
                     ticker_items = [f"DOLFUT: <span style='color:{("#00ff00" if v_final_pct >= 0 else "#ff4d4d")};'>{v_final_pct:+.2f}%</span>"]
                     outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
@@ -185,13 +187,11 @@ while True:
                 with c_side:
                     st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
                     st.markdown(f"""<div class="calc-panel">
-                        <div class="calc-row" style="color:#ff4d4d;"><span>MAX</span> <span>{res['max_fut']:.2f}</span></div>
-                        <div class="calc-row"><span>MEDIA + X*2</span> <span>{res['up2']:.2f}</span></div>
-                        <div class="calc-row"><span>MEDIA + X</span> <span>{res['up1']:.2f}</span></div>
+                        <div class="calc-row" style="color:#ff4d4d;"><span>MAX FUT (X4)</span> <span>{res['max_fut_x4']:.2f}</span></div>
+                        <div class="calc-row"><span>MAX 1 (X2)</span> <span>{res['max_1_x2']:.2f}</span></div>
                         <div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 11px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444; margin: 3px 0;">AXIS: {a_dol:.2f}</div>
-                        <div class="calc-row"><span>MEDIA - X</span> <span>{res['dn1']:.2f}</span></div>
-                        <div class="calc-row"><span>MEDIA - X*2</span> <span>{res['dn2']:.2f}</span></div>
-                        <div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MIN</span> <span>{res['min_fut']:.2f}</span></div>
+                        <div class="calc-row"><span>MIN 1 (X2)</span> <span>{res['min_1_x2']:.2f}</span></div>
+                        <div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MIN FUT (X4)</span> <span>{res['min_fut_x4']:.2f}</span></div>
                     </div>""", unsafe_allow_html=True)
                     
                     v_spot_print = res['v_spot']
