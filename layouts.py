@@ -13,7 +13,7 @@ if 'market_data' not in st.session_state:
 if 'last_p' not in st.session_state:
     st.session_state.last_p = {}
 
-# --- CSS: MANTIDO E OTIMIZADO ---
+# --- CSS: MANTIDO ORIGINAL ---
 st.markdown("""
 <style>
     .block-container { padding-top: 1.5rem; padding-bottom: 0rem; }
@@ -37,7 +37,6 @@ st.markdown("""
     .f-dn { background-color: #ff0000aa !important; }
     .calc-panel { border: 1.5px solid #ffffff; border-radius: 4px; padding: 4px; background: #0a141a; font-family: monospace; margin-bottom: 4px; }
     .calc-row { display: flex; justify-content: space-between; padding: 3px 6px; border-bottom: 1px solid #444; font-size: 11px; font-weight: bold; align-items: center; }
-    /* Estilo para as linhas Media menores */
     .row-med { font-size: 10px !important; color: #ffffff; opacity: 0.9; padding: 2px 6px !important; }
     .bar-wrapper-dual { background: #0a141a; padding: 8px 8px 4px 8px; border: 1.5px solid #ffffff; border-radius: 4px; text-align: center; position: relative; }
     .force-scale { display: flex; justify-content: space-between; font-size: 9px; font-family: monospace; color: #AAA; margin-bottom: 2px; padding: 0 2px; }
@@ -89,20 +88,18 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         amp = spot_data['mx'] - spot_data['mn']
         v_spreed = amp / 8
         
-        # MÉDIA DOLAR ORIGINAL
+        # MÉDIA DOLAR
         x1, x2 = amp * 0.77, amp * 0.23
         max_original, min_original = eixo_dol + x1, eixo_dol - x2
-        med_d = ((max_original + min_original) / 2) - v_spreed
+        dolar_medio = ((max_original + min_original) / 2) - v_spreed
         
-        # --- LÓGICA DE BLOCO X (NÍVEIS INTERMEDIÁRIOS) ---
-        x_val = abs(eixo_dol - med_d)
-        
+        # --- LÓGICA DE BLOCO X ---
+        x_val = abs(eixo_dol - dolar_medio)
         m_fut = eixo_dol + (x_val * 4)
-        m_med = m_fut - x_val  # AXIS + X*3
+        m_med = m_fut - x_val  
         m_1   = eixo_dol + (x_val * 2)
-        
         n_1   = eixo_dol - (x_val * 2)
-        n_med = (eixo_dol - (x_val * 4)) + x_val # AXIS - X*3
+        n_med = (eixo_dol - (x_val * 4)) + x_val 
         n_fut = eixo_dol - (x_val * 4)
         
         # --- ARBITRAGEM ---
@@ -113,20 +110,21 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         v_final = (v_spot_pct * 0.6) - (v_ewz * 0.4)
         dolfut_arbitrado = eixo_dol * (1 + v_final)
         
-        # --- BARRA DE FORÇA ---
-        dist_base = x_val
-        diff = dolfut_arbitrado - eixo_dol
+        # --- CÁLCULO DA BARRA (COPIADO DO CÓDIGO MEMORIZADO) ---
+        dist_base = abs(eixo_dol - dolar_medio)
+        diff = spot_data['at'] - eixo_dol
         p_v, p_r = 0, 0
         if dist_base > 0:
             if diff < 0: p_v = min(100, (abs(diff)/(dist_base*2))*100)
             else: p_r = min(100, (abs(diff)/(dist_base*2))*100)
-            
+        
         seta_txt, seta_cor = "", "#000000"
         if p_v >= 100: seta_txt, seta_cor = "▲ REGIÃO DE COMPRA", "#00ff88"
         elif p_r >= 100: seta_txt, seta_cor = "▼ REGIÃO DE VENDA", "#ff4d4d"
-        
+        # -------------------------------------------------------
+
         return {
-            "vivo": dolb3, "dolfut_calc": dolfut_arbitrado, "fraja": eixo_dol * (1 + (v_final / 2)), "medio": med_d,
+            "vivo": dolb3, "dolfut_calc": dolfut_arbitrado, "fraja": eixo_dol * (1 + (v_final / 2)), "medio": dolar_medio,
             "max_fut": m_fut, "max_med": m_med, "max_1": m_1,
             "min_1": n_1, "min_med": n_med, "min_fut": n_fut,
             "v_v": v_final * 100, "v_spot": v_spot_pct * 100,
