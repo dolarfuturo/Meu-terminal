@@ -84,31 +84,30 @@ def fetch(s):
 def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_data):
     try:
         if not spot_data or p_ewz_atual == 0: return None
-        
-        # --- MANTENDO MAX E MIN ORIGINAIS ---
         amp = spot_data['mx'] - spot_data['mn']
         v_spreed = amp / 8
         x1, x2 = amp * 0.77, amp * 0.23
         max_f, min_f = eixo_dol + x1, eixo_dol - x2
         
-        # --- CALCULANDO MÉDIA E BLOCO X ---
-        med_d = (spot_data['mx'] + spot_data['mn']) / 2
-        x_bloco = abs(eixo_dol - med_d)
+        # MANUTENÇÃO DA SUA MÉDIA ORIGINAL
+        med_d = ((max_f + min_f) / 2) - v_spreed
         
-        # --- SUBSTITUINDO 25/75 PELOS ALVOS DE BLOCO X ---
-        alvo_x_up_2 = med_d + (x_bloco * 2)
-        alvo_x_up_1 = med_d + x_bloco
-        alvo_x_dn_1 = med_d - x_bloco
-        alvo_x_dn_2 = med_d - (x_bloco * 2)
-
-        # --- ARBITRAGEM DOLFUT (60/40) ---
+        # --- AJUSTE BLOCOS X (SOLICITADO) ---
+        x_val = abs(eixo_dol - med_d)
+        target_up_2 = med_d + (x_val * 2)
+        target_up_1 = med_d + x_val
+        target_dn_1 = med_d - x_val
+        target_dn_2 = med_d - (x_val * 2)
+        
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
+        dolb3 = eixo_dol * (1 + v_spot_pct)
+        
         ewz_ref = st.session_state.market_data.get("EWZ", {}).get('cl', 1)
         v_ewz = ((p_ewz_atual / ewz_ref) - 1) if ewz_ref > 0 else 0
         v_final = (v_spot_pct * 0.6) - (v_ewz * 0.4)
         dolfut_arbitrado = eixo_dol * (1 + v_final)
         
-        # --- BARRA DE FORÇA (CALIBRAGEM CÓDIGO 1) ---
+        # --- AJUSTE BARRA DE FORÇA (AXIS - MEDIA DOL X 2) ---
         dist_base = abs(eixo_dol - med_d)
         diff = dolfut_arbitrado - eixo_dol
         p_v, p_r = 0, 0
@@ -121,10 +120,9 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         elif p_r >= 100: seta_txt, seta_cor = "▼ REGIÃO DE VENDA", "#ff4d4d"
         
         return {
-            "vivo": eixo_dol * (1 + v_spot_pct), "dolfut_calc": dolfut_arbitrado, "fraja": eixo_dol * (1 + (v_final / 2)), "medio": med_d,
+            "vivo": dolb3, "dolfut_calc": dolfut_arbitrado, "fraja": eixo_dol * (1 + (v_final / 2)), "medio": med_d,
             "max_fut": max_f, "min_fut": min_f, 
-            "alvo_up_2": alvo_x_up_2, "alvo_up_1": alvo_x_up_1, 
-            "alvo_dn_1": alvo_x_dn_1, "alvo_dn_2": alvo_x_dn_2,
+            "up2": target_up_2, "up1": target_up_1, "dn1": target_dn_1, "dn2": target_dn_2,
             "v_v": v_final * 100, "v_spot": v_spot_pct * 100,
             "spreed": v_spreed, "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor
         }
@@ -188,11 +186,11 @@ while True:
                     st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
                     st.markdown(f"""<div class="calc-panel">
                         <div class="calc-row" style="color:#ff4d4d;"><span>MAX</span> <span>{res['max_fut']:.2f}</span></div>
-                        <div class="calc-row"><span>ALVO 2 (X)</span> <span>{res['alvo_up_2']:.2f}</span></div>
-                        <div class="calc-row"><span>ALVO 1 (X)</span> <span>{res['alvo_up_1']:.2f}</span></div>
+                        <div class="calc-row"><span>MEDIA + X*2</span> <span>{res['up2']:.2f}</span></div>
+                        <div class="calc-row"><span>MEDIA + X</span> <span>{res['up1']:.2f}</span></div>
                         <div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 11px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444; margin: 3px 0;">AXIS: {a_dol:.2f}</div>
-                        <div class="calc-row"><span>ALVO 1 (X)</span> <span>{res['alvo_dn_1']:.2f}</span></div>
-                        <div class="calc-row"><span>ALVO 2 (X)</span> <span>{res['alvo_dn_2']:.2f}</span></div>
+                        <div class="calc-row"><span>MEDIA - X</span> <span>{res['dn1']:.2f}</span></div>
+                        <div class="calc-row"><span>MEDIA - X*2</span> <span>{res['dn2']:.2f}</span></div>
                         <div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MIN</span> <span>{res['min_fut']:.2f}</span></div>
                     </div>""", unsafe_allow_html=True)
                     
