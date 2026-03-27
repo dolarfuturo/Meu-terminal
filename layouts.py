@@ -62,14 +62,6 @@ def fetch(s):
         d = t.history(period="1d", interval="1m", prepost=True)
         if d.empty: return st.session_state.market_data.get(s)
         ref_close = t.info.get('previousClose')
-        if s == "EWZ":
-            d_hist = t.history(period="3d", interval="1m", prepost=True)
-            if not d_hist.empty:
-                d_hist.index = d_hist.index.tz_convert(tz_sp)
-                unique_dates = sorted(list(set(d_hist.index.date)))
-                data_anterior = unique_dates[-2] if len(unique_dates) > 1 else unique_dates[0]
-                f_21h = d_hist.between_time('05:00', '21:00').loc[d_hist.index.date == data_anterior]
-                if not f_21h.empty: ref_close = f_21h['Close'].iloc[-1]
         m = 1000 if s == "USDBRL=X" else 1
         data = {
             "at": d['Close'].iloc[-1] * m, 
@@ -82,37 +74,33 @@ def fetch(s):
         return data
     except: return st.session_state.market_data.get(s)
 
-def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_data):
+def calcular_k97_total(eixo_dol, spot_data):
     try:
-        if not spot_data or p_ewz_atual == 0: return None
+        if not spot_data: return None
         amp = spot_data['mx'] - spot_data['mn']
         v_spreed = amp / 8
         
-        # MÉDIA GRADE
+        # MÉDIA GRADE (STAT)
         x1, x2 = amp * 0.77, amp * 0.23
-        max_original, min_original = eixo_dol + x1, eixo_dol - x2
-        dolar_medio = ((max_original + min_original) / 2) - v_spreed
+        max_orig, min_orig = eixo_dol + x1, eixo_dol - x2
+        dolar_medio = ((max_orig + min_orig) / 2) - v_spreed
         
         # MÉDIA PURA SPOT (CALIBRAGEM BARRA)
         media_pura_spot = (spot_data['mx'] + spot_data['mn']) / 2
         
         # BLOCO X
         x_val = abs(eixo_dol - dolar_medio)
-        m_fut = eixo_dol + (x_val * 4)
-        m_med = m_fut - x_val  
-        m_1   = eixo_dol + (x_val * 2)
-        n_1   = eixo_dol - (x_val * 2)
-        n_med = (eixo_dol - (x_val * 4)) + x_val 
-        n_fut = eixo_dol - (x_val * 4)
+        res_x = {
+            "m_fut": eixo_dol + (x_val * 4), "m_med": (eixo_dol + (x_val * 4)) - x_val,
+            "m_1": eixo_dol + (x_val * 2), "n_1": eixo_dol - (x_val * 2),
+            "n_med": (eixo_dol - (x_val * 4)) + x_val, "n_fut": eixo_dol - (x_val * 4)
+        }
         
         # ARBITRAGEM
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         dolb3 = eixo_dol * (1 + v_spot_pct)
-        ewz_ref = st.session_state.market_data.get("EWZ", {}).get('cl', 1)
-        v_ewz = ((p_ewz_atual / ewz_ref) - 1) if ewz_ref > 0 else 0
-        v_final = (v_spot_pct * 0.6) - (v_ewz * 0.4)
         
-        # CALIBRAGEM BARRA (MÉDIA PURA)
+        # BARRA (MÉDIA PURA)
         dist_barra = abs(eixo_dol - media_pura_spot)
         diff = spot_data['at'] - eixo_dol
         p_v, p_r = 0, 0
@@ -125,74 +113,76 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         elif p_r >= 100: seta, cor = "▼ REGIÃO DE VENDA", "#ff4d4d"
 
         return {
-            "vivo": dolb3, "dolfut_calc": eixo_dol * (1 + v_final), "fraja": eixo_dol * (1 + (v_final / 2)), 
-            "medio": dolar_medio, "max_fut": m_fut, "max_med": m_med, "max_1": m_1, "min_1": n_1, "min_med": n_med, "min_fut": n_fut,
-            "v_v": v_final * 100, "v_spot": v_spot_pct * 100, "spreed": v_spreed, "p_v": p_v, "p_r": p_r, 
-            "seta": seta, "seta_cor": cor, "max_grade": max_original, "min_grade": min_original
+            "vivo": dolb3, "medio": dolar_medio, "res_x": res_x,
+            "v_spot": v_spot_pct * 100, "spreed": v_spreed, "p_v": p_v, "p_r": p_r, 
+            "seta": seta, "seta_cor": cor, "max_g": max_orig, "min_g": min_orig
         }
     except: return None
 
 # --- UI ---
 with st.sidebar:
-    a_ewz = st.number_input("AXIS EWZ:", value=37.85)
     a_dol = st.number_input("AXIS DOLFUT:", value=5264.50)
 
 placeholder = st.empty()
 
 while True:
-    spot_live = fetch("USDBRL=X")
-    ewz_live = fetch("EWZ")
-    if spot_live and ewz_live:
-        res = calcular_k97_total(a_ewz, ewz_live['at'], ewz_live['mx'], ewz_live['mn'], a_dol, spot_live)
-        now = datetime.now()
+    spot = fetch("USDBRL=X")
+    if spot:
+        res = calcular_k97_total(a_dol, spot)
         with placeholder.container():
             st.markdown(f'<div class="header-container"><h1 class="main-title"><span class="bair-blue">BAIR</span><span class="terminal-gold"> - TERMINAL DOLLAR</span></h1></div>', unsafe_allow_html=True)
-            if res:
-                c1, c2 = st.columns([3.2, 0.8])
-                with c1:
-                    st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
-                    html = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
-                    
-                    ativos = {"DOLFUT": "DOLFUT", "DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
-                    ticker_items = []
-                    for lbl, sym in ativos.items():
-                        if lbl == "DOLFUT":
-                            p, cl, op, mx, mn, v = res['dolfut_calc']/1000, a_dol/1000, a_dol/1000, res['max_grade']/1000, res['min_grade']/1000, res['v_v']
-                        else:
-                            d = fetch(sym)
-                            p = d['at']/1000 if lbl=="DOLSPOT" else d['at']
-                            cl = d['cl']/1000 if lbl=="DOLSPOT" else d['cl']
-                            op = d['op']/1000 if lbl=="DOLSPOT" else d['op']
-                            mx = d['mx']/1000 if lbl=="DOLSPOT" else d['mx']
-                            mn = d['mn']/1000 if lbl=="DOLSPOT" else d['mn']
-                            v = ((d['at']/d['cl'])-1)*100
-                        
-                        f = ".4f" if "USD" in lbl or "DOL" in lbl else ".2f"
-                        cor_v = "#00ff00" if v >= 0 else "#ff4d4d"
-                        html += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col'>{p:{f}}</td><td>{cl:{f}}</td><td>{op:{f}}</td><td>{mx:{f}}</td><td>{mn:{f}}</td><td style='color:{cor_v}; font-weight:bold;'>{v:+.2f}%</td></tr>"
-                        ticker_items.append(f"{lbl}: <span style='color:{cor_v};'>{v:+.2f}%</span>")
-                    st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
-
-                with c2:
-                    st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
-                    st.markdown(f"""<div class="calc-panel">
-                        <div class="calc-row" style="color:#ff4d4d;"><span>MAX FUT</span> <span>{res['max_fut']:.2f}</span></div>
-                        <div class="calc-row row-med"><span>MEDIA</span> <span>{res['max_med']:.2f}</span></div>
-                        <div class="calc-row" style="color:#ffff00;"><span>MAX 1</span> <span>{res['max_1']:.2f}</span></div>
-                        <div style="text-align:center; padding:4px; color:#00f2ff;">AXIS: {a_dol:.2f}</div>
-                        <div class="calc-row" style="color:#ffff00;"><span>MIN 1</span> <span>{res['min_1']:.2f}</span></div>
-                        <div class="calc-row row-med"><span>MEDIA</span> <span>{res['min_med']:.2f}</span></div>
-                        <div class="calc-row" style="color:#00ff88;"><span>MIN FUT</span> <span>{res['min_fut']:.2f}</span></div>
-                    </div>""", unsafe_allow_html=True)
-                    
-                    st.markdown(f"""<div class="calc-panel">
-                        <div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">DOLB3</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div>
-                        <div style="text-align:right; font-size:10px; padding-right:6px; color:{("#00ff00" if res['v_spot'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['v_spot']:+.2f}%</div>
-                        <div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div>
-                        <div class="calc-row"><span style="color:#d4a017;">PREÇO JUSTO</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div>
-                        <div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div>
-                    </div>""", unsafe_allow_html=True)
-                    st.markdown(f'<div class="bar-wrapper-dual"><div class="force-scale"><span>100%</span><span>0%</span><span>100%</span></div><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div></div><div class="sinal-indicator blink" style="color:{res["seta_cor"]};">{res["seta"]}</div></div>', unsafe_allow_html=True)
+            
+            c1, c2 = st.columns([3.2, 0.8])
+            with c1:
+                st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
+                html = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
                 
-                st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
+                # Exemplo com DOLSPOT e DOLFUT simplificado para visual
+                ativos = {"DOLFUT": "DOLFUT", "DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
+                for lbl, sym in ativos.items():
+                    if lbl == "DOLFUT":
+                        p, cl, op, mx, mn, v = res['vivo']/1000, a_dol/1000, a_dol/1000, res['max_g']/1000, res['min_g']/1000, res['v_spot']
+                    else:
+                        d = fetch(sym)
+                        p = d['at']/1000 if lbl=="DOLSPOT" else d['at']
+                        cl = d['cl']/1000 if lbl=="DOLSPOT" else d['cl']
+                        op = d['op']/1000 if lbl=="DOLSPOT" else d['op']
+                        mx = d['mx']/1000 if lbl=="DOLSPOT" else d['mx']
+                        mn = d['mn']/1000 if lbl=="DOLSPOT" else d['mn']
+                        v = ((d['at']/d['cl'])-1)*100
+                    
+                    f = ".4f" if "USD" in lbl or "DOL" in lbl else ".2f"
+                    html += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col'>{p:{f}}</td><td>{cl:{f}}</td><td>{op:{f}}</td><td>{mx:{f}}</td><td>{mn:{f}}</td><td style='color:{("#00ff00" if v>=0 else "#ff4d4d")};'>{v:+.2f}%</td></tr>"
+                st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
+
+            with c2:
+                st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
+                st.markdown(f"""<div class="calc-panel">
+                    <div class="calc-row" style="color:#ff4d4d;"><span>MAX FUT</span> <span>{res['res_x']['m_fut']:.2f}</span></div>
+                    <div class="calc-row row-med"><span>MEDIA</span> <span>{res['res_x']['m_med']:.2f}</span></div>
+                    <div class="calc-row" style="color:#ffff00;"><span>MAX 1</span> <span>{res['res_x']['m_1']:.2f}</span></div>
+                    <div style="text-align:center; padding:4px; color:#00f2ff; font-weight:bold;">AXIS: {a_dol:.2f}</div>
+                    <div class="calc-row" style="color:#ffff00;"><span>MIN 1</span> <span>{res['res_x']['n_1']:.2f}</span></div>
+                    <div class="calc-row row-med"><span>MEDIA</span> <span>{res['res_x']['n_med']:.2f}</span></div>
+                    <div class="calc-row" style="color:#00ff88;"><span>MIN FUT</span> <span>{res['res_x']['n_fut']:.2f}</span></div>
+                </div>""", unsafe_allow_html=True)
+                
+                st.markdown(f"""<div class="calc-panel">
+                    <div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">DOLB3</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div>
+                    <div style="text-align:right; font-size:10px; padding-right:6px; color:{("#00ff00" if res['v_spot'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['v_spot']:+.2f}%</div>
+                    <div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div>
+                    <div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div>
+                </div>""", unsafe_allow_html=True)
+
+                # BARRA COM ESCALA RESTAURADA (100 | 50 | 0 | 50 | 100)
+                st.markdown(f"""<div class="bar-wrapper-dual">
+                    <div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div>
+                    <div class="force-container-dual">
+                        <div class="center-line"></div>
+                        <div class="bar-side"><div class="fill-green" style="width:{res['p_v']}%;"></div></div>
+                        <div class="bar-side"><div class="fill-red" style="width:{res['p_r']}%;"></div></div>
+                    </div>
+                    <div class="sinal-indicator blink" style="color:{res['seta_cor']};">{res['seta']}</div>
+                </div>""", unsafe_allow_html=True)
+
     time.sleep(5)
