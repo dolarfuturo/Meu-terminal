@@ -1,29 +1,31 @@
 import streamlit as st
 import yfinance as yf
 import time
-import os  # Biblioteca para lidar com arquivos
+import os
 from datetime import datetime
 import pytz
 
 # Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLLAR", initial_sidebar_state="collapsed")
 
-# --- FUNÇÕES DE PERSISTÊNCIA (PARA NÃO PERDER NO F5) ---
+# --- FUNÇÕES DE PERSISTÊNCIA (CONTRA F5) ---
 def salvar_eixos(ewz, dol):
     with open("config_axis.txt", "w") as f:
         f.write(f"{ewz},{dol}")
 
 def carregar_eixos():
     if os.path.exists("config_axis.txt"):
-        with open("config_axis.txt", "r") as f:
-            dados = f.read().split(",")
-            return float(dados[0]), float(dados[1])
-    return 37.85, 5264.50  # Valores padrão se o arquivo não existir
+        try:
+            with open("config_axis.txt", "r") as f:
+                dados = f.read().split(",")
+                return float(dados[0]), float(dados[1])
+        except:
+            return 37.85, 5264.50
+    return 37.85, 5264.50
 
-# Carrega os valores (seja do arquivo ou o padrão)
 eixo_ewz_salvo, eixo_dol_salvo = carregar_eixos()
 
-# --- SISTEMA DE MEMÓRIA (SESSION STATE) ---
+# --- SISTEMA DE MEMÓRIA ---
 if 'market_data' not in st.session_state:
     st.session_state.market_data = {}
 if 'last_p' not in st.session_state:
@@ -33,7 +35,7 @@ if 'a_ewz_mem' not in st.session_state:
 if 'a_dol_mem' not in st.session_state:
     st.session_state.a_dol_mem = eixo_dol_salvo
 
-# --- CSS: DESIGN TERMINAL BLACK (MANTIDO EXATAMENTE IGUAL) ---
+# --- CSS: DESIGN TERMINAL BLACK (MANTIDO E PROTEGIDO) ---
 st.markdown("""
 <style>
     .block-container { padding-top: 1.5rem; padding-bottom: 0rem; }
@@ -74,7 +76,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS --- (MANTIDO IGUAL)
+# --- MOTOR DE DADOS ---
 def fetch(s):
     try:
         t = yf.Ticker(s)
@@ -143,43 +145,53 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         }
     except: return None
 
-# --- PAINEL ADM COM GRAVAÇÃO EM ARQUIVO ---
+# --- PAINEL ADM ---
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
-    
-    # Ele carrega na tela o que está no session_state (que veio do arquivo)
     input_ewz_val = st.number_input("AXIS EWZ:", value=st.session_state.a_ewz_mem, format="%.2f", key="axis_ewz_input")
     input_dol_val = st.number_input("AXIS DOLFUT:", value=st.session_state.a_dol_mem, format="%.2f", key="axis_dol_input")
     
     if st.button("SALVAR CONFIGURAÇÕES"):
-        # 1. Salva na memória da sessão atual
         st.session_state.a_ewz_mem = input_ewz_val
         st.session_state.a_dol_mem = input_dol_val
-        # 2. Grava no "HD" (arquivo txt) para não perder no F5
         salvar_eixos(input_ewz_val, input_dol_val)
-        
         st.success("Salvo permanentemente!")
         time.sleep(0.5)
         st.rerun()
 
-# Atribui os eixos da memória para as variáveis de cálculo
 a_ewz = st.session_state.a_ewz_mem
 a_dol = st.session_state.a_dol_mem
 
 placeholder = st.empty()
 
 while True:
-    tz_sp = pytz.timezone('America/Sao_Paulo'); tz_ny = pytz.timezone('America/New_York'); tz_ld = pytz.timezone('Europe/London')
+    tz_sp = pytz.timezone('America/Sao_Paulo')
+    tz_ny = pytz.timezone('America/New_York')
+    tz_ld = pytz.timezone('Europe/London')
+    
     spot_live = fetch("USDBRL=X")
     ewz_live = fetch("EWZ")
     now = datetime.now()
     
+    # --- FORMATAÇÃO DOS RELÓGIOS COM DATA (%d/%m) ---
     dt_br = now.astimezone(tz_sp).strftime("%d/%m %H:%M:%S")
     dt_ny = now.astimezone(tz_ny).strftime("%d/%m %H:%M:%S")
     dt_ld = now.astimezone(tz_ld).strftime("%d/%m %H:%M:%S")
 
     with placeholder.container():
-        st.markdown(f'<div class="header-container"><h1 class="main-title"><span class="bair-blue">BAIR</span><span class="terminal-gold"> - TERMINAL DOLLAR</span></h1><div class="clock-row"><span class="clock-item">🇧🇷 BRASÍLIA: <span class="br-green">{dt_br}</span></span><span class="clock-item">🇺🇸 NEW YORK: <span class="white-time">{dt_ny}</span></span><span class="clock-item">🇬🇧 LONDON: <span class="white-time">{dt_ld}</span></span></div></div>', unsafe_allow_html=True)
+        # CABEÇALHO COM DATA INTEGRADA
+        st.markdown(f'''
+            <div class="header-container">
+                <h1 class="main-title">
+                    <span class="bair-blue">BAIR</span><span class="terminal-gold"> - TERMINAL DOLLAR</span>
+                </h1>
+                <div class="clock-row">
+                    <span class="clock-item">🇧🇷 BRASÍLIA: <span class="br-green">{dt_br}</span></span>
+                    <span class="clock-item">🇺🇸 NEW YORK: <span class="white-time">{dt_ny}</span></span>
+                    <span class="clock-item">🇬🇧 LONDON: <span class="white-time">{dt_ld}</span></span>
+                </div>
+            </div>
+        ''', unsafe_allow_html=True)
 
         if spot_live and ewz_live:
             res = calcular_k97_total(a_ewz, ewz_live['at'], ewz_live['mx'], ewz_live['mn'], a_dol, spot_live)
