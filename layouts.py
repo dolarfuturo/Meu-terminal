@@ -15,9 +15,11 @@ def salvar_eixos(ewz, dol):
 
 def carregar_eixos():
     if os.path.exists("config_axis.txt"):
-        with open("config_axis.txt", "r") as f:
-            dados = f.read().split(",")
-            return float(dados[0]), float(dados[1])
+        try:
+            with open("config_axis.txt", "r") as f:
+                dados = f.read().split(",")
+                return float(dados[0]), float(dados[1])
+        except: pass
     return 37.85, 5264.50
 
 eixo_ewz_salvo, eixo_dol_salvo = carregar_eixos()
@@ -102,10 +104,15 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         v_spreed = amp / 8
         x1, x2 = amp * 0.77, amp * 0.23
         max_original, min_original = eixo_dol + x1, eixo_dol - x2
-        dolar_medio = ((max_original + min_original) / 2) - v_spreed
-        media_pura_spot = (spot_data['mx'] + spot_data['mn']) / 2
         
+        # MÉDIA CALCULADA (A BASE DE TUDO)
+        dolar_medio = ((max_original + min_original) / 2) - v_spreed
+        
+        # RÉGUA DA BARRA USA SUA MÉDIA CALCULADA
         x_val = abs(eixo_dol - dolar_medio)
+        dist_base_barra = x_val
+        
+        # GRADE LATERAL
         m_fut, m_med, m_1 = eixo_dol + (x_val * 4), (eixo_dol + (x_val * 4)) - x_val, eixo_dol + (x_val * 2)
         n_1, n_med, n_fut = eixo_dol - (x_val * 2), (eixo_dol - (x_val * 4)) + x_val, eixo_dol - (x_val * 4)
         
@@ -114,7 +121,6 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         v_ewz = ((p_ewz_atual / ewz_ref) - 1) if ewz_ref > 0 else 0
         v_final = (v_spot_pct * 0.6) - (v_ewz * 0.4)
         
-        dist_base_barra = abs(eixo_dol - media_pura_spot)
         diff = spot_data['at'] - eixo_dol
         dist_atual = abs(diff)
         
@@ -125,31 +131,39 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         
         if dist_base_barra > 0:
             if dist_atual > limite_rompimento:
-                # ROMPIDO: 50% e NÃO PISCA
                 if diff < 0: p_v = 50
                 else: p_r = 50
                 piscando = False
             elif dist_atual >= limite_100:
-                # NO LIMITE: 100% e PISCA
                 if diff < 0: p_v = 100
                 else: p_r = 100
                 piscando = True
             else:
-                # NORMAL: Proporcional e NÃO PISCA
                 calc_proporcional = (dist_atual / limite_100) * 100
                 if diff < 0: p_v = calc_proporcional
                 else: p_r = calc_proporcional
                 piscando = False
 
         seta_txt, seta_cor = "", "#000000"
-        if dist_atual >= limite_100: # Se atingiu 100% ou rompeu
+        if dist_atual >= limite_100:
             if diff < 0: seta_txt, seta_cor = "▲ REGIÃO DE COMPRA", "#00ff88"
             else: seta_txt, seta_cor = "▼ REGIÃO DE VENDA", "#ff4d4d"
 
-        return {"vivo": eixo_dol * (1 + v_spot_pct), "dolfut_calc": eixo_dol * (1 + v_final), "fraja": eixo_dol * (1 + (v_final / 2)), "medio": dolar_medio, "max_fut": m_fut, "max_med": m_med, "max_1": m_1, "min_1": n_1, "min_med": n_med, "min_fut": n_fut, "v_v": v_final * 100, "v_spot": v_spot_pct * 100, "spreed": v_spreed, "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor, "piscando": piscando, "max_grade": max_original, "min_grade": min_original}
+        return {
+            "vivo": eixo_dol * (1 + v_spot_pct), 
+            "dolfut_calc": eixo_dol * (1 + v_final), 
+            "fraja": eixo_dol * (1 + (v_final / 2)), 
+            "medio": dolar_medio, 
+            "max_fut": m_fut, "max_med": m_med, "max_1": m_1, 
+            "min_1": n_1, "min_med": n_med, "min_fut": n_fut, 
+            "v_v": v_final * 100, "v_spot": v_spot_pct * 100, 
+            "spreed": v_spreed, "p_v": p_v, "p_r": p_r, 
+            "seta": seta_txt, "seta_cor": seta_cor, "piscando": piscando, 
+            "max_grade": max_original, "min_grade": min_original
+        }
     except: return None
 
-# --- RESTO DO CÓDIGO (LOOP) ---
+# --- UI E LOOP ---
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
     input_ewz_val = st.number_input("AXIS EWZ:", value=st.session_state.a_ewz_mem, format="%.2f", key="axis_ewz_input")
@@ -234,7 +248,6 @@ while True:
                         <div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div>
                     </div>""", unsafe_allow_html=True)
                     
-                    # LÓGICA DINÂMICA DA CLASSE BLINK
                     classe_piscar = "blink" if res["piscando"] else ""
                     
                     st.markdown(f'''
