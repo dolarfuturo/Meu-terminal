@@ -103,51 +103,53 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         x1, x2 = amp * 0.77, amp * 0.23
         max_original, min_original = eixo_dol + x1, eixo_dol - x2
         dolar_medio = ((max_original + min_original) / 2) - v_spreed
+        media_pura_spot = (spot_data['mx'] + spot_data['mn']) / 2
         
-        # --- LÓGICA DO ELÁSTICO X2 + METADE ---
         x_val = abs(eixo_dol - dolar_medio)
-        alvo_100 = x_val * 2
-        seguranca_corte = alvo_100 + (x_val) # X2 + Metade de X2 (que é X)
+        m_fut, m_med, m_1 = eixo_dol + (x_val * 4), (eixo_dol + (x_val * 4)) - x_val, eixo_dol + (x_val * 2)
+        n_1, n_med, n_fut = eixo_dol - (x_val * 2), (eixo_dol - (x_val * 4)) + x_val, eixo_dol - (x_val * 4)
         
-        # Variação ORIGINAL 60/40
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         ewz_ref = st.session_state.market_data.get("EWZ", {}).get('cl', 1)
         v_ewz = ((p_ewz_atual / ewz_ref) - 1) if ewz_ref > 0 else 0
-        v_final = (v_spot_pct * 0.6) - (v_ewz * 0.4) 
-        dolfut_arbitrado = eixo_dol * (1 + v_final)
+        v_final = (v_spot_pct * 0.6) - (v_ewz * 0.4)
         
+        # --- LÓGICA DE CALIBRAGEM DA BARRA COM ROMPIMENTO (EIXO MÓVEL) ---
+        dist_base_barra = abs(eixo_dol - media_pura_spot)
         diff = spot_data['at'] - eixo_dol
         dist_atual = abs(diff)
-        p_v, p_r = 0, 0
-        seta_txt, seta_cor = "", "#000000"
         
-        if alvo_100 > 0:
-            # SE ROMPER O LIMITE DE SEGURANÇA (X2 + METADE)
-            if dist_atual > seguranca_corte:
-                p_v = 50 if diff < 0 else 0
-                p_r = 50 if diff > 0 else 0
-                seta_txt, seta_cor = "⌛ AGUARDE EXAUSTÃO", "#ffff00"
-            
-            # SE ESTIVER DENTRO OU NO ALVO (X2) - FICA 100% PISCANDO
-            elif dist_atual >= alvo_100:
-                p_v = 100 if diff < 0 else 0
-                p_r = 100 if diff > 0 else 0
-                seta_txt, seta_cor = ("▲ REGIÃO DE COMPRA" if diff < 0 else "▼ REGIÃO DE VENDA"), ("#00ff88" if diff < 0 else "#ff4d4d")
-            
-            # CÁLCULO NORMAL PROPORCIONAL ABAIXO DE X2
+        # O Ponto de 100% é 2x a distância da média
+        limite_100 = dist_base_barra * 2
+        # O Rompimento é 100% + metade (ou seja, 3x a distância)
+        limite_rompimento = limite_100 * 1.5
+        
+        p_v, p_r = 0, 0
+        
+        if dist_base_barra > 0:
+            if dist_atual > limite_rompimento:
+                # SE ROMPER: Pula para 50% (Novo Patamar)
+                if diff < 0: p_v = 50
+                else: p_r = 50
+            elif dist_atual >= limite_100:
+                # SE ESTIVER NO LIMITE: Crava no 100%
+                if diff < 0: p_v = 100
+                else: p_r = 100
             else:
-                raw_p = (dist_atual / alvo_100) * 100
-                if diff < 0: p_v = raw_p
-                else: p_r = raw_p
+                # CÁLCULO ORIGINAL (Se retornar, volta para cá automaticamente)
+                calc_proporcional = (dist_atual / limite_100) * 100
+                if diff < 0: p_v = calc_proporcional
+                else: p_r = calc_proporcional
 
-        return {
-            "vivo": eixo_dol * (1 + v_spot_pct), "dolfut_calc": dolfut_arbitrado, "fraja": eixo_dol * (1 + (v_final / 2)), 
-            "medio": dolar_medio, "max_fut": eixo_dol + (x_val * 4), "max_med": (eixo_dol + (x_val * 4)) - x_val, 
-            "max_1": eixo_dol + alvo_100, "min_1": eixo_dol - alvo_100, 
-            "min_med": (eixo_dol - (x_val * 4)) + x_val, "min_fut": eixo_dol - (x_val * 4), 
-            "v_v": v_final * 100, "v_spot": v_spot_pct * 100, "spreed": v_spreed, "p_v": p_v, "p_r": p_r, 
-            "seta": seta_txt, "seta_cor": seta_cor, "max_grade": max_original, "min_grade": min_original
-        }
+        seta_txt, seta_cor = "", "#000000"
+        if p_v >= 100: seta_txt, seta_cor = "▲ REGIÃO DE COMPRA", "#00ff88"
+        elif p_r >= 100: seta_txt, seta_cor = "▼ REGIÃO DE VENDA", "#ff4d4d"
+        # Se estiver em 50% após o rompimento, mantém o sinal de compra/venda aceso conforme o lado
+        elif dist_atual > limite_rompimento:
+            if diff < 0: seta_txt, seta_cor = "▲ REGIÃO DE COMPRA", "#00ff88"
+            else: seta_txt, seta_cor = "▼ REGIÃO DE VENDA", "#ff4d4d"
+
+        return {"vivo": eixo_dol * (1 + v_spot_pct), "dolfut_calc": eixo_dol * (1 + v_final), "fraja": eixo_dol * (1 + (v_final / 2)), "medio": dolar_medio, "max_fut": m_fut, "max_med": m_med, "max_1": m_1, "min_1": n_1, "min_med": n_med, "min_fut": n_fut, "v_v": v_final * 100, "v_spot": v_spot_pct * 100, "spreed": v_spreed, "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor, "max_grade": max_original, "min_grade": min_original}
     except: return None
 
 # --- PAINEL ADM ---
@@ -169,7 +171,9 @@ while True:
     tz_sp, tz_ny, tz_ld = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London')
     spot_live, ewz_live = fetch("USDBRL=X"), fetch("EWZ")
     now = datetime.now()
-    dt_br, dt_ny, dt_ld = now.astimezone(tz_sp).strftime("%H:%M:%S"), now.astimezone(tz_ny).strftime("%H:%M:%S"), now.astimezone(tz_ld).strftime("%H:%M:%S")
+    dt_br = now.astimezone(tz_sp).strftime("%H:%M:%S")
+    dt_ny = now.astimezone(tz_ny).strftime("%H:%M:%S")
+    dt_ld = now.astimezone(tz_ld).strftime("%H:%M:%S")
     data_hoje = now.astimezone(tz_sp).strftime("%d/%m/%Y")
 
     with placeholder.container():
@@ -188,31 +192,32 @@ while True:
         if spot_live and ewz_live:
             res = calcular_k97_total(a_ewz, ewz_live['at'], ewz_live['mx'], ewz_live['mn'], a_dol, spot_live)
             if res:
+                v_final_pct, dolfut_calc_val = res['v_v'], res['dolfut_calc']
                 c_main, c_side = st.columns([3.2, 0.8])
+                
                 with c_main:
                     st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
                     html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
-                    assets = {"DOLFUT": "CALC", "DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
-                    ticker_items = []
-                    for lbl, sym in assets.items():
-                        if lbl == "DOLFUT":
-                            p_val, cl_val, var = res['dolfut_calc']/1000, a_dol/1000, res['v_v']
-                            mx, mn = res['max_grade']/1000, res['min_grade']/1000
-                            f = ".4f"
-                        else:
-                            d = fetch(sym)
-                            if not d: continue
+                    l_df = st.session_state.last_p.get('DF', dolfut_calc_val/1000)
+                    cl_df = "f-up" if (dolfut_calc_val/1000) > l_df else "f-dn" if (dolfut_calc_val/1000) < l_df else ""
+                    st.session_state.last_p['DF'] = dolfut_calc_val/1000
+                    bg_dol = "background-color:rgba(0, 255, 0, 0.1);" if v_final_pct >= 0 else "background-color:rgba(255, 0, 0, 0.1);"
+                    html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col {cl_df}' style='{bg_dol}'>{(dolfut_calc_val/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max_grade']/1000):.4f}</td><td>{(res['min_grade']/1000):.4f}</td><td style='color:{("#00ff00" if v_final_pct >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_final_pct:+.2f}%</td></tr>"
+                    ticker_items = [f"DOLFUT: <span style='color:{("#00ff00" if v_final_pct >= 0 else "#ff4d4d")};'>{v_final_pct:+.2f}%</span>"]
+                    outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
+                    for lbl, sym in outros.items():
+                        d = fetch(sym)
+                        if d:
                             f = ".4f" if lbl in ["DOLSPOT", "GBP/USD", "JPY/USD", "EUR/USD"] else ".2f"
-                            p_val, cl_val = (d['at']/1000, d['cl']/1000) if lbl == "DOLSPOT" else (d['at'], d['cl'])
-                            mx, mn = (d['mx']/1000, d['mn']/1000) if lbl == "DOLSPOT" else (d['mx'], d['mn'])
+                            p_val = d['at']/1000 if lbl == "DOLSPOT" else d['at']
+                            l_at = st.session_state.last_p.get(lbl, p_val)
+                            cl_at = "f-up" if p_val > l_at else "f-dn" if p_val < l_at else ""
+                            st.session_state.last_p[lbl] = p_val
                             var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
-                        l_at = st.session_state.last_p.get(lbl, p_val)
-                        cl_at = "f-up" if p_val > l_at else "f-dn" if p_val < l_at else ""
-                        st.session_state.last_p[lbl] = p_val
-                        bg_style = f"background-color:rgba({('0,255,0' if var>=0 else '255,0,0')},0.1);" if lbl=="DOLFUT" else ""
-                        html_table += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col {cl_at}' style='{bg_style}'>{p_val:{f}}</td><td>{cl_val:{f}}</td><td>{cl_val:{f}}</td><td>{mx:{f}}</td><td>{mn:{f}}</td><td style='color:{("#00ff00" if var >= 0 else "#ff4d4d")}; font-weight:bold;'>{var:+.2f}%</td></tr>"
-                        ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
+                            html_table += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col {cl_at}'>{p_val:{f}}</td><td>{(d['cl']/1000 if lbl=='DOLSPOT' else d['cl']):{f}}</td><td>{(d['op']/1000 if lbl=='DOLSPOT' else d['op']):{f}}</td><td>{(d['mx']/1000 if lbl=='DOLSPOT' else d['mx']):{f}}</td><td>{(d['mn']/1000 if lbl=='DOLSPOT' else d['mn']):{f}}</td><td style='color:{("#00ff00" if var >= 0 else "#ff4d4d")}; font-weight:bold;'>{var:+.2f}%</td></tr>"
+                            ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                     st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
+
                 with c_side:
                     st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
                     st.markdown(f"""<div class="calc-panel">
@@ -233,5 +238,6 @@ while True:
                     </div>""", unsafe_allow_html=True)
                     st.markdown(f'<div class="bar-wrapper-dual"><div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div></div><div class="sinal-indicator blink" style="color:{res["seta_cor"]};">{res["seta"]}</div></div>', unsafe_allow_html=True)
                 st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
-        else: st.warning("Conectando...")
+        else:
+            st.warning("Conectando...")
     time.sleep(5)
