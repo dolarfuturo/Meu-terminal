@@ -31,40 +31,31 @@ if 'a_ewz_mem' not in st.session_state:
 if 'a_dol_mem' not in st.session_state:
     st.session_state.a_dol_mem = eixo_dol_salvo
 
-# --- CSS: DESIGN TERMINAL BLACK ---
+# --- CSS: DESIGN TERMINAL ---
 st.markdown("""
 <style>
     .block-container { padding-top: 1.5rem; padding-bottom: 0rem; }
     .stApp { background-color: #050a0e !important; }
-    
-    /* HEADER ORIGINAL VOLTANDO AO CENTRO */
-    .header-container { 
-        text-align: center; 
-        padding: 5px 0px; 
-        border-bottom: 2px solid #FFD700; 
-        background-color: #050a0e; 
-        margin-bottom: 8px; 
-        position: relative; /* Necessário para posicionar a data em relação a ele */
-    }
-    
+    .header-container { text-align: center; padding: 5px 0px; border-bottom: 2px solid #FFD700; background-color: #050a0e; margin-bottom: 8px; position: relative; }
     .main-title { margin: 0px; line-height: 1.0; font-size: 28px; font-family: monospace; }
     .bair-blue { color: #00BFFF; font-weight: bold; }
     .terminal-gold { color: #FFD700; font-weight: bold; }
-    
     .clock-row { display: flex; justify-content: center; gap: 20px; padding: 5px 0; font-weight: bold; font-size: 11px; font-family: monospace; }
     .clock-item { color: #AAA; }
     .br-green { color: #00ff00; }
     .white-time { color: #ffffff; }
-
-    /* DATA POSICIONADA NA DIREITA SEM MEXER NO CENTRO */
-    .date-absolute {
+    
+    /* CSS PARA POSICIONAR A DATA ACIMA DOS CALCULOS */
+    .date-container {
         position: absolute;
-        right: 15px;
-        bottom: 5px;
+        bottom: 5px; 
+        right: 0;
+        width: 20%; /* Alinhado com a proporção da coluna de cálculos (0.8 de 4.0) */
+        text-align: center;
         font-family: monospace;
         font-size: 11px;
         font-weight: bold;
-        color: #AAA;
+        color: #ffffff;
     }
 
     .section-title { border: 1px solid #ffffff; color: #00f2ff; text-align: center; font-weight: bold; font-family: monospace; padding: 3px; margin-bottom: 5px; text-transform: uppercase; font-size: 11px; }
@@ -95,7 +86,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS --- (Lógica simplificada para foco no layout)
+# --- MOTOR DE DADOS ---
 def fetch(s):
     try:
         t = yf.Ticker(s)
@@ -147,6 +138,18 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         return {"vivo": dolb3, "dolfut_calc": dolfut_arbitrado, "fraja": eixo_dol * (1 + (v_final / 2)), "medio": dolar_medio, "max_fut": m_fut, "max_med": m_med, "max_1": m_1, "min_1": n_1, "min_med": n_med, "min_fut": n_fut, "v_v": v_final * 100, "v_spot": v_spot_pct * 100, "spreed": v_spreed, "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor, "max_grade": max_original, "min_grade": min_original}
     except: return None
 
+# --- PAINEL ADM ---
+with st.sidebar:
+    st.markdown("### ⚙️ PAINEL ADM")
+    input_ewz_val = st.number_input("AXIS EWZ:", value=st.session_state.a_ewz_mem, format="%.2f", key="axis_ewz_input")
+    input_dol_val = st.number_input("AXIS DOLFUT:", value=st.session_state.a_dol_mem, format="%.2f", key="axis_dol_input")
+    if st.button("SALVAR CONFIGURAÇÕES"):
+        st.session_state.a_ewz_mem, st.session_state.a_dol_mem = input_ewz_val, input_dol_val
+        salvar_eixos(input_ewz_val, input_dol_val)
+        st.success("Salvo!")
+        time.sleep(0.5)
+        st.rerun()
+
 a_ewz, a_dol = st.session_state.a_ewz_mem, st.session_state.a_dol_mem
 placeholder = st.empty()
 
@@ -154,11 +157,16 @@ while True:
     tz_sp, tz_ny, tz_ld = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London')
     spot_live, ewz_live = fetch("USDBRL=X"), fetch("EWZ")
     now = datetime.now()
-    dt_br, dt_ny, dt_ld = now.astimezone(tz_sp).strftime("%H:%M:%S"), now.astimezone(tz_ny).strftime("%H:%M:%S"), now.astimezone(tz_ld).strftime("%H:%M:%S")
+    
+    # FORMATO APENAS HORA PARA OS RELÓGIOS
+    dt_br = now.astimezone(tz_sp).strftime("%H:%M:%S")
+    dt_ny = now.astimezone(tz_ny).strftime("%H:%M:%S")
+    dt_ld = now.astimezone(tz_ld).strftime("%H:%M:%S")
+    # DATA APENAS PARA O BLOCO DE CÁLCULOS
     data_hoje = now.astimezone(tz_sp).strftime("%d/%m/%Y")
 
     with placeholder.container():
-        # CABEÇALHO: Relógios de volta ao centro | Data flutuando na direita
+        # CABEÇALHO: Relógios no centro | Data isolada na direita
         st.markdown(f'''
             <div class="header-container">
                 <h1 class="main-title">
@@ -169,7 +177,7 @@ while True:
                     <span class="clock-item">🇺🇸 NEW YORK: <span class="white-time">{dt_ny}</span></span>
                     <span class="clock-item">🇬🇧 LONDON: <span class="white-time">{dt_ld}</span></span>
                 </div>
-                <div class="date-absolute">📅 <span class="white-time">{data_hoje}</span></div>
+                <div class="date-container">📅 {data_hoje}</div>
             </div>
         ''', unsafe_allow_html=True)
 
@@ -181,17 +189,25 @@ while True:
                 
                 with c_main:
                     st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
-                    # ... (restante da tabela igual ao original)
                     html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
-                    html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col'>{(dolfut_calc_val/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max_grade']/1000):.4f}</td><td>{(res['min_grade']/1000):.4f}</td><td style='color:{("#00ff00" if v_final_pct >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_final_pct:+.2f}%</td></tr>"
-                    outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ"}
+                    l_df = st.session_state.last_p.get('DF', dolfut_calc_val/1000)
+                    cl_df = "f-up" if (dolfut_calc_val/1000) > l_df else "f-dn" if (dolfut_calc_val/1000) < l_df else ""
+                    st.session_state.last_p['DF'] = dolfut_calc_val/1000
+                    bg_dol = "background-color:rgba(0, 255, 0, 0.1);" if v_final_pct >= 0 else "background-color:rgba(255, 0, 0, 0.1);"
+                    html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col {cl_df}' style='{bg_dol}'>{(dolfut_calc_val/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max_grade']/1000):.4f}</td><td>{(res['min_grade']/1000):.4f}</td><td style='color:{("#00ff00" if v_final_pct >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_final_pct:+.2f}%</td></tr>"
+                    ticker_items = [f"DOLFUT: <span style='color:{("#00ff00" if v_final_pct >= 0 else "#ff4d4d")};'>{v_final_pct:+.2f}%</span>"]
+                    outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
                     for lbl, sym in outros.items():
                         d = fetch(sym)
                         if d:
-                            f = ".4f" if lbl=="DOLSPOT" else ".2f"
-                            p_val = d['at']/1000 if lbl=="DOLSPOT" else d['at']
+                            f = ".4f" if lbl in ["DOLSPOT", "GBP/USD", "JPY/USD", "EUR/USD"] else ".2f"
+                            p_val = d['at']/1000 if lbl == "DOLSPOT" else d['at']
+                            l_at = st.session_state.last_p.get(lbl, p_val)
+                            cl_at = "f-up" if p_val > l_at else "f-dn" if p_val < l_at else ""
+                            st.session_state.last_p[lbl] = p_val
                             var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
-                            html_table += f"<tr><td class='asset-name'>{lbl}</td><td>{p_val:{f}}</td><td>{(d['cl']/1000 if lbl=='DOLSPOT' else d['cl']):{f}}</td><td>{(d['op']/1000 if lbl=='DOLSPOT' else d['op']):{f}}</td><td>{(d['mx']/1000 if lbl=='DOLSPOT' else d['mx']):{f}}</td><td>{(d['mn']/1000 if lbl=='DOLSPOT' else d['mn']):{f}}</td><td style='color:{("#00ff00" if var >= 0 else "#ff4d4d")}; font-weight:bold;'>{var:+.2f}%</td></tr>"
+                            html_table += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col {cl_at}'>{p_val:{f}}</td><td>{(d['cl']/1000 if lbl=='DOLSPOT' else d['cl']):{f}}</td><td>{(d['op']/1000 if lbl=='DOLSPOT' else d['op']):{f}}</td><td>{(d['mx']/1000 if lbl=='DOLSPOT' else d['mx']):{f}}</td><td>{(d['mn']/1000 if lbl=='DOLSPOT' else d['mn']):{f}}</td><td style='color:{("#00ff00" if var >= 0 else "#ff4d4d")}; font-weight:bold;'>{var:+.2f}%</td></tr>"
+                            ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                     st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
 
                 with c_side:
@@ -206,11 +222,14 @@ while True:
                         <div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MIN FUT</span> <span>{res['min_fut']:.2f}</span></div>
                     </div>""", unsafe_allow_html=True)
                     st.markdown(f"""<div class="calc-panel">
-                        <div class="calc-row"><span style="color:#ffffff;">DOLB3</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div>
+                        <div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">DOLB3</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div>
+                        <div style="text-align:right; font-size:10px; padding-right:6px; color:{("#00ff00" if res['v_spot'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['v_spot']:+.2f}%</div>
                         <div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div>
                         <div class="calc-row"><span style="color:#d4a017;">PREÇO JUSTO</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div>
+                        <div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div>
                     </div>""", unsafe_allow_html=True)
                     st.markdown(f'<div class="bar-wrapper-dual"><div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div></div><div class="sinal-indicator blink" style="color:{res["seta_cor"]};">{res["seta"]}</div></div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
         else:
             st.warning("Conectando...")
 
