@@ -1,7 +1,7 @@
 import streamlit as st
 import yfinance as yf
 import time
-import os  # Biblioteca para lidar com arquivos
+import os
 from datetime import datetime
 import pytz
 
@@ -40,7 +40,7 @@ st.markdown("""
     .main-title { margin: 0px; line-height: 1.0; font-size: 28px; font-family: monospace; }
     .bair-blue { color: #00BFFF; font-weight: bold; }
     .terminal-gold { color: #FFD700; font-weight: bold; }
-    .clock-row { display: flex; justify-content: center; gap: 20px; padding: 5px 0; font-weight: bold; font-size: 11px; font-family: monospace; }
+    .clock-row { display: flex; justify-content: center; gap: 25px; padding: 5px 0; font-weight: bold; font-size: 11px; font-family: monospace; align-items: center; }
     .clock-item { color: #AAA; }
     .br-green { color: #00ff00; }
     .white-time { color: #ffffff; }
@@ -147,7 +147,20 @@ while True:
     data_hoje = now.astimezone(tz_sp).strftime("%d/%m/%Y")
 
     with placeholder.container():
-        st.markdown(f'<div class="header-container"><h1 class="main-title"><span class="bair-blue">BAIR</span><span class="terminal-gold"> - TERMINAL DOLLAR</span></h1><div class="clock-row"><span class="clock-item">🇧🇷 BRASÍLIA: <span class="br-green">{dt_br}</span></span><span class="clock-item">🇺🇸 NEW YORK: <span class="white-time">{dt_ny}</span></span><span class="clock-item">🇬🇧 LONDON: <span class="white-time">{dt_ld}</span></span></div></div>', unsafe_allow_html=True)
+        # DATA ADICIONADA À LINHA DOS RELÓGIOS (ACIMA DA LINHA AMARELA)
+        st.markdown(f'''
+            <div class="header-container">
+                <h1 class="main-title">
+                    <span class="bair-blue">BAIR</span><span class="terminal-gold"> - TERMINAL DOLLAR</span>
+                </h1>
+                <div class="clock-row">
+                    <span class="clock-item">🇧🇷 BRASÍLIA: <span class="br-green">{dt_br}</span></span>
+                    <span class="clock-item">🇺🇸 NEW YORK: <span class="white-time">{dt_ny}</span></span>
+                    <span class="clock-item">🇬🇧 LONDON: <span class="white-time">{dt_ld}</span></span>
+                    <span class="clock-item">📅 <span class="white-time">{data_hoje}</span></span>
+                </div>
+            </div>
+        ''', unsafe_allow_html=True)
 
         if spot_live and ewz_live:
             res = calcular_k97_total(a_ewz, ewz_live['at'], ewz_live['mx'], ewz_live['mn'], a_dol, spot_live)
@@ -179,9 +192,7 @@ while True:
                     st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
 
                 with c_side:
-                    # DATA NO MESMO NÍVEL DOS RELÓGIOS (ESTILO CLOCK-ITEM)
-                    st.markdown(f'<div style="text-align: center; margin-bottom: 7px;"><span class="clock-item">📅 PREGÃO: <span class="white-time">{data_hoje}</span></span></div>', unsafe_allow_html=True)
-                    
+                    # BLOCO DE CÁLCULOS VOLTA A FICAR ALINHADO NO TOPO
                     st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
                     st.markdown(f"""<div class="calc-panel">
                         <div class="calc-row" style="color:#ff4d4d;"><span>MAX FUT</span> <span>{res['max_fut']:.2f}</span></div>
