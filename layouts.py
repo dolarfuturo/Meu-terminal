@@ -7,11 +7,16 @@ import pytz
 # Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLLAR", initial_sidebar_state="collapsed")
 
-# --- SISTEMA DE CACHE ---
+# --- SISTEMA DE MEMÓRIA (SESSION STATE) ---
 if 'market_data' not in st.session_state:
     st.session_state.market_data = {}
 if 'last_p' not in st.session_state:
     st.session_state.last_p = {}
+# Inicializa os eixos na memória se não existirem
+if 'a_ewz_mem' not in st.session_state:
+    st.session_state.a_ewz_mem = 37.85
+if 'a_dol_mem' not in st.session_state:
+    st.session_state.a_dol_mem = 5264.50
 
 # --- CSS: DESIGN TERMINAL BLACK ---
 st.markdown("""
@@ -87,16 +92,10 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         if not spot_data or p_ewz_atual == 0: return None
         amp = spot_data['mx'] - spot_data['mn']
         v_spreed = amp / 8
-        
-        # MÉDIA GRADE (STAT)
         x1, x2 = amp * 0.77, amp * 0.23
         max_original, min_original = eixo_dol + x1, eixo_dol - x2
         dolar_medio = ((max_original + min_original) / 2) - v_spreed
-        
-        # MÉDIA PURA DO SPOT (PARA CALIBRAR A BARRA)
         media_pura_spot = (spot_data['mx'] + spot_data['mn']) / 2
-        
-        # BLOCO X
         x_val = abs(eixo_dol - dolar_medio)
         m_fut = eixo_dol + (x_val * 4)
         m_med = m_fut - x_val  
@@ -104,27 +103,21 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         n_1   = eixo_dol - (x_val * 2)
         n_med = (eixo_dol - (x_val * 4)) + x_val 
         n_fut = eixo_dol - (x_val * 4)
-        
-        # ARBITRAGEM
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         dolb3 = eixo_dol * (1 + v_spot_pct)
         ewz_ref = st.session_state.market_data.get("EWZ", {}).get('cl', 1)
         v_ewz = ((p_ewz_atual / ewz_ref) - 1) if ewz_ref > 0 else 0
         v_final = (v_spot_pct * 0.6) - (v_ewz * 0.4)
         dolfut_arbitrado = eixo_dol * (1 + v_final)
-        
-        # BARRA CALIBRADA PELA MÉDIA PURA
         dist_base_barra = abs(eixo_dol - media_pura_spot)
         diff = spot_data['at'] - eixo_dol
         p_v, p_r = 0, 0
         if dist_base_barra > 0:
             if diff < 0: p_v = min(100, (abs(diff)/(dist_base_barra*2))*100)
             else: p_r = min(100, (abs(diff)/(dist_base_barra*2))*100)
-        
         seta_txt, seta_cor = "", "#000000"
         if p_v >= 100: seta_txt, seta_cor = "▲ REGIÃO DE COMPRA", "#00ff88"
         elif p_r >= 100: seta_txt, seta_cor = "▼ REGIÃO DE VENDA", "#ff4d4d"
-
         return {
             "vivo": dolb3, "dolfut_calc": dolfut_arbitrado, "fraja": eixo_dol * (1 + (v_final / 2)), "medio": dolar_medio,
             "max_fut": m_fut, "max_med": m_med, "max_1": m_1,
@@ -135,11 +128,23 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         }
     except: return None
 
+# --- PAINEL ADM COM MEMÓRIA ---
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
-    a_ewz = st.number_input("AXIS EWZ:", value=37.85, format="%.2f")
-    a_dol = st.number_input("AXIS DOLFUT:", value=5264.50, format="%.2f")
-    st.button("SALVAR")
+    # Lê os valores da memória para mostrar na tela
+    input_ewz = st.number_input("AXIS EWZ:", value=st.session_state.a_ewz_mem, format="%.2f")
+    input_dol = st.number_input("AXIS DOLFUT:", value=st.session_state.a_dol_mem, format="%.2f")
+    
+    if st.button("SALVAR CONFIGURAÇÕES"):
+        st.session_state.a_ewz_mem = input_ewz
+        st.session_state.a_dol_mem = input_dol
+        st.success("Salvo com sucesso!")
+        time.sleep(1)
+        st.rerun()
+
+# Atribui os eixos da memória para as variáveis de cálculo
+a_ewz = st.session_state.a_ewz_mem
+a_dol = st.session_state.a_dol_mem
 
 placeholder = st.empty()
 
@@ -147,14 +152,19 @@ while True:
     tz_sp = pytz.timezone('America/Sao_Paulo'); tz_ny = pytz.timezone('America/New_York'); tz_ld = pytz.timezone('Europe/London')
     spot_live = fetch("USDBRL=X")
     ewz_live = fetch("EWZ")
+    now = datetime.now()
     
-    if spot_live and ewz_live:
-        res = calcular_k97_total(a_ewz, ewz_live['at'], ewz_live['mx'], ewz_live['mn'], a_dol, spot_live)
-        now = datetime.now()
+    # FORMATO COM DATA: %d/%m
+    dt_br = now.astimezone(tz_sp).strftime("%d/%m %H:%M:%S")
+    dt_ny = now.astimezone(tz_ny).strftime("%d/%m %H:%M:%S")
+    dt_ld = now.astimezone(tz_ld).strftime("%d/%m %H:%M:%S")
 
-        with placeholder.container():
-            st.markdown(f'<div class="header-container"><h1 class="main-title"><span class="bair-blue">BAIR</span><span class="terminal-gold"> - TERMINAL DOLLAR</span></h1><div class="clock-row"><span class="clock-item">🇧🇷 BRASÍLIA: <span class="br-green">{now.astimezone(tz_sp).strftime("%H:%M:%S")}</span></span><span class="clock-item">🇺🇸 NEW YORK: <span class="white-time">{now.astimezone(tz_ny).strftime("%H:%M:%S")}</span></span><span class="clock-item">🇬🇧 LONDON: <span class="white-time">{now.astimezone(tz_ld).strftime("%H:%M:%S")}</span></span></div></div>', unsafe_allow_html=True)
+    with placeholder.container():
+        # CABEÇALHO SEMPRE VISÍVEL
+        st.markdown(f'<div class="header-container"><h1 class="main-title"><span class="bair-blue">BAIR</span><span class="terminal-gold"> - TERMINAL DOLLAR</span></h1><div class="clock-row"><span class="clock-item">🇧🇷 BRASÍLIA: <span class="br-green">{dt_br}</span></span><span class="clock-item">🇺🇸 NEW YORK: <span class="white-time">{dt_ny}</span></span><span class="clock-item">🇬🇧 LONDON: <span class="white-time">{dt_ld}</span></span></div></div>', unsafe_allow_html=True)
 
+        if spot_live and ewz_live:
+            res = calcular_k97_total(a_ewz, ewz_live['at'], ewz_live['mx'], ewz_live['mn'], a_dol, spot_live)
             if res:
                 v_final_pct = res['v_v']
                 dolfut_calc_val = res['dolfut_calc']
@@ -163,14 +173,11 @@ while True:
                 with c_main:
                     st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
                     html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
-                    
                     l_df = st.session_state.last_p.get('DF', dolfut_calc_val/1000)
                     cl_df = "f-up" if (dolfut_calc_val/1000) > l_df else "f-dn" if (dolfut_calc_val/1000) < l_df else ""
                     st.session_state.last_p['DF'] = dolfut_calc_val/1000
-                    
                     bg_dol = "background-color:rgba(0, 255, 0, 0.1);" if v_final_pct >= 0 else "background-color:rgba(255, 0, 0, 0.1);"
                     html_table += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col {cl_df}' style='{bg_dol}'>{(dolfut_calc_val/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max_grade']/1000):.4f}</td><td>{(res['min_grade']/1000):.4f}</td><td style='color:{("#00ff00" if v_final_pct >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_final_pct:+.2f}%</td></tr>"
-                    
                     ticker_items = [f"DOLFUT: <span style='color:{("#00ff00" if v_final_pct >= 0 else "#ff4d4d")};'>{v_final_pct:+.2f}%</span>"]
                     outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
                     
@@ -199,7 +206,6 @@ while True:
                         <div class="calc-row row-med"><span>MEDIA</span> <span>{res['min_med']:.2f}</span></div>
                         <div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MIN FUT</span> <span>{res['min_fut']:.2f}</span></div>
                     </div>""", unsafe_allow_html=True)
-                    
                     st.markdown(f"""<div class="calc-panel">
                         <div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">DOLB3</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div>
                         <div style="text-align:right; font-size:10px; padding-right:6px; color:{("#00ff00" if res['v_spot'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['v_spot']:+.2f}%</div>
@@ -208,7 +214,8 @@ while True:
                         <div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div>
                     </div>""", unsafe_allow_html=True)
                     st.markdown(f'<div class="bar-wrapper-dual"><div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div></div><div class="sinal-indicator blink" style="color:{res["seta_cor"]};">{res["seta"]}</div></div>', unsafe_allow_html=True)
-                
                 st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
-    
+        else:
+            st.warning("Conectando ao Yahoo Finance... Os cálculos aparecerão assim que o sinal estabilizar.")
+
     time.sleep(5)
