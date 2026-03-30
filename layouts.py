@@ -36,14 +36,26 @@ st.markdown("""
 <style>
     .block-container { padding-top: 1.5rem; padding-bottom: 0rem; }
     .stApp { background-color: #050a0e !important; }
-    .header-container { text-align: center; padding: 5px 0px; border-bottom: 2px solid #FFD700; background-color: #050a0e; margin-bottom: 8px; }
-    .main-title { margin: 0px; line-height: 1.0; font-size: 28px; font-family: monospace; }
+    .header-container { padding: 5px 0px; border-bottom: 2px solid #FFD700; background-color: #050a0e; margin-bottom: 8px; }
+    .main-title { text-align: center; margin: 0px; line-height: 1.0; font-size: 28px; font-family: monospace; }
     .bair-blue { color: #00BFFF; font-weight: bold; }
     .terminal-gold { color: #FFD700; font-weight: bold; }
-    .clock-row { display: flex; justify-content: center; gap: 25px; padding: 5px 0; font-weight: bold; font-size: 11px; font-family: monospace; align-items: center; }
+    
+    /* AJUSTE DE ALINHAMENTO DO CABEÇALHO */
+    .header-bottom-row { 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        padding: 5px 10px; 
+        font-weight: bold; 
+        font-size: 11px; 
+        font-family: monospace; 
+    }
+    .clocks-group { display: flex; gap: 20px; }
     .clock-item { color: #AAA; }
     .br-green { color: #00ff00; }
     .white-time { color: #ffffff; }
+    
     .section-title { border: 1px solid #ffffff; color: #00f2ff; text-align: center; font-weight: bold; font-family: monospace; padding: 3px; margin-bottom: 5px; text-transform: uppercase; font-size: 11px; }
     .main-grid { border: 1.5px solid #ffffff; border-radius: 4px; overflow: hidden; font-family: 'monospace'; background-color: #0d1b22; }
     .terminal-table { width: 100%; border-collapse: collapse; color: #e0e0e0; }
@@ -72,7 +84,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS ---
+# --- MOTOR DE DADOS --- (Mesma lógica)
 def fetch(s):
     try:
         t = yf.Ticker(s)
@@ -132,7 +144,7 @@ with st.sidebar:
     if st.button("SALVAR CONFIGURAÇÕES"):
         st.session_state.a_ewz_mem, st.session_state.a_dol_mem = input_ewz_val, input_dol_val
         salvar_eixos(input_ewz_val, input_dol_val)
-        st.success("Salvo permanentemente!")
+        st.success("Salvo!")
         time.sleep(0.5)
         st.rerun()
 
@@ -147,17 +159,19 @@ while True:
     data_hoje = now.astimezone(tz_sp).strftime("%d/%m/%Y")
 
     with placeholder.container():
-        # DATA ADICIONADA À LINHA DOS RELÓGIOS (ACIMA DA LINHA AMARELA)
+        # CABEÇALHO COM DATA ALINHADA À DIREITA (ESTILO TERMINAL)
         st.markdown(f'''
             <div class="header-container">
                 <h1 class="main-title">
                     <span class="bair-blue">BAIR</span><span class="terminal-gold"> - TERMINAL DOLLAR</span>
                 </h1>
-                <div class="clock-row">
-                    <span class="clock-item">🇧🇷 BRASÍLIA: <span class="br-green">{dt_br}</span></span>
-                    <span class="clock-item">🇺🇸 NEW YORK: <span class="white-time">{dt_ny}</span></span>
-                    <span class="clock-item">🇬🇧 LONDON: <span class="white-time">{dt_ld}</span></span>
-                    <span class="clock-item">📅 <span class="white-time">{data_hoje}</span></span>
+                <div class="header-bottom-row">
+                    <div class="clocks-group">
+                        <span class="clock-item">🇧🇷 BRASÍLIA: <span class="br-green">{dt_br}</span></span>
+                        <span class="clock-item">🇺🇸 NEW YORK: <span class="white-time">{dt_ny}</span></span>
+                        <span class="clock-item">🇬🇧 LONDON: <span class="white-time">{dt_ld}</span></span>
+                    </div>
+                    <div class="clock-item">📅 <span class="white-time">{data_hoje}</span></div>
                 </div>
             </div>
         ''', unsafe_allow_html=True)
@@ -192,7 +206,6 @@ while True:
                     st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
 
                 with c_side:
-                    # BLOCO DE CÁLCULOS VOLTA A FICAR ALINHADO NO TOPO
                     st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
                     st.markdown(f"""<div class="calc-panel">
                         <div class="calc-row" style="color:#ff4d4d;"><span>MAX FUT</span> <span>{res['max_fut']:.2f}</span></div>
