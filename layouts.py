@@ -147,22 +147,17 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
     
-    # Ele carrega na tela o que está no session_state (que veio do arquivo)
     input_ewz_val = st.number_input("AXIS EWZ:", value=st.session_state.a_ewz_mem, format="%.2f", key="axis_ewz_input")
     input_dol_val = st.number_input("AXIS DOLFUT:", value=st.session_state.a_dol_mem, format="%.2f", key="axis_dol_input")
     
     if st.button("SALVAR CONFIGURAÇÕES"):
-        # 1. Salva na memória da sessão atual
         st.session_state.a_ewz_mem = input_ewz_val
         st.session_state.a_dol_mem = input_dol_val
-        # 2. Grava no "HD" (arquivo txt) para não perder no F5
         salvar_eixos(input_ewz_val, input_dol_val)
-        
         st.success("Salvo permanentemente!")
         time.sleep(0.5)
         st.rerun()
 
-# Atribui os eixos da memória para as variáveis de cálculo
 a_ewz = st.session_state.a_ewz_mem
 a_dol = st.session_state.a_dol_mem
 
@@ -174,9 +169,10 @@ while True:
     ewz_live = fetch("EWZ")
     now = datetime.now()
     
-    dt_br = now.astimezone(tz_sp).strftime("%d/%m %H:%M:%S")
-    dt_ny = now.astimezone(tz_ny).strftime("%d/%m %H:%M:%S")
-    dt_ld = now.astimezone(tz_ld).strftime("%d/%m %H:%M:%S")
+    # RELÓGIOS APENAS COM HORA (LIMPOS)
+    dt_br = now.astimezone(tz_sp).strftime("%H:%M:%S")
+    dt_ny = now.astimezone(tz_ny).strftime("%H:%M:%S")
+    dt_ld = now.astimezone(tz_ld).strftime("%H:%M:%S")
 
     with placeholder.container():
         st.markdown(f'<div class="header-container"><h1 class="main-title"><span class="bair-blue">BAIR</span><span class="terminal-gold"> - TERMINAL DOLLAR</span></h1><div class="clock-row"><span class="clock-item">🇧🇷 BRASÍLIA: <span class="br-green">{dt_br}</span></span><span class="clock-item">🇺🇸 NEW YORK: <span class="white-time">{dt_ny}</span></span><span class="clock-item">🇬🇧 LONDON: <span class="white-time">{dt_ld}</span></span></div></div>', unsafe_allow_html=True)
@@ -214,7 +210,7 @@ while True:
                     st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
 
                 with c_side:
-                    # DATA DO PREGÃO ADICIONADA AQUI NO TOPO DA COLUNA DIREITA
+                    # DATA FIXA NO TOPO DA COLUNA DIREITA
                     st.markdown(f'<div style="border: 1px solid #ffffff; color: #ffffff; text-align: center; font-weight: bold; font-family: monospace; padding: 3px; margin-bottom: 5px; text-transform: uppercase; font-size: 11px; background: rgba(255, 255, 255, 0.05);">📅 DATA: {now.astimezone(tz_sp).strftime("%d/%m/%Y")}</div>', unsafe_allow_html=True)
                     
                     st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
@@ -237,6 +233,6 @@ while True:
                     st.markdown(f'<div class="bar-wrapper-dual"><div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div></div><div class="sinal-indicator blink" style="color:{res["seta_cor"]};">{res["seta"]}</div></div>', unsafe_allow_html=True)
                 st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
         else:
-            st.warning("Conectando ao Yahoo Finance... Os cálculos aparecerão assim que o sinal estabilizar.")
+            st.warning("Conectando ao Yahoo Finance...")
 
     time.sleep(5)
