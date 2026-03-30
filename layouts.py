@@ -204,4 +204,4 @@ while True:
                 </div>
             """, unsafe_allow_html=True)
     
-    time.sleep(10)
+    time.sleep(2)
