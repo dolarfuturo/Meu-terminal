@@ -104,13 +104,12 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         max_original, min_original = eixo_dol + x1, eixo_dol - x2
         dolar_medio = ((max_original + min_original) / 2) - v_spreed
         
-        # --- ELÁSTICO 2X E SEGURANÇA (CALIBRADO) ---
+        # --- LÓGICA DO ELÁSTICO X2 + METADE ---
         x_val = abs(eixo_dol - dolar_medio)
         alvo_100 = x_val * 2
-        respiro = alvo_100 / 2 
-        seguranca_corte = alvo_100 + respiro # Troca de Degrau
+        seguranca_corte = alvo_100 + (x_val) # X2 + Metade de X2 (que é X)
         
-        # FÓRMULA ORIGINAL 60/40
+        # Variação ORIGINAL 60/40
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         ewz_ref = st.session_state.market_data.get("EWZ", {}).get('cl', 1)
         v_ewz = ((p_ewz_atual / ewz_ref) - 1) if ewz_ref > 0 else 0
@@ -118,25 +117,24 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         dolfut_arbitrado = eixo_dol * (1 + v_final)
         
         diff = spot_data['at'] - eixo_dol
+        dist_atual = abs(diff)
         p_v, p_r = 0, 0
         seta_txt, seta_cor = "", "#000000"
         
         if alvo_100 > 0:
-            dist_atual = abs(diff)
-            
-            # 1. SE ROMPER O DEGRAU (RECUO 50%)
+            # SE ROMPER O LIMITE DE SEGURANÇA (X2 + METADE)
             if dist_atual > seguranca_corte:
                 p_v = 50 if diff < 0 else 0
                 p_r = 50 if diff > 0 else 0
                 seta_txt, seta_cor = "⌛ AGUARDE EXAUSTÃO", "#ffff00"
             
-            # 2. SE ESTIVER NA ZONA DO ALVO (TRAVA NO 100% SEM RECUAR)
+            # SE ESTIVER DENTRO OU NO ALVO (X2) - FICA 100% PISCANDO
             elif dist_atual >= alvo_100:
                 p_v = 100 if diff < 0 else 0
                 p_r = 100 if diff > 0 else 0
                 seta_txt, seta_cor = ("▲ REGIÃO DE COMPRA" if diff < 0 else "▼ REGIÃO DE VENDA"), ("#00ff88" if diff < 0 else "#ff4d4d")
             
-            # 3. TRABALHO LINEAR DENTRO DOS 2X
+            # CÁLCULO NORMAL PROPORCIONAL ABAIXO DE X2
             else:
                 raw_p = (dist_atual / alvo_100) * 100
                 if diff < 0: p_v = raw_p
