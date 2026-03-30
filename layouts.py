@@ -45,18 +45,7 @@ st.markdown("""
     .br-green { color: #00ff00; }
     .white-time { color: #ffffff; }
     
-    .date-container {
-        position: absolute;
-        bottom: 5px; 
-        right: 0;
-        width: 20%; 
-        text-align: center;
-        font-family: monospace;
-        font-size: 11px;
-        font-weight: bold;
-        color: #ffffff;
-    }
-
+    .date-container { position: absolute; bottom: 5px; right: 0; width: 20%; text-align: center; font-family: monospace; font-size: 11px; font-weight: bold; color: #ffffff; }
     .section-title { border: 1px solid #ffffff; color: #00f2ff; text-align: center; font-weight: bold; font-family: monospace; padding: 3px; margin-bottom: 5px; text-transform: uppercase; font-size: 11px; }
     .main-grid { border: 1.5px solid #ffffff; border-radius: 4px; overflow: hidden; font-family: 'monospace'; background-color: #0d1b22; }
     .terminal-table { width: 100%; border-collapse: collapse; color: #e0e0e0; }
@@ -116,41 +105,47 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         max_original, min_original = eixo_dol + x1, eixo_dol - x2
         dolar_medio = ((max_original + min_original) / 2) - v_spreed
         
-        # --- ELÁSTICO PROPORCIONAL DINÂMICO ---
+        # --- ELÁSTICO 2X E SEGURANÇA ---
         x_val = abs(eixo_dol - dolar_medio)
-        dist_elastico = x_val * 2
-        respiro_gatilho = dist_elastico / 2 
+        alvo_100 = x_val * 2
+        seguranca_corte = alvo_100 + (alvo_100 / 2) # Troca de Degrau
         
-        # RESTAURADA A FÓRMULA ORIGINAL 60/40
+        # FÓRMULA ORIGINAL 60/40
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         ewz_ref = st.session_state.market_data.get("EWZ", {}).get('cl', 1)
         v_ewz = ((p_ewz_atual / ewz_ref) - 1) if ewz_ref > 0 else 0
-        v_final = (v_spot_pct * 0.6) - (v_ewz * 0.4) # FÓRMULA ORIGINAL
+        v_final = (v_spot_pct * 0.6) - (v_ewz * 0.4) 
         dolfut_arbitrado = eixo_dol * (1 + v_final)
         
         diff = spot_data['at'] - eixo_dol
         p_v, p_r = 0, 0
         seta_txt, seta_cor = "", "#000000"
         
-        if dist_elastico > 0:
-            dist_total_rompimento = dist_elastico + respiro_gatilho
+        if alvo_100 > 0:
+            dist_atual = abs(diff)
             
-            if abs(diff) > dist_total_rompimento:
+            # 1. SE ROMPER O DEGRAU (Segurança)
+            if dist_atual > seguranca_corte:
                 p_v = 50 if diff < 0 else 0
                 p_r = 50 if diff > 0 else 0
                 seta_txt, seta_cor = "⌛ AGUARDE EXAUSTÃO", "#ffff00"
+            
+            # 2. SE ESTIVER NA ZONA DO ALVO (Entre 2x e o respiro)
+            elif dist_atual >= alvo_100:
+                p_v = 100 if diff < 0 else 0
+                p_r = 100 if diff > 0 else 0
+                seta_txt, seta_cor = ("▲ REGIÃO DE COMPRA" if diff < 0 else "▼ REGIÃO DE VENDA"), ("#00ff88" if diff < 0 else "#ff4d4d")
+            
+            # 3. TRABALHO NORMAL DENTRO DOS 2X
             else:
-                raw_p = (abs(diff) / dist_elastico) * 100
-                if diff < 0: p_v = min(100, raw_p)
-                else: p_r = min(100, raw_p)
-                
-                if p_v >= 100: seta_txt, seta_cor = "▲ REGIÃO DE COMPRA", "#00ff88"
-                elif p_r >= 100: seta_txt, seta_cor = "▼ REGIÃO DE VENDA", "#ff4d4d"
+                raw_p = (dist_atual / alvo_100) * 100
+                if diff < 0: p_v = raw_p
+                else: p_r = raw_p
 
         return {
             "vivo": eixo_dol * (1 + v_spot_pct), "dolfut_calc": dolfut_arbitrado, "fraja": eixo_dol * (1 + (v_final / 2)), 
             "medio": dolar_medio, "max_fut": eixo_dol + (x_val * 4), "max_med": (eixo_dol + (x_val * 4)) - x_val, 
-            "max_1": eixo_dol + dist_elastico, "min_1": eixo_dol - dist_elastico, 
+            "max_1": eixo_dol + alvo_100, "min_1": eixo_dol - alvo_100, 
             "min_med": (eixo_dol - (x_val * 4)) + x_val, "min_fut": eixo_dol - (x_val * 4), 
             "v_v": v_final * 100, "v_spot": v_spot_pct * 100, "spreed": v_spreed, "p_v": p_v, "p_r": p_r, 
             "seta": seta_txt, "seta_cor": seta_cor, "max_grade": max_original, "min_grade": min_original
@@ -176,7 +171,6 @@ while True:
     tz_sp, tz_ny, tz_ld = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London')
     spot_live, ewz_live = fetch("USDBRL=X"), fetch("EWZ")
     now = datetime.now()
-    
     dt_br, dt_ny, dt_ld = now.astimezone(tz_sp).strftime("%H:%M:%S"), now.astimezone(tz_ny).strftime("%H:%M:%S"), now.astimezone(tz_ld).strftime("%H:%M:%S")
     data_hoje = now.astimezone(tz_sp).strftime("%d/%m/%Y")
 
@@ -200,10 +194,8 @@ while True:
                 with c_main:
                     st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
                     html_table = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
-                    
                     assets = {"DOLFUT": "CALC", "DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
                     ticker_items = []
-                    
                     for lbl, sym in assets.items():
                         if lbl == "DOLFUT":
                             p_val, cl_val, var = res['dolfut_calc']/1000, a_dol/1000, res['v_v']
@@ -213,11 +205,9 @@ while True:
                             d = fetch(sym)
                             if not d: continue
                             f = ".4f" if lbl in ["DOLSPOT", "GBP/USD", "JPY/USD", "EUR/USD"] else ".2f"
-                            p_val = d['at']/1000 if lbl == "DOLSPOT" else d['at']
-                            cl_val = d['cl']/1000 if lbl == "DOLSPOT" else d['cl']
+                            p_val, cl_val = (d['at']/1000, d['cl']/1000) if lbl == "DOLSPOT" else (d['at'], d['cl'])
                             mx, mn = (d['mx']/1000, d['mn']/1000) if lbl == "DOLSPOT" else (d['mx'], d['mn'])
                             var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
-                        
                         l_at = st.session_state.last_p.get(lbl, p_val)
                         cl_at = "f-up" if p_val > l_at else "f-dn" if p_val < l_at else ""
                         st.session_state.last_p[lbl] = p_val
@@ -225,7 +215,6 @@ while True:
                         html_table += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col {cl_at}' style='{bg_style}'>{p_val:{f}}</td><td>{cl_val:{f}}</td><td>{cl_val:{f}}</td><td>{mx:{f}}</td><td>{mn:{f}}</td><td style='color:{("#00ff00" if var >= 0 else "#ff4d4d")}; font-weight:bold;'>{var:+.2f}%</td></tr>"
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                     st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
-
                 with c_side:
                     st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
                     st.markdown(f"""<div class="calc-panel">
