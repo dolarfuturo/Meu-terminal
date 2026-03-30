@@ -128,18 +128,19 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         }
     except: return None
 
-# --- PAINEL ADM COM MEMÓRIA ---
+# --- PAINEL ADM COM MEMÓRIA BLINDADA ---
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
-    # Lê os valores da memória para mostrar na tela
-    input_ewz = st.number_input("AXIS EWZ:", value=st.session_state.a_ewz_mem, format="%.2f")
-    input_dol = st.number_input("AXIS DOLFUT:", value=st.session_state.a_dol_mem, format="%.2f")
+    
+    # Adicionamos 'key' para travar o valor digitado na memória do navegador
+    input_ewz_val = st.number_input("AXIS EWZ:", value=st.session_state.a_ewz_mem, format="%.2f", key="axis_ewz_input")
+    input_dol_val = st.number_input("AXIS DOLFUT:", value=st.session_state.a_dol_mem, format="%.2f", key="axis_dol_input")
     
     if st.button("SALVAR CONFIGURAÇÕES"):
-        st.session_state.a_ewz_mem = input_ewz
-        st.session_state.a_dol_mem = input_dol
+        st.session_state.a_ewz_mem = input_ewz_val
+        st.session_state.a_dol_mem = input_dol_val
         st.success("Salvo com sucesso!")
-        time.sleep(1)
+        time.sleep(0.5)
         st.rerun()
 
 # Atribui os eixos da memória para as variáveis de cálculo
@@ -154,13 +155,11 @@ while True:
     ewz_live = fetch("EWZ")
     now = datetime.now()
     
-    # FORMATO COM DATA: %d/%m
     dt_br = now.astimezone(tz_sp).strftime("%d/%m %H:%M:%S")
     dt_ny = now.astimezone(tz_ny).strftime("%d/%m %H:%M:%S")
     dt_ld = now.astimezone(tz_ld).strftime("%d/%m %H:%M:%S")
 
     with placeholder.container():
-        # CABEÇALHO SEMPRE VISÍVEL
         st.markdown(f'<div class="header-container"><h1 class="main-title"><span class="bair-blue">BAIR</span><span class="terminal-gold"> - TERMINAL DOLLAR</span></h1><div class="clock-row"><span class="clock-item">🇧🇷 BRASÍLIA: <span class="br-green">{dt_br}</span></span><span class="clock-item">🇺🇸 NEW YORK: <span class="white-time">{dt_ny}</span></span><span class="clock-item">🇬🇧 LONDON: <span class="white-time">{dt_ld}</span></span></div></div>', unsafe_allow_html=True)
 
         if spot_live and ewz_live:
