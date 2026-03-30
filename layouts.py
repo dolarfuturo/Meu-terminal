@@ -33,7 +33,7 @@ if 'a_ewz_mem' not in st.session_state:
 if 'a_dol_mem' not in st.session_state:
     st.session_state.a_dol_mem = eixo_dol_salvo
 
-# --- CSS: DESIGN TERMINAL BLACK (MANTIDO EXATAMENTE IGUAL) ---
+# --- CSS: DESIGN TERMINAL BLACK ---
 st.markdown("""
 <style>
     .block-container { padding-top: 1.5rem; padding-bottom: 0rem; }
@@ -42,6 +42,7 @@ st.markdown("""
     .main-title { margin: 0px; line-height: 1.0; font-size: 28px; font-family: monospace; }
     .bair-blue { color: #00BFFF; font-weight: bold; }
     .terminal-gold { color: #FFD700; font-weight: bold; }
+    .date-display { color: #ffffff; font-family: monospace; font-size: 14px; margin-top: 5px; font-weight: bold; opacity: 0.8; }
     .clock-row { display: flex; justify-content: center; gap: 20px; padding: 5px 0; font-weight: bold; font-size: 11px; font-family: monospace; }
     .clock-item { color: #AAA; }
     .br-green { color: #00ff00; }
@@ -74,7 +75,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS --- (MANTIDO IGUAL)
+# --- MOTOR DE DADOS ---
 def fetch(s):
     try:
         t = yf.Ticker(s)
@@ -143,13 +144,11 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         }
     except: return None
 
-# --- PAINEL ADM COM GRAVAÇÃO EM ARQUIVO ---
+# --- PAINEL ADM ---
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
-    
     input_ewz_val = st.number_input("AXIS EWZ:", value=st.session_state.a_ewz_mem, format="%.2f", key="axis_ewz_input")
     input_dol_val = st.number_input("AXIS DOLFUT:", value=st.session_state.a_dol_mem, format="%.2f", key="axis_dol_input")
-    
     if st.button("SALVAR CONFIGURAÇÕES"):
         st.session_state.a_ewz_mem = input_ewz_val
         st.session_state.a_dol_mem = input_dol_val
@@ -169,13 +168,27 @@ while True:
     ewz_live = fetch("EWZ")
     now = datetime.now()
     
-    # RELÓGIOS APENAS COM HORA (LIMPOS)
+    # Horários Limpos
     dt_br = now.astimezone(tz_sp).strftime("%H:%M:%S")
     dt_ny = now.astimezone(tz_ny).strftime("%H:%M:%S")
     dt_ld = now.astimezone(tz_ld).strftime("%H:%M:%S")
+    data_hoje = now.astimezone(tz_sp).strftime("%d/%m/%Y")
 
     with placeholder.container():
-        st.markdown(f'<div class="header-container"><h1 class="main-title"><span class="bair-blue">BAIR</span><span class="terminal-gold"> - TERMINAL DOLLAR</span></h1><div class="clock-row"><span class="clock-item">🇧🇷 BRASÍLIA: <span class="br-green">{dt_br}</span></span><span class="clock-item">🇺🇸 NEW YORK: <span class="white-time">{dt_ny}</span></span><span class="clock-item">🇬🇧 LONDON: <span class="white-time">{dt_ld}</span></span></div></div>', unsafe_allow_html=True)
+        # CABEÇALHO COM A DATA ACIMA DA LINHA AMARELA (DENTRO DO CONTAINER)
+        st.markdown(f'''
+            <div class="header-container">
+                <h1 class="main-title">
+                    <span class="bair-blue">BAIR</span><span class="terminal-gold"> - TERMINAL DOLLAR</span>
+                </h1>
+                <div class="date-display">PREGÃO: {data_hoje}</div>
+                <div class="clock-row">
+                    <span class="clock-item">🇧🇷 BRASÍLIA: <span class="br-green">{dt_br}</span></span>
+                    <span class="clock-item">🇺🇸 NEW YORK: <span class="white-time">{dt_ny}</span></span>
+                    <span class="clock-item">🇬🇧 LONDON: <span class="white-time">{dt_ld}</span></span>
+                </div>
+            </div>
+        ''', unsafe_allow_html=True)
 
         if spot_live and ewz_live:
             res = calcular_k97_total(a_ewz, ewz_live['at'], ewz_live['mx'], ewz_live['mn'], a_dol, spot_live)
@@ -210,9 +223,6 @@ while True:
                     st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
 
                 with c_side:
-                    # DATA FIXA NO TOPO DA COLUNA DIREITA
-                    st.markdown(f'<div style="border: 1px solid #ffffff; color: #ffffff; text-align: center; font-weight: bold; font-family: monospace; padding: 3px; margin-bottom: 5px; text-transform: uppercase; font-size: 11px; background: rgba(255, 255, 255, 0.05);">📅 DATA: {now.astimezone(tz_sp).strftime("%d/%m/%Y")}</div>', unsafe_allow_html=True)
-                    
                     st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
                     st.markdown(f"""<div class="calc-panel">
                         <div class="calc-row" style="color:#ff4d4d;"><span>MAX FUT</span> <span>{res['max_fut']:.2f}</span></div>
