@@ -102,29 +102,31 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         if not spot_data or p_ewz_atual == 0: return None
         amp = spot_data['mx'] - spot_data['mn']
         v_spreed = amp / 8
-        x1, x2 = amp * 0.75, amp * 0.25
-        max_original, min_original = eixo_dol + x1, eixo_dol - x2
+        folga = v_spreed / 2 # A sua ideia da "Metade do Spread" como filtro
         
-        # 1. MÉDIA CALCULADA (Original - Para Grade e Painel)
+        # 1. MÉDIA CALCULADA (Para Grade e Painel - Base 75/25)
+        max_original, min_original = eixo_dol + (amp * 0.75), eixo_dol - (amp * 0.25)
         dolar_medio = ((max_original + min_original) / 2) - v_spreed
         elastico_calculado = abs(eixo_dol - dolar_medio)
         if elastico_calculado == 0: elastico_calculado = 1.0
         
-        # 2. CALIBRAÇÃO DA BARRA (MÉDIA PURA - APENAS PARA A BARRA)
+        # 2. CALIBRAÇÃO DA BARRA (MÉDIA PURA + FOLGA DO SPREAD)
         media_pura_barra = (spot_data['mx'] + spot_data['mn']) / 2
-        dist_base_barra = abs(eixo_dol - media_pura_barra)
-        diff = spot_data['at'] - eixo_dol
         
+        # O elástico da barra agora "estica" com a folga do spread para não dar sinal antes
+        dist_base_barra = abs(eixo_dol - media_pura_barra) + folga
+        
+        diff = spot_data['at'] - eixo_dol
         p_v, p_r = 0, 0
-        seta_txt, seta_cor = "", "#000000"
-        piscando = False
+        seta_txt, seta_cor, piscando = "", "#000000", False
         
         if dist_base_barra > 0:
-            # Distância linear baseada no dobro da distância base (conforme análise)
+            # Mantendo a lógica de dobro da distância para preenchimento da barra 0-100%
             calculo_pct = (abs(diff) / (dist_base_barra * 2)) * 100
             if diff < 0: p_v = min(100, calculo_pct)
             else: p_r = min(100, calculo_pct)
         
+        # Alertas de Exaustão (Sinal 100%)
         if p_v >= 100: seta_txt, seta_cor, piscando = "▲ REGIÃO DE COMPRA", "#00ff88", True
         elif p_r >= 100: seta_txt, seta_cor, piscando = "▼ REGIÃO DE VENDA", "#ff4d4d", True
 
