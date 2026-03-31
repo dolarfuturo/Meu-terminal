@@ -104,62 +104,52 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         v_spreed = amp / 8
         x1, x2 = amp * 0.75, amp * 0.25
         max_original, min_original = eixo_dol + x1, eixo_dol - x2
-        
-        # MÉDIA CALCULADA (A BASE DE TUDO)
         dolar_medio = ((max_original + min_original) / 2) - v_spreed
         
-        # RÉGUA DA BARRA
-        x_val = abs(eixo_dol - dolar_medio)
-        dist_base_barra = x_val
+        # --- DEFINIÇÃO DO ELÁSTICO ---
+        elastico = abs(eixo_dol - dolar_medio)
+        if elastico == 0: elastico = 1.0
         
-        # GRADE LATERAL
-        m_fut, m_med, m_1 = eixo_dol + (x_val * 4), (eixo_dol + (x_val * 4)) - x_val, eixo_dol + (x_val * 2)
-        n_1, n_med, n_fut = eixo_dol - (x_val * 2), (eixo_dol - (x_val * 4)) + x_val, eixo_dol - (x_val * 4)
+        diff = spot_data['at'] - eixo_dol
+        dist_atual = abs(diff)
         
+        # --- LÓGICA DA BARRA CÍCLICA ---
+        ciclo = int(dist_atual / elastico)
+        resto = dist_atual % elastico
+        
+        p_v, p_r, piscando = 0, 0, False
+        seta_txt, seta_cor = "", "#000000"
+        
+        # Ponto de Exaustão (100% e Pisca)
+        # Usamos uma pequena tolerância (0.5% do elástico) para detectar o topo
+        if resto >= (elastico * 0.995) or (ciclo >= 1 and resto <= (elastico * 0.005)):
+            porcentagem_calc = 100.0
+            piscando = True
+            if diff < 0: seta_txt, seta_cor = "▲ EXAUSTÃO COMPRA", "#00ff88"
+            else: seta_txt, seta_cor = "▼ EXAUSTÃO VENDA", "#ff4d4d"
+        else:
+            # Movimento móvel: Se estiver no ciclo 0, vai de 0-100. 
+            # Se romper o primeiro elástico (ciclo >= 1), recua para 80 e segue até 100 do próximo ciclo.
+            if ciclo >= 1:
+                porcentagem_calc = 80 + ((resto / elastico) * 20)
+            else:
+                porcentagem_calc = (resto / elastico) * 100
+        
+        if diff < 0: p_v = min(porcentagem_calc, 100.0)
+        else: p_r = min(porcentagem_calc, 100.0)
+
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         ewz_ref = st.session_state.market_data.get("EWZ", {}).get('cl', 1)
         v_ewz = ((p_ewz_atual / ewz_ref) - 1) if ewz_ref > 0 else 0
         v_final = (v_spot_pct * 0.6) - (v_ewz * 0.4)
         
-        diff = spot_data['at'] - eixo_dol
-        dist_atual = abs(diff)
-        
-        # --- LÓGICA DA BARRA AJUSTADA ---
-        limite_100 = dist_base_barra * 2
-        limite_rompimento = limite_100 * 1.5
-        
-        p_v, p_r, piscando = 0, 0, False
-        
-        if dist_base_barra > 0:
-            if dist_atual > limite_rompimento:
-                # ROMPEU: Recua para 80% e desliga o PISCA
-                if diff < 0: p_v = 80
-                else: p_r = 80
-                piscando = False
-            elif dist_atual >= limite_100:
-                # EXAUSTÃO: Trava 100% e PISCA
-                if diff < 0: p_v = 100
-                else: p_r = 100
-                piscando = True
-            else:
-                # NORMAL: Proporcional e Sólido
-                calc_proporcional = (dist_atual / limite_100) * 100
-                if diff < 0: p_v = calc_proporcional
-                else: p_r = calc_proporcional
-                piscando = False
-
-        seta_txt, seta_cor = "", "#000000"
-        if dist_atual >= limite_100:
-            if diff < 0: seta_txt, seta_cor = "▲ REGIÃO DE COMPRA", "#00ff88"
-            else: seta_txt, seta_cor = "▼ REGIÃO DE VENDA", "#ff4d4d"
-
         return {
             "vivo": eixo_dol * (1 + v_spot_pct), 
             "dolfut_calc": eixo_dol * (1 + v_final), 
             "fraja": eixo_dol * (1 + (v_final / 2)), 
             "medio": dolar_medio, 
-            "max_fut": m_fut, "max_med": m_med, "max_1": m_1, 
-            "min_1": n_1, "min_med": n_med, "min_fut": n_fut, 
+            "max_fut": eixo_dol + (elastico * 4), "max_med": eixo_dol + (elastico * 3), "max_1": eixo_dol + (elastico * 2), 
+            "min_1": eixo_dol - (elastico * 2), "min_med": eixo_dol - (elastico * 3), "min_fut": eixo_dol - (elastico * 4), 
             "v_v": v_final * 100, "v_spot": v_spot_pct * 100, 
             "spreed": v_spreed, "p_v": p_v, "p_r": p_r, 
             "seta": seta_txt, "seta_cor": seta_cor, "piscando": piscando, 
@@ -256,7 +246,7 @@ while True:
                     
                     st.markdown(f'''
                         <div class="bar-wrapper-dual">
-                            <div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div>
+                            <div class="force-scale"><span>100%</span><span>80%</span><span>0%</span><span>80%</span><span>100%</span></div>
                             <div class="force-container-dual">
                                 <div class="center-line"></div>
                                 <div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div>
