@@ -105,40 +105,43 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         x1, x2 = amp * 0.75, amp * 0.25
         max_original, min_original = eixo_dol + x1, eixo_dol - x2
         
-        # MÉDIA CALCULADA (Para os blocos de cálculo e grade)
+        # 1. MÉDIA CALCULADA (Para a Grade de Preços e Cálculos Laterais)
         dolar_medio = ((max_original + min_original) / 2) - v_spreed
+        elastico_calculado = abs(eixo_dol - dolar_medio)
+        if elastico_calculado == 0: elastico_calculado = 1.0
         
-        # --- DEFINIÇÃO DO ELÁSTICO (MÉDIA PURA) ---
+        # 2. MÉDIA PURA (Apenas para o movimento cíclico da BARRA)
         media_pura = (max_original + min_original) / 2
-        elastico = abs(eixo_dol - media_pura)
-        if elastico == 0: elastico = 1.0
+        elastico_barra = abs(eixo_dol - media_pura)
+        if elastico_barra == 0: elastico_barra = 1.0
         
         diff = spot_data['at'] - eixo_dol
         dist_atual = abs(diff)
         
         # --- LÓGICA DA BARRA CÍCLICA ---
-        ciclo = int(dist_atual / elastico)
-        resto = dist_atual % elastico
+        ciclo = int(dist_atual / elastico_barra)
+        resto = dist_atual % elastico_barra
         
         p_v, p_r, piscando = 0, 0, False
         seta_txt, seta_cor = "", "#000000"
         
-        # Ponto de Exaustão (100% e Pisca)
-        if resto >= (elastico * 0.995) or (ciclo >= 1 and resto <= (elastico * 0.005)):
+        # Detecção de Exaustão (100% e Pisca nos múltiplos do elástico)
+        if resto >= (elastico_barra * 0.995) or (ciclo >= 1 and resto <= (elastico_barra * 0.005)):
             porcentagem_calc = 100.0
             piscando = True
             if diff < 0: seta_txt, seta_cor = "▲ EXAUSTÃO COMPRA", "#00ff88"
             else: seta_txt, seta_cor = "▼ EXAUSTÃO VENDA", "#ff4d4d"
         else:
-            # Movimento móvel (0-100 ou 80-100)
+            # Movimento móvel: 0-100 no Ciclo 0; 80-100 nos Ciclos de Rompimento
             if ciclo >= 1:
-                porcentagem_calc = 80 + ((resto / elastico) * 20)
+                porcentagem_calc = 80 + ((resto / elastico_barra) * 20)
             else:
-                porcentagem_calc = (resto / elastico) * 100
+                porcentagem_calc = (resto / elastico_barra) * 100
         
         if diff < 0: p_v = min(porcentagem_calc, 100.0)
         else: p_r = min(porcentagem_calc, 100.0)
 
+        # --- CÁLCULOS DE VARIAÇÃO ---
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         ewz_ref = st.session_state.market_data.get("EWZ", {}).get('cl', 1)
         v_ewz = ((p_ewz_atual / ewz_ref) - 1) if ewz_ref > 0 else 0
@@ -149,8 +152,13 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
             "dolfut_calc": eixo_dol * (1 + v_final), 
             "fraja": eixo_dol * (1 + (v_final / 2)), 
             "medio": dolar_medio, 
-            "max_fut": eixo_dol + (elastico * 4), "max_med": eixo_dol + (elastico * 3), "max_1": eixo_dol + (elastico * 2), 
-            "min_1": eixo_dol - (elastico * 2), "min_med": eixo_dol - (elastico * 3), "min_fut": eixo_dol - (elastico * 4), 
+            # Grade baseada na Média Calculada original
+            "max_fut": eixo_dol + (elastico_calculado * 4), 
+            "max_med": eixo_dol + (elastico_calculado * 3), 
+            "max_1": eixo_dol + (elastico_calculado * 2), 
+            "min_1": eixo_dol - (elastico_calculado * 2), 
+            "min_med": eixo_dol - (elastico_calculado * 3), 
+            "min_fut": eixo_dol - (elastico_calculado * 4), 
             "v_v": v_final * 100, "v_spot": v_spot_pct * 100, 
             "spreed": v_spreed, "p_v": p_v, "p_r": p_r, 
             "seta": seta_txt, "seta_cor": seta_cor, "piscando": piscando, 
