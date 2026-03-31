@@ -102,7 +102,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         if not spot_data or p_ewz_atual == 0: return None
         amp = spot_data['mx'] - spot_data['mn']
         v_spreed = amp / 8
-        x1, x2 = amp * 0.77, amp * 0.23
+        x1, x2 = amp * 0.75, amp * 0.25
         max_original, min_original = eixo_dol + x1, eixo_dol - x2
         
         # MÉDIA CALCULADA (A BASE DE TUDO)
