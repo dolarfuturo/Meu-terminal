@@ -105,41 +105,31 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         x1, x2 = amp * 0.75, amp * 0.25
         max_original, min_original = eixo_dol + x1, eixo_dol - x2
         
-        # 1. MÉDIA CALCULADA (Para a Grade de Preços e Cálculos Laterais)
-        dolar_medio = ((max_original + min_original) / 2) - v_spreed
-        elastico_calculado = abs(eixo_dol - dolar_medio)
+        # 1. MÉDIA CALCULADA (Para a Grade de Preços)
+        dolar_medio_calc = ((max_original + min_original) / 2) - v_spreed
+        elastico_calculado = abs(eixo_dol - dolar_medio_calc)
         if elastico_calculado == 0: elastico_calculado = 1.0
         
-        # 2. MÉDIA PURA (Apenas para o movimento cíclico da BARRA)
-        media_pura = (max_original + min_original) / 2
-        elastico_barra = abs(eixo_dol - media_pura)
-        if elastico_barra == 0: elastico_barra = 1.0
-        
+        # 2. CALIBRAÇÃO DA BARRA (CONFORME CÓDIGO DE ANÁLISE)
+        media_pura = (spot_data['mx'] + spot_data['mn']) / 2
+        dist_base = abs(eixo_dol - media_pura)
         diff = spot_data['at'] - eixo_dol
-        dist_atual = abs(diff)
         
-        # --- LÓGICA DA BARRA CÍCLICA ---
-        ciclo = int(dist_atual / elastico_barra)
-        resto = dist_atual % elastico_barra
-        
-        p_v, p_r, piscando = 0, 0, False
+        p_v, p_r = 0, 0
         seta_txt, seta_cor = "", "#000000"
+        piscando = False
         
-        # Detecção de Exaustão (100% e Pisca nos múltiplos do elástico)
-        if resto >= (elastico_barra * 0.995) or (ciclo >= 1 and resto <= (elastico_barra * 0.005)):
-            porcentagem_calc = 100.0
-            piscando = True
-            if diff < 0: seta_txt, seta_cor = "▲ EXAUSTÃO COMPRA", "#00ff88"
-            else: seta_txt, seta_cor = "▼ EXAUSTÃO VENDA", "#ff4d4d"
-        else:
-            # Movimento móvel: 0-100 no Ciclo 0; 80-100 nos Ciclos de Rompimento
-            if ciclo >= 1:
-                porcentagem_calc = 80 + ((resto / elastico_barra) * 20)
-            else:
-                porcentagem_calc = (resto / elastico_barra) * 100
+        if dist_base > 0:
+            calculo_pct = (abs(diff) / (dist_base * 2)) * 100
+            if diff < 0: 
+                p_v = min(100, calculo_pct)
+            else: 
+                p_r = min(100, calculo_pct)
         
-        if diff < 0: p_v = min(porcentagem_calc, 100.0)
-        else: p_r = min(porcentagem_calc, 100.0)
+        if p_v >= 100: 
+            seta_txt, seta_cor, piscando = "▲ REGIÃO DE COMPRA", "#00ff88", True
+        elif p_r >= 100: 
+            seta_txt, seta_cor, piscando = "▼ REGIÃO DE VENDA", "#ff4d4d", True
 
         # --- CÁLCULOS DE VARIAÇÃO ---
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
@@ -151,8 +141,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
             "vivo": eixo_dol * (1 + v_spot_pct), 
             "dolfut_calc": eixo_dol * (1 + v_final), 
             "fraja": eixo_dol * (1 + (v_final / 2)), 
-            "medio": dolar_medio, 
-            # Grade baseada na Média Calculada original
+            "medio": media_pura, 
             "max_fut": eixo_dol + (elastico_calculado * 4), 
             "max_med": eixo_dol + (elastico_calculado * 3), 
             "max_1": eixo_dol + (elastico_calculado * 2), 
@@ -255,7 +244,7 @@ while True:
                     
                     st.markdown(f'''
                         <div class="bar-wrapper-dual">
-                            <div class="force-scale"><span>100%</span><span>80%</span><span>0%</span><span>80%</span><span>100%</span></div>
+                            <div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div>
                             <div class="force-container-dual">
                                 <div class="center-line"></div>
                                 <div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div>
