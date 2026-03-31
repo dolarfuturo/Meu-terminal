@@ -108,7 +108,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         # MÉDIA CALCULADA (A BASE DE TUDO)
         dolar_medio = ((max_original + min_original) / 2) - v_spreed
         
-        # RÉGUA DA BARRA USA SUA MÉDIA CALCULADA
+        # RÉGUA DA BARRA
         x_val = abs(eixo_dol - dolar_medio)
         dist_base_barra = x_val
         
@@ -124,6 +124,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         diff = spot_data['at'] - eixo_dol
         dist_atual = abs(diff)
         
+        # --- LÓGICA DA BARRA AJUSTADA ---
         limite_100 = dist_base_barra * 2
         limite_rompimento = limite_100 * 1.5
         
@@ -131,14 +132,17 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         
         if dist_base_barra > 0:
             if dist_atual > limite_rompimento:
-                if diff < 0: p_v = 50
-                else: p_r = 50
+                # ROMPEU: Recua para 80% e desliga o PISCA
+                if diff < 0: p_v = 80
+                else: p_r = 80
                 piscando = False
             elif dist_atual >= limite_100:
+                # EXAUSTÃO: Trava 100% e PISCA
                 if diff < 0: p_v = 100
                 else: p_r = 100
                 piscando = True
             else:
+                # NORMAL: Proporcional e Sólido
                 calc_proporcional = (dist_atual / limite_100) * 100
                 if diff < 0: p_v = calc_proporcional
                 else: p_r = calc_proporcional
