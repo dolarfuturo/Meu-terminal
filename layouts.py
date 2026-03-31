@@ -104,7 +104,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         v_spreed = amp / 8
         folga = v_spreed / 2 # A sua ideia da "Metade do Spread" como filtro
         
-        # 1. MÉDIA CALCULADA (Para Grade e Painel - Base 77/23)
+        # 1. MÉDIA CALCULADA (Para Grade e Painel - Base 75/25)
         max_original, min_original = eixo_dol + (amp * 0.77), eixo_dol - (amp * 0.23)
         dolar_medio = ((max_original + min_original) / 2) - v_spreed
         elastico_calculado = abs(eixo_dol - dolar_medio)
