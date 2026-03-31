@@ -104,10 +104,13 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         v_spreed = amp / 8
         x1, x2 = amp * 0.75, amp * 0.25
         max_original, min_original = eixo_dol + x1, eixo_dol - x2
+        
+        # MÉDIA CALCULADA (Para os blocos de cálculo e grade)
         dolar_medio = ((max_original + min_original) / 2) - v_spreed
         
-        # --- DEFINIÇÃO DO ELÁSTICO ---
-        elastico = abs(eixo_dol - dolar_medio)
+        # --- DEFINIÇÃO DO ELÁSTICO (MÉDIA PURA) ---
+        media_pura = (max_original + min_original) / 2
+        elastico = abs(eixo_dol - media_pura)
         if elastico == 0: elastico = 1.0
         
         diff = spot_data['at'] - eixo_dol
@@ -121,15 +124,13 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         seta_txt, seta_cor = "", "#000000"
         
         # Ponto de Exaustão (100% e Pisca)
-        # Usamos uma pequena tolerância (0.5% do elástico) para detectar o topo
         if resto >= (elastico * 0.995) or (ciclo >= 1 and resto <= (elastico * 0.005)):
             porcentagem_calc = 100.0
             piscando = True
             if diff < 0: seta_txt, seta_cor = "▲ EXAUSTÃO COMPRA", "#00ff88"
             else: seta_txt, seta_cor = "▼ EXAUSTÃO VENDA", "#ff4d4d"
         else:
-            # Movimento móvel: Se estiver no ciclo 0, vai de 0-100. 
-            # Se romper o primeiro elástico (ciclo >= 1), recua para 80 e segue até 100 do próximo ciclo.
+            # Movimento móvel (0-100 ou 80-100)
             if ciclo >= 1:
                 porcentagem_calc = 80 + ((resto / elastico) * 20)
             else:
