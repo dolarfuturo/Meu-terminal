@@ -15,11 +15,9 @@ def salvar_eixos(ewz, dol):
 
 def carregar_eixos():
     if os.path.exists("config_axis.txt"):
-        try:
-            with open("config_axis.txt", "r") as f:
-                dados = f.read().split(",")
-                return float(dados[0]), float(dados[1])
-        except: pass
+        with open("config_axis.txt", "r") as f:
+            dados = f.read().split(",")
+            return float(dados[0]), float(dados[1])
     return 37.85, 5264.50
 
 eixo_ewz_salvo, eixo_dol_salvo = carregar_eixos()
@@ -46,7 +44,20 @@ st.markdown("""
     .clock-item { color: #AAA; }
     .br-green { color: #00ff00; }
     .white-time { color: #ffffff; }
-    .date-container { position: absolute; bottom: 5px; right: 0; width: 20%; text-align: center; font-family: monospace; font-size: 11px; font-weight: bold; color: #ffffff; }
+    
+    /* CSS PARA POSICIONAR A DATA ACIMA DOS CALCULOS */
+    .date-container {
+        position: absolute;
+        bottom: 5px; 
+        right: 0;
+        width: 20%; /* Alinhado com a proporção da coluna de cálculos (0.8 de 4.0) */
+        text-align: center;
+        font-family: monospace;
+        font-size: 11px;
+        font-weight: bold;
+        color: #ffffff;
+    }
+
     .section-title { border: 1px solid #ffffff; color: #00f2ff; text-align: center; font-weight: bold; font-family: monospace; padding: 3px; margin-bottom: 5px; text-transform: uppercase; font-size: 11px; }
     .main-grid { border: 1.5px solid #ffffff; border-radius: 4px; overflow: hidden; font-family: 'monospace'; background-color: #0d1b22; }
     .terminal-table { width: 100%; border-collapse: collapse; color: #e0e0e0; }
@@ -102,68 +113,32 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         if not spot_data or p_ewz_atual == 0: return None
         amp = spot_data['mx'] - spot_data['mn']
         v_spreed = amp / 8
-        x1, x2 = amp * 0.75, amp * 0.25
+        x1, x2 = amp * 0.77, amp * 0.23
         max_original, min_original = eixo_dol + x1, eixo_dol - x2
-        
-        # MÉDIA CALCULADA (A BASE DE TUDO)
         dolar_medio = ((max_original + min_original) / 2) - v_spreed
-        
-        # RÉGUA DA BARRA USA SUA MÉDIA CALCULADA
+        media_pura_spot = (spot_data['mx'] + spot_data['mn']) / 2
         x_val = abs(eixo_dol - dolar_medio)
-        dist_base_barra = x_val
-        
-        # GRADE LATERAL
         m_fut, m_med, m_1 = eixo_dol + (x_val * 4), (eixo_dol + (x_val * 4)) - x_val, eixo_dol + (x_val * 2)
         n_1, n_med, n_fut = eixo_dol - (x_val * 2), (eixo_dol - (x_val * 4)) + x_val, eixo_dol - (x_val * 4)
-        
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
+        dolb3 = eixo_dol * (1 + v_spot_pct)
         ewz_ref = st.session_state.market_data.get("EWZ", {}).get('cl', 1)
         v_ewz = ((p_ewz_atual / ewz_ref) - 1) if ewz_ref > 0 else 0
         v_final = (v_spot_pct * 0.6) - (v_ewz * 0.4)
-        
+        dolfut_arbitrado = eixo_dol * (1 + v_final)
+        dist_base_barra = abs(eixo_dol - media_pura_spot)
         diff = spot_data['at'] - eixo_dol
-        dist_atual = abs(diff)
-        
-        limite_100 = dist_base_barra * 2
-        limite_rompimento = limite_100 * 1.5
-        
-        p_v, p_r, piscando = 0, 0, False
-        
+        p_v, p_r = 0, 0
         if dist_base_barra > 0:
-            if dist_atual > limite_rompimento:
-                if diff < 0: p_v = 50
-                else: p_r = 50
-                piscando = False
-            elif dist_atual >= limite_100:
-                if diff < 0: p_v = 100
-                else: p_r = 100
-                piscando = True
-            else:
-                calc_proporcional = (dist_atual / limite_100) * 100
-                if diff < 0: p_v = calc_proporcional
-                else: p_r = calc_proporcional
-                piscando = False
-
+            if diff < 0: p_v = min(100, (abs(diff)/(dist_base_barra*2))*100)
+            else: p_r = min(100, (abs(diff)/(dist_base_barra*2))*100)
         seta_txt, seta_cor = "", "#000000"
-        if dist_atual >= limite_100:
-            if diff < 0: seta_txt, seta_cor = "▲ REGIÃO DE COMPRA", "#00ff88"
-            else: seta_txt, seta_cor = "▼ REGIÃO DE VENDA", "#ff4d4d"
-
-        return {
-            "vivo": eixo_dol * (1 + v_spot_pct), 
-            "dolfut_calc": eixo_dol * (1 + v_final), 
-            "fraja": eixo_dol * (1 + (v_final / 2)), 
-            "medio": dolar_medio, 
-            "max_fut": m_fut, "max_med": m_med, "max_1": m_1, 
-            "min_1": n_1, "min_med": n_med, "min_fut": n_fut, 
-            "v_v": v_final * 100, "v_spot": v_spot_pct * 100, 
-            "spreed": v_spreed, "p_v": p_v, "p_r": p_r, 
-            "seta": seta_txt, "seta_cor": seta_cor, "piscando": piscando, 
-            "max_grade": max_original, "min_grade": min_original
-        }
+        if p_v >= 100: seta_txt, seta_cor = "▲ REGIÃO DE COMPRA", "#00ff88"
+        elif p_r >= 100: seta_txt, seta_cor = "▼ REGIÃO DE VENDA", "#ff4d4d"
+        return {"vivo": dolb3, "dolfut_calc": dolfut_arbitrado, "fraja": eixo_dol * (1 + (v_final / 2)), "medio": dolar_medio, "max_fut": m_fut, "max_med": m_med, "max_1": m_1, "min_1": n_1, "min_med": n_med, "min_fut": n_fut, "v_v": v_final * 100, "v_spot": v_spot_pct * 100, "spreed": v_spreed, "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor, "max_grade": max_original, "min_grade": min_original}
     except: return None
 
-# --- UI E LOOP ---
+# --- PAINEL ADM ---
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
     input_ewz_val = st.number_input("AXIS EWZ:", value=st.session_state.a_ewz_mem, format="%.2f", key="axis_ewz_input")
@@ -182,15 +157,21 @@ while True:
     tz_sp, tz_ny, tz_ld = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London')
     spot_live, ewz_live = fetch("USDBRL=X"), fetch("EWZ")
     now = datetime.now()
+    
+    # FORMATO APENAS HORA PARA OS RELÓGIOS
     dt_br = now.astimezone(tz_sp).strftime("%H:%M:%S")
     dt_ny = now.astimezone(tz_ny).strftime("%H:%M:%S")
     dt_ld = now.astimezone(tz_ld).strftime("%H:%M:%S")
+    # DATA APENAS PARA O BLOCO DE CÁLCULOS
     data_hoje = now.astimezone(tz_sp).strftime("%d/%m/%Y")
 
     with placeholder.container():
+        # CABEÇALHO: Relógios no centro | Data isolada na direita
         st.markdown(f'''
             <div class="header-container">
-                <h1 class="main-title"><span class="bair-blue">BAIR</span><span class="terminal-gold"> - TERMINAL DOLLAR</span></h1>
+                <h1 class="main-title">
+                    <span class="bair-blue">BAIR</span><span class="terminal-gold"> - TERMINAL DOLLAR</span>
+                </h1>
                 <div class="clock-row">
                     <span class="clock-item">🇧🇷 BRASÍLIA: <span class="br-green">{dt_br}</span></span>
                     <span class="clock-item">🇺🇸 NEW YORK: <span class="white-time">{dt_ny}</span></span>
@@ -247,20 +228,9 @@ while True:
                         <div class="calc-row"><span style="color:#d4a017;">PREÇO JUSTO</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div>
                         <div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div>
                     </div>""", unsafe_allow_html=True)
-                    
-                    classe_piscar = "blink" if res["piscando"] else ""
-                    
-                    st.markdown(f'''
-                        <div class="bar-wrapper-dual">
-                            <div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div>
-                            <div class="force-container-dual">
-                                <div class="center-line"></div>
-                                <div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div>
-                                <div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div>
-                            </div>
-                            <div class="sinal-indicator {classe_piscar}" style="color:{res["seta_cor"]};">{res["seta"]}</div>
-                        </div>''', unsafe_allow_html=True)
+                    st.markdown(f'<div class="bar-wrapper-dual"><div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div></div><div class="sinal-indicator blink" style="color:{res["seta_cor"]};">{res["seta"]}</div></div>', unsafe_allow_html=True)
                 st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
         else:
             st.warning("Conectando...")
+
     time.sleep(5)
