@@ -20,7 +20,7 @@ def carregar_eixos():
                 dados = f.read().split(",")
                 return float(dados[0]), float(dados[1])
         except: pass
-    return 1.0, 5264.50  # Default: Divisor 1.0 (X1) e Axis Dol
+    return 1.0, 5264.50 # Default: Divisor 1.0
 
 div_spreed_salvo, eixo_dol_salvo = carregar_eixos()
 
@@ -33,7 +33,7 @@ if 'div_spreed_mem' not in st.session_state:
 if 'a_dol_mem' not in st.session_state:
     st.session_state.a_dol_mem = eixo_dol_salvo
 
-# --- CSS: DESIGN TERMINAL ---
+# --- CSS: DESIGN TERMINAL (ORIGINAL MANTIDO) ---
 st.markdown("""
 <style>
     .block-container { padding-top: 1.5rem; padding-bottom: 0rem; }
@@ -109,7 +109,7 @@ def calcular_k97_total(div_spreed, eixo_dol, spot_data):
         seta_txt, seta_cor, piscando = "", "#000000", False
         
         if dist_base_barra > 0:
-            # O AXIS EWZ virou div_spreed. Se for 1, a barra enche com 1 elástico.
+            # APLICAÇÃO DO DIVISOR SPREED NO CÁLCULO DA FORÇA
             calculo_pct = (abs(diff) / (dist_base_barra * div_spreed)) * 100
             if diff < 0: p_v = min(100, calculo_pct)
             else: p_r = min(100, calculo_pct)
@@ -142,10 +142,9 @@ def calcular_k97_total(div_spreed, eixo_dol, spot_data):
 # --- UI E LOOP ---
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
-    # NOVO NOME CONFORME SOLICITADO
+    # SUBSTÍTUIÇÃO DO EWZ PELO DIVISOR SPREED
     input_div_val = st.number_input("DIVISOR SPREED:", value=st.session_state.div_spreed_mem, format="%.1f", step=0.5)
     input_dol_val = st.number_input("AXIS DOLFUT:", value=st.session_state.a_dol_mem, format="%.2f")
-    
     if st.button("SALVAR CONFIGURAÇÕES"):
         st.session_state.div_spreed_mem, st.session_state.a_dol_mem = input_div_val, input_dol_val
         salvar_eixos(input_div_val, input_dol_val)
@@ -172,8 +171,11 @@ while True:
                 c_main, c_side = st.columns([3.2, 0.8])
                 with c_main:
                     st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
-                    # (Grade segue a mesma lógica de tabela do seu original)
-                    st.write("---") # Exemplo simplificado para foco na lógica da barra
+                    html_table = f"""<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>
+                    <tr><td class='asset-name'>DOLSPOT</td><td class='price-col'>{(spot_live['at']/1000):.4f}</td><td>{(spot_live['cl']/1000):.4f}</td><td>{(spot_live['op']/1000):.4f}</td><td>{(spot_live['mx']/1000):.4f}</td><td>{(spot_live['mn']/1000):.4f}</td><td style='color:#00ff00; font-weight:bold;'>{res['v_spot']:+.2f}%</td></tr>
+                    </tbody></table></div>"""
+                    st.markdown(html_table, unsafe_allow_html=True)
+
                 with c_side:
                     st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
                     st.markdown(f'''<div class="calc-panel">
@@ -192,11 +194,10 @@ while True:
                     
                     st.markdown(f'''<div class="bar-wrapper-dual">
                         <div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div>
-                        <div class="force-container-dual">
-                            <div class="center-line"></div>
-                            <div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div>
-                            <div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div>
-                        </div>
+                        <div class="force-container-dual"><div class="center-line"></div>
+                        <div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div>
+                        <div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div></div>
                         <div class="sinal-indicator {"blink" if res["piscando"] else ""}" style="color:{res["seta_cor"]};">{res["seta"]}</div>
                     </div>''', unsafe_allow_html=True)
-        time.sleep(5)
+        else: st.warning("AGUARDE...")
+    time.sleep(5)
