@@ -57,8 +57,10 @@ st.markdown("""
     .f-up { background-color: #00ff00aa !important; }
     .f-dn { background-color: #ff0000aa !important; }
     .calc-panel { border: 1.5px solid #ffffff; border-radius: 4px; padding: 4px; background: #0a141a; font-family: monospace; margin-bottom: 4px; }
-    .calc-row { display: flex; justify-content: space-between; padding: 3px 6px; border-bottom: 1px solid #444; font-size: 11px; font-weight: bold; align-items: center; }
-    .row-med { font-size: 10px !important; color: #ffffff; opacity: 0.9; padding: 2px 6px !important; }
+    /* AJUSTE DE FONTE PARA CABER: De 11px para 10px nas linhas gerais */
+    .calc-row { display: flex; justify-content: space-between; padding: 3px 6px; border-bottom: 1px solid #444; font-size: 10px; font-weight: bold; align-items: center; background-color: transparent !important; }
+    /* AJUSTE DE FONTE PARA CABER: De 10px para 9px nas linhas de média */
+    .row-med { font-size: 9px !important; color: #ffffff; opacity: 0.9; padding: 2px 6px !important; }
     .bar-wrapper-dual { background: #0a141a; padding: 8px 8px 4px 8px; border: 1.5px solid #ffffff; border-radius: 4px; text-align: center; position: relative; }
     .force-scale { display: flex; justify-content: space-between; font-size: 9px; font-family: monospace; color: #AAA; margin-bottom: 2px; padding: 0 2px; }
     .force-container-dual { background: #111; height: 12px; width: 100%; border-radius: 2px; position: relative; overflow: hidden; display: flex; border: 1px solid #444; margin: 2px 0; }
@@ -72,6 +74,9 @@ st.markdown("""
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 1.5px solid #ffffff; border-bottom: 1.5px solid #ffffff; padding: 5px 0; overflow: hidden; white-space: nowrap; margin-top: 8px; }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 12px; font-weight: bold; color: #fff; }
     @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
+    /* Classes de cor apenas para o texto */
+    .txt-green { color: #00ff88 !important; }
+    .txt-yellow { color: #ffff00 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -208,21 +213,22 @@ while True:
 
                 with c_side:
                     st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
+                    # Cores aplicadas apenas no texto (txt-green, txt-yellow)
                     st.markdown(f'''<div class="calc-panel">
-                        <div class="calc-row" style="background-color:#00ff88; color:#000;"><span>MAX FUT 5</span> <span>{res['max_fut_5']:.2f}</span></div>
-                        <div class="calc-row" style="background-color:#ffff00; color:#000;"><span>MAX FUT 4</span> <span>{res['max_fut_4']:.2f}</span></div>
-                        <div class="calc-row" style="background-color:#00ff88; color:#000;"><span>MAX FUT 3</span> <span>{res['max_fut_3']:.2f}</span></div>
-                        <div class="calc-row" style="background-color:#ffff00; color:#000;"><span>MAX FUT 2</span> <span>{res['max_fut_2']:.2f}</span></div>
-                        <div class="calc-row" style="background-color:#00ff88; color:#000;"><span>MAX FUT 1</span> <span>{res['max_fut_1']:.2f}</span></div>
-                        <div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 11px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">AXIS: {a_dol:.2f}</div>
-                        <div class="calc-row" style="background-color:#00ff88; color:#000;"><span>MIN FUT 1</span> <span>{res['min_fut_1']:.2f}</span></div>
-                        <div class="calc-row" style="background-color:#ffff00; color:#000;"><span>MIN FUT 2</span> <span>{res['min_fut_2']:.2f}</span></div>
-                        <div class="calc-row" style="background-color:#00ff88; color:#000;"><span>MIN FUT 3</span> <span>{res['min_fut_3']:.2f}</span></div>
-                        <div class="calc-row" style="background-color:#ffff00; color:#000;"><span>MIN FUT 4</span> <span>{res['min_fut_4']:.2f}</span></div>
-                        <div class="calc-row" style="background-color:#00ff88; color:#000; border-bottom: none;"><span>MIN FUT 5</span> <span>{res['min_fut_5']:.2f}</span></div>
+                        <div class="calc-row txt-green"><span>MAX FUT 5</span> <span>{res['max_fut_5']:.2f}</span></div>
+                        <div class="calc-row txt-yellow"><span>MAX FUT 4</span> <span>{res['max_fut_4']:.2f}</span></div>
+                        <div class="calc-row txt-green"><span>MAX FUT 3</span> <span>{res['max_fut_3']:.2f}</span></div>
+                        <div class="calc-row txt-yellow"><span>MAX FUT 2</span> <span>{res['max_fut_2']:.2f}</span></div>
+                        <div class="calc-row txt-green"><span>MAX FUT 1</span> <span>{res['max_fut_1']:.2f}</span></div>
+                        <div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 10px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">AXIS: {a_dol:.2f}</div>
+                        <div class="calc-row txt-green"><span>MIN FUT 1</span> <span>{res['min_fut_1']:.2f}</span></div>
+                        <div class="calc-row txt-yellow"><span>MIN FUT 2</span> <span>{res['min_fut_2']:.2f}</span></div>
+                        <div class="calc-row txt-green"><span>MIN FUT 3</span> <span>{res['min_fut_3']:.2f}</span></div>
+                        <div class="calc-row txt-yellow"><span>MIN FUT 4</span> <span>{res['min_fut_4']:.2f}</span></div>
+                        <div class="calc-row txt-green" style="border-bottom: none;"><span>MIN FUT 5</span> <span>{res['min_fut_5']:.2f}</span></div>
                     </div>''', unsafe_allow_html=True)
                     
-                    st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">DOLB3</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:10px; padding-right:6px; color:{("#00ff00" if res['v_spot'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['v_spot']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">PREÇO JUSTO</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div></div>''', unsafe_allow_html=True)
+                    st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">DOLB3</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['v_spot'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['v_spot']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">PREÇO JUSTO</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div></div>''', unsafe_allow_html=True)
                     
                     st.markdown(f'''<div class="bar-wrapper-dual"><div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div></div><div class="sinal-indicator {"blink" if res["piscando"] else ""}" style="color:{res["seta_cor"]};">{res["seta"]}</div></div>''', unsafe_allow_html=True)
                 st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
