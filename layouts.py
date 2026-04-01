@@ -20,7 +20,7 @@ def carregar_eixos():
                 dados = f.read().split(",")
                 return float(dados[0]), float(dados[1])
         except: pass
-    return 1.0, 5264.50 # Default: Divisor 1.0
+    return 1.0, 5264.50
 
 div_spreed_salvo, eixo_dol_salvo = carregar_eixos()
 
@@ -33,7 +33,7 @@ if 'div_spreed_mem' not in st.session_state:
 if 'a_dol_mem' not in st.session_state:
     st.session_state.a_dol_mem = eixo_dol_salvo
 
-# --- CSS: DESIGN TERMINAL (ORIGINAL MANTIDO) ---
+# --- CSS: DESIGN TERMINAL (MANTIDO CONFORME SEU ORIGINAL) ---
 st.markdown("""
 <style>
     .block-container { padding-top: 1.5rem; padding-bottom: 0rem; }
@@ -109,7 +109,7 @@ def calcular_k97_total(div_spreed, eixo_dol, spot_data):
         seta_txt, seta_cor, piscando = "", "#000000", False
         
         if dist_base_barra > 0:
-            # APLICAÇÃO DO DIVISOR SPREED NO CÁLCULO DA FORÇA
+            # APLICAÇÃO DO DIVISOR SPREED (X1 OU X2)
             calculo_pct = (abs(diff) / (dist_base_barra * div_spreed)) * 100
             if diff < 0: p_v = min(100, calculo_pct)
             else: p_r = min(100, calculo_pct)
@@ -142,9 +142,10 @@ def calcular_k97_total(div_spreed, eixo_dol, spot_data):
 # --- UI E LOOP ---
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
-    # SUBSTÍTUIÇÃO DO EWZ PELO DIVISOR SPREED
+    # AQUI ESTÁ O SEU DIVISOR SPREED
     input_div_val = st.number_input("DIVISOR SPREED:", value=st.session_state.div_spreed_mem, format="%.1f", step=0.5)
     input_dol_val = st.number_input("AXIS DOLFUT:", value=st.session_state.a_dol_mem, format="%.2f")
+    
     if st.button("SALVAR CONFIGURAÇÕES"):
         st.session_state.div_spreed_mem, st.session_state.a_dol_mem = input_div_val, input_dol_val
         salvar_eixos(input_div_val, input_dol_val)
@@ -175,7 +176,6 @@ while True:
                     <tr><td class='asset-name'>DOLSPOT</td><td class='price-col'>{(spot_live['at']/1000):.4f}</td><td>{(spot_live['cl']/1000):.4f}</td><td>{(spot_live['op']/1000):.4f}</td><td>{(spot_live['mx']/1000):.4f}</td><td>{(spot_live['mn']/1000):.4f}</td><td style='color:#00ff00; font-weight:bold;'>{res['v_spot']:+.2f}%</td></tr>
                     </tbody></table></div>"""
                     st.markdown(html_table, unsafe_allow_html=True)
-
                 with c_side:
                     st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
                     st.markdown(f'''<div class="calc-panel">
@@ -191,7 +191,6 @@ while True:
                         <div class="calc-row txt-yellow"><span>MIN FUT 4</span> <span>{res['min_fut_4']:.2f}</span></div>
                         <div class="calc-row txt-green" style="border-bottom: none;"><span>MIN FUT 5</span> <span>{res['min_fut_5']:.2f}</span></div>
                     </div>''', unsafe_allow_html=True)
-                    
                     st.markdown(f'''<div class="bar-wrapper-dual">
                         <div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div>
                         <div class="force-container-dual"><div class="center-line"></div>
@@ -199,5 +198,4 @@ while True:
                         <div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div></div>
                         <div class="sinal-indicator {"blink" if res["piscando"] else ""}" style="color:{res["seta_cor"]};">{res["seta"]}</div>
                     </div>''', unsafe_allow_html=True)
-        else: st.warning("AGUARDE...")
-    time.sleep(5)
+        time.sleep(5)
