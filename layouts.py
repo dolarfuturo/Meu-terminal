@@ -102,7 +102,7 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         if not spot_data or p_ewz_atual == 0: return None
         amp = spot_data['mx'] - spot_data['mn']
         v_spreed = amp / 8
-        folga = v_spreed / 2 # A sua ideia da "Metade do Spread" como filtro
+        folga = v_spreed / 2 
         
         # 1. MÉDIA CALCULADA (Para Grade e Painel - Base 75/25)
         max_original, min_original = eixo_dol + (amp * 0.75), eixo_dol - (amp * 0.25)
@@ -112,8 +112,6 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         
         # 2. CALIBRAÇÃO DA BARRA (MÉDIA PURA + FOLGA DO SPREAD)
         media_pura_barra = (spot_data['mx'] + spot_data['mn']) / 2
-        
-        # O elástico da barra agora "estica" com a folga do spread para não dar sinal antes
         dist_base_barra = abs(eixo_dol - media_pura_barra) + folga
         
         diff = spot_data['at'] - eixo_dol
@@ -121,16 +119,13 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
         seta_txt, seta_cor, piscando = "", "#000000", False
         
         if dist_base_barra > 0:
-            # Mantendo a lógica de dobro da distância para preenchimento da barra 0-100%
             calculo_pct = (abs(diff) / (dist_base_barra * 2)) * 100
             if diff < 0: p_v = min(100, calculo_pct)
             else: p_r = min(100, calculo_pct)
         
-        # Alertas de Exaustão (Sinal 100%)
         if p_v >= 100: seta_txt, seta_cor, piscando = "▲ REGIÃO DE COMPRA", "#00ff88", True
         elif p_r >= 100: seta_txt, seta_cor, piscando = "▼ REGIÃO DE VENDA", "#ff4d4d", True
 
-        # --- CÁLCULOS DE VARIAÇÃO ---
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         ewz_ref = st.session_state.market_data.get("EWZ", {}).get('cl', 1)
         v_ewz = ((p_ewz_atual / ewz_ref) - 1) if ewz_ref > 0 else 0
@@ -141,12 +136,17 @@ def calcular_k97_total(eixo_ewz, p_ewz_atual, max_ewz, min_ewz, eixo_dol, spot_d
             "dolfut_calc": eixo_dol * (1 + v_final), 
             "fraja": eixo_dol * (1 + (v_final / 2)), 
             "medio": dolar_medio, 
-            "max_fut": eixo_dol + (elastico_calculado * 4), 
-            "max_med": eixo_dol + (elastico_calculado * 3), 
-            "max_1": eixo_dol + (elastico_calculado * 2), 
-            "min_1": eixo_dol - (elastico_calculado * 2), 
-            "min_med": eixo_dol - (elastico_calculado * 3), 
-            "min_fut": eixo_dol - (elastico_calculado * 4), 
+            # ESCALA PAR X2 A X10
+            "max_fut_5": eixo_dol + (elastico_calculado * 10),
+            "max_fut_4": eixo_dol + (elastico_calculado * 8),
+            "max_fut_3": eixo_dol + (elastico_calculado * 6),
+            "max_fut_2": eixo_dol + (elastico_calculado * 4),
+            "max_fut_1": eixo_dol + (elastico_calculado * 2),
+            "min_fut_1": eixo_dol - (elastico_calculado * 2),
+            "min_fut_2": eixo_dol - (elastico_calculado * 4),
+            "min_fut_3": eixo_dol - (elastico_calculado * 6),
+            "min_fut_4": eixo_dol - (elastico_calculado * 8),
+            "min_fut_5": eixo_dol - (elastico_calculado * 10),
             "v_v": v_final * 100, "v_spot": v_spot_pct * 100, 
             "spreed": v_spreed, "p_v": p_v, "p_r": p_r, 
             "seta": seta_txt, "seta_cor": seta_cor, "piscando": piscando, 
@@ -208,7 +208,20 @@ while True:
 
                 with c_side:
                     st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
-                    st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="color:#ff4d4d;"><span>MAX FUT</span> <span>{res['max_fut']:.2f}</span></div><div class="calc-row row-med"><span>MEDIA</span> <span>{res['max_med']:.2f}</span></div><div class="calc-row" style="color:#ffff00;"><span>MAX 1</span> <span>{res['max_1']:.2f}</span></div><div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 11px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">AXIS: {a_dol:.2f}</div><div class="calc-row" style="color:#ffff00;"><span>MIN 1</span> <span>{res['min_1']:.2f}</span></div><div class="calc-row row-med"><span>MEDIA</span> <span>{res['min_med']:.2f}</span></div><div class="calc-row" style="color:#00ff88; border-bottom: none;"><span>MIN FUT</span> <span>{res['min_fut']:.2f}</span></div></div>''', unsafe_allow_html=True)
+                    st.markdown(f'''<div class="calc-panel">
+                        <div class="calc-row" style="background-color:#00ff88; color:#000;"><span>MAX FUT 5</span> <span>{res['max_fut_5']:.2f}</span></div>
+                        <div class="calc-row" style="background-color:#ffff00; color:#000;"><span>MAX FUT 4</span> <span>{res['max_fut_4']:.2f}</span></div>
+                        <div class="calc-row" style="background-color:#00ff88; color:#000;"><span>MAX FUT 3</span> <span>{res['max_fut_3']:.2f}</span></div>
+                        <div class="calc-row" style="background-color:#ffff00; color:#000;"><span>MAX FUT 2</span> <span>{res['max_fut_2']:.2f}</span></div>
+                        <div class="calc-row" style="background-color:#00ff88; color:#000;"><span>MAX FUT 1</span> <span>{res['max_fut_1']:.2f}</span></div>
+                        <div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 11px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">AXIS: {a_dol:.2f}</div>
+                        <div class="calc-row" style="background-color:#00ff88; color:#000;"><span>MIN FUT 1</span> <span>{res['min_fut_1']:.2f}</span></div>
+                        <div class="calc-row" style="background-color:#ffff00; color:#000;"><span>MIN FUT 2</span> <span>{res['min_fut_2']:.2f}</span></div>
+                        <div class="calc-row" style="background-color:#00ff88; color:#000;"><span>MIN FUT 3</span> <span>{res['min_fut_3']:.2f}</span></div>
+                        <div class="calc-row" style="background-color:#ffff00; color:#000;"><span>MIN FUT 4</span> <span>{res['min_fut_4']:.2f}</span></div>
+                        <div class="calc-row" style="background-color:#00ff88; color:#000; border-bottom: none;"><span>MIN FUT 5</span> <span>{res['min_fut_5']:.2f}</span></div>
+                    </div>''', unsafe_allow_html=True)
+                    
                     st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">DOLB3</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:10px; padding-right:6px; color:{("#00ff00" if res['v_spot'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['v_spot']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">PREÇO JUSTO</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div></div>''', unsafe_allow_html=True)
                     
                     st.markdown(f'''<div class="bar-wrapper-dual"><div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div></div><div class="sinal-indicator {"blink" if res["piscando"] else ""}" style="color:{res["seta_cor"]};">{res["seta"]}</div></div>''', unsafe_allow_html=True)
