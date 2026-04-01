@@ -42,10 +42,10 @@ st.markdown("""
     [data-testid="column"] { display: flex; flex-direction: column; gap: 0px !important; }
     [data-testid="stHorizontalBlock"] { gap: 8px !important; }
 
-    /* Ajuste de margem para baixar o nome e aproximar dos relógios */
+    /* AJUSTE SOLICITADO: Baixa o nome e aproxima dos relógios */
     .header-container { 
         text-align: center; 
-        padding-top: 25px; /* Empurra o título para baixo da barra preta superior */
+        padding-top: 35px; /* Empurra para baixo para não bater na barra do navegador */
         padding-bottom: 5px; 
         border-bottom: 1px solid #FFD700; 
         margin-bottom: 4px; 
@@ -53,9 +53,9 @@ st.markdown("""
     }
     
     .main-title { 
-        margin-bottom: 5px; /* Deixa mais próximo dos relógios abaixo dele */
+        margin-bottom: -5px; /* Aproxima dos relógios */
         line-height: 1.0; 
-        font-size: 22px; 
+        font-size: 24px; 
         font-family: monospace; 
     }
     
@@ -87,6 +87,8 @@ st.markdown("""
     .ticker-text { display: inline-block; white-space: nowrap; animation: marquee 40s linear infinite; font-family: monospace; font-size: 10px; color: #fff; }
     @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
 
+    .f-up { background-color: #00ff00aa !important; }
+    .f-dn { background-color: #ff0000aa !important; }
     .txt-green { color: #00ff88 !important; }
     .txt-yellow { color: #ffff00 !important; }
     .blink { animation: blinker 1s linear infinite; }
@@ -147,15 +149,15 @@ while True:
                     html = '<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>'
                     html += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col'>{(res['dolfut']/1000):.4f}</td><td>{(st.session_state.a_dol_mem/1000):.4f}</td><td>{(res['max_g']/1000):.4f}</td><td>{(res['min_g']/1000):.4f}</td><td style='color:#00ff00;'>{res['v_v']:+.2f}%</td></tr>"
                     tick_list = []
-                    for lbl, sym in {"DOLSPOT":"USDBRL=X", "DXY":"DX-Y.NYB", "EWZ":"EWZ", "XAU":"GC=F"}.items():
+                    outros = {"DOLSPOT":"USDBRL=X", "DXY":"DX-Y.NYB", "EWZ":"EWZ", "XAU":"GC=F"}
+                    for lbl, sym in outros.items():
                         d = fetch(sym)
                         if d:
                             v = ((d['at']/d['cl'])-1)*100
                             p = d['at']/1000 if lbl=="DOLSPOT" else d['at']
-                            html += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col'>{p:.4f if lbl=='DOLSPOT' else p:.2f}</td><td>{(d['cl']/1000 if lbl=='DOLSPOT' else d['cl']):.2f}</td><td>{(d['mx']/1000 if lbl=='DOLSPOT' else d['mx']):.2f}</td><td>{(d['mn']/1000 if lbl=='DOLSPOT' else d['mn']):.2f}</td><td style='color:{("#00ff00" if v>=0 else "#ff4d4d")};'>{v:+.2f}%</td></tr>"
+                            html += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col'>{p:.4f if lbl=='DOLSPOT' else p:.2f}</td><td>{(d['cl']/1000 if lbl=='DOLSPOT' else d['cl']):.2f}</td><td>{(d['mx']/1000 if lbl=='DOLSPOT' else d['mx']):.2f}</td><td>{(d['mn']/1000 if lbl=='DOLSPOT' else d['mn']):.2f}</td><td style='color:{("#00ff00" if v>=0 else "#ff4d4d")}; font-weight:bold;'>{v:+.2f}%</td></tr>"
                             tick_list.append(f"{lbl}: {v:+.2f}%")
                     st.markdown(html + '</tbody></table></div>', unsafe_allow_html=True)
-                    
                     st.markdown(f'<div class="bar-wrapper-full"><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width:{res["p_v"]}%;"></div></div><div class="bar-side"><div class="fill-red" style="width:{res["p_r"]}%;"></div></div></div><div class="sinal-indicator" style="color:{"#00ff88" if res["p_v"]>=100 else "#ff4d4d" if res["p_r"]>=100 else "#aaa"};">{"▲ COMPRA" if res["p_v"]>=100 else "▼ VENDA" if res["p_r"]>=100 else "NEUTRO"}</div></div>', unsafe_allow_html=True)
 
                 with c2:
