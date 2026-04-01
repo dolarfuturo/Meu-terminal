@@ -20,7 +20,7 @@ def carregar_eixos():
                 dados = f.read().split(",")
                 return float(dados[0]), float(dados[1])
         except: pass
-    return 0.0, 0.0  # Removido 37.85 e 2.0
+    return 0.0, 0.0 
 
 div_spreed_salvo, eixo_dol_salvo = carregar_eixos()
 
@@ -33,44 +33,60 @@ if 'div_spreed_mem' not in st.session_state:
 if 'a_dol_mem' not in st.session_state:
     st.session_state.a_dol_mem = eixo_dol_salvo
 
-# --- CSS: DESIGN TERMINAL ---
+# --- CSS: DESIGN TERMINAL ATUALIZADO PARA ALINHAMENTO ---
 st.markdown("""
 <style>
-    .block-container { padding-top: 1.5rem; padding-bottom: 0rem; }
+    /* Ajuste de Container Geral */
+    .block-container { padding-top: 1rem !important; padding-bottom: 0rem !important; max-width: 98% !important; }
     .stApp { background-color: #050a0e !important; }
-    .header-container { text-align: center; padding: 5px 0px; border-bottom: 2px solid #FFD700; background-color: #050a0e; margin-bottom: 8px; position: relative; }
+    
+    /* Alinhamento de Colunas */
+    [data-testid="column"] { display: flex; flex-direction: column; justify-content: flex-start; gap: 0px !important; }
+    [data-testid="stHorizontalBlock"] { gap: 10px !important; }
+
+    .header-container { text-align: center; padding: 5px 0px; border-bottom: 2px solid #FFD700; background-color: #050a0e; margin-bottom: 10px; position: relative; }
     .main-title { margin: 0px; line-height: 1.0; font-size: 28px; font-family: monospace; }
     .bair-blue { color: #00BFFF; font-weight: bold; }
     .terminal-gold { color: #FFD700; font-weight: bold; }
+    
     .clock-row { display: flex; justify-content: center; gap: 20px; padding: 5px 0; font-weight: bold; font-size: 11px; font-family: monospace; }
     .clock-item { color: #AAA; }
     .br-green { color: #00ff00; }
     .white-time { color: #ffffff; }
     .date-container { position: absolute; bottom: 5px; right: 0; width: 20%; text-align: center; font-family: monospace; font-size: 11px; font-weight: bold; color: #ffffff; }
+    
     .section-title { border: 1px solid #ffffff; color: #00f2ff; text-align: center; font-weight: bold; font-family: monospace; padding: 3px; margin-bottom: 5px; text-transform: uppercase; font-size: 11px; }
+    
     .main-grid { border: 1.5px solid #ffffff; border-radius: 4px; overflow: hidden; font-family: 'monospace'; background-color: #0d1b22; }
     .terminal-table { width: 100%; border-collapse: collapse; color: #e0e0e0; }
-    .terminal-table th { background-color: #0a141a; color: #d4a017; border: 1px solid #ffffff; padding: 6px; text-align: center; font-size: 11px; text-transform: uppercase; }
-    .terminal-table td { border: 1px solid #ffffff; padding: 6px; text-align: center; font-size: 13px; transition: background-color 0.3s; }
-    .asset-name { font-size: 13px; color: #fff; text-align: left; font-weight: bold; padding-left: 10px; }
+    .terminal-table th { background-color: #0a141a; color: #d4a017; border: 1px solid #ffffff; padding: 6px; text-align: center; font-size: 10px; text-transform: uppercase; }
+    .terminal-table td { border: 1px solid #ffffff; padding: 5px; text-align: center; font-size: 12px; }
+    
+    .asset-name { font-size: 12px; color: #fff; text-align: left; font-weight: bold; padding-left: 8px; }
     .price-col { font-weight: bold; color: #ffffff !important; }
     .f-up { background-color: #00ff00aa !important; }
     .f-dn { background-color: #ff0000aa !important; }
+    
     .calc-panel { border: 1.5px solid #ffffff; border-radius: 4px; padding: 4px; background: #0a141a; font-family: monospace; margin-bottom: 4px; }
-    .calc-row { display: flex; justify-content: space-between; padding: 3px 6px; border-bottom: 1px solid #444; font-size: 10px; font-weight: bold; align-items: center; background-color: transparent !important; }
-    .bar-wrapper-dual { background: #0a141a; padding: 8px 8px 4px 8px; border: 1.5px solid #ffffff; border-radius: 4px; text-align: center; position: relative; }
-    .force-scale { display: flex; justify-content: space-between; font-size: 9px; font-family: monospace; color: #AAA; margin-bottom: 2px; padding: 0 2px; }
-    .force-container-dual { background: #111; height: 12px; width: 100%; border-radius: 2px; position: relative; overflow: hidden; display: flex; border: 1px solid #444; margin: 2px 0; }
+    .calc-row { display: flex; justify-content: space-between; padding: 2px 6px; border-bottom: 1px solid #333; font-size: 10px; font-weight: bold; align-items: center; }
+    
+    .bar-wrapper-dual { background: #0a141a; padding: 6px; border: 1.5px solid #ffffff; border-radius: 4px; text-align: center; }
+    .force-scale { display: flex; justify-content: space-between; font-size: 8px; font-family: monospace; color: #AAA; margin-bottom: 2px; }
+    .force-container-dual { background: #111; height: 10px; width: 100%; border-radius: 2px; position: relative; overflow: hidden; display: flex; border: 1px solid #444; }
     .center-line { position: absolute; left: 50%; top: 0; width: 1px; height: 100%; background: #fff; z-index: 10; }
     .bar-side { width: 50%; height: 100%; position: relative; background: #050a0e; }
     .fill-green { background: #00ff88; float: right; height: 100%; transition: width 0.4s; }
     .fill-red { background: #ff4d4d; float: left; height: 100%; transition: width 0.4s; }
-    .sinal-indicator { font-size: 13px; font-weight: 900; line-height: 1; margin-top: 4px; min-height: 14px; }
+    
+    .sinal-indicator { font-size: 11px; font-weight: 900; margin-top: 4px; }
     .blink { animation: blinker 1s linear infinite; }
     @keyframes blinker { 50% { opacity: 0.1; } }
-    .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 1.5px solid #ffffff; border-bottom: 1.5px solid #ffffff; padding: 5px 0; overflow: hidden; white-space: nowrap; margin-top: 8px; }
-    .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 12px; font-weight: bold; color: #fff; }
+    
+    /* Ticker colado no final das tabelas */
+    .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 1.5px solid #ffffff; border-bottom: 1.5px solid #ffffff; padding: 4px 0; overflow: hidden; white-space: nowrap; margin-top: 10px; }
+    .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 11px; font-weight: bold; color: #fff; }
     @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
+    
     .txt-green { color: #00ff88 !important; }
     .txt-yellow { color: #ffff00 !important; }
 </style>
@@ -171,7 +187,8 @@ while True:
             res = calcular_k97_total(div_s, ewz_live['at'], a_dol, spot_live)
             if res:
                 v_f, d_c = res['v_v'], res['dolfut_calc']
-                c_main, c_side = st.columns([3.2, 0.8])
+                # MUDANÇA: Proporção 2.5 para 1.5 para alinhar melhor
+                c_main, c_side = st.columns([2.5, 1.5])
                 with c_main:
                     st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
                     html = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
@@ -200,7 +217,7 @@ while True:
                         <div class="calc-row txt-green"><span>MAX FUT 3</span> <span>{res['max_fut_3']:.2f}</span></div>
                         <div class="calc-row txt-yellow"><span>MAX FUT 2</span> <span>{res['max_fut_2']:.2f}</span></div>
                         <div class="calc-row txt-green"><span>MAX FUT 1</span> <span>{res['max_fut_1']:.2f}</span></div>
-                        <div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 10px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">AXIS: {a_dol:.2f}</div>
+                        <div style="text-align:center; padding: 2px; color: #00f2ff; font-size: 10px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">AXIS: {a_dol:.2f}</div>
                         <div class="calc-row txt-green"><span>MIN FUT 1</span> <span>{res['min_fut_1']:.2f}</span></div>
                         <div class="calc-row txt-yellow"><span>MIN FUT 2</span> <span>{res['min_fut_2']:.2f}</span></div>
                         <div class="calc-row txt-green"><span>MIN FUT 3</span> <span>{res['min_fut_3']:.2f}</span></div>
@@ -209,6 +226,8 @@ while True:
                     </div>''', unsafe_allow_html=True)
                     st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">DOLB3</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['v_spot'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['v_spot']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">PREÇO JUSTO</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div></div>''', unsafe_allow_html=True)
                     st.markdown(f'''<div class="bar-wrapper-dual"><div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div></div><div class="sinal-indicator {"blink" if res["piscando"] else ""}" style="color:{res["seta_cor"]};">{res["seta"]}</div></div>''', unsafe_allow_html=True)
+                
+                # Rodapé agora colado
                 st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
         else: st.warning("SISTEMA EM ATUALIZAÇÃO AGUARDE...")
     time.sleep(5)
