@@ -32,8 +32,8 @@ if 'a_dol_mem' not in st.session_state: st.session_state.a_dol_mem = eixo_dol_sa
 # --- CSS: AJUSTE DE MARGEM NO TOPO E RELÓGIO ---
 st.markdown("""
 <style>
-    /* Aumentei o padding-top para baixar o título e não cortar */
-    .block-container { padding-top: 2.5rem !important; padding-bottom: 0rem !important; max-width: 98% !important; }
+    /* 1. BAIXAR O TÍTULO PARA NÃO CORTAR */
+    .block-container { padding-top: 3.5rem !important; padding-bottom: 0rem !important; max-width: 98% !important; }
     .stApp { background-color: #050a0e !important; }
     
     [data-testid="column"] { display: flex; flex-direction: column; justify-content: flex-start; gap: 0px !important; }
@@ -161,7 +161,6 @@ while True:
     now = datetime.now()
     
     with placeholder.container():
-        # Header com margem maior e Relógio UTC adicionado
         st.markdown(f'''
             <div class="header-container">
                 <h1 class="main-title"><span class="bair-blue">BAIR</span><span class="terminal-gold"> - TERMINAL DOLLAR</span></h1>
@@ -212,7 +211,7 @@ while True:
                     <div class="calc-row txt-green"><span>MIN FUT 1</span> <span>{res['min_fut_1']:.2f}</span></div>
                     <div class="calc-row txt-yellow"><span>MIN FUT 2</span> <span>{res['min_fut_2']:.2f}</span></div>
                     <div class="calc-row txt-green"><span>MIN FUT 3</span> <span>{res['min_fut_3']:.2f}</span></div>
-                    <div class="calc-row txt-yellow"><span>MIN FUT 4</span> <span>{res['min_fut_4']:.2f}</span></div>
+                    <div class="calc-row txt-yellow"><span>MIN FUT 2</span> <span>{res['min_fut_4']:.2f}</span></div>
                     <div class="calc-row txt-green" style="border-bottom: none;"><span>MIN FUT 5</span> <span>{res['min_fut_5']:.2f}</span></div>
                 </div>''', unsafe_allow_html=True)
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">DOLB3</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['v_spot'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['v_spot']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">PREÇO JUSTO</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div></div>''', unsafe_allow_html=True)
