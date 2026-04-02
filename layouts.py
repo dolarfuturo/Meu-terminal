@@ -111,6 +111,12 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
         dolar_medio = ((max_original + min_original) / 2) - v_spreed
         elastico_calculado = abs(eixo_dol - dolar_medio)
         
+        # --- NOVA LÓGICA DE VARIÁVEL X ---
+        val_x = eixo_dol - elastico_calculado - spot_data['mn']
+        low_limit = spot_data['mn'] + val_x
+        high_limit = spot_data['mx'] + val_x
+        # ---------------------------------
+
         media_pura_barra = (spot_data['mx'] + spot_data['mn']) / 2
         dist_base_barra = abs(eixo_dol - media_pura_barra) + folga
         diff = spot_data['at'] - eixo_dol
@@ -130,10 +136,6 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
         fraja_val = eixo_dol * (1 + (v_final / 2))
         vivo_val = (eixo_dol + fraja_val) / 2
         
-        # NOVAS VARIÁVEIS CONFORME SOLICITADO
-        low_limit = spot_data['mn'] + elastico_calculado
-        high_limit = spot_data['mx'] + elastico_calculado
-
         return {
             "vivo": vivo_val, "dolfut_calc": eixo_dol * (1 + v_final), "fraja": fraja_val, "medio": dolar_medio, 
             "max_fut_5": eixo_dol + (elastico_calculado * 10), "max_fut_4": eixo_dol + (elastico_calculado * 8),
@@ -206,7 +208,7 @@ while True:
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 
-                # BARRA DE FORÇA COM LOW/HIGH ATUALIZADOS
+                # BARRA DE FORÇA COM LOW/HIGH ATUALIZADOS PELA NOVA FÓRMULA
                 st.markdown(f'''
                     <div class="bar-wrapper-full">
                         <div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div>
