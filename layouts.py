@@ -65,7 +65,7 @@ st.markdown("""
     .fill-green { background: #00ff88; float: right; height: 100%; transition: width 0.4s; }
     .fill-red { background: #ff4d4d; float: left; height: 100%; transition: width 0.4s; }
     .sinal-indicator { font-size: 11px; font-weight: 900; line-height: 1; margin-top: 4px; }
-    .limit-row { display: flex; justify-content: space-between; font-family: monospace; font-size: 10px; font-weight: bold; margin-top: 6px; padding: 0 4px; border-top: 1px solid #333; padding-top: 4px; }
+    .limit-row { display: flex; justify-content: space-between; font-family: monospace; font-size: 10px; font-weight: bold; margin-top: 6px; padding: 4px 8px 0 8px; border-top: 1px solid #333; }
     .blink { animation: blinker 1s linear infinite; }
     @keyframes blinker { 50% { opacity: 0.1; } }
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 1.5px solid #ffffff; border-bottom: 1.5px solid #ffffff; padding: 4px 0; overflow: hidden; white-space: nowrap; margin-top: 8px; }
@@ -77,7 +77,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS ORIGINAL ---
+# --- MOTOR DE DADOS ---
 def fetch(s):
     try:
         t = yf.Ticker(s)
@@ -109,7 +109,8 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
         folga = v_spreed / 2 
         max_original, min_original = eixo_dol + (amp * 0.75), eixo_dol - (amp * 0.25)
         dolar_medio = ((max_original + min_original) / 2) - v_spreed
-        elastico_calculado = abs(eixo_dol - dolar_medio) if abs(eixo_dol - dolar_medio) != 0 else 1.0
+        elastico_calculado = abs(eixo_dol - dolar_medio)
+        
         media_pura_barra = (spot_data['mx'] + spot_data['mn']) / 2
         dist_base_barra = abs(eixo_dol - media_pura_barra) + folga
         diff = spot_data['at'] - eixo_dol
@@ -121,6 +122,7 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
             else: p_r = min(100, calculo_pct)
         if p_v >= 100: seta_txt, seta_cor, piscando = "▲ REGIÃO DE COMPRA", "#00ff88", True
         elif p_r >= 100: seta_txt, seta_cor, piscando = "▼ REGIÃO DE VENDA", "#ff4d4d", True
+        
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         ewz_ref = st.session_state.market_data.get("EWZ", {}).get('cl', 1)
         v_ewz = ((p_ewz_atual / ewz_ref) - 1) if ewz_ref > 0 else 0
@@ -128,9 +130,9 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
         fraja_val = eixo_dol * (1 + (v_final / 2))
         vivo_val = (eixo_dol + fraja_val) / 2
         
-        # NOVAS VARIÁVEIS EM TEMPO REAL
-        low_limit = elastico_calculado + spot_data['mn']
-        high_limit = elastico_calculado + spot_data['mx']
+        # NOVAS VARIÁVEIS CONFORME SOLICITADO
+        low_limit = spot_data['mn'] + elastico_calculado
+        high_limit = spot_data['mx'] + elastico_calculado
 
         return {
             "vivo": vivo_val, "dolfut_calc": eixo_dol * (1 + v_final), "fraja": fraja_val, "medio": dolar_medio, 
@@ -204,7 +206,7 @@ while True:
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 
-                # IMPLEMENTAÇÃO LOW/HIGH ABAIXO DA BARRA
+                # BARRA DE FORÇA COM LOW/HIGH ATUALIZADOS
                 st.markdown(f'''
                     <div class="bar-wrapper-full">
                         <div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div>
