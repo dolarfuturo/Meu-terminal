@@ -24,28 +24,33 @@ def carregar_eixos():
 
 div_spreed_salvo, eixo_dol_salvo = carregar_eixos()
 
-# --- ESTADOS DE SESSÃO (CACHE) ---
 if 'market_data' not in st.session_state: st.session_state.market_data = {}
 if 'last_p' not in st.session_state: st.session_state.last_p = {}
 if 'div_spreed_mem' not in st.session_state: st.session_state.div_spreed_mem = div_spreed_salvo
 if 'a_dol_mem' not in st.session_state: st.session_state.a_dol_mem = eixo_dol_salvo
 
-# --- CSS ORIGINAL ---
+# --- CSS: AJUSTE DE MARGEM NO TOPO E RELÓGIO ---
 st.markdown("""
 <style>
-    .block-container { padding-top: 0.5rem !important; padding-bottom: 0rem !important; max-width: 98% !important; }
+    /* Aumentei o padding-top para baixar o título e não cortar */
+    .block-container { padding-top: 2.5rem !important; padding-bottom: 0rem !important; max-width: 98% !important; }
     .stApp { background-color: #050a0e !important; }
+    
     [data-testid="column"] { display: flex; flex-direction: column; justify-content: flex-start; gap: 0px !important; }
     [data-testid="stHorizontalBlock"] { gap: 12px !important; margin-bottom: 0px !important; }
-    .header-container { text-align: center; padding: 2px 0px; border-bottom: 2px solid #FFD700; background-color: #050a0e; margin-bottom: 5px; position: relative; }
-    .main-title { margin: 0px; line-height: 1.0; font-size: 26px; font-family: monospace; }
+
+    .header-container { text-align: center; padding: 10px 0px; border-bottom: 2px solid #FFD700; background-color: #050a0e; margin-bottom: 8px; position: relative; }
+    .main-title { margin: 0px; line-height: 1.2; font-size: 28px; font-family: monospace; padding-bottom: 5px; }
     .bair-blue { color: #00BFFF; font-weight: bold; }
     .terminal-gold { color: #FFD700; font-weight: bold; }
-    .clock-row { display: flex; justify-content: center; gap: 20px; padding: 2px 0; font-weight: bold; font-size: 11px; font-family: monospace; }
+    
+    .clock-row { display: flex; justify-content: center; gap: 15px; padding: 2px 0; font-weight: bold; font-size: 11px; font-family: monospace; }
     .clock-item { color: #AAA; }
     .br-green { color: #00ff00; }
     .white-time { color: #ffffff; }
+    .utc-gold { color: #FFD700; }
     .date-container { position: absolute; bottom: 5px; right: 10px; font-family: monospace; font-size: 11px; font-weight: bold; color: #ffffff; }
+    
     .section-title { border: 1px solid #ffffff; color: #00f2ff; text-align: center; font-weight: bold; font-family: monospace; padding: 2px; margin-bottom: 5px; text-transform: uppercase; font-size: 11px; }
     .main-grid { border: 1.5px solid #ffffff; border-radius: 4px; overflow: hidden; font-family: 'monospace'; background-color: #0d1b22; margin-bottom: 0px; }
     .terminal-table { width: 100%; border-collapse: collapse; color: #e0e0e0; }
@@ -76,7 +81,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS (SUA LÓGICA EXATA) ---
+# --- MOTOR DE DADOS ---
 def fetch(s):
     try:
         t = yf.Ticker(s)
@@ -144,20 +149,31 @@ with st.sidebar:
     if st.button("SALVAR CONFIGURAÇÕES"):
         st.session_state.div_spreed_mem, st.session_state.a_dol_mem = i_div, i_dol
         salvar_eixos(i_div, i_dol)
-        st.success("Salvo!")
-        time.sleep(0.5); st.rerun()
+        st.success("Salvo!"); time.sleep(0.5); st.rerun()
 
 div_s, a_dol = st.session_state.div_spreed_mem, st.session_state.a_dol_mem
 placeholder = st.empty()
 
 # --- LOOP PRINCIPAL ---
 while True:
-    tz_sp, tz_ny, tz_ld = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London')
+    tz_sp, tz_ny, tz_ld, tz_utc = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London'), pytz.utc
     spot_live, ewz_live = fetch("USDBRL=X"), fetch("EWZ")
     now = datetime.now()
     
     with placeholder.container():
-        st.markdown(f'''<div class="header-container"><h1 class="main-title"><span class="bair-blue">BAIR</span><span class="terminal-gold"> - TERMINAL DOLLAR</span></h1><div class="clock-row"><span class="clock-item">🇧🇷 BRASÍLIA: <span class="br-green">{now.astimezone(tz_sp).strftime("%H:%M:%S")}</span></span><span class="clock-item">🇺🇸 NEW YORK: <span class="white-time">{now.astimezone(tz_ny).strftime("%H:%M:%S")}</span></span><span class="clock-item">🇬🇧 LONDON: <span class="white-time">{now.astimezone(tz_ld).strftime("%H:%M:%S")}</span></span></div><div class="date-container">📅 {now.astimezone(tz_sp).strftime("%d/%m/%Y")}</div></div>''', unsafe_allow_html=True)
+        # Header com margem maior e Relógio UTC adicionado
+        st.markdown(f'''
+            <div class="header-container">
+                <h1 class="main-title"><span class="bair-blue">BAIR</span><span class="terminal-gold"> - TERMINAL DOLLAR</span></h1>
+                <div class="clock-row">
+                    <span class="clock-item">🇧🇷 BR: <span class="br-green">{now.astimezone(tz_sp).strftime("%H:%M:%S")}</span></span>
+                    <span class="clock-item">🇺🇸 NY: <span class="white-time">{now.astimezone(tz_ny).strftime("%H:%M:%S")}</span></span>
+                    <span class="clock-item">🇬🇧 LDN: <span class="white-time">{now.astimezone(tz_ld).strftime("%H:%M:%S")}</span></span>
+                    <span class="clock-item">🌐 UTC: <span class="utc-gold">{now.astimezone(tz_utc).strftime("%H:%M:%S")}</span></span>
+                </div>
+                <div class="date-container">📅 {now.astimezone(tz_sp).strftime("%d/%m/%Y")}</div>
+            </div>
+        ''', unsafe_allow_html=True)
 
         res = calcular_k97_total(div_s, ewz_live['at'] if ewz_live else 0, a_dol, spot_live)
         if res:
@@ -165,15 +181,11 @@ while True:
             with c1:
                 st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
                 html = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
-                
-                # DOLFUT
                 v_f, d_c = res['v_v'], res['dolfut_calc']
                 l_df = st.session_state.last_p.get('DF', d_c/1000)
                 cl_df = "f-up" if (d_c/1000) > l_df else "f-dn" if (d_c/1000) < l_df else ""
                 st.session_state.last_p['DF'] = d_c/1000
                 html += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col {cl_df}' style='background-color:rgba({('0,255,0' if v_f >= 0 else '255,0,0')}, 0.1);'>{(d_c/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max_grade']/1000):.4f}</td><td>{(res['min_grade']/1000):.4f}</td><td style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_f:+.2f}%</td></tr>"
-                
-                # OUTROS ATIVOS
                 ticker_items = [f"DOLFUT: <span style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")};'>{v_f:+.2f}%</span>"]
                 outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
                 for lbl, sym in outros.items():
@@ -185,7 +197,6 @@ while True:
                         var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
                         html += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col {cl_a}'>{p_v:{f}}</td><td>{(d['cl']/1000 if lbl=='DOLSPOT' else d['cl']):{f}}</td><td>{(d['op']/1000 if lbl=='DOLSPOT' else d['op']):{f}}</td><td>{(d['mx']/1000 if lbl=='DOLSPOT' else d['mx']):{f}}</td><td>{(d['mn']/1000 if lbl=='DOLSPOT' else d['mn']):{f}}</td><td style='color:{("#00ff00" if var >= 0 else "#ff4d4d")}; font-weight:bold;'>{var:+.2f}%</td></tr>"
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
-                
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 st.markdown(f'''<div class="bar-wrapper-full"><div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div></div><div class="sinal-indicator {"blink" if res["piscando"] else ""}" style="color:{res["seta_cor"]};">{res["seta"]}</div></div>''', unsafe_allow_html=True)
 
