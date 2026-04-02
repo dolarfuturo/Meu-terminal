@@ -111,17 +111,22 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
         dolar_medio = ((max_original + min_original) / 2) - v_spreed
         elastico_calculado = abs(eixo_dol - dolar_medio)
         
-        # --- LÓGICA DE X, Y, LOW E HIGH (CONFORME ÚLTIMA INSTRUÇÃO DO ARQUITETO) ---
-        # AXIS - ELASTICO - MIN SPOT = X
-        val_x = (eixo_dol - elastico_calculado) - spot_data['mn']
-        # AXIS + ELASTICO - MAX = Y
-        val_y = (eixo_dol + elastico_calculado) - spot_data['mx']
+        # --- LÓGICA DE X, Y, LOW E HIGH AJUSTADA (5156 + X = 5173) ---
+        base_inf = eixo_dol - elastico_calculado
+        base_sup = eixo_dol + elastico_calculado
         
-        # LOW: AXIS - ELASTICO + X
-        low_limit = (eixo_dol - elastico_calculado) + val_x
+        # AXIS - ELASTICO - MIN SPOT = X
+        val_x = base_inf - spot_data['mn']
+        
+        # MAX SPOT - (AXIS + ELASTICO) = Y
+        val_y = spot_data['mx'] - base_sup
+        
+        # LOW: AXIS - ELASTICO + X  (Ex: 5156 + 17 = 5173)
+        low_limit = base_inf + val_x
+        
         # HIGH : AXIS + ELASTICO - Y
-        high_limit = (eixo_dol + elastico_calculado) - val_y
-        # --------------------------------------------------------------------------
+        high_limit = base_sup - val_y
+        # -------------------------------------------------------------
 
         media_pura_barra = (spot_data['mx'] + spot_data['mn']) / 2
         dist_base_barra = abs(eixo_dol - media_pura_barra) + folga
