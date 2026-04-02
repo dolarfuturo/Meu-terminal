@@ -111,11 +111,13 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
         dolar_medio = ((max_original + min_original) / 2) - v_spreed
         elastico_calculado = abs(eixo_dol - dolar_medio)
         
-        # --- NOVA LÓGICA DE VARIÁVEL X ---
-        val_x = eixo_dol - elastico_calculado - spot_data['mn']
-        low_limit = spot_data['mn'] + val_x
-        high_limit = spot_data['mx'] + val_x
-        # ---------------------------------
+        # --- LÓGICA DE X, X1, LOW E HIGH (CONFORME ARQUITETO) ---
+        val_x = (eixo_dol - elastico_calculado) - spot_data['mn']
+        val_x1 = (eixo_dol + elastico_calculado) - spot_data['mx']
+        
+        low_limit = eixo_dol - elastico_calculado + val_x
+        high_limit = eixo_dol + elastico_calculado - val_x1
+        # --------------------------------------------------------
 
         media_pura_barra = (spot_data['mx'] + spot_data['mn']) / 2
         dist_base_barra = abs(eixo_dol - media_pura_barra) + folga
@@ -208,7 +210,7 @@ while True:
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 
-                # BARRA DE FORÇA COM LOW/HIGH ATUALIZADOS PELA NOVA FÓRMULA
+                # BARRA DE FORÇA COM LOW/HIGH ATUALIZADOS
                 st.markdown(f'''
                     <div class="bar-wrapper-full">
                         <div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div>
