@@ -224,4 +224,4 @@ while True:
                 # --- TICKER (RODAPÉ) COLADO LOGO ABAIXO DOS BLOCOS ---
                 st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
         else: st.warning("SISTEMA EM ATUALIZAÇÃO AGUARDE...")
-    time.sleep(4)
+    time.sleep(1)
