@@ -73,9 +73,7 @@ st.markdown("""
     .txt-green { color: #00ff88 !important; }
     .txt-yellow { color: #ffff00 !important; }
     .txt-red { color: #ff4d4d !important; }
-    /* Estilo para os limites do elástico */
-    .elastic-limits { display: flex; justify-content: space-between; width: 100%; padding: 4px 10px; font-family: monospace; font-size: 10px; font-weight: bold; }
-    .limit-val { color: #00f2ff; }
+    .elastic-row { display: flex; justify-content: space-between; padding: 2px 10px; font-family: monospace; font-size: 10px; font-weight: bold; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -111,15 +109,17 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
         folga = v_spreed / 2 
         max_original, min_original = eixo_dol + (amp * 0.75), eixo_dol - (amp * 0.25)
         dolar_medio = ((max_original + min_original) / 2) - v_spreed
-        
-        # DEFINIÇÃO DO ELASTICO
         elastico_calculado = abs(eixo_dol - dolar_medio) if abs(eixo_dol - dolar_medio) != 0 else 1.0
         
-        # FORMULAS SOLICITADAS
+        # --- LÓGICA DO ARQUITETO: O ELÁSTICO CARREGA A BARRA ---
+        # AXIS - ELASTICO - MIN SPOT = X
         val_x = eixo_dol - elastico_calculado - spot_data['mn']
+        # AXIS + ELASTICO - MAX SPOT = Y
         val_y = eixo_dol + elastico_calculado - spot_data['mx']
-        low_elastic = eixo_dol - elastico_calculado + val_x
-        high_elastic = eixo_dol + elastico_calculado - val_y
+        # LOW: AXIS - ELASTICO + X
+        low_elastic = (eixo_dol - elastico_calculado) + val_x
+        # HIGH: AXIS + ELASTICO - Y
+        high_elastic = (eixo_dol + elastico_calculado) - val_y
 
         media_pura_barra = (spot_data['mx'] + spot_data['mn']) / 2
         dist_base_barra = abs(eixo_dol - media_pura_barra) + folga
@@ -209,18 +209,7 @@ while True:
                         html += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col {cl_a}'>{p_v:{f}}</td><td>{(d['cl']/1000 if lbl=='DOLSPOT' else d['cl']):{f}}</td><td>{(d['op']/1000 if lbl=='DOLSPOT' else d['op']):{f}}</td><td>{(d['mx']/1000 if lbl=='DOLSPOT' else d['mx']):{f}}</td><td>{(d['mn']/1000 if lbl=='DOLSPOT' else d['mn']):{f}}</td><td style='color:{("#00ff00" if var >= 0 else "#ff4d4d")}; font-weight:bold;'>{var:+.2f}%</td></tr>"
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
-                
-                # BLOCO DA BARRA COM LIMITES DO ELASTICO ABAIXO
-                st.markdown(f'''
-                <div class="bar-wrapper-full">
-                    <div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div>
-                    <div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div></div>
-                    <div class="sinal-indicator {"blink" if res["piscando"] else ""}" style="color:{res["seta_cor"]};">{res["seta"]}</div>
-                    <div class="elastic-limits">
-                        <div>LOW: <span class="limit-val">{res['low_e']:.2f}</span></div>
-                        <div>HIGH: <span class="limit-val">{res['high_e']:.2f}</span></div>
-                    </div>
-                </div>''', unsafe_allow_html=True)
+                st.markdown(f'''<div class="bar-wrapper-full"><div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div></div><div class="sinal-indicator {"blink" if res["piscando"] else ""}" style="color:{res["seta_cor"]};">{res["seta"]}</div><div class="elastic-row"><span style="color:#00f2ff;">LOW: {res['low_e']:.2f}</span><span style="color:#00f2ff;">HIGH: {res['high_e']:.2f}</span></div></div>''', unsafe_allow_html=True)
 
             with c2:
                 st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
@@ -234,7 +223,7 @@ while True:
                     <div class="calc-row txt-green"><span>MIN FUT 1</span> <span>{res['min_fut_1']:.2f}</span></div>
                     <div class="calc-row txt-yellow"><span>MIN FUT 2</span> <span>{res['min_fut_2']:.2f}</span></div>
                     <div class="calc-row txt-green"><span>MIN FUT 3</span> <span>{res['min_fut_3']:.2f}</span></div>
-                    <div class="calc-row txt-yellow"><span>MIN FUT 2</span> <span>{res['min_fut_4']:.2f}</span></div>
+                    <div class="calc-row txt-yellow"><span>MIN FUT 4</span> <span>{res['min_fut_4']:.2f}</span></div>
                     <div class="calc-row txt-green" style="border-bottom: none;"><span>MIN FUT 5</span> <span>{res['min_fut_5']:.2f}</span></div>
                 </div>''', unsafe_allow_html=True)
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">DOLB3</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if var_dolb3_axis >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{var_dolb3_axis:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">PREÇO JUSTO</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div></div>''', unsafe_allow_html=True)
