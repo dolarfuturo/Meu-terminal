@@ -65,7 +65,7 @@ st.markdown("""
     .f-up { background-color: #00ff00aa !important; }
     .f-dn { background-color: #ff0000aa !important; }
     
-    .calc-panel { border: 1.5px solid #ffffff; border-radius: 4px; padding: 4px; background: #0a141a; font-family: monospace; margin-bottom: 4px; }
+    .calc-panel { border: 1.5px solid #ffffff; border-radius: 4px; padding: 4px; background: #0a141a; font-family: monospace; margin-bottom: 4px; margin-top: 8px; }
     .calc-row { display: flex; justify-content: space-between; padding: 2px 6px; border-bottom: 1px solid #444; font-size: 10px; font-weight: bold; align-items: center; }
     
     .bar-wrapper-full { background: #0a141a; padding: 6px; border: 1.5px solid #ffffff; border-radius: 4px; text-align: center; margin-top: 5px; }
@@ -85,6 +85,7 @@ st.markdown("""
     
     .txt-green { color: #00ff88 !important; }
     .txt-yellow { color: #ffff00 !important; }
+    .txt-red { color: #ff4d4d !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -134,9 +135,14 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
         ewz_ref = st.session_state.market_data.get("EWZ", {}).get('cl', 1)
         v_ewz = ((p_ewz_atual / ewz_ref) - 1) if ewz_ref > 0 else 0
         v_final = (v_spot_pct * 0.6) - (v_ewz * 0.4)
+        
+        # AJUSTE DOLB3: (Axis + Preço Justo) / 2
+        fraja_val = eixo_dol * (1 + (v_final / 2))
+        vivo_val = (eixo_dol + fraja_val) / 2
+        
         return {
-            "vivo": eixo_dol * (1 + v_spot_pct), "dolfut_calc": eixo_dol * (1 + v_final), 
-            "fraja": eixo_dol * (1 + (v_final / 2)), "medio": dolar_medio, 
+            "vivo": vivo_val, "dolfut_calc": eixo_dol * (1 + v_final), 
+            "fraja": fraja_val, "medio": dolar_medio, 
             "max_fut_5": eixo_dol + (elastico_calculado * 10), "max_fut_4": eixo_dol + (elastico_calculado * 8),
             "max_fut_3": eixo_dol + (elastico_calculado * 6), "max_fut_2": eixo_dol + (elastico_calculado * 4),
             "max_fut_1": eixo_dol + (elastico_calculado * 2), "min_fut_1": eixo_dol - (elastico_calculado * 2),
@@ -200,11 +206,11 @@ while True:
                 with c_side:
                     st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
                     st.markdown(f'''<div class="calc-panel">
-                        <div class="calc-row txt-green"><span>MAX FUT 5</span> <span>{res['max_fut_5']:.2f}</span></div>
+                        <div class="calc-row txt-red"><span>MAX FUT 5</span> <span>{res['max_fut_5']:.2f}</span></div>
                         <div class="calc-row txt-yellow"><span>MAX FUT 4</span> <span>{res['max_fut_4']:.2f}</span></div>
-                        <div class="calc-row txt-green"><span>MAX FUT 3</span> <span>{res['max_fut_3']:.2f}</span></div>
+                        <div class="calc-row txt-red"><span>MAX FUT 3</span> <span>{res['max_fut_3']:.2f}</span></div>
                         <div class="calc-row txt-yellow"><span>MAX FUT 2</span> <span>{res['max_fut_2']:.2f}</span></div>
-                        <div class="calc-row txt-green"><span>MAX FUT 1</span> <span>{res['max_fut_1']:.2f}</span></div>
+                        <div class="calc-row txt-red"><span>MAX FUT 1</span> <span>{res['max_fut_1']:.2f}</span></div>
                         <div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 10px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">AXIS: {a_dol:.2f}</div>
                         <div class="calc-row txt-green"><span>MIN FUT 1</span> <span>{res['min_fut_1']:.2f}</span></div>
                         <div class="calc-row txt-yellow"><span>MIN FUT 2</span> <span>{res['min_fut_2']:.2f}</span></div>
