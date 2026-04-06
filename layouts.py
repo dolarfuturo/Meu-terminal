@@ -111,14 +111,17 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
         elastico_calculado = abs(eixo_dol - dolar_medio) if abs(eixo_dol - dolar_medio) != 0 else 1.0
         media_pura_barra = (spot_data['mx'] + spot_data['mn']) / 2
         
-        # --- CÁLCULOS ADICIONADOS CONFORME SOLICITADO ---
-        dist_base_barra = abs(eixo_dol - media_pura_barra) + folga
-        val_x = eixo_dol - dist_base_barra
-        val_y = eixo_dol + dist_base_barra
-        alvo_low = spot_data['mn'] + val_x
-        alvo_high = spot_data['mx'] - val_y
+        # --- CÁLCULOS SOLICITADOS (FÓRMULA ESTRITA) ---
+        # 1. Cálculo de X e Y conforme sua fórmula:
+        val_x = eixo_dol - (eixo_dol - media_pura_barra + folga)
+        val_y = eixo_dol + (eixo_dol - media_pura_barra + folga)
+        
+        # 2. LOW e HIGH projetando o PREÇO DE TELA (usando a distância do desvio):
+        alvo_low = spot_data['mn'] + (eixo_dol - val_x)
+        alvo_high = spot_data['mx'] - (val_y - eixo_dol)
         # -----------------------------------------------
 
+        dist_base_barra = abs(eixo_dol - media_pura_barra) + folga
         diff = spot_data['at'] - eixo_dol
         p_v, p_r = 0, 0
         seta_txt, seta_cor, piscando = "", "#000000", False
