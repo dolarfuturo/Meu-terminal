@@ -110,7 +110,15 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
         dolar_medio = ((max_original + min_original) / 2) - v_spreed
         elastico_calculado = abs(eixo_dol - dolar_medio) if abs(eixo_dol - dolar_medio) != 0 else 1.0
         media_pura_barra = (spot_data['mx'] + spot_data['mn']) / 2
+        
+        # --- CÁLCULOS ADICIONADOS CONFORME SOLICITADO ---
         dist_base_barra = abs(eixo_dol - media_pura_barra) + folga
+        val_x = eixo_dol - dist_base_barra
+        val_y = eixo_dol + dist_base_barra
+        alvo_low = spot_data['mn'] + val_x
+        alvo_high = spot_data['mx'] - val_y
+        # -----------------------------------------------
+
         diff = spot_data['at'] - eixo_dol
         p_v, p_r = 0, 0
         seta_txt, seta_cor, piscando = "", "#000000", False
@@ -134,7 +142,8 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
             "min_fut_2": eixo_dol - (elastico_calculado * 4), "min_fut_3": eixo_dol - (elastico_calculado * 6),
             "min_fut_4": eixo_dol - (elastico_calculado * 8), "min_fut_5": eixo_dol - (elastico_calculado * 10),
             "v_v": v_final * 100, "v_spot": v_spot_pct * 100, "spreed": v_spreed, "p_v": p_v, "p_r": p_r, 
-            "seta": seta_txt, "seta_cor": seta_cor, "piscando": piscando, "max_grade": max_original, "min_grade": min_original
+            "seta": seta_txt, "seta_cor": seta_cor, "piscando": piscando, "max_grade": max_original, "min_grade": min_original,
+            "alvo_low": alvo_low, "alvo_high": alvo_high
         }
     except: return None
 
@@ -173,7 +182,6 @@ while True:
 
         res = calcular_k97_total(div_s, ewz_live['at'] if ewz_live else 0, a_dol, spot_live)
         if res:
-            # CALCULO DA VARIAÇÃO DOLB3 COM BASE NO AXIS
             var_dolb3_axis = ((res['vivo'] / a_dol) - 1) * 100
 
             c1, c2 = st.columns([2.8, 1.2])
@@ -197,7 +205,23 @@ while True:
                         html += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col {cl_a}'>{p_v:{f}}</td><td>{(d['cl']/1000 if lbl=='DOLSPOT' else d['cl']):{f}}</td><td>{(d['op']/1000 if lbl=='DOLSPOT' else d['op']):{f}}</td><td>{(d['mx']/1000 if lbl=='DOLSPOT' else d['mx']):{f}}</td><td>{(d['mn']/1000 if lbl=='DOLSPOT' else d['mn']):{f}}</td><td style='color:{("#00ff00" if var >= 0 else "#ff4d4d")}; font-weight:bold;'>{var:+.2f}%</td></tr>"
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
-                st.markdown(f'''<div class="bar-wrapper-full"><div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div></div><div class="sinal-indicator {"blink" if res["piscando"] else ""}" style="color:{res["seta_cor"]};">{res["seta"]}</div></div>''', unsafe_allow_html=True)
+                
+                # --- BARRA DE FORÇA COM LOW E HIGH NO RODAPÉ ---
+                st.markdown(f'''
+                    <div class="bar-wrapper-full">
+                        <div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div>
+                        <div class="force-container-dual">
+                            <div class="center-line"></div>
+                            <div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div>
+                            <div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 10px; font-family: monospace; color: #AAA; margin-top: 2px; padding: 0 2px;">
+                            <span>LOW: {res['alvo_low']:.2f}</span>
+                            <span>HIGH: {res['alvo_high']:.2f}</span>
+                        </div>
+                        <div class="sinal-indicator {"blink" if res["piscando"] else ""}" style="color:{res["seta_cor"]};">{res["seta"]}</div>
+                    </div>
+                ''', unsafe_allow_html=True)
 
             with c2:
                 st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
@@ -214,7 +238,6 @@ while True:
                     <div class="calc-row txt-yellow"><span>MIN FUT 4</span> <span>{res['min_fut_4']:.2f}</span></div>
                     <div class="calc-row txt-green" style="border-bottom: none;"><span>MIN FUT 5</span> <span>{res['min_fut_5']:.2f}</span></div>
                 </div>''', unsafe_allow_html=True)
-                # ALTERADO ABAIXO: VARIAÇÃO DO DOLB3 COM BASE NO AXIS
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">DOLB3</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if var_dolb3_axis >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{var_dolb3_axis:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">PREÇO JUSTO</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div></div>''', unsafe_allow_html=True)
             st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
     time.sleep(5)
