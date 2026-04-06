@@ -29,7 +29,7 @@ if 'last_p' not in st.session_state: st.session_state.last_p = {}
 if 'div_spreed_mem' not in st.session_state: st.session_state.div_spreed_mem = div_spreed_salvo
 if 'a_dol_mem' not in st.session_state: st.session_state.a_dol_mem = eixo_dol_salvo
 
-# --- CSS (INTERFACE DARK K97) ---
+# --- CSS ---
 st.markdown("""
 <style>
     .block-container { padding-top: 3.5rem !important; padding-bottom: 0rem !important; max-width: 98% !important; }
@@ -70,10 +70,13 @@ st.markdown("""
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 1.5px solid #ffffff; border-bottom: 1.5px solid #ffffff; padding: 4px 0; overflow: hidden; white-space: nowrap; margin-top: 8px; }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 12px; font-weight: bold; color: #fff; }
     @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
+    .txt-green { color: #00ff88 !important; }
+    .txt-yellow { color: #ffff00 !important; }
+    .txt-red { color: #ff4d4d !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS ---
+# --- MOTOR DE DADOS ORIGINAL ---
 def fetch(s):
     try:
         t = yf.Ticker(s)
@@ -103,28 +106,22 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
         amp = spot_data['mx'] - spot_data['mn']
         v_spreed = amp / 8
         folga = v_spreed / 2 
-        
-        # --- LÓGICA MESTRE (PURA EM PONTOS) ---
-        media_pura_barra = (spot_data['mx'] + spot_data['mn']) / 2
-        
-        # 1. ELÁSTICO (Diferença nominal do Eixo para a Média)
-        elastico = (eixo_dol - media_pura_barra + folga)
-        
-        # 2. X e Y (Diferença em pontos para projetar)
-        # Usamos abs() para garantir que pegamos o TAMANHO em pontos do desvio
-        val_x = abs(eixo_dol - (eixo_dol - elastico))
-        val_y = abs(eixo_dol - (eixo_dol - elastico))
-        
-        # 3. GATILHOS (Preço de tela: Mínima/Máxima + Pontos)
-        alvo_low = spot_data['mn'] + val_x
-        alvo_high = spot_data['mx'] - val_y
-        # -----------------------------------------------
-
         max_original, min_original = eixo_dol + (amp * 0.75), eixo_dol - (amp * 0.25)
         dolar_medio = ((max_original + min_original) / 2) - v_spreed
-        elastico_grade = abs(eixo_dol - dolar_medio) if abs(eixo_dol - dolar_medio) != 0 else 1.0
+        elastico_calculado = abs(eixo_dol - dolar_medio) if abs(eixo_dol - dolar_medio) != 0 else 1.0
+        media_pura_barra = (spot_data['mx'] + spot_data['mn']) / 2
+        
+        # --- CÁLCULOS SOLICITADOS (FÓRMULA ESTRITA) ---
+        # 1. Cálculo de X e Y conforme sua fórmula:
+        val_x = eixo_dol - (eixo_dol - media_pura_barra + folga)
+        val_y = eixo_dol + (eixo_dol - media_pura_barra + folga)
+        
+        # 2. LOW e HIGH projetando o PREÇO DE TELA (usando a distância do desvio):
+        alvo_low = spot_data['mn'] + (eixo_dol - val_x)
+        alvo_high = spot_data['mx'] - (val_y - eixo_dol)
+        # -----------------------------------------------
 
-        dist_base_barra = abs(elastico)
+        dist_base_barra = abs(eixo_dol - media_pura_barra) + folga
         diff = spot_data['at'] - eixo_dol
         p_v, p_r = 0, 0
         seta_txt, seta_cor, piscando = "", "#000000", False
@@ -134,21 +131,19 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
             else: p_r = min(100, calculo_pct)
         if p_v >= 100: seta_txt, seta_cor, piscando = "▲ REGIÃO DE COMPRA", "#00ff88", True
         elif p_r >= 100: seta_txt, seta_cor, piscando = "▼ REGIÃO DE VENDA", "#ff4d4d", True
-        
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         ewz_ref = st.session_state.market_data.get("EWZ", {}).get('cl', 1)
         v_ewz = ((p_ewz_atual / ewz_ref) - 1) if ewz_ref > 0 else 0
         v_final = (v_spot_pct * 0.6) - (v_ewz * 0.4)
         fraja_val = eixo_dol * (1 + (v_final / 2))
         vivo_val = (eixo_dol + fraja_val) / 2
-        
         return {
             "vivo": vivo_val, "dolfut_calc": eixo_dol * (1 + v_final), "fraja": fraja_val, "medio": dolar_medio, 
-            "max_fut_5": eixo_dol + (elastico_grade * 10), "max_fut_4": eixo_dol + (elastico_grade * 8),
-            "max_fut_3": eixo_dol + (elastico_grade * 6), "max_fut_2": eixo_dol + (elastico_grade * 4),
-            "max_fut_1": eixo_dol + (elastico_grade * 2), "min_fut_1": eixo_dol - (elastico_grade * 2),
-            "min_fut_2": eixo_dol - (elastico_grade * 4), "min_fut_3": eixo_dol - (elastico_grade * 6),
-            "min_fut_4": eixo_dol - (elastico_grade * 8), "min_fut_5": eixo_dol - (elastico_grade * 10),
+            "max_fut_5": eixo_dol + (elastico_calculado * 10), "max_fut_4": eixo_dol + (elastico_calculado * 8),
+            "max_fut_3": eixo_dol + (elastico_calculado * 6), "max_fut_2": eixo_dol + (elastico_calculado * 4),
+            "max_fut_1": eixo_dol + (elastico_calculado * 2), "min_fut_1": eixo_dol - (elastico_calculado * 2),
+            "min_fut_2": eixo_dol - (elastico_calculado * 4), "min_fut_3": eixo_dol - (elastico_calculado * 6),
+            "min_fut_4": eixo_dol - (elastico_calculado * 8), "min_fut_5": eixo_dol - (elastico_calculado * 10),
             "v_v": v_final * 100, "v_spot": v_spot_pct * 100, "spreed": v_spreed, "p_v": p_v, "p_r": p_r, 
             "seta": seta_txt, "seta_cor": seta_cor, "piscando": piscando, "max_grade": max_original, "min_grade": min_original,
             "alvo_low": alvo_low, "alvo_high": alvo_high
@@ -191,6 +186,7 @@ while True:
         res = calcular_k97_total(div_s, ewz_live['at'] if ewz_live else 0, a_dol, spot_live)
         if res:
             var_dolb3_axis = ((res['vivo'] / a_dol) - 1) * 100
+
             c1, c2 = st.columns([2.8, 1.2])
             with c1:
                 st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
@@ -212,6 +208,8 @@ while True:
                         html += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col {cl_a}'>{p_v:{f}}</td><td>{(d['cl']/1000 if lbl=='DOLSPOT' else d['cl']):{f}}</td><td>{(d['op']/1000 if lbl=='DOLSPOT' else d['op']):{f}}</td><td>{(d['mx']/1000 if lbl=='DOLSPOT' else d['mx']):{f}}</td><td>{(d['mn']/1000 if lbl=='DOLSPOT' else d['mn']):{f}}</td><td style='color:{("#00ff00" if var >= 0 else "#ff4d4d")}; font-weight:bold;'>{var:+.2f}%</td></tr>"
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
+                
+                # --- BARRA DE FORÇA COM LOW E HIGH NO RODAPÉ ---
                 st.markdown(f'''
                     <div class="bar-wrapper-full">
                         <div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div>
@@ -227,6 +225,7 @@ while True:
                         <div class="sinal-indicator {"blink" if res["piscando"] else ""}" style="color:{res["seta_cor"]};">{res["seta"]}</div>
                     </div>
                 ''', unsafe_allow_html=True)
+
             with c2:
                 st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
                 st.markdown(f'''<div class="calc-panel">
