@@ -107,17 +107,17 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
         v_spreed = amp / 8
         folga = v_spreed / 2 
         
-        # --- LÓGICA MESTRE (ELÁSTICO, X, Y e GATILHOS) ---
+        # --- LÓGICA MESTRE EM PONTOS ---
         media_pura_barra = (spot_data['mx'] + spot_data['mn']) / 2
         
-        # 1. ELÁSTICO
+        # 1. ELÁSTICO (Cálculo em pontos)
         elastico = (eixo_dol - media_pura_barra + folga)
         
-        # 2. X e Y (Diferença em pontos)
+        # 2. X e Y (Diferença nominal em pontos)
         val_x = eixo_dol - elastico
-        val_y = eixo_dol - elastico # Usando sua definição exata: Y = Axis - Elástico
+        val_y = eixo_dol - elastico
         
-        # 3. GATILHOS (Soma X na Mínima e Subtrai Y na Máxima)
+        # 3. GATILHOS (Soma/Subtrai pontos do preço Spot)
         alvo_low = spot_data['mn'] + val_x
         alvo_high = spot_data['mx'] - val_y
         # -----------------------------------------------
