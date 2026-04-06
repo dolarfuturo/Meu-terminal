@@ -70,9 +70,6 @@ st.markdown("""
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 1.5px solid #ffffff; border-bottom: 1.5px solid #ffffff; padding: 4px 0; overflow: hidden; white-space: nowrap; margin-top: 8px; }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 12px; font-weight: bold; color: #fff; }
     @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
-    .txt-green { color: #00ff88 !important; }
-    .txt-yellow { color: #ffff00 !important; }
-    .txt-red { color: #ff4d4d !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -107,17 +104,18 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
         v_spreed = amp / 8
         folga = v_spreed / 2 
         
-        # --- LÓGICA MESTRE EM PONTOS ---
+        # --- LÓGICA MESTRE (PURA EM PONTOS) ---
         media_pura_barra = (spot_data['mx'] + spot_data['mn']) / 2
         
-        # 1. ELÁSTICO (Cálculo em pontos)
+        # 1. ELÁSTICO (Diferença nominal do Eixo para a Média)
         elastico = (eixo_dol - media_pura_barra + folga)
         
-        # 2. X e Y (Diferença nominal em pontos)
-        val_x = eixo_dol - elastico
-        val_y = eixo_dol - elastico
+        # 2. X e Y (Diferença em pontos para projetar)
+        # Usamos abs() para garantir que pegamos o TAMANHO em pontos do desvio
+        val_x = abs(eixo_dol - (eixo_dol - elastico))
+        val_y = abs(eixo_dol - (eixo_dol - elastico))
         
-        # 3. GATILHOS (Soma/Subtrai pontos do preço Spot)
+        # 3. GATILHOS (Preço de tela: Mínima/Máxima + Pontos)
         alvo_low = spot_data['mn'] + val_x
         alvo_high = spot_data['mx'] - val_y
         # -----------------------------------------------
@@ -193,7 +191,6 @@ while True:
         res = calcular_k97_total(div_s, ewz_live['at'] if ewz_live else 0, a_dol, spot_live)
         if res:
             var_dolb3_axis = ((res['vivo'] / a_dol) - 1) * 100
-
             c1, c2 = st.columns([2.8, 1.2])
             with c1:
                 st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
@@ -215,8 +212,6 @@ while True:
                         html += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col {cl_a}'>{p_v:{f}}</td><td>{(d['cl']/1000 if lbl=='DOLSPOT' else d['cl']):{f}}</td><td>{(d['op']/1000 if lbl=='DOLSPOT' else d['op']):{f}}</td><td>{(d['mx']/1000 if lbl=='DOLSPOT' else d['mx']):{f}}</td><td>{(d['mn']/1000 if lbl=='DOLSPOT' else d['mn']):{f}}</td><td style='color:{("#00ff00" if var >= 0 else "#ff4d4d")}; font-weight:bold;'>{var:+.2f}%</td></tr>"
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
-                
-                # --- BARRA DE FORÇA COM LOW E HIGH NO RODAPÉ ---
                 st.markdown(f'''
                     <div class="bar-wrapper-full">
                         <div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div>
@@ -232,7 +227,6 @@ while True:
                         <div class="sinal-indicator {"blink" if res["piscando"] else ""}" style="color:{res["seta_cor"]};">{res["seta"]}</div>
                     </div>
                 ''', unsafe_allow_html=True)
-
             with c2:
                 st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
                 st.markdown(f'''<div class="calc-panel">
