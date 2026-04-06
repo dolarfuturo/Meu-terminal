@@ -113,7 +113,7 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
         
         # --- CÁLCULOS SOLICITADOS (FÓRMULA ESTRITA) ---
         # 1. Cálculo de X e Y conforme sua fórmula:
-        val_x = eixo_dol - (eixo_dol - media_pura_barra + folga)
+        val_x = eixo_dol - (eixo_dol - media_pura_barra - folga)
         val_y = eixo_dol + (eixo_dol - media_pura_barra + folga)
         
         # 2. LOW e HIGH projetando o PREÇO DE TELA (usando a distância do desvio):
