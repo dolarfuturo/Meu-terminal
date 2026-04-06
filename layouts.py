@@ -29,7 +29,7 @@ if 'last_p' not in st.session_state: st.session_state.last_p = {}
 if 'div_spreed_mem' not in st.session_state: st.session_state.div_spreed_mem = div_spreed_salvo
 if 'a_dol_mem' not in st.session_state: st.session_state.a_dol_mem = eixo_dol_salvo
 
-# --- CSS ---
+# --- CSS (INTERFACE DARK K97) ---
 st.markdown("""
 <style>
     .block-container { padding-top: 3.5rem !important; padding-bottom: 0rem !important; max-width: 98% !important; }
@@ -76,7 +76,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS ORIGINAL ---
+# --- MOTOR DE DADOS ---
 def fetch(s):
     try:
         t = yf.Ticker(s)
@@ -106,22 +106,27 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
         amp = spot_data['mx'] - spot_data['mn']
         v_spreed = amp / 8
         folga = v_spreed / 2 
-        max_original, min_original = eixo_dol + (amp * 0.75), eixo_dol - (amp * 0.25)
-        dolar_medio = ((max_original + min_original) / 2) - v_spreed
-        elastico_calculado = abs(eixo_dol - dolar_medio) if abs(eixo_dol - dolar_medio) != 0 else 1.0
+        
+        # --- LÓGICA MESTRE (ELÁSTICO, X, Y e GATILHOS) ---
         media_pura_barra = (spot_data['mx'] + spot_data['mn']) / 2
         
-        # --- CÁLCULOS SOLICITADOS (FÓRMULA ESTRITA) ---
-        # 1. Cálculo de X e Y conforme sua fórmula:
-        val_x = eixo_dol - (eixo_dol - media_pura_barra + folga)
-        val_y = eixo_dol + (eixo_dol - media_pura_barra + folga)
+        # 1. ELÁSTICO
+        elastico = (eixo_dol - media_pura_barra + folga)
         
-        # 2. LOW e HIGH projetando o PREÇO DE TELA (usando a distância do desvio):
-        alvo_low = spot_data['mn'] + (eixo_dol - val_x)
-        alvo_high = spot_data['mx'] - (val_y - eixo_dol)
+        # 2. X e Y (Diferença em pontos)
+        val_x = eixo_dol - elastico
+        val_y = eixo_dol - elastico # Usando sua definição exata: Y = Axis - Elástico
+        
+        # 3. GATILHOS (Soma X na Mínima e Subtrai Y na Máxima)
+        alvo_low = spot_data['mn'] + val_x
+        alvo_high = spot_data['mx'] - val_y
         # -----------------------------------------------
 
-        dist_base_barra = abs(eixo_dol - media_pura_barra) + folga
+        max_original, min_original = eixo_dol + (amp * 0.75), eixo_dol - (amp * 0.25)
+        dolar_medio = ((max_original + min_original) / 2) - v_spreed
+        elastico_grade = abs(eixo_dol - dolar_medio) if abs(eixo_dol - dolar_medio) != 0 else 1.0
+
+        dist_base_barra = abs(elastico)
         diff = spot_data['at'] - eixo_dol
         p_v, p_r = 0, 0
         seta_txt, seta_cor, piscando = "", "#000000", False
@@ -131,19 +136,21 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
             else: p_r = min(100, calculo_pct)
         if p_v >= 100: seta_txt, seta_cor, piscando = "▲ REGIÃO DE COMPRA", "#00ff88", True
         elif p_r >= 100: seta_txt, seta_cor, piscando = "▼ REGIÃO DE VENDA", "#ff4d4d", True
+        
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         ewz_ref = st.session_state.market_data.get("EWZ", {}).get('cl', 1)
         v_ewz = ((p_ewz_atual / ewz_ref) - 1) if ewz_ref > 0 else 0
         v_final = (v_spot_pct * 0.6) - (v_ewz * 0.4)
         fraja_val = eixo_dol * (1 + (v_final / 2))
         vivo_val = (eixo_dol + fraja_val) / 2
+        
         return {
             "vivo": vivo_val, "dolfut_calc": eixo_dol * (1 + v_final), "fraja": fraja_val, "medio": dolar_medio, 
-            "max_fut_5": eixo_dol + (elastico_calculado * 10), "max_fut_4": eixo_dol + (elastico_calculado * 8),
-            "max_fut_3": eixo_dol + (elastico_calculado * 6), "max_fut_2": eixo_dol + (elastico_calculado * 4),
-            "max_fut_1": eixo_dol + (elastico_calculado * 2), "min_fut_1": eixo_dol - (elastico_calculado * 2),
-            "min_fut_2": eixo_dol - (elastico_calculado * 4), "min_fut_3": eixo_dol - (elastico_calculado * 6),
-            "min_fut_4": eixo_dol - (elastico_calculado * 8), "min_fut_5": eixo_dol - (elastico_calculado * 10),
+            "max_fut_5": eixo_dol + (elastico_grade * 10), "max_fut_4": eixo_dol + (elastico_grade * 8),
+            "max_fut_3": eixo_dol + (elastico_grade * 6), "max_fut_2": eixo_dol + (elastico_grade * 4),
+            "max_fut_1": eixo_dol + (elastico_grade * 2), "min_fut_1": eixo_dol - (elastico_grade * 2),
+            "min_fut_2": eixo_dol - (elastico_grade * 4), "min_fut_3": eixo_dol - (elastico_grade * 6),
+            "min_fut_4": eixo_dol - (elastico_grade * 8), "min_fut_5": eixo_dol - (elastico_grade * 10),
             "v_v": v_final * 100, "v_spot": v_spot_pct * 100, "spreed": v_spreed, "p_v": p_v, "p_r": p_r, 
             "seta": seta_txt, "seta_cor": seta_cor, "piscando": piscando, "max_grade": max_original, "min_grade": min_original,
             "alvo_low": alvo_low, "alvo_high": alvo_high
