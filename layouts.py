@@ -118,7 +118,7 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
         
         # 2. LOW e HIGH projetando o PREÇO DE TELA (usando a distância do desvio):
         alvo_low = spot_data['mn'] + (eixo_dol - val_x)
-        alvo_high = spot_data['mx'] - (val_y - eixo_dol)
+        alvo_high = spot_data['mx'] + (val_y - eixo_dol)
         # -----------------------------------------------
 
         dist_base_barra = abs(eixo_dol - media_pura_barra) + folga
