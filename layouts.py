@@ -76,56 +76,26 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS ---
+# --- MOTOR DE DADOS ORIGINAL ---
 def fetch(s):
     try:
         t = yf.Ticker(s)
         tz_sp = pytz.timezone('America/Sao_Paulo')
+        d = t.history(period="1d", interval="1m", prepost=True)
+        if d.empty: return st.session_state.market_data.get(s)
         
-        if s == "USDBRL=X":
-            d_hist = t.history(period="5d", interval="1m", prepost=True)
-            if d_hist.empty: return st.session_state.market_data.get(s)
-            
-            d_hist.index = d_hist.index.tz_convert(tz_sp)
-            hoje = datetime.now(tz_sp).date()
-            dias_anteriores = d_hist[d_hist.index.date < hoje]
-            
-            ref_close = t.info.get('previousClose')
-            
-            if not dias_anteriores.empty:
-                ultimo_dia_util = dias_anteriores.index.date[-1]
-                df_ultimo_dia = dias_anteriores.loc[dias_anteriores.index.date == ultimo_dia_util]
-                # Filtra estritamente até as 18:30 do Brasil
-                f_1830 = df_ultimo_dia.between_time('05:00', '18:30')
-                if not f_1830.empty:
-                    ref_close = f_1830['Close'].iloc[-1]
-            
-            d_atual = d_hist[d_hist.index.date == hoje]
-            p_atual = d_atual['Close'].iloc[-1] if not d_atual.empty else d_hist['Close'].iloc[-1]
-            
-            data = {
-                "at": p_atual * 1000, 
-                "cl": ref_close * 1000, 
-                "op": (d_atual['Open'].iloc[0] if not d_atual.empty else d_hist['Open'].iloc[-1]) * 1000,
-                "mx": (d_atual['High'].max() if not d_atual.empty else d_hist['High'].max()) * 1000,
-                "mn": (d_atual['Low'].min() if not d_atual.empty else d_hist['Low'].min()) * 1000
-            }
-        else:
-            d = t.history(period="1d", interval="1m", prepost=True)
-            if d.empty: return st.session_state.market_data.get(s)
-            ref_close = t.info.get('previousClose')
-            
-            if s == "EWZ":
-                d_hist_ewz = t.history(period="3d", interval="1m", prepost=True)
-                if not d_hist_ewz.empty:
-                    d_hist_ewz.index = d_hist_ewz.index.tz_convert(tz_sp)
-                    unique_dates = sorted(list(set(d_hist_ewz.index.date)))
-                    data_anterior = unique_dates[-2] if len(unique_dates) > 1 else unique_dates[0]
-                    f_21h = d_hist_ewz.between_time('05:00', '21:00').loc[d_hist_ewz.index.date == data_anterior]
-                    if not f_21h.empty: ref_close = f_21h['Close'].iloc[-1]
-            
-            data = {"at": d['Close'].iloc[-1], "cl": ref_close or d['Open'].iloc[0], "op": d['Open'].iloc[0], "mx": d['High'].max(), "mn": d['Low'].min()}
-
+        ref_close = t.info.get('previousClose')
+        if s == "EWZ":
+            d_hist = t.history(period="3d", interval="1m", prepost=True)
+            if not d_hist.empty:
+                d_hist.index = d_hist.index.tz_convert(tz_sp)
+                unique_dates = sorted(list(set(d_hist.index.date)))
+                data_anterior = unique_dates[-2] if len(unique_dates) > 1 else unique_dates[0]
+                f_21h = d_hist.between_time('05:00', '21:00').loc[d_hist.index.date == data_anterior]
+                if not f_21h.empty: ref_close = f_21h['Close'].iloc[-1]
+                
+        m = 1000 if s == "USDBRL=X" else 1
+        data = {"at": d['Close'].iloc[-1] * m, "cl": (ref_close or d['Open'].iloc[0]) * m, "op": d['Open'].iloc[0] * m, "mx": d['High'].max() * m, "mn": d['Low'].min() * m}
         st.session_state.market_data[s] = data
         return data
     except: return st.session_state.market_data.get(s)
@@ -141,10 +111,15 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
         elastico_calculado = abs(eixo_dol - dolar_medio) if abs(eixo_dol - dolar_medio) != 0 else 1.0
         media_pura_barra = (spot_data['mx'] + spot_data['mn']) / 2
         
+        # --- CÁLCULOS SOLICITADOS (FÓRMULA ESTRITA) ---
+        # 1. Cálculo de X e Y conforme sua fórmula:
         val_x = eixo_dol - (eixo_dol - media_pura_barra - folga)
         val_y = eixo_dol + (eixo_dol - media_pura_barra + folga)
+        
+        # 2. LOW e HIGH projetando o PREÇO DE TELA (usando a distância do desvio):
         alvo_low = spot_data['mn'] + (eixo_dol - val_x)
         alvo_high = spot_data['mx'] + (val_y - eixo_dol)
+        # -----------------------------------------------
 
         dist_base_barra = abs(eixo_dol - media_pura_barra) + folga
         diff = spot_data['at'] - eixo_dol
@@ -211,6 +186,7 @@ while True:
         res = calcular_k97_total(div_s, ewz_live['at'] if ewz_live else 0, a_dol, spot_live)
         if res:
             var_dolb3_axis = ((res['vivo'] / a_dol) - 1) * 100
+
             c1, c2 = st.columns([2.8, 1.2])
             with c1:
                 st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
@@ -233,6 +209,7 @@ while True:
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 
+                # --- BARRA DE FORÇA COM LOW E HIGH NO RODAPÉ ---
                 st.markdown(f'''
                     <div class="bar-wrapper-full">
                         <div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div>
