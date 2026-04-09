@@ -8,7 +8,7 @@ import pytz
 # Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLLAR", initial_sidebar_state="collapsed")
 
-# --- FUNÇÕES DE PERSISTÊNCIA (ATUALIZADA PARA INCLUIR O SPOT MANUAL) ---
+# --- FUNÇÕES DE PERSISTÊNCIA ---
 def salvar_eixos(div_spreed, dol, spot_man):
     with open("config_axis.txt", "w") as f:
         f.write(f"{div_spreed},{dol},{spot_man}")
@@ -18,20 +18,20 @@ def carregar_eixos():
         try:
             with open("config_axis.txt", "r") as f:
                 dados = f.read().split(",")
-                # Retorna div, dol e spot_manual (se não existir spot_man no arquivo, retorna 0.0)
+                # Garante leitura do terceiro parâmetro se existir
                 return float(dados[0]), float(dados[1]), float(dados[2]) if len(dados) > 2 else 0.0
         except: pass
     return 8.0, 5246.0, 0.0
 
-div_saved, axis_saved, spot_manual_saved = carregar_eixos()
+div_spreed_salvo, eixo_dol_salvo, spot_manual_salvo = carregar_eixos()
 
 if 'market_data' not in st.session_state: st.session_state.market_data = {}
 if 'last_p' not in st.session_state: st.session_state.last_p = {}
-if 'div_spreed_mem' not in st.session_state: st.session_state.div_spreed_mem = div_saved
-if 'a_dol_mem' not in st.session_state: st.session_state.a_dol_mem = axis_saved
-if 'spot_manual_mem' not in st.session_state: st.session_state.spot_manual_mem = spot_manual_saved
+if 'div_spreed_mem' not in st.session_state: st.session_state.div_spreed_mem = div_spreed_salvo
+if 'a_dol_mem' not in st.session_state: st.session_state.a_dol_mem = eixo_dol_salvo
+if 'spot_man_mem' not in st.session_state: st.session_state.spot_man_mem = spot_manual_salvo
 
-# --- CSS (MANTIDO ORIGINAL) ---
+# --- CSS (SEU ORIGINAL) ---
 st.markdown("""
 <style>
     .block-container { padding-top: 3.5rem !important; padding-bottom: 0rem !important; max-width: 98% !important; }
@@ -78,22 +78,19 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS ATUALIZADO ---
-def fetch(s, manual_spot_close=0.0):
+# --- MOTOR DE DADOS ORIGINAL COM TRAVA MANUAL ---
+def fetch(s):
     try:
         t = yf.Ticker(s)
         tz_sp = pytz.timezone('America/Sao_Paulo')
+        d = t.history(period="1d", interval="1m", prepost=True)
+        if d.empty: return st.session_state.market_data.get(s)
         
-        # Se for USDBRL e tiver valor manual, usamos o manual para o 'cl'
-        if s == "USDBRL=X" and manual_spot_close > 0:
-            d = t.history(period="1d", interval="1m", prepost=True)
-            if d.empty: return st.session_state.market_data.get(s)
-            ref_close = manual_spot_close / 1000 # Convertendo para decimal do Yahoo
+        # Se for Spot e houver valor manual definido no ADM, usa ele.
+        if s == "USDBRL=X" and st.session_state.spot_man_mem > 0:
+            ref_close = st.session_state.spot_man_mem / 1000
         else:
-            d = t.history(period="1d", interval="1m", prepost=True)
-            if d.empty: return st.session_state.market_data.get(s)
             ref_close = t.info.get('previousClose')
-            
             if s == "EWZ":
                 d_hist = t.history(period="3d", interval="1m", prepost=True)
                 if not d_hist.empty:
@@ -104,13 +101,7 @@ def fetch(s, manual_spot_close=0.0):
                     if not f_21h.empty: ref_close = f_21h['Close'].iloc[-1]
                 
         m = 1000 if s == "USDBRL=X" else 1
-        data = {
-            "at": d['Close'].iloc[-1] * m, 
-            "cl": (ref_close or d['Open'].iloc[0]) * m, 
-            "op": d['Open'].iloc[0] * m, 
-            "mx": d['High'].max() * m, 
-            "mn": d['Low'].min() * m
-        }
+        data = {"at": d['Close'].iloc[-1] * m, "cl": (ref_close or d['Open'].iloc[0]) * m, "op": d['Open'].iloc[0] * m, "mx": d['High'].max() * m, "mn": d['Low'].min() * m}
         st.session_state.market_data[s] = data
         return data
     except: return st.session_state.market_data.get(s)
@@ -125,12 +116,10 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
         dolar_medio = ((max_original + min_original) / 2) - v_spreed
         elastico_calculado = abs(eixo_dol - dolar_medio) if abs(eixo_dol - dolar_medio) != 0 else 1.0
         media_pura_barra = (spot_data['mx'] + spot_data['mn']) / 2
-        
         val_x = eixo_dol - (eixo_dol - media_pura_barra - folga)
         val_y = eixo_dol + (eixo_dol - media_pura_barra + folga)
         alvo_low = spot_data['mn'] + (eixo_dol - val_x)
         alvo_high = spot_data['mx'] + (val_y - eixo_dol)
-
         dist_base_barra = abs(eixo_dol - media_pura_barra) + folga
         diff = spot_data['at'] - eixo_dol
         p_v, p_r = 0, 0
@@ -160,28 +149,24 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
         }
     except: return None
 
-# --- SIDEBAR (COM CAMPO PARA FECH SPOT MANUAL) ---
+# --- SIDEBAR ---
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
     i_div = st.number_input("DIVISOR SPREED:", value=st.session_state.div_spreed_mem, format="%.2f")
     i_dol = st.number_input("AXIS DOLFUT:", value=st.session_state.a_dol_mem, format="%.2f")
-    i_spot_man = st.number_input("FECH SPOT MANUAL (0 = AUTO):", value=st.session_state.spot_manual_mem, format="%.2f", help="Digite o fechamento real (Ex: 5100.50)")
-    
+    i_spot_man = st.number_input("CLOSE SPOT MANUAL (0=AUTO):", value=st.session_state.spot_man_mem, format="%.2f")
     if st.button("SALVAR CONFIGURAÇÕES"):
-        st.session_state.div_spreed_mem = i_div
-        st.session_state.a_dol_mem = i_dol
-        st.session_state.spot_manual_mem = i_spot_man
+        st.session_state.div_spreed_mem, st.session_state.a_dol_mem, st.session_state.spot_man_mem = i_div, i_dol, i_spot_man
         salvar_eixos(i_div, i_dol, i_spot_man)
         st.success("Salvo!"); time.sleep(0.5); st.rerun()
 
-div_s, a_dol, spot_man = st.session_state.div_spreed_mem, st.session_state.a_dol_mem, st.session_state.spot_manual_mem
+div_s, a_dol = st.session_state.div_spreed_mem, st.session_state.a_dol_mem
 placeholder = st.empty()
 
-# --- LOOP PRINCIPAL ---
+# --- LOOP PRINCIPAL (MANTIDO SEU ORIGINAL) ---
 while True:
     tz_sp, tz_ny, tz_ld, tz_utc = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London'), pytz.utc
-    spot_live = fetch("USDBRL=X", spot_man)
-    ewz_live = fetch("EWZ")
+    spot_live, ewz_live = fetch("USDBRL=X"), fetch("EWZ")
     now = datetime.now()
     
     with placeholder.container():
@@ -190,8 +175,9 @@ while True:
                 <h1 class="main-title"><span class="bair-blue">BAIR</span><span class="terminal-gold"> - TERMINAL DOLLAR</span></h1>
                 <div class="clock-row">
                     <span class="clock-item">🇧🇷 BR: <span class="br-green">{now.astimezone(tz_sp).strftime("%H:%M:%S")}</span></span>
+                    <span class="clock-item">🇺🇸 NY: <span class="white-time">{now.astimezone(tz_ny).strftime("%H:%M:%S")}</span></span>
+                    <span class="clock-item">🇬🇧 LDN: <span class="white-time">{now.astimezone(tz_ld).strftime("%H:%M:%S")}</span></span>
                     <span class="clock-item">🌐 UTC: <span class="utc-gold">{now.astimezone(tz_utc).strftime("%H:%M:%S")}</span></span>
-                    <span class="clock-item" style="margin-left:15px; color:#fff;">FECH SPOT REF: {spot_live['cl'] if spot_live else 0:.2f}</span>
                 </div>
                 <div class="date-container">📅 {now.astimezone(tz_sp).strftime("%d/%m/%Y")}</div>
             </div>
@@ -210,43 +196,34 @@ while True:
                 st.session_state.last_p['DF'] = d_c/1000
                 html += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col {cl_df}' style='background-color:rgba({('0,255,0' if v_f >= 0 else '255,0,0')}, 0.1);'>{(d_c/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max_grade']/1000):.4f}</td><td>{(res['min_grade']/1000):.4f}</td><td style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_f:+.2f}%</td></tr>"
                 ticker_items = [f"DOLFUT: <span style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")};'>{v_f:+.2f}%</span>"]
-                outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "XAU/USD": "GC=F"}
+                outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
                 for lbl, sym in outros.items():
-                    d = fetch(sym, spot_man if lbl == "DOLSPOT" else 0.0)
+                    d = fetch(sym)
                     if d:
-                        f = ".4f" if lbl in ["DOLSPOT", "GBP/USD", "JPY/USD"] else ".2f"
+                        f = ".4f" if lbl in ["DOLSPOT", "GBP/USD", "JPY/USD", "EUR/USD"] else ".2f"
                         p_v = d['at']/1000 if lbl == "DOLSPOT" else d['at']
                         l_a = st.session_state.last_p.get(lbl, p_v); cl_a = "f-up" if p_v > l_a else "f-dn" if p_v < l_a else ""; st.session_state.last_p[lbl] = p_v
                         var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
                         html += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col {cl_a}'>{p_v:{f}}</td><td>{(d['cl']/1000 if lbl=='DOLSPOT' else d['cl']):{f}}</td><td>{(d['op']/1000 if lbl=='DOLSPOT' else d['op']):{f}}</td><td>{(d['mx']/1000 if lbl=='DOLSPOT' else d['mx']):{f}}</td><td>{(d['mn']/1000 if lbl=='DOLSPOT' else d['mn']):{f}}</td><td style='color:{("#00ff00" if var >= 0 else "#ff4d4d")}; font-weight:bold;'>{var:+.2f}%</td></tr>"
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
-                
-                st.markdown(f'''
-                    <div class="bar-wrapper-full">
-                        <div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div>
-                        <div class="force-container-dual">
-                            <div class="center-line"></div>
-                            <div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div>
-                            <div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; font-size: 10px; font-family: monospace; color: #AAA; margin-top: 2px; padding: 0 2px;">
-                            <span>LOW: {res['alvo_low']:.2f}</span>
-                            <span>HIGH: {res['alvo_high']:.2f}</span>
-                        </div>
-                        <div class="sinal-indicator {"blink" if res["piscando"] else ""}" style="color:{res["seta_cor"]};">{res["seta"]}</div>
-                    </div>
-                ''', unsafe_allow_html=True)
+                st.markdown(f'''<div class="bar-wrapper-full"><div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div></div><div style="display: flex; justify-content: space-between; font-size: 10px; font-family: monospace; color: #AAA; margin-top: 2px; padding: 0 2px;"><span>LOW: {res['alvo_low']:.2f}</span><span>HIGH: {res['alvo_high']:.2f}</span></div><div class="sinal-indicator {"blink" if res["piscando"] else ""}" style="color:{res["seta_cor"]};">{res["seta"]}</div></div>''', unsafe_allow_html=True)
 
             with c2:
                 st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
                 st.markdown(f'''<div class="calc-panel">
                     <div class="calc-row txt-red"><span>MAX FUT 5</span> <span>{res['max_fut_5']:.2f}</span></div>
+                    <div class="calc-row txt-yellow"><span>MAX FUT 4</span> <span>{res['max_fut_4']:.2f}</span></div>
+                    <div class="calc-row txt-red"><span>MAX FUT 3</span> <span>{res['max_fut_3']:.2f}</span></div>
+                    <div class="calc-row txt-yellow"><span>MAX FUT 2</span> <span>{res['max_fut_2']:.2f}</span></div>
                     <div class="calc-row txt-red"><span>MAX FUT 1</span> <span>{res['max_fut_1']:.2f}</span></div>
                     <div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 10px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">AXIS: {a_dol:.2f}</div>
                     <div class="calc-row txt-green"><span>MIN FUT 1</span> <span>{res['min_fut_1']:.2f}</span></div>
+                    <div class="calc-row txt-yellow"><span>MIN FUT 2</span> <span>{res['min_fut_2']:.2f}</span></div>
+                    <div class="calc-row txt-green"><span>MIN FUT 3</span> <span>{res['min_fut_3']:.2f}</span></div>
+                    <div class="calc-row txt-yellow"><span>MIN FUT 4</span> <span>{res['min_fut_4']:.2f}</span></div>
                     <div class="calc-row txt-green" style="border-bottom: none;"><span>MIN FUT 5</span> <span>{res['min_fut_5']:.2f}</span></div>
                 </div>''', unsafe_allow_html=True)
-                st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">DOLB3</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">PREÇO JUSTO</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div></div>''', unsafe_allow_html=True)
+                st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">DOLB3</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if var_dolb3_axis >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{var_dolb3_axis:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">PREÇO JUSTO</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div></div>''', unsafe_allow_html=True)
             st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
     time.sleep(5)
