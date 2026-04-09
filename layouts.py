@@ -9,27 +9,29 @@ import pytz
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLLAR", initial_sidebar_state="collapsed")
 
 # --- FUNÇÕES DE PERSISTÊNCIA ---
-def salvar_eixos(div_spreed, dol):
+def salvar_eixos(div_spreed, dol, spot_man):
     with open("config_axis.txt", "w") as f:
-        f.write(f"{div_spreed},{dol}")
+        f.write(f"{div_spreed},{dol},{spot_man}")
 
 def carregar_eixos():
     if os.path.exists("config_axis.txt"):
         try:
             with open("config_axis.txt", "r") as f:
                 dados = f.read().split(",")
-                return float(dados[0]), float(dados[1])
+                # Garante leitura do terceiro parâmetro se existir
+                return float(dados[0]), float(dados[1]), float(dados[2]) if len(dados) > 2 else 0.0
         except: pass
-    return 8.0, 5246.0
+    return 8.0, 5246.0, 0.0
 
-div_spreed_salvo, eixo_dol_salvo = carregar_eixos()
+div_spreed_salvo, eixo_dol_salvo, spot_manual_salvo = carregar_eixos()
 
 if 'market_data' not in st.session_state: st.session_state.market_data = {}
 if 'last_p' not in st.session_state: st.session_state.last_p = {}
 if 'div_spreed_mem' not in st.session_state: st.session_state.div_spreed_mem = div_spreed_salvo
 if 'a_dol_mem' not in st.session_state: st.session_state.a_dol_mem = eixo_dol_salvo
+if 'spot_man_mem' not in st.session_state: st.session_state.spot_man_mem = spot_manual_salvo
 
-# --- CSS ---
+# --- CSS (SEU ORIGINAL) ---
 st.markdown("""
 <style>
     .block-container { padding-top: 3.5rem !important; padding-bottom: 0rem !important; max-width: 98% !important; }
@@ -76,39 +78,30 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS COM FILTRO DE JANELA (REPELE O PASSADO) ---
+# --- MOTOR DE DADOS ORIGINAL COM TRAVA MANUAL ---
 def fetch(s):
     try:
         t = yf.Ticker(s)
-        # Pede o dia atual
+        tz_sp = pytz.timezone('America/Sao_Paulo')
         d = t.history(period="1d", interval="1m", prepost=True)
         if d.empty: return st.session_state.market_data.get(s)
         
-        # MARRETA TÉCNICA: Pega apenas os últimos 540 minutos (9 horas).
-        # Isso enterra qualquer máxima ou mínima de ontem que o Yahoo ainda esteja enviando.
-        d_clean = d.tail(540)
-        
-        ref_close = t.info.get('previousClose')
-        
-        if s == "EWZ":
-            tz_sp = pytz.timezone('America/Sao_Paulo')
-            d_hist = t.history(period="3d", interval="1m", prepost=True)
-            if not d_hist.empty:
-                d_hist.index = d_hist.index.tz_convert(tz_sp)
-                unique_dates = sorted(list(set(d_hist.index.date)))
-                data_anterior = unique_dates[-2] if len(unique_dates) > 1 else unique_dates[0]
-                f_21h = d_hist.between_time('05:00', '21:00').loc[d_hist.index.date == data_anterior]
-                if not f_21h.empty: ref_close = f_21h['Close'].iloc[-1]
+        # Se for Spot e houver valor manual definido no ADM, usa ele.
+        if s == "USDBRL=X" and st.session_state.spot_man_mem > 0:
+            ref_close = st.session_state.spot_man_mem / 1000
+        else:
+            ref_close = t.info.get('previousClose')
+            if s == "EWZ":
+                d_hist = t.history(period="3d", interval="1m", prepost=True)
+                if not d_hist.empty:
+                    d_hist.index = d_hist.index.tz_convert(tz_sp)
+                    unique_dates = sorted(list(set(d_hist.index.date)))
+                    data_anterior = unique_dates[-2] if len(unique_dates) > 1 else unique_dates[0]
+                    f_21h = d_hist.between_time('05:00', '21:00').loc[d_hist.index.date == data_anterior]
+                    if not f_21h.empty: ref_close = f_21h['Close'].iloc[-1]
                 
         m = 1000 if s == "USDBRL=X" else 1
-        
-        # Cálculos baseados apenas na janela limpa das últimas 9 horas
-        at_val = d_clean['Close'].iloc[-1] * m
-        op_val = d_clean['Open'].iloc[0] * m
-        mx_val = d_clean['High'].max() * m
-        mn_val = d_clean['Low'].min() * m
-
-        data = {"at": at_val, "cl": (ref_close or op_val) * m, "op": op_val, "mx": mx_val, "mn": mn_val}
+        data = {"at": d['Close'].iloc[-1] * m, "cl": (ref_close or d['Open'].iloc[0]) * m, "op": d['Open'].iloc[0] * m, "mx": d['High'].max() * m, "mn": d['Low'].min() * m}
         st.session_state.market_data[s] = data
         return data
     except: return st.session_state.market_data.get(s)
@@ -123,13 +116,10 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
         dolar_medio = ((max_original + min_original) / 2) - v_spreed
         elastico_calculado = abs(eixo_dol - dolar_medio) if abs(eixo_dol - dolar_medio) != 0 else 1.0
         media_pura_barra = (spot_data['mx'] + spot_data['mn']) / 2
-        
         val_x = eixo_dol - (eixo_dol - media_pura_barra - folga)
         val_y = eixo_dol + (eixo_dol - media_pura_barra + folga)
-        
         alvo_low = spot_data['mn'] + (eixo_dol - val_x)
         alvo_high = spot_data['mx'] + (val_y - eixo_dol)
-
         dist_base_barra = abs(eixo_dol - media_pura_barra) + folga
         diff = spot_data['at'] - eixo_dol
         p_v, p_r = 0, 0
@@ -164,15 +154,16 @@ with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
     i_div = st.number_input("DIVISOR SPREED:", value=st.session_state.div_spreed_mem, format="%.2f")
     i_dol = st.number_input("AXIS DOLFUT:", value=st.session_state.a_dol_mem, format="%.2f")
+    i_spot_man = st.number_input("CLOSE SPOT MANUAL (0=AUTO):", value=st.session_state.spot_man_mem, format="%.2f")
     if st.button("SALVAR CONFIGURAÇÕES"):
-        st.session_state.div_spreed_mem, st.session_state.a_dol_mem = i_div, i_dol
-        salvar_eixos(i_div, i_dol)
+        st.session_state.div_spreed_mem, st.session_state.a_dol_mem, st.session_state.spot_man_mem = i_div, i_dol, i_spot_man
+        salvar_eixos(i_div, i_dol, i_spot_man)
         st.success("Salvo!"); time.sleep(0.5); st.rerun()
 
 div_s, a_dol = st.session_state.div_spreed_mem, st.session_state.a_dol_mem
 placeholder = st.empty()
 
-# --- LOOP PRINCIPAL ---
+# --- LOOP PRINCIPAL (MANTIDO SEU ORIGINAL) ---
 while True:
     tz_sp, tz_ny, tz_ld, tz_utc = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London'), pytz.utc
     spot_live, ewz_live = fetch("USDBRL=X"), fetch("EWZ")
