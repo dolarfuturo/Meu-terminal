@@ -76,7 +76,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS ORIGINAL ---
+# --- MOTOR DE DADOS ---
 def fetch(s):
     try:
         t = yf.Ticker(s)
@@ -84,8 +84,10 @@ def fetch(s):
         d = t.history(period="1d", interval="1m", prepost=True)
         if d.empty: return st.session_state.market_data.get(s)
         
-        ref_close = t.info.get('previousClose')
+        # --- Lógica de Fechamento (Corrigida p/ evitar erro de 13pts) ---
         if s == "EWZ":
+            # Mantida sua lógica original intacta para EWZ
+            ref_close = t.info.get('previousClose')
             d_hist = t.history(period="3d", interval="1m", prepost=True)
             if not d_hist.empty:
                 d_hist.index = d_hist.index.tz_convert(tz_sp)
@@ -93,9 +95,22 @@ def fetch(s):
                 data_anterior = unique_dates[-2] if len(unique_dates) > 1 else unique_dates[0]
                 f_21h = d_hist.between_time('05:00', '21:00').loc[d_hist.index.date == data_anterior]
                 if not f_21h.empty: ref_close = f_21h['Close'].iloc[-1]
+        else:
+            # Ajuste para DOLSPOT e outros: busca fechamento real no histórico
+            d_diario = t.history(period="2d", interval="1d")
+            if len(d_diario) >= 2:
+                ref_close = d_diario['Close'].iloc[-2]
+            else:
+                ref_close = t.info.get('previousClose') or d['Open'].iloc[0]
                 
         m = 1000 if s == "USDBRL=X" else 1
-        data = {"at": d['Close'].iloc[-1] * m, "cl": (ref_close or d['Open'].iloc[0]) * m, "op": d['Open'].iloc[0] * m, "mx": d['High'].max() * m, "mn": d['Low'].min() * m}
+        data = {
+            "at": d['Close'].iloc[-1] * m, 
+            "cl": ref_close * m, 
+            "op": d['Open'].iloc[0] * m, 
+            "mx": d['High'].max() * m, 
+            "mn": d['Low'].min() * m
+        }
         st.session_state.market_data[s] = data
         return data
     except: return st.session_state.market_data.get(s)
@@ -111,15 +126,11 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
         elastico_calculado = abs(eixo_dol - dolar_medio) if abs(eixo_dol - dolar_medio) != 0 else 1.0
         media_pura_barra = (spot_data['mx'] + spot_data['mn']) / 2
         
-        # --- CÁLCULOS SOLICITADOS (FÓRMULA ESTRITA) ---
-        # 1. Cálculo de X e Y conforme sua fórmula:
+        # --- CÁLCULOS FÓRMULA ESTRITA ---
         val_x = eixo_dol - (eixo_dol - media_pura_barra - folga)
         val_y = eixo_dol + (eixo_dol - media_pura_barra + folga)
-        
-        # 2. LOW e HIGH projetando o PREÇO DE TELA (usando a distância do desvio):
         alvo_low = spot_data['mn'] + (eixo_dol - val_x)
         alvo_high = spot_data['mx'] + (val_y - eixo_dol)
-        # -----------------------------------------------
 
         dist_base_barra = abs(eixo_dol - media_pura_barra) + folga
         diff = spot_data['at'] - eixo_dol
@@ -209,7 +220,7 @@ while True:
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 
-                # --- BARRA DE FORÇA COM LOW E HIGH NO RODAPÉ ---
+                # --- BARRA DE FORÇA ---
                 st.markdown(f'''
                     <div class="bar-wrapper-full">
                         <div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div>
