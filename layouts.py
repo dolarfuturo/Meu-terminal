@@ -6,7 +6,7 @@ from datetime import datetime
 import pytz
 
 # --- CHAVE TWELVE DATA ---
-API_KEY_TWELVE = "7805835d10ff47dfb88596a0ee89edc6"
+API_KEY_TWELVE = "c1e123747323439d99fc2fcfbd0acfc8"
 
 # Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLLAR", initial_sidebar_state="collapsed")
