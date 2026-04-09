@@ -85,19 +85,27 @@ def fetch(s):
         if s == "USDBRL=X":
             d_hist = t.history(period="5d", interval="1m", prepost=True)
             if d_hist.empty: return st.session_state.market_data.get(s)
+            
             d_hist.index = d_hist.index.tz_convert(tz_sp)
             hoje = datetime.now(tz_sp).date()
             dias_anteriores = d_hist[d_hist.index.date < hoje]
+            
             ref_close = t.info.get('previousClose')
+            
             if not dias_anteriores.empty:
                 ultimo_dia_util = dias_anteriores.index.date[-1]
                 df_ultimo_dia = dias_anteriores.loc[dias_anteriores.index.date == ultimo_dia_util]
+                # Filtra estritamente até as 18:30 do Brasil
                 f_1830 = df_ultimo_dia.between_time('05:00', '18:30')
-                if not f_1830.empty: ref_close = f_1830['Close'].iloc[-1]
+                if not f_1830.empty:
+                    ref_close = f_1830['Close'].iloc[-1]
+            
             d_atual = d_hist[d_hist.index.date == hoje]
             p_atual = d_atual['Close'].iloc[-1] if not d_atual.empty else d_hist['Close'].iloc[-1]
+            
             data = {
-                "at": p_atual * 1000, "cl": ref_close * 1000, 
+                "at": p_atual * 1000, 
+                "cl": ref_close * 1000, 
                 "op": (d_atual['Open'].iloc[0] if not d_atual.empty else d_hist['Open'].iloc[-1]) * 1000,
                 "mx": (d_atual['High'].max() if not d_atual.empty else d_hist['High'].max()) * 1000,
                 "mn": (d_atual['Low'].min() if not d_atual.empty else d_hist['Low'].min()) * 1000
@@ -106,14 +114,16 @@ def fetch(s):
             d = t.history(period="1d", interval="1m", prepost=True)
             if d.empty: return st.session_state.market_data.get(s)
             ref_close = t.info.get('previousClose')
+            
             if s == "EWZ":
-                d_hist = t.history(period="3d", interval="1m", prepost=True)
-                if not d_hist.empty:
-                    d_hist.index = d_hist.index.tz_convert(tz_sp)
-                    unique_dates = sorted(list(set(d_hist.index.date)))
+                d_hist_ewz = t.history(period="3d", interval="1m", prepost=True)
+                if not d_hist_ewz.empty:
+                    d_hist_ewz.index = d_hist_ewz.index.tz_convert(tz_sp)
+                    unique_dates = sorted(list(set(d_hist_ewz.index.date)))
                     data_anterior = unique_dates[-2] if len(unique_dates) > 1 else unique_dates[0]
-                    f_21h = d_hist.between_time('05:00', '21:00').loc[d_hist.index.date == data_anterior]
+                    f_21h = d_hist_ewz.between_time('05:00', '21:00').loc[d_hist_ewz.index.date == data_anterior]
                     if not f_21h.empty: ref_close = f_21h['Close'].iloc[-1]
+            
             data = {"at": d['Close'].iloc[-1], "cl": ref_close or d['Open'].iloc[0], "op": d['Open'].iloc[0], "mx": d['High'].max(), "mn": d['Low'].min()}
 
         st.session_state.market_data[s] = data
