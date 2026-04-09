@@ -76,25 +76,22 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS COM RESET 00:00 NO SPOT ---
+# --- MOTOR DE DADOS COM FILTRO DE JANELA (REPELE O PASSADO) ---
 def fetch(s):
     try:
         t = yf.Ticker(s)
-        tz_sp = pytz.timezone('America/Sao_Paulo')
-        now_sp = datetime.now(tz_sp)
-        
-        # Busca o histórico do Yahoo
+        # Pede o dia atual
         d = t.history(period="1d", interval="1m", prepost=True)
         if d.empty: return st.session_state.market_data.get(s)
         
-        # AJUSTE: Filtra apenas dados da data atual (Reset 00:00)
-        d.index = d.index.tz_convert(tz_sp)
-        d_today = d[d.index.date == now_sp.date()]
+        # MARRETA TÉCNICA: Pega apenas os últimos 540 minutos (9 horas).
+        # Isso enterra qualquer máxima ou mínima de ontem que o Yahoo ainda esteja enviando.
+        d_clean = d.tail(540)
         
         ref_close = t.info.get('previousClose')
         
-        # Lógica especial do EWZ para o Close de ontem às 21h
         if s == "EWZ":
+            tz_sp = pytz.timezone('America/Sao_Paulo')
             d_hist = t.history(period="3d", interval="1m", prepost=True)
             if not d_hist.empty:
                 d_hist.index = d_hist.index.tz_convert(tz_sp)
@@ -105,19 +102,11 @@ def fetch(s):
                 
         m = 1000 if s == "USDBRL=X" else 1
         
-        # Se for USDBRL e tivermos dados de HOJE, usamos a Max/Min de hoje.
-        # Caso contrário (virada de dia sem trades), resetamos os picos.
-        if not d_today.empty:
-            at_val = d_today['Close'].iloc[-1] * m
-            op_val = d_today['Open'].iloc[0] * m
-            mx_val = d_today['High'].max() * m
-            mn_val = d_today['Low'].min() * m
-        else:
-            # RESET DE MEIA-NOITE: Se não há dados de hoje ainda, Max/Min = Preço Atual
-            at_val = d['Close'].iloc[-1] * m
-            op_val = at_val
-            mx_val = at_val
-            mn_val = at_val
+        # Cálculos baseados apenas na janela limpa das últimas 9 horas
+        at_val = d_clean['Close'].iloc[-1] * m
+        op_val = d_clean['Open'].iloc[0] * m
+        mx_val = d_clean['High'].max() * m
+        mn_val = d_clean['Low'].min() * m
 
         data = {"at": at_val, "cl": (ref_close or op_val) * m, "op": op_val, "mx": mx_val, "mn": mn_val}
         st.session_state.market_data[s] = data
