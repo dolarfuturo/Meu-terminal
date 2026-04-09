@@ -18,7 +18,6 @@ def carregar_eixos():
         try:
             with open("config_axis.txt", "r") as f:
                 dados = f.read().split(",")
-                # Garante leitura do terceiro parâmetro se existir
                 return float(dados[0]), float(dados[1]), float(dados[2]) if len(dados) > 2 else 0.0
         except: pass
     return 8.0, 5246.0, 0.0
@@ -31,7 +30,7 @@ if 'div_spreed_mem' not in st.session_state: st.session_state.div_spreed_mem = d
 if 'a_dol_mem' not in st.session_state: st.session_state.a_dol_mem = eixo_dol_salvo
 if 'spot_man_mem' not in st.session_state: st.session_state.spot_man_mem = spot_manual_salvo
 
-# --- CSS (SEU ORIGINAL) ---
+# --- CSS ORIGINAL PRESERVADO ---
 st.markdown("""
 <style>
     .block-container { padding-top: 3.5rem !important; padding-bottom: 0rem !important; max-width: 98% !important; }
@@ -61,7 +60,7 @@ st.markdown("""
     .calc-row { display: flex; justify-content: space-between; padding: 2px 6px; border-bottom: 1px solid #444; font-size: 10px; font-weight: bold; align-items: center; }
     .bar-wrapper-full { background: #0a141a; padding: 6px; border: 1.5px solid #ffffff; border-radius: 4px; text-align: center; margin-top: 5px; }
     .force-scale { display: flex; justify-content: space-between; font-size: 8px; font-family: monospace; color: #AAA; margin-bottom: 2px; padding: 0 5px; }
-    .force-container-dual { background: #111; height: 10px; width: 100%; border-radius: 2px; position: relative; overflow: hidden; display: flex; border: 1px solid #444; }
+    .force-container-dual { background: #111; height: 100%; width: 100%; border-radius: 2px; position: relative; overflow: hidden; display: flex; border: 1px solid #444; }
     .center-line { position: absolute; left: 50%; top: 0; width: 1px; height: 100%; background: #fff; z-index: 10; }
     .bar-side { width: 50%; height: 100%; position: relative; background: #050a0e; }
     .fill-green { background: #00ff88; float: right; height: 100%; transition: width 0.4s; }
@@ -78,34 +77,49 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS ORIGINAL COM TRAVA MANUAL ---
+# --- MOTOR DE DADOS COM FILTRO DE DATA ATUAL (ESTRITO) ---
 def fetch(s):
     try:
         t = yf.Ticker(s)
         tz_sp = pytz.timezone('America/Sao_Paulo')
+        now_sp = datetime.now(tz_sp)
+        # Busca histórico curto para garantir velocidade
         d = t.history(period="1d", interval="1m", prepost=True)
         if d.empty: return st.session_state.market_data.get(s)
         
-        # Se for Spot e houver valor manual definido no ADM, usa ele.
+        # Converte índice para horário BR
+        d.index = d.index.tz_convert(tz_sp)
+        
+        # FILTRO RÍGIDO: Apenas dados de HOJE
+        d_today = d[d.index.date == now_sp.date()]
+        
+        # Close Manual para o Spot
         if s == "USDBRL=X" and st.session_state.spot_man_mem > 0:
             ref_close = st.session_state.spot_man_mem / 1000
         else:
             ref_close = t.info.get('previousClose')
-            if s == "EWZ":
-                d_hist = t.history(period="3d", interval="1m", prepost=True)
-                if not d_hist.empty:
-                    d_hist.index = d_hist.index.tz_convert(tz_sp)
-                    unique_dates = sorted(list(set(d_hist.index.date)))
-                    data_anterior = unique_dates[-2] if len(unique_dates) > 1 else unique_dates[0]
-                    f_21h = d_hist.between_time('05:00', '21:00').loc[d_hist.index.date == data_anterior]
-                    if not f_21h.empty: ref_close = f_21h['Close'].iloc[-1]
-                
+
         m = 1000 if s == "USDBRL=X" else 1
-        data = {"at": d['Close'].iloc[-1] * m, "cl": (ref_close or d['Open'].iloc[0]) * m, "op": d['Open'].iloc[0] * m, "mx": d['High'].max() * m, "mn": d['Low'].min() * m}
+        
+        if not d_today.empty:
+            at_val = d_today['Close'].iloc[-1] * m
+            op_val = d_today['Open'].iloc[0] * m
+            mx_val = d_today['High'].max() * m
+            mn_val = d_today['Low'].min() * m
+        else:
+            # Se não houver trades hoje, o dia é "virgem"
+            # Usa o último preço conhecido como base, mas iguala Max/Min/Open a ele
+            at_val = d['Close'].iloc[-1] * m
+            op_val = at_val
+            mx_val = at_val
+            mn_val = at_val
+
+        data = {"at": at_val, "cl": (ref_close or op_val) * m, "op": op_val, "mx": mx_val, "mn": mn_val}
         st.session_state.market_data[s] = data
         return data
     except: return st.session_state.market_data.get(s)
 
+# --- FUNÇÃO DE CÁLCULO MANTIDA ---
 def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
     try:
         if not spot_data or p_ewz_atual == 0: return None
@@ -149,7 +163,7 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
         }
     except: return None
 
-# --- SIDEBAR ---
+# --- SIDEBAR ADM ---
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
     i_div = st.number_input("DIVISOR SPREED:", value=st.session_state.div_spreed_mem, format="%.2f")
@@ -163,9 +177,9 @@ with st.sidebar:
 div_s, a_dol = st.session_state.div_spreed_mem, st.session_state.a_dol_mem
 placeholder = st.empty()
 
-# --- LOOP PRINCIPAL (MANTIDO SEU ORIGINAL) ---
+# --- LOOP PRINCIPAL ---
 while True:
-    tz_sp, tz_ny, tz_ld, tz_utc = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London'), pytz.utc
+    tz_sp, tz_utc = pytz.timezone('America/Sao_Paulo'), pytz.utc
     spot_live, ewz_live = fetch("USDBRL=X"), fetch("EWZ")
     now = datetime.now()
     
@@ -175,8 +189,6 @@ while True:
                 <h1 class="main-title"><span class="bair-blue">BAIR</span><span class="terminal-gold"> - TERMINAL DOLLAR</span></h1>
                 <div class="clock-row">
                     <span class="clock-item">🇧🇷 BR: <span class="br-green">{now.astimezone(tz_sp).strftime("%H:%M:%S")}</span></span>
-                    <span class="clock-item">🇺🇸 NY: <span class="white-time">{now.astimezone(tz_ny).strftime("%H:%M:%S")}</span></span>
-                    <span class="clock-item">🇬🇧 LDN: <span class="white-time">{now.astimezone(tz_ld).strftime("%H:%M:%S")}</span></span>
                     <span class="clock-item">🌐 UTC: <span class="utc-gold">{now.astimezone(tz_utc).strftime("%H:%M:%S")}</span></span>
                 </div>
                 <div class="date-container">📅 {now.astimezone(tz_sp).strftime("%d/%m/%Y")}</div>
