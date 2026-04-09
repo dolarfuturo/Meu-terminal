@@ -76,7 +76,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS ---
+# --- MOTOR DE DADOS COM AJUSTE NO SPOT ---
 def fetch(s):
     try:
         t = yf.Ticker(s)
@@ -84,10 +84,21 @@ def fetch(s):
         d = t.history(period="1d", interval="1m", prepost=True)
         if d.empty: return st.session_state.market_data.get(s)
         
-        # --- Lógica de Fechamento (Corrigida p/ evitar erro de 13pts) ---
-        if s == "EWZ":
-            # Mantida sua lógica original intacta para EWZ
-            ref_close = t.info.get('previousClose')
+        ref_close = t.info.get('previousClose')
+        
+        # --- AJUSTE ESPECÍFICO DOLSPOT (18:30) ---
+        if s == "USDBRL=X":
+            d_hist_spot = t.history(period="2d", interval="1m", prepost=True)
+            if not d_hist_spot.empty:
+                d_hist_spot.index = d_hist_spot.index.tz_convert(tz_sp)
+                unique_dates = sorted(list(set(d_hist_spot.index.date)))
+                data_anterior = unique_dates[-2] if len(unique_dates) > 1 else unique_dates[0]
+                # Filtra o fechamento exatamente às 18:30
+                f_1830 = d_hist_spot.between_time('05:00', '18:30').loc[d_hist_spot.index.date == data_anterior]
+                if not f_1830.empty: ref_close = f_1830['Close'].iloc[-1]
+
+        # --- LÓGICA EWZ (INTOCADA) ---
+        elif s == "EWZ":
             d_hist = t.history(period="3d", interval="1m", prepost=True)
             if not d_hist.empty:
                 d_hist.index = d_hist.index.tz_convert(tz_sp)
@@ -95,22 +106,9 @@ def fetch(s):
                 data_anterior = unique_dates[-2] if len(unique_dates) > 1 else unique_dates[0]
                 f_21h = d_hist.between_time('05:00', '21:00').loc[d_hist.index.date == data_anterior]
                 if not f_21h.empty: ref_close = f_21h['Close'].iloc[-1]
-        else:
-            # Ajuste para DOLSPOT e outros: busca fechamento real no histórico
-            d_diario = t.history(period="2d", interval="1d")
-            if len(d_diario) >= 2:
-                ref_close = d_diario['Close'].iloc[-2]
-            else:
-                ref_close = t.info.get('previousClose') or d['Open'].iloc[0]
                 
         m = 1000 if s == "USDBRL=X" else 1
-        data = {
-            "at": d['Close'].iloc[-1] * m, 
-            "cl": ref_close * m, 
-            "op": d['Open'].iloc[0] * m, 
-            "mx": d['High'].max() * m, 
-            "mn": d['Low'].min() * m
-        }
+        data = {"at": d['Close'].iloc[-1] * m, "cl": (ref_close or d['Open'].iloc[0]) * m, "op": d['Open'].iloc[0] * m, "mx": d['High'].max() * m, "mn": d['Low'].min() * m}
         st.session_state.market_data[s] = data
         return data
     except: return st.session_state.market_data.get(s)
