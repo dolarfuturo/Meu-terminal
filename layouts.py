@@ -76,7 +76,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS ORIGINAL ---
+# --- MOTOR DE DADOS COM AJUSTE DOLSPOT 18:30 ---
 def fetch(s):
     try:
         t = yf.Ticker(s)
@@ -85,6 +85,22 @@ def fetch(s):
         if d.empty: return st.session_state.market_data.get(s)
         
         ref_close = t.info.get('previousClose')
+        
+        # Ajuste específico para DOLSPOT fechar às 18:30
+        if s == "USDBRL=X":
+            d_hist = t.history(period="5d", interval="1m", prepost=True)
+            if not d_hist.empty:
+                d_hist.index = d_hist.index.tz_convert(tz_sp)
+                unique_dates = sorted(list(set(d_hist.index.date)))
+                # Pega o último dia útil que não seja hoje
+                hoje = datetime.now(tz_sp).date()
+                dias_passados = [dt for dt in unique_dates if dt < hoje]
+                if dias_passados:
+                    data_anterior = dias_passados[-1]
+                    f_1830 = d_hist.between_time('05:00', '18:30').loc[d_hist.index.date == data_anterior]
+                    if not f_1830.empty: 
+                        ref_close = f_1830['Close'].iloc[-1]
+        
         if s == "EWZ":
             d_hist = t.history(period="3d", interval="1m", prepost=True)
             if not d_hist.empty:
@@ -112,14 +128,10 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
         media_pura_barra = (spot_data['mx'] + spot_data['mn']) / 2
         
         # --- CÁLCULOS SOLICITADOS (FÓRMULA ESTRITA) ---
-        # 1. Cálculo de X e Y conforme sua fórmula:
         val_x = eixo_dol - (eixo_dol - media_pura_barra - folga)
         val_y = eixo_dol + (eixo_dol - media_pura_barra + folga)
-        
-        # 2. LOW e HIGH projetando o PREÇO DE TELA (usando a distância do desvio):
         alvo_low = spot_data['mn'] + (eixo_dol - val_x)
         alvo_high = spot_data['mx'] + (val_y - eixo_dol)
-        # -----------------------------------------------
 
         dist_base_barra = abs(eixo_dol - media_pura_barra) + folga
         diff = spot_data['at'] - eixo_dol
@@ -186,7 +198,6 @@ while True:
         res = calcular_k97_total(div_s, ewz_live['at'] if ewz_live else 0, a_dol, spot_live)
         if res:
             var_dolb3_axis = ((res['vivo'] / a_dol) - 1) * 100
-
             c1, c2 = st.columns([2.8, 1.2])
             with c1:
                 st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
@@ -209,7 +220,6 @@ while True:
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 
-                # --- BARRA DE FORÇA COM LOW E HIGH NO RODAPÉ ---
                 st.markdown(f'''
                     <div class="bar-wrapper-full">
                         <div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div>
