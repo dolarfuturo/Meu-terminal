@@ -1,8 +1,7 @@
 streamlit
 yfinance
-streamlit-autorefresh
-
-streamlit
-yfinance
 pandas
+requests
+pytz
 st-gsheets-connection
+streamlit-autorefresh
