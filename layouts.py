@@ -8,7 +8,7 @@ import pytz
 # 1. CONFIGURAÇÃO E INICIALIZAÇÃO NO TOPO ABSOLUTO
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLLAR", initial_sidebar_state="collapsed")
 
-# Inicialização forçada para evitar o AttributeError que aparece no print
+# Inicialização blindada para evitar erros de leitura em tempo real
 if 'market_data' not in st.session_state:
     st.session_state['market_data'] = {}
 if 'last_p' not in st.session_state:
@@ -36,7 +36,7 @@ div_spreed_salvo, eixo_dol_salvo = carregar_eixos()
 if 'div_spreed_mem' not in st.session_state: st.session_state.div_spreed_mem = div_spreed_salvo
 if 'a_dol_mem' not in st.session_state: st.session_state.a_dol_mem = eixo_dol_salvo
 
-# --- CSS (MANTIDO) ---
+# --- CSS TÉCNICO ---
 st.markdown("""
 <style>
     .block-container { padding-top: 3.5rem !important; padding-bottom: 0rem !important; max-width: 98% !important; }
@@ -77,9 +77,6 @@ st.markdown("""
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 1.5px solid #ffffff; border-bottom: 1.5px solid #ffffff; padding: 4px 0; overflow: hidden; white-space: nowrap; margin-top: 8px; }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 12px; font-weight: bold; color: #fff; }
     @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
-    .txt-green { color: #00ff88 !important; }
-    .txt-yellow { color: #ffff00 !important; }
-    .txt-red { color: #ff4d4d !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -94,7 +91,7 @@ def fetch(s):
     try:
         url = f"https://api.twelvedata.com/quote?symbol={target}&apikey={API_KEY_TWELVE}"
         r = requests.get(url).json()
-        if "price" not in r: return st.session_state.market_data.get(s)
+        if "price" not in r: return st.session_state.get('market_data', {}).get(s)
         
         m = 1000 if s == "USDBRL=X" else 1
         data = {
@@ -106,9 +103,9 @@ def fetch(s):
         }
         st.session_state.market_data[s] = data
         return data
-    except: return st.session_state.market_data.get(s)
+    except: return st.session_state.get('market_data', {}).get(s)
 
-# --- CÁLCULOS (MANTIDOS) ---
+# --- CÁLCULOS ---
 def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
     try:
         if not spot_data or p_ewz_atual == 0: return None
@@ -136,7 +133,7 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
         if p_v >= 100: seta_txt, seta_cor, piscando = "▲ REGIÃO DE COMPRA", "#00ff88", True
         elif p_r >= 100: seta_txt, seta_cor, piscando = "▼ REGIÃO DE VENDA", "#ff4d4d", True
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
-        ewz_ref = st.session_state.market_data.get("EWZ", {}).get('cl', 1)
+        ewz_ref = st.session_state.get('market_data', {}).get("EWZ", {}).get('cl', 1)
         v_ewz = ((p_ewz_atual / ewz_ref) - 1) if ewz_ref > 0 else 0
         v_final = (v_spot_pct * 0.6) - (v_ewz * 0.4)
         fraja_val = eixo_dol * (1 + (v_final / 2))
@@ -195,7 +192,7 @@ while True:
                 st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
                 html = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
                 v_f, d_c = res['v_v'], res['dolfut_calc']
-                l_df = st.session_state.last_p.get('DF', d_c/1000)
+                l_df = st.session_state.get('last_p', {}).get('DF', d_c/1000)
                 cl_df = "f-up" if (d_c/1000) > l_df else "f-dn" if (d_c/1000) < l_df else ""
                 st.session_state.last_p['DF'] = d_c/1000
                 html += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col {cl_df}' style='background-color:rgba({('0,255,0' if v_f >= 0 else '255,0,0')}, 0.1);'>{(d_c/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max_grade']/1000):.4f}</td><td>{(res['min_grade']/1000):.4f}</td><td style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_f:+.2f}%</td></tr>"
@@ -207,7 +204,9 @@ while True:
                     if d:
                         f = ".4f" if lbl in ["DOLSPOT", "GBP/USD", "JPY/USD", "EUR/USD"] else ".2f"
                         p_v = d['at']/1000 if lbl == "DOLSPOT" else d['at']
-                        l_a = st.session_state.last_p.get(lbl, p_v); cl_a = "f-up" if p_v > l_a else "f-dn" if p_v < l_a else ""; st.session_state.last_p[lbl] = p_v
+                        l_a = st.session_state.get('last_p', {}).get(lbl, p_v)
+                        cl_a = "f-up" if p_v > l_a else "f-dn" if p_v < l_a else ""
+                        st.session_state.last_p[lbl] = p_v
                         var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
                         html += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col {cl_a}'>{p_v:{f}}</td><td>{(d['cl']/1000 if lbl=='DOLSPOT' else d['cl']):{f}}</td><td>{(d['op']/1000 if lbl=='DOLSPOT' else d['op']):{f}}</td><td>{(d['mx']/1000 if lbl=='DOLSPOT' else d['mx']):{f}}</td><td>{(d['mn']/1000 if lbl=='DOLSPOT' else d['mn']):{f}}</td><td style='color:{("#00ff00" if var >= 0 else "#ff4d4d")}; font-weight:bold;'>{var:+.2f}%</td></tr>"
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
