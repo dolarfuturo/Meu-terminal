@@ -1,19 +1,21 @@
 import streamlit as st
-import requests  # Trocado yfinance por requests
+import requests
 import time
 import os
 from datetime import datetime
 import pytz
 
-# Configuração para Tablet
+# 1. CONFIGURAÇÃO E INICIALIZAÇÃO NO TOPO ABSOLUTO
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLLAR", initial_sidebar_state="collapsed")
+
+# Inicialização forçada para evitar o AttributeError que aparece no print
+if 'market_data' not in st.session_state:
+    st.session_state['market_data'] = {}
+if 'last_p' not in st.session_state:
+    st.session_state['last_p'] = {}
 
 # --- CHAVE API TWELVE DATA ---
 API_KEY_TWELVE = "c1e123747323439d99fc2fcfbd0acfc8"
-
-# --- INICIALIZAÇÃO DE MEMÓRIA (Essencial para não dar erro) ---
-if 'market_data' not in st.session_state: st.session_state.market_data = {}
-if 'last_p' not in st.session_state: st.session_state.last_p = {}
 
 # --- FUNÇÕES DE PERSISTÊNCIA ---
 def salvar_eixos(div_spreed, dol):
@@ -34,7 +36,7 @@ div_spreed_salvo, eixo_dol_salvo = carregar_eixos()
 if 'div_spreed_mem' not in st.session_state: st.session_state.div_spreed_mem = div_spreed_salvo
 if 'a_dol_mem' not in st.session_state: st.session_state.a_dol_mem = eixo_dol_salvo
 
-# --- CSS (MANTIDO CONFORME ORIGINAL) ---
+# --- CSS (MANTIDO) ---
 st.markdown("""
 <style>
     .block-container { padding-top: 3.5rem !important; padding-bottom: 0rem !important; max-width: 98% !important; }
@@ -81,7 +83,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- NOVO MOTOR DE DADOS (SUBSTITUINDO YFINANCE POR TWELVE DATA) ---
+# --- MOTOR DE DADOS ---
 def fetch(s):
     symbols_map = {
         "USDBRL=X": "USD/BRL", "EWZ": "EWZ", "DX-Y.NYB": "DXY", 
@@ -106,7 +108,7 @@ def fetch(s):
         return data
     except: return st.session_state.market_data.get(s)
 
-# --- LÓGICA DE CÁLCULO ORIGINAL (MANTIDA INTEGRALMENTE) ---
+# --- CÁLCULOS (MANTIDOS) ---
 def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
     try:
         if not spot_data or p_ewz_atual == 0: return None
