@@ -1,51 +1,21 @@
 import streamlit as st
-import requests
+import requests  # Trocado yfinance por requests
 import time
 import os
 from datetime import datetime
 import pytz
 
-# --- 1. CONFIGURAÇÃO INICIAL E MEMÓRIA ---
+# Configuração para Tablet
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLLAR", initial_sidebar_state="collapsed")
 
-# Inicialização obrigatória das gavetas de memória (evita erro de tela preta)
-if 'market_data' not in st.session_state:
-    st.session_state.market_data = {}
-if 'last_p' not in st.session_state:
-    st.session_state.last_p = {}
-
-# --- 2. CONFIGURAÇÕES DE DADOS ---
+# --- CHAVE API TWELVE DATA ---
 API_KEY_TWELVE = "c1e123747323439d99fc2fcfbd0acfc8"
 
-def fetch(s):
-    symbols_map = {
-        "USDBRL=X": "USD/BRL", "EWZ": "EWZ", "DX-Y.NYB": "DXY", 
-        "GBPUSD=X": "GBP/USD", "JPYUSD=X": "JPY/USD", "EURUSD=X": "EUR/USD", 
-        "GC=F": "XAU/USD", "BZ=F": "LCO/USD"
-    }
-    target = symbols_map.get(s, s)
-    
-    try:
-        url = f"https://api.twelvedata.com/quote?symbol={target}&apikey={API_KEY_TWELVE}"
-        r = requests.get(url).json()
-        
-        if "price" not in r: 
-            return st.session_state.market_data.get(s)
-        
-        m = 1000 if s == "USDBRL=X" else 1
-        data = {
-            "at": float(r['price']) * m,
-            "cl": float(r['previous_close']) * m,
-            "op": float(r['open']) * m,
-            "mx": float(r['high']) * m,
-            "mn": float(r['low']) * m
-        }
-        st.session_state.market_data[s] = data
-        return data
-    except:
-        return st.session_state.market_data.get(s)
+# --- INICIALIZAÇÃO DE MEMÓRIA (Essencial para não dar erro) ---
+if 'market_data' not in st.session_state: st.session_state.market_data = {}
+if 'last_p' not in st.session_state: st.session_state.last_p = {}
 
-# --- 3. PERSISTÊNCIA E EIXOS ---
+# --- FUNÇÕES DE PERSISTÊNCIA ---
 def salvar_eixos(div_spreed, dol):
     with open("config_axis.txt", "w") as f:
         f.write(f"{div_spreed},{dol}")
@@ -64,7 +34,7 @@ div_spreed_salvo, eixo_dol_salvo = carregar_eixos()
 if 'div_spreed_mem' not in st.session_state: st.session_state.div_spreed_mem = div_spreed_salvo
 if 'a_dol_mem' not in st.session_state: st.session_state.a_dol_mem = eixo_dol_salvo
 
-# --- 4. CSS DO TERMINAL ---
+# --- CSS (MANTIDO CONFORME ORIGINAL) ---
 st.markdown("""
 <style>
     .block-container { padding-top: 3.5rem !important; padding-bottom: 0rem !important; max-width: 98% !important; }
@@ -111,7 +81,32 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 5. LÓGICA DE CÁLCULO K97 ---
+# --- NOVO MOTOR DE DADOS (SUBSTITUINDO YFINANCE POR TWELVE DATA) ---
+def fetch(s):
+    symbols_map = {
+        "USDBRL=X": "USD/BRL", "EWZ": "EWZ", "DX-Y.NYB": "DXY", 
+        "GBPUSD=X": "GBP/USD", "JPYUSD=X": "JPY/USD", "EURUSD=X": "EUR/USD", 
+        "GC=F": "XAU/USD", "BZ=F": "LCO/USD"
+    }
+    target = symbols_map.get(s, s)
+    try:
+        url = f"https://api.twelvedata.com/quote?symbol={target}&apikey={API_KEY_TWELVE}"
+        r = requests.get(url).json()
+        if "price" not in r: return st.session_state.market_data.get(s)
+        
+        m = 1000 if s == "USDBRL=X" else 1
+        data = {
+            "at": float(r['price']) * m, 
+            "cl": float(r['previous_close']) * m, 
+            "op": float(r['open']) * m, 
+            "mx": float(r['high']) * m, 
+            "mn": float(r['low']) * m
+        }
+        st.session_state.market_data[s] = data
+        return data
+    except: return st.session_state.market_data.get(s)
+
+# --- LÓGICA DE CÁLCULO ORIGINAL (MANTIDA INTEGRALMENTE) ---
 def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
     try:
         if not spot_data or p_ewz_atual == 0: return None
@@ -136,17 +131,14 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
             calculo_pct = (abs(diff) / (dist_base_barra * div_spreed)) * 100
             if diff < 0: p_v = min(100, calculo_pct)
             else: p_r = min(100, calculo_pct)
-        
         if p_v >= 100: seta_txt, seta_cor, piscando = "▲ REGIÃO DE COMPRA", "#00ff88", True
         elif p_r >= 100: seta_txt, seta_cor, piscando = "▼ REGIÃO DE VENDA", "#ff4d4d", True
-        
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         ewz_ref = st.session_state.market_data.get("EWZ", {}).get('cl', 1)
         v_ewz = ((p_ewz_atual / ewz_ref) - 1) if ewz_ref > 0 else 0
         v_final = (v_spot_pct * 0.6) - (v_ewz * 0.4)
         fraja_val = eixo_dol * (1 + (v_final / 2))
         vivo_val = (eixo_dol + fraja_val) / 2
-        
         return {
             "vivo": vivo_val, "dolfut_calc": eixo_dol * (1 + v_final), "fraja": fraja_val, "medio": dolar_medio, 
             "max_fut_5": eixo_dol + (elastico_calculado * 10), "max_fut_4": eixo_dol + (elastico_calculado * 8),
@@ -160,7 +152,7 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
         }
     except: return None
 
-# --- 6. SIDEBAR ---
+# --- SIDEBAR ---
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
     i_div = st.number_input("DIVISOR SPREED:", value=st.session_state.div_spreed_mem, format="%.2f")
@@ -173,7 +165,7 @@ with st.sidebar:
 div_s, a_dol = st.session_state.div_spreed_mem, st.session_state.a_dol_mem
 placeholder = st.empty()
 
-# --- 7. LOOP PRINCIPAL ---
+# --- LOOP PRINCIPAL ---
 while True:
     tz_sp, tz_ny, tz_ld, tz_utc = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London'), pytz.utc
     spot_live, ewz_live = fetch("USDBRL=X"), fetch("EWZ")
