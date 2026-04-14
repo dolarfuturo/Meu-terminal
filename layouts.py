@@ -197,8 +197,8 @@ while True:
                 outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
                 
                 # --- CALCULO DA SETA ---
-                seta_spread = "▲" if d_c > spot_live['at'] else "▼"
-                cor_seta_spread = "#00ff88" if d_c > spot_live['at'] else "#ff4d4d"
+                seta_spread = "▲" if d_c < spot_live['at'] else "▼"
+                cor_seta_spread = "#00ff88" if d_c < spot_live['at'] else "#ff4d4d"
 
                 for lbl, sym in outros.items():
                     d = fetch(sym)
