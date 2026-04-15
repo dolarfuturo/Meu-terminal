@@ -194,7 +194,19 @@ while True:
                 st.session_state.last_p['DF'] = d_c/1000
                 html += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col {cl_df}' style='background-color:rgba({('0,255,0' if v_f >= 0 else '255,0,0')}, 0.1);'>{(d_c/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max_grade']/1000):.4f}</td><td>{(res['min_grade']/1000):.4f}</td><td style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_f:+.2f}%</td></tr>"
                 ticker_items = [f"DOLFUT: <span style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")};'>{v_f:+.2f}%</span>"]
-                outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F"}
+                
+                # GRADE ATUALIZADA COM US10Y ABAIXO DO PETRÓLEO
+                outros = {
+                    "DOLSPOT": "USDBRL=X", 
+                    "DXY": "DX-Y.NYB", 
+                    "EWZ": "EWZ", 
+                    "GBP/USD": "GBPUSD=X", 
+                    "JPY/USD": "JPYUSD=X", 
+                    "EUR/USD": "EURUSD=X", 
+                    "XAU/USD": "GC=F", 
+                    "PETROLEO BRENT": "BZ=F",
+                    "US10Y": "^TNX"
+                }
                 
                 # --- CALCULO DA SETA ---
                 seta_spread = "▲" if d_c > spot_live['at'] else "▼"
@@ -204,10 +216,19 @@ while True:
                     d = fetch(sym)
                     if d:
                         f = ".4f" if lbl in ["DOLSPOT", "GBP/USD", "JPY/USD", "EUR/USD"] else ".2f"
+                        if lbl == "US10Y": f = ".3f" # Precisão para juros
+                        
                         p_v = d['at']/1000 if lbl == "DOLSPOT" else d['at']
                         l_a = st.session_state.last_p.get(lbl, p_v); cl_a = "f-up" if p_v > l_a else "f-dn" if p_v < l_a else ""; st.session_state.last_p[lbl] = p_v
                         var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
-                        html += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col {cl_a}'>{p_v:{f}}</td><td>{(d['cl']/1000 if lbl=='DOLSPOT' else d['cl']):{f}}</td><td>{(d['op']/1000 if lbl=='DOLSPOT' else d['op']):{f}}</td><td>{(d['mx']/1000 if lbl=='DOLSPOT' else d['mx']):{f}}</td><td>{(d['mn']/1000 if lbl=='DOLSPOT' else d['mn']):{f}}</td><td style='color:{("#00ff00" if var >= 0 else "#ff4d4d")}; font-weight:bold;'>{var:+.2f}%</td></tr>"
+                        
+                        # Formatação de exibição para DOLSPOT vs Outros
+                        cl_val = (d['cl']/1000 if lbl=='DOLSPOT' else d['cl'])
+                        op_val = (d['op']/1000 if lbl=='DOLSPOT' else d['op'])
+                        mx_val = (d['mx']/1000 if lbl=='DOLSPOT' else d['mx'])
+                        mn_val = (d['mn']/1000 if lbl=='DOLSPOT' else d['mn'])
+                        
+                        html += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col {cl_a}'>{p_v:{f}}</td><td>{cl_val:{f}}</td><td>{op_val:{f}}</td><td>{mx_val:{f}}</td><td>{mn_val:{f}}</td><td style='color:{("#00ff00" if var >= 0 else "#ff4d4d")}; font-weight:bold;'>{var:+.2f}%</td></tr>"
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 
