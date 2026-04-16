@@ -76,31 +76,21 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS COM AJUSTE DE VARIAÇÃO ---
+# --- MOTOR DE DADOS REFINADO ---
 def fetch(s):
     try:
         t = yf.Ticker(s)
-        tz_sp = pytz.timezone('America/Sao_Paulo')
+        # Usamos interval=1m para pegar o candle mais recente igual ao gráfico da CNBC
         d = t.history(period="1d", interval="1m", prepost=True)
         if d.empty: return st.session_state.market_data.get(s)
         
-        # Ajuste: se for US10Y, usamos a abertura para calcular variação real do dia
+        # Para o US10Y (^TNX), calculamos a variação baseada na máxima do dia para sentir o "peso" da queda
+        ref_val = t.info.get('previousClose')
         if s == "^TNX":
-            ref_close = d['Open'].iloc[0]
-        else:
-            ref_close = t.info.get('previousClose')
-            
-        if s == "EWZ":
-            d_hist = t.history(period="3d", interval="1m", prepost=True)
-            if not d_hist.empty:
-                d_hist.index = d_hist.index.tz_convert(tz_sp)
-                unique_dates = sorted(list(set(d_hist.index.date)))
-                data_anterior = unique_dates[-2] if len(unique_dates) > 1 else unique_dates[0]
-                f_21h = d_hist.between_time('05:00', '21:00').loc[d_hist.index.date == data_anterior]
-                if not f_21h.empty: ref_close = f_21h['Close'].iloc[-1]
-                
+            ref_val = d['High'].max() # Compara o atual com o topo do dia (sentindo a queda do gráfico)
+
         m = 1000 if s == "USDBRL=X" else 1
-        data = {"at": d['Close'].iloc[-1] * m, "cl": (ref_close or d['Open'].iloc[0]) * m, "op": d['Open'].iloc[0] * m, "mx": d['High'].max() * m, "mn": d['Low'].min() * m}
+        data = {"at": d['Close'].iloc[-1] * m, "cl": (ref_val or d['Open'].iloc[0]) * m, "op": d['Open'].iloc[0] * m, "mx": d['High'].max() * m, "mn": d['Low'].min() * m}
         st.session_state.market_data[s] = data
         return data
     except: return st.session_state.market_data.get(s)
