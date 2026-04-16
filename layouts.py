@@ -29,68 +29,47 @@ if 'last_p' not in st.session_state: st.session_state.last_p = {}
 if 'div_spreed_mem' not in st.session_state: st.session_state.div_spreed_mem = div_spreed_salvo
 if 'a_dol_mem' not in st.session_state: st.session_state.a_dol_mem = eixo_dol_salvo
 
-# --- CSS ---
+# --- CSS REFINADO ---
 st.markdown("""
 <style>
     .block-container { padding-top: 3.5rem !important; padding-bottom: 0rem !important; max-width: 98% !important; }
     .stApp { background-color: #050a0e !important; }
-    [data-testid="column"] { display: flex; flex-direction: column; justify-content: flex-start; gap: 0px !important; }
-    [data-testid="stHorizontalBlock"] { gap: 12px !important; margin-bottom: 0px !important; }
-    .header-container { text-align: center; padding: 10px 0px; border-bottom: 2px solid #FFD700; background-color: #050a0e; margin-bottom: 8px; position: relative; }
-    .main-title { margin: 0px; line-height: 1.2; font-size: 28px; font-family: monospace; padding-bottom: 5px; }
+    .header-container { text-align: center; padding: 10px 0px; border-bottom: 2px solid #FFD700; background-color: #050a0e; margin-bottom: 8px; }
+    .main-title { margin: 0px; line-height: 1.2; font-size: 28px; font-family: monospace; }
     .bair-blue { color: #00BFFF; font-weight: bold; }
     .terminal-gold { color: #FFD700; font-weight: bold; }
-    .clock-row { display: flex; justify-content: center; gap: 15px; padding: 2px 0; font-weight: bold; font-size: 11px; font-family: monospace; }
-    .clock-item { color: #AAA; }
-    .br-green { color: #00ff00; }
-    .white-time { color: #ffffff; }
-    .utc-gold { color: #FFD700; }
-    .date-container { position: absolute; bottom: 5px; right: 10px; font-family: monospace; font-size: 11px; font-weight: bold; color: #ffffff; }
-    .section-title { border: 1px solid #ffffff; color: #00f2ff; text-align: center; font-weight: bold; font-family: monospace; padding: 2px; margin-bottom: 5px; text-transform: uppercase; font-size: 11px; }
-    .main-grid { border: 1.5px solid #ffffff; border-radius: 4px; overflow: hidden; font-family: 'monospace'; background-color: #0d1b22; margin-bottom: 0px; }
+    .section-title { border: 1px solid #ffffff; color: #00f2ff; text-align: center; font-weight: bold; font-family: monospace; padding: 2px; margin-bottom: 5px; font-size: 11px; }
+    .main-grid { border: 1.5px solid #ffffff; border-radius: 4px; overflow: hidden; font-family: 'monospace'; background-color: #0d1b22; }
     .terminal-table { width: 100%; border-collapse: collapse; color: #e0e0e0; }
-    .terminal-table th { background-color: #0a141a; color: #d4a017; border: 1px solid #ffffff; padding: 4px; text-align: center; font-size: 10px; text-transform: uppercase; }
+    .terminal-table th { background-color: #0a141a; color: #d4a017; border: 1px solid #ffffff; padding: 4px; text-align: center; font-size: 10px; }
     .terminal-table td { border: 1px solid #ffffff; padding: 4px; text-align: center; font-size: 12px; }
-    .asset-name { font-size: 12px; color: #fff; text-align: left; font-weight: bold; padding-left: 8px; }
     .price-col { font-weight: bold; color: #ffffff !important; }
     .f-up { background-color: #00ff00aa !important; }
     .f-dn { background-color: #ff0000aa !important; }
-    .calc-panel { border: 1.5px solid #ffffff; border-radius: 4px; padding: 4px; background: #0a141a; font-family: monospace; margin-bottom: 4px; margin-top: 8px; }
-    .calc-row { display: flex; justify-content: space-between; padding: 2px 6px; border-bottom: 1px solid #444; font-size: 10px; font-weight: bold; align-items: center; }
-    .bar-wrapper-full { background: #0a141a; padding: 6px; border: 1.5px solid #ffffff; border-radius: 4px; text-align: center; margin-top: 5px; }
-    .force-scale { display: flex; justify-content: space-between; font-size: 8px; font-family: monospace; color: #AAA; margin-bottom: 2px; padding: 0 5px; }
-    .force-container-dual { background: #111; height: 10px; width: 100%; border-radius: 2px; position: relative; overflow: hidden; display: flex; border: 1px solid #444; }
-    .center-line { position: absolute; left: 50%; top: 0; width: 1px; height: 100%; background: #fff; z-index: 10; }
-    .bar-side { width: 50%; height: 100%; position: relative; background: #050a0e; }
-    .fill-green { background: #00ff88; float: right; height: 100%; transition: width 0.4s; }
-    .fill-red { background: #ff4d4d; float: left; height: 100%; transition: width 0.4s; }
-    .sinal-indicator { font-size: 11px; font-weight: 900; line-height: 1; margin-top: 4px; }
-    .blink { animation: blinker 1.5s linear infinite; }
-    @keyframes blinker { 50% { opacity: 0.1; } }
-    .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 1.5px solid #ffffff; border-bottom: 1.5px solid #ffffff; padding: 4px 0; overflow: hidden; white-space: nowrap; margin-top: 8px; }
-    .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 12px; font-weight: bold; color: #fff; }
-    @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
     .txt-green { color: #00ff88 !important; }
-    .txt-yellow { color: #ffff00 !important; }
     .txt-red { color: #ff4d4d !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS REFINADO ---
+# --- MOTOR UNIFICADO (SISTEMA SPOT PARA TODOS) ---
 def fetch(s):
     try:
-        t = yf.Ticker(s)
-        # Usamos interval=1m para pegar o candle mais recente igual ao gráfico da CNBC
-        d = t.history(period="1d", interval="1m", prepost=True)
+        # Puxamos o dia atual com intervalo de 1m para garantir o dado mais novo (estilo Spot)
+        d = yf.download(s, period="1d", interval="1m", prepost=True, progress=False)
+        
         if d.empty: return st.session_state.market_data.get(s)
         
-        # Para o US10Y (^TNX), calculamos a variação baseada na máxima do dia para sentir o "peso" da queda
-        ref_val = t.info.get('previousClose')
-        if s == "^TNX":
-            ref_val = d['High'].max() # Compara o atual com o topo do dia (sentindo a queda do gráfico)
-
         m = 1000 if s == "USDBRL=X" else 1
-        data = {"at": d['Close'].iloc[-1] * m, "cl": (ref_val or d['Open'].iloc[0]) * m, "op": d['Open'].iloc[0] * m, "mx": d['High'].max() * m, "mn": d['Low'].min() * m}
+        last_price = d['Close'].iloc[-1] * m
+        open_price = d['Open'].iloc[0] * m # Usamos a abertura do dia como referência fixa
+        
+        data = {
+            "at": last_price, 
+            "cl": open_price, # Aqui forçamos o sistema do Spot: variação sobre a abertura
+            "op": open_price, 
+            "mx": d['High'].max() * m, 
+            "mn": d['Low'].min() * m
+        }
         st.session_state.market_data[s] = data
         return data
     except: return st.session_state.market_data.get(s)
@@ -100,145 +79,65 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
         if not spot_data or p_ewz_atual == 0: return None
         amp = spot_data['mx'] - spot_data['mn']
         v_spreed = amp / 8
-        folga = v_spreed / 2 
-        max_original, min_original = eixo_dol + (amp * 0.75), eixo_dol - (amp * 0.25)
-        dolar_medio = ((max_original + min_original) / 2) - v_spreed
-        elastico_calculado = abs(eixo_dol - dolar_medio) if abs(eixo_dol - dolar_medio) != 0 else 1.0
-        media_pura_barra = (spot_data['mx'] + spot_data['mn']) / 2
-        
-        # --- CÁLCULOS ESTRUTURAIS ---
-        val_x = eixo_dol - (eixo_dol - media_pura_barra - folga)
-        val_y = eixo_dol + (eixo_dol - media_pura_barra + folga)
-        alvo_low = spot_data['mn'] + (eixo_dol - val_x)
-        alvo_high = spot_data['mx'] + (val_y - eixo_dol)
-
-        dist_base_barra = abs(eixo_dol - media_pura_barra) + folga
-        diff = spot_data['at'] - eixo_dol
-        p_v, p_r = 0, 0
-        seta_txt, seta_cor, piscando = "", "#000000", False
-        if dist_base_barra > 0 and div_spreed > 0:
-            calculo_pct = (abs(diff) / (dist_base_barra * div_spreed)) * 100
-            if diff < 0: p_v = min(100, calculo_pct)
-            else: p_r = min(100, calculo_pct)
-        if p_v >= 100: seta_txt, seta_cor, piscando = "▲ REGIÃO DE COMPRA", "#00ff88", True
-        elif p_r >= 100: seta_txt, seta_cor, piscando = "▼ REGIÃO DE VENDA", "#ff4d4d", True
+        dolar_medio = ((eixo_dol + (amp * 0.75) + eixo_dol - (amp * 0.25)) / 2) - v_spreed
         
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         ewz_ref = st.session_state.market_data.get("EWZ", {}).get('cl', 1)
         v_ewz = ((p_ewz_atual / ewz_ref) - 1) if ewz_ref > 0 else 0
         v_final = (v_spot_pct * 0.6) - (v_ewz * 0.4)
-        fraja_val = eixo_dol * (1 + (v_final / 2))
-        vivo_val = (eixo_dol + fraja_val) / 2
         
         return {
-            "vivo": vivo_val, "dolfut_calc": eixo_dol * (1 + v_final), "fraja": fraja_val, "medio": dolar_medio, 
-            "max_fut_5": eixo_dol + (elastico_calculado * 10), "max_fut_4": eixo_dol + (elastico_calculado * 8),
-            "max_fut_3": eixo_dol + (elastico_calculado * 6), "max_fut_2": eixo_dol + (elastico_calculado * 4),
-            "max_fut_1": eixo_dol + (elastico_calculado * 2), "min_fut_1": eixo_dol - (elastico_calculado * 2),
-            "min_fut_2": eixo_dol - (elastico_calculado * 4), "min_fut_3": eixo_dol - (elastico_calculado * 6),
-            "min_fut_4": eixo_dol - (elastico_calculado * 8), "min_fut_5": eixo_dol - (elastico_calculado * 10),
-            "v_v": v_final * 100, "v_spot": v_spot_pct * 100, "spreed": v_spreed, "p_v": p_v, "p_r": p_r, 
-            "seta": seta_txt, "seta_cor": seta_cor, "piscando": piscando, "max_grade": max_original, "min_grade": min_original,
-            "alvo_low": alvo_low, "alvo_high": alvo_high, "spreed_t": amp
+            "vivo": (eixo_dol + (eixo_dol * (1 + (v_final / 2)))) / 2,
+            "dolfut_calc": eixo_dol * (1 + v_final),
+            "v_v": v_final * 100,
+            "max_grade": eixo_dol + (amp * 0.75),
+            "min_grade": eixo_dol - (amp * 0.25)
         }
     except: return None
 
 # --- SIDEBAR ---
 with st.sidebar:
-    st.markdown("### ⚙️ PAINEL ADM")
-    i_div = st.number_input("DIVISOR SPREED:", value=st.session_state.div_spreed_mem, format="%.2f")
-    i_dol = st.number_input("AXIS DOLFUT:", value=st.session_state.a_dol_mem, format="%.2f")
-    if st.button("SALVAR CONFIGURAÇÕES"):
+    i_div = st.number_input("DIVISOR SPREED:", value=st.session_state.div_spreed_mem)
+    i_dol = st.number_input("AXIS DOLFUT:", value=st.session_state.a_dol_mem)
+    if st.button("SALVAR"):
         st.session_state.div_spreed_mem, st.session_state.a_dol_mem = i_div, i_dol
-        salvar_eixos(i_div, i_dol)
-        st.success("Salvo!"); time.sleep(0.5); st.rerun()
+        salvar_eixos(i_div, i_dol); st.rerun()
 
 div_s, a_dol = st.session_state.div_spreed_mem, st.session_state.a_dol_mem
 placeholder = st.empty()
 
 # --- LOOP PRINCIPAL ---
 while True:
-    tz_sp, tz_ny, tz_ld, tz_utc = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London'), pytz.utc
     spot_live, ewz_live = fetch("USDBRL=X"), fetch("EWZ")
-    now = datetime.now()
+    res = calcular_k97_total(div_s, ewz_live['at'] if ewz_live else 0, a_dol, spot_live)
     
     with placeholder.container():
-        st.markdown(f'''
-            <div class="header-container">
-                <h1 class="main-title"><span class="bair-blue">BAIR</span><span class="terminal-gold"> - TERMINAL DOLLAR</span></h1>
-                <div class="clock-row">
-                    <span class="clock-item">🇧🇷 BR: <span class="br-green">{now.astimezone(tz_sp).strftime("%H:%M:%S")}</span></span>
-                    <span class="clock-item">🇺🇸 NY: <span class="white-time">{now.astimezone(tz_ny).strftime("%H:%M:%S")}</span></span>
-                    <span class="clock-item">🇬🇧 LDN: <span class="white-time">{now.astimezone(tz_ld).strftime("%H:%M:%S")}</span></span>
-                    <span class="clock-item">🌐 UTC: <span class="utc-gold">{now.astimezone(tz_utc).strftime("%H:%M:%S")}</span></span>
-                </div>
-                <div class="date-container">📅 {now.astimezone(tz_sp).strftime("%d/%m/%Y")}</div>
-            </div>
-        ''', unsafe_allow_html=True)
-
-        res = calcular_k97_total(div_s, ewz_live['at'] if ewz_live else 0, a_dol, spot_live)
+        st.markdown(f'<div class="header-container"><h1 class="main-title"><span class="bair-blue">BAIR</span><span class="terminal-gold"> - K97 TERMINAL</span></h1></div>', unsafe_allow_html=True)
+        
         if res:
-            var_dolb3_axis = ((res['vivo'] / a_dol) - 1) * 100
-            c1, c2 = st.columns([2.8, 1.2])
-            
+            c1, c2 = st.columns([3, 1])
             with c1:
-                st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
-                html = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
-                v_f, d_c = res['v_v'], res['dolfut_calc']
-                l_df = st.session_state.last_p.get('DF', d_c/1000)
-                cl_df = "f-up" if (d_c/1000) > l_df else "f-dn" if (d_c/1000) < l_df else ""
-                st.session_state.last_p['DF'] = d_c/1000
-                html += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col {cl_df}' style='background-color:rgba({('0,255,0' if v_f >= 0 else '255,0,0')}, 0.1);'>{(d_c/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max_grade']/1000):.4f}</td><td>{(res['min_grade']/1000):.4f}</td><td style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_f:+.2f}%</td></tr>"
-                ticker_items = [f"DOLFUT: <span style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")};'>{v_f:+.2f}%</span>"]
+                st.markdown('<div class="section-title">MONITORAMENTO EM TEMPO REAL</div>', unsafe_allow_html=True)
+                html = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Ref (Open)</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
                 
-                outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F", "US10Y": "^TNX"}
-                seta_spread = "▲" if d_c > spot_live['at'] else "▼"
-                cor_seta_spread = "#00ff88" if d_c > spot_live['at'] else "#ff4d4d"
-
-                for lbl, sym in outros.items():
-                    d = fetch(sym)
-                    if d:
-                        f = ".4f" if lbl in ["DOLSPOT", "GBP/USD", "JPY/USD", "EUR/USD"] else ".2f"
-                        if lbl == "US10Y": f = ".3f"
-                        p_v = d['at']/1000 if lbl == "DOLSPOT" else d['at']
-                        l_a = st.session_state.last_p.get(lbl, p_v); cl_a = "f-up" if p_v > l_a else "f-dn" if p_v < l_a else ""; st.session_state.last_p[lbl] = p_v
-                        var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
-                        html += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col {cl_a}'>{p_v:{f}}</td><td>{(d['cl']/1000 if lbl=='DOLSPOT' else d['cl']):{f}}</td><td>{(d['op']/1000 if lbl=='DOLSPOT' else d['op']):{f}}</td><td>{(d['mx']/1000 if lbl=='DOLSPOT' else d['mx']):{f}}</td><td>{(d['mn']/1000 if lbl=='DOLSPOT' else d['mn']):{f}}</td><td style='color:{("#00ff00" if var >= 0 else "#ff4d4d")}; font-weight:bold;'>{var:+.2f}%</td></tr>"
-                        ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
+                # Lista de ativos para o grid
+                ativos = {"DOLFUT": None, "DOLSPOT": "USDBRL=X", "US10Y": "^TNX", "DXY": "DX-Y.NYB", "EWZ": "EWZ"}
+                
+                for lbl, sym in ativos.items():
+                    if lbl == "DOLFUT":
+                        p, r, v = res['dolfut_calc']/1000, a_dol/1000, res['v_v']
+                        mx, mn = res['max_grade']/1000, res['min_grade']/1000
+                    else:
+                        d = fetch(sym)
+                        if not d: continue
+                        p = d['at']/1000 if lbl=="DOLSPOT" else d['at']
+                        r = d['cl']/1000 if lbl=="DOLSPOT" else d['cl']
+                        mx, mn = (d['mx']/1000, d['mn']/1000) if lbl=="DOLSPOT" else (d['mx'], d['mn'])
+                        v = ((d['at']/d['cl'])-1)*100
+                    
+                    f = ".4f" if lbl in ["DOLFUT", "DOLSPOT"] else ".3f" if lbl == "US10Y" else ".2f"
+                    cor = "#00ff00" if v >= 0 else "#ff4d4d"
+                    html += f"<tr><td>{lbl}</td><td class='price-col'>{p:{f}}</td><td>{r:{f}}</td><td>{mx:{f}}</td><td>{mn:{f}}</td><td style='color:{cor}; font-weight:bold;'>{v:+.2f}%</td></tr>"
+                
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
-                
-                st.markdown(f'''
-                    <div class="bar-wrapper-full">
-                        <div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div>
-                        <div class="force-container-dual">
-                            <div class="center-line"></div>
-                            <div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div>
-                            <div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; font-family: monospace; color: #AAA; margin-top: 2px; padding: 0 2px;">
-                            <span>LOW: {res['alvo_low']:.2f}</span>
-                            <span style="color:{cor_seta_spread}; font-size: 14px; font-weight: bold;">{seta_spread}</span>
-                            <span>HIGH: {res['alvo_high']:.2f}</span>
-                        </div>
-                        <div class="sinal-indicator {"blink" if res["piscando"] else ""}" style="color:{res["seta_cor"]};">{res["seta"]}</div>
-                    </div>
-                ''', unsafe_allow_html=True)
-
-            with c2:
-                st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
-                st.markdown(f'''<div class="calc-panel">
-                    <div class="calc-row txt-red"><span>MAX FUT 5</span> <span>{res['max_fut_5']:.2f}</span></div>
-                    <div class="calc-row txt-yellow"><span>MAX FUT 4</span> <span>{res['max_fut_4']:.2f}</span></div>
-                    <div class="calc-row txt-red"><span>MAX FUT 3</span> <span>{res['max_fut_3']:.2f}</span></div>
-                    <div class="calc-row txt-yellow"><span>MAX FUT 2</span> <span>{res['max_fut_2']:.2f}</span></div>
-                    <div class="calc-row txt-red"><span>MAX FUT 1</span> <span>{res['max_fut_1']:.2f}</span></div>
-                    <div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 10px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">AXIS: {a_dol:.2f}</div>
-                    <div class="calc-row txt-green"><span>MIN FUT 1</span> <span>{res['min_fut_1']:.2f}</span></div>
-                    <div class="calc-row txt-yellow"><span>MIN FUT 2</span> <span>{res['min_fut_2']:.2f}</span></div>
-                    <div class="calc-row txt-green"><span>MIN FUT 3</span> <span>{res['min_fut_3']:.2f}</span></div>
-                    <div class="calc-row txt-yellow"><span>MIN FUT 4</span> <span>{res['min_fut_4']:.2f}</span></div>
-                    <div class="calc-row txt-green" style="border-bottom: none;"><span>MIN FUT 5</span> <span>{res['min_fut_5']:.2f}</span></div>
-                </div>''', unsafe_allow_html=True)
-                st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">DOLB3</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if var_dolb3_axis >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{var_dolb3_axis:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">PREÇO JUSTO</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREED T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
-            st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
     time.sleep(5)
