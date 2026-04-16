@@ -76,15 +76,24 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS ORIGINAL ---
+# --- MOTOR DE DADOS ---
 def fetch(s):
     try:
         t = yf.Ticker(s)
         tz_sp = pytz.timezone('America/Sao_Paulo')
-        d = t.history(period="1d", interval="1m", prepost=True)
+        
+        # Ajuste para US10Y: Download direto
+        if s == "^TNX":
+            d = yf.download(s, period="1d", interval="1m", prepost=True, progress=False)
+        else:
+            d = t.history(period="1d", interval="1m", prepost=True)
+            
         if d.empty: return st.session_state.market_data.get(s)
         
         ref_close = t.info.get('previousClose')
+        if s == "^TNX":
+            ref_close = d['Open'].iloc[0] # Usar abertura para variação intraday
+            
         if s == "EWZ":
             d_hist = t.history(period="3d", interval="1m", prepost=True)
             if not d_hist.empty:
@@ -100,7 +109,7 @@ def fetch(s):
         return data
     except: return st.session_state.market_data.get(s)
 
-def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
+def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data, us10y_data):
     try:
         if not spot_data or p_ewz_atual == 0: return None
         amp = spot_data['mx'] - spot_data['mn']
@@ -111,7 +120,7 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
         elastico_calculado = abs(eixo_dol - dolar_medio) if abs(eixo_dol - dolar_medio) != 0 else 1.0
         media_pura_barra = (spot_data['mx'] + spot_data['mn']) / 2
         
-        # --- CÁLCULOS ESTRUTURAIS ---
+        # --- CÁLCULOS DE FORÇA (BARRA) ---
         val_x = eixo_dol - (eixo_dol - media_pura_barra - folga)
         val_y = eixo_dol + (eixo_dol - media_pura_barra + folga)
         alvo_low = spot_data['mn'] + (eixo_dol - val_x)
@@ -128,12 +137,21 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data):
         if p_v >= 100: seta_txt, seta_cor, piscando = "▲ REGIÃO DE COMPRA", "#00ff88", True
         elif p_r >= 100: seta_txt, seta_cor, piscando = "▼ REGIÃO DE VENDA", "#ff4d4d", True
         
+        # --- NOVAS LÓGICAS SOLICITADAS ---
+        # 1. PREÇO JUSTO: axis * VAR US10Y
+        var_us10y = 0
+        if us10y_data and us10y_data['cl'] > 0:
+            var_us10y = (us10y_data['at'] / us10y_data['cl']) - 1
+        fraja_val = eixo_dol * (1 + var_us10y)
+        
+        # 2. DOLB3 PRICE: dolspot + SPREED T / 2
+        vivo_val = spot_data['at'] + (amp / 2)
+        
+        # Variação para Dolfut Calc (Mantida variação EWZ/Spot para tendência)
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         ewz_ref = st.session_state.market_data.get("EWZ", {}).get('cl', 1)
         v_ewz = ((p_ewz_atual / ewz_ref) - 1) if ewz_ref > 0 else 0
         v_final = (v_spot_pct * 0.6) - (v_ewz * 0.4)
-        fraja_val = eixo_dol * (1 + (v_final / 2))
-        vivo_val = (eixo_dol + fraja_val) / 2
         
         return {
             "vivo": vivo_val, "dolfut_calc": eixo_dol * (1 + v_final), "fraja": fraja_val, "medio": dolar_medio, 
@@ -164,7 +182,7 @@ placeholder = st.empty()
 # --- LOOP PRINCIPAL ---
 while True:
     tz_sp, tz_ny, tz_ld, tz_utc = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London'), pytz.utc
-    spot_live, ewz_live = fetch("USDBRL=X"), fetch("EWZ")
+    spot_live, ewz_live, us10y_live = fetch("USDBRL=X"), fetch("EWZ"), fetch("^TNX")
     now = datetime.now()
     
     with placeholder.container():
@@ -181,7 +199,7 @@ while True:
             </div>
         ''', unsafe_allow_html=True)
 
-        res = calcular_k97_total(div_s, ewz_live['at'] if ewz_live else 0, a_dol, spot_live)
+        res = calcular_k97_total(div_s, ewz_live['at'] if ewz_live else 0, a_dol, spot_live, us10y_live)
         if res:
             var_dolb3_axis = ((res['vivo'] / a_dol) - 1) * 100
             c1, c2 = st.columns([2.8, 1.2])
@@ -241,7 +259,7 @@ while True:
                     <div class="calc-row txt-green"><span>MIN FUT 1</span> <span>{res['min_fut_1']:.2f}</span></div>
                     <div class="calc-row txt-yellow"><span>MIN FUT 2</span> <span>{res['min_fut_2']:.2f}</span></div>
                     <div class="calc-row txt-green"><span>MIN FUT 3</span> <span>{res['min_fut_3']:.2f}</span></div>
-                    <div class="calc-row txt-yellow"><span>MIN FUT 2</span> <span>{res['min_fut_4']:.2f}</span></div>
+                    <div class="calc-row txt-yellow"><span>MIN FUT 4</span> <span>{res['min_fut_4']:.2f}</span></div>
                     <div class="calc-row txt-green" style="border-bottom: none;"><span>MIN FUT 5</span> <span>{res['min_fut_5']:.2f}</span></div>
                 </div>''', unsafe_allow_html=True)
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">DOLB3</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if var_dolb3_axis >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{var_dolb3_axis:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">PREÇO JUSTO</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREED T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
