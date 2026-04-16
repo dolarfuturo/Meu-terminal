@@ -76,11 +76,12 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS ORIGINAL ---
+# --- MOTOR DE DADOS COM AJUSTE DE JUROS ---
 def fetch(s):
     try:
         t = yf.Ticker(s)
         tz_sp = pytz.timezone('America/Sao_Paulo')
+        # prepost=True garante captura fora do horário regular (vital para US10Y)
         d = t.history(period="1d", interval="1m", prepost=True)
         if d.empty: return st.session_state.market_data.get(s)
         
@@ -95,7 +96,11 @@ def fetch(s):
                 if not f_21h.empty: ref_close = f_21h['Close'].iloc[-1]
                 
         m = 1000 if s == "USDBRL=X" else 1
-        data = {"at": d['Close'].iloc[-1] * m, "cl": (ref_close or d['Open'].iloc[0]) * m, "op": d['Open'].iloc[0] * m, "mx": d['High'].max() * m, "mn": d['Low'].min() * m}
+        
+        # Pega sempre o último valor do intraday de 1min para evitar travas no US10Y
+        preco_atual = d['Close'].iloc[-1] * m
+        
+        data = {"at": preco_atual, "cl": (ref_close or d['Open'].iloc[0]) * m, "op": d['Open'].iloc[0] * m, "mx": d['High'].max() * m, "mn": d['Low'].min() * m}
         st.session_state.market_data[s] = data
         return data
     except: return st.session_state.market_data.get(s)
