@@ -80,52 +80,60 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS AJUSTADO ---
+# --- MOTOR DE DADOS REFINADO ---
 def fetch(s):
-    # Dicionário padrão para evitar AttributeError em caso de falha total
     fallback = {"at": 0.0, "cl": 1.0, "op": 0.0, "mx": 0.0, "mn": 0.0}
     try:
         t = yf.Ticker(s)
         tz_sp = pytz.timezone('America/Sao_Paulo')
         
+        # Ajuste Crítico para US10Y
         if s == "^TNX":
-            d = yf.download(s, period="1d", interval="1m", prepost=True, progress=False)
+            # Uso de fast_info para evitar 0.000 em caso de delay do download
+            info = t.fast_info
+            d = t.history(period="1d", interval="1m")
+            if d.empty: return st.session_state.market_data.get(s, fallback)
+            
+            data = {
+                "at": float(info.last_price),
+                "cl": float(info.previous_close if info.previous_close else d['Open'].iloc[0]),
+                "op": float(d['Open'].iloc[0]),
+                "mx": float(d['High'].max()),
+                "mn": float(d['Low'].min())
+            }
         else:
             d = t.history(period="1d", interval="1m", prepost=True)
+            if d.empty: return st.session_state.market_data.get(s, fallback)
             
-        if d is None or d.empty: 
-            return st.session_state.market_data.get(s, fallback)
+            ref_close = t.info.get('previousClose')
+            if not ref_close: ref_close = d['Open'].iloc[0]
             
-        ref_close = t.info.get('previousClose')
-        if s == "^TNX" or not ref_close: 
-            ref_close = d['Open'].iloc[0]
+            if s == "EWZ":
+                d_hist = t.history(period="3d", interval="1m", prepost=True)
+                if not d_hist.empty:
+                    d_hist.index = d_hist.index.tz_convert(tz_sp)
+                    unique_dates = sorted(list(set(d_hist.index.date)))
+                    data_anterior = unique_dates[-2] if len(unique_dates) > 1 else unique_dates[0]
+                    f_21h = d_hist.between_time('05:00', '21:00').loc[d_hist.index.date == data_anterior]
+                    if not f_21h.empty: ref_close = f_21h['Close'].iloc[-1]
             
-        if s == "EWZ":
-            d_hist = t.history(period="3d", interval="1m", prepost=True)
-            if not d_hist.empty:
-                d_hist.index = d_hist.index.tz_convert(tz_sp)
-                unique_dates = sorted(list(set(d_hist.index.date)))
-                data_anterior = unique_dates[-2] if len(unique_dates) > 1 else unique_dates[0]
-                f_21h = d_hist.between_time('05:00', '21:00').loc[d_hist.index.date == data_anterior]
-                if not f_21h.empty: ref_close = f_21h['Close'].iloc[-1]
-                
-        m = 1000 if s == "USDBRL=X" else 1
-        data = {
-            "at": float(d['Close'].iloc[-1] * m), 
-            "cl": float(ref_close * m), 
-            "op": float(d['Open'].iloc[0] * m), 
-            "mx": float(d['High'].max() * m), 
-            "mn": float(d['Low'].min() * m)
-        }
+            m = 1000 if s == "USDBRL=X" else 1
+            data = {
+                "at": float(d['Close'].iloc[-1] * m),
+                "cl": float(ref_close * m),
+                "op": float(d['Open'].iloc[0] * m),
+                "mx": float(d['High'].max() * m),
+                "mn": float(d['Low'].min() * m)
+            }
+            
         st.session_state.market_data[s] = data
         return data
-    except: 
+    except:
         return st.session_state.market_data.get(s, fallback)
 
 # --- CÁLCULOS K97 ---
 def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data, us10y_data):
     try:
-        # Verifica se os dados básicos existem para evitar erro de None
         if not spot_data or p_ewz_atual == 0 or not us10y_data: return None
         
         amp = spot_data['mx'] - spot_data['mn']
@@ -152,8 +160,9 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data, us10y_data)
         if p_v >= 100: seta_txt, seta_cor, piscando = "▲ REGIÃO DE COMPRA", "#00ff88", True
         elif p_r >= 100: seta_txt, seta_cor, piscando = "▼ REGIÃO DE VENDA", "#ff4d4d", True
         
-        var_us10y = (us10y_data['at'] / us10y_data['cl']) - 1 if (us10y_data['cl'] > 0) else 0
-        fraja_val = eixo_dol * (1 + var_us10y)
+        # Proteção contra divisão por zero no US10Y
+        v_us10y = (us10y_data['at'] / us10y_data['cl']) - 1 if (us10y_data['cl'] > 0) else 0
+        fraja_val = eixo_dol * (1 + v_us10y)
         vivo_val = spot_data['at'] + (amp / 2)
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         ewz_ref = st.session_state.market_data.get("EWZ", {}).get('cl', 1)
@@ -190,18 +199,12 @@ placeholder = st.empty()
 # --- LOOP PRINCIPAL ---
 while True:
     tz_sp, tz_ny, tz_ld, tz_utc = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London'), pytz.utc
-    
-    # Chamada de dados com proteção
-    spot_live = fetch("USDBRL=X")
-    ewz_live = fetch("EWZ")
-    us10y_live = fetch("^TNX")
-    
+    spot_live, ewz_live, us10y_live = fetch("USDBRL=X"), fetch("EWZ"), fetch("^TNX")
     now = datetime.now()
     
     with placeholder.container():
         st.markdown(f'''<div class="header-container"><h1 class="main-title"><span class="bair-blue">BAIR</span><span class="terminal-gold"> - TERMINAL DOLLAR</span></h1><div class="clock-row"><span class="clock-item">🇧🇷 BR: <span class="br-green">{now.astimezone(tz_sp).strftime("%H:%M:%S")}</span></span><span class="clock-item">🇺🇸 NY: <span class="white-time">{now.astimezone(tz_ny).strftime("%H:%M:%S")}</span></span><span class="clock-item">🇬🇧 LDN: <span class="white-time">{now.astimezone(tz_ld).strftime("%H:%M:%S")}</span></span><span class="clock-item">🌐 UTC: <span class="utc-gold">{now.astimezone(tz_utc).strftime("%H:%M:%S")}</span></span></div><div class="date-container">📅 {now.astimezone(tz_sp).strftime("%d/%m/%Y")}</div></div>''', unsafe_allow_html=True)
         
-        # Passa os dados já garantindo que não são None
         res = calcular_k97_total(div_s, ewz_live['at'] if ewz_live else 0, a_dol, spot_live, us10y_live)
         
         if res:
@@ -235,7 +238,7 @@ while True:
             
             with c2:
                 st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
-                st.markdown(f'''<div class="calc-panel"><div class="calc-row txt-red"><span>MAX FUT 5</span> <span>{res['max_fut_5']:.2f}</span></div><div class="calc-row txt-yellow"><span>MAX FUT 4</span> <span>{res['max_fut_4']:.2f}</span></div><div class="calc-row txt-red"><span>MAX FUT 3</span> <span>{res['max_fut_3']:.2f}</span></div><div class="calc-row txt-yellow"><span>MAX FUT 2</span> <span>{res['max_fut_2']:.2f}</span></div><div class="calc-row txt-red"><span>MAX FUT 1</span> <span>{res['max_fut_1']:.2f}</span></div><div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 10px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">AXIS: {a_dol:.2f}</div><div class="calc-row txt-green"><span>MIN FUT 1</span> <span>{res['min_fut_1']:.2f}</span></div><div class="calc-row txt-yellow"><span>MIN FUT 2</span> <span>{res['min_fut_2']:.2f}</span></div><div class="calc-row txt-green"><span>MIN FUT 3</span> <span>{res['min_fut_3']:.2f}</span></div><div class="calc-row txt-yellow"><span>MIN FUT 4</span> <span>{res['min_fut_4']:.2f}</span></div><div class="calc-row txt-green" style="border-bottom: none;"><span>MIN FUT 5</span> <span>{res['min_fut_5']:.2f}</span></div></div>''', unsafe_allow_html=True)
+                st.markdown(f'''<div class="calc-panel"><div class="calc-row txt-red"><span>MAX FUT 5</span> <span>{res['max_fut_5']:.2f}</span></div><div class="calc-row txt-yellow"><span>MAX FUT 4</span> <span>{res['max_fut_4']:.2f}</span></div><div class="calc-row txt-red"><span>MAX FUT 3</span> <span>{res['max_fut_3']:.2f}</span></div><div class="calc-row txt-yellow"><span>MAX FUT 4</span> <span>{res['max_fut_2']:.2f}</span></div><div class="calc-row txt-red"><span>MAX FUT 1</span> <span>{res['max_fut_1']:.2f}</span></div><div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 10px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">AXIS: {a_dol:.2f}</div><div class="calc-row txt-green"><span>MIN FUT 1</span> <span>{res['min_fut_1']:.2f}</span></div><div class="calc-row txt-yellow"><span>MIN FUT 2</span> <span>{res['min_fut_2']:.2f}</span></div><div class="calc-row txt-green"><span>MIN FUT 3</span> <span>{res['min_fut_3']:.2f}</span></div><div class="calc-row txt-yellow"><span>MIN FUT 4</span> <span>{res['min_fut_4']:.2f}</span></div><div class="calc-row txt-green" style="border-bottom: none;"><span>MIN FUT 5</span> <span>{res['min_fut_5']:.2f}</span></div></div>''', unsafe_allow_html=True)
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">DOLB3</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if var_dolb3_axis >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{var_dolb3_axis:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">PREÇO JUSTO</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREED T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
             
             st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
