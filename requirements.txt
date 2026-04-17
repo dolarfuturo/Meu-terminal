@@ -5,3 +5,4 @@ requests
 pytz
 st-gsheets-connection
 streamlit-autorefresh
+cryptography==42.0.5
