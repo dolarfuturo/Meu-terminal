@@ -87,9 +87,7 @@ def fetch(s):
         t = yf.Ticker(s)
         tz_sp = pytz.timezone('America/Sao_Paulo')
         
-        # Ajuste Crítico para US10Y
         if s == "^TNX":
-            # Uso de fast_info para evitar 0.000 em caso de delay do download
             info = t.fast_info
             d = t.history(period="1d", interval="1m")
             if d.empty: return st.session_state.market_data.get(s, fallback)
@@ -138,15 +136,18 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data, us10y_data)
         
         amp = spot_data['mx'] - spot_data['mn']
         v_spreed = amp / 3
+        
+        # --- CALIBRAGEM CONFORME SOLICITADO ---
+        alvo_low = spot_data['mn'] + v_spreed
+        alvo_high = spot_data['mx'] + v_spreed
+        # --------------------------------------
+
         folga = v_spreed / 2 
         max_original, min_original = eixo_dol + (amp * 0.75), eixo_dol - (amp * 0.25)
         dolar_medio = ((max_original + min_original) / 2) - v_spreed
         elastico_calculado = abs(eixo_dol - dolar_medio) if abs(eixo_dol - dolar_medio) != 0 else 1.0
+        
         media_pura_barra = (spot_data['mx'] + spot_data['mn']) / 2
-        val_x = eixo_dol - (eixo_dol - media_pura_barra - folga)
-        val_y = eixo_dol + (eixo_dol - media_pura_barra + folga)
-        alvo_low = spot_data['mn'] + (eixo_dol - val_x)
-        alvo_high = spot_data['mx'] + (val_y - eixo_dol)
         dist_base_barra = abs(eixo_dol - media_pura_barra) + folga
         diff = spot_data['at'] - eixo_dol
         
@@ -160,7 +161,6 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data, us10y_data)
         if p_v >= 100: seta_txt, seta_cor, piscando = "▲ REGIÃO DE COMPRA", "#00ff88", True
         elif p_r >= 100: seta_txt, seta_cor, piscando = "▼ REGIÃO DE VENDA", "#ff4d4d", True
         
-        # Proteção contra divisão por zero no US10Y
         v_us10y = (us10y_data['at'] / us10y_data['cl']) - 1 if (us10y_data['cl'] > 0) else 0
         fraja_val = eixo_dol * (1 + v_us10y)
         vivo_val = spot_data['at'] + (amp / 2)
