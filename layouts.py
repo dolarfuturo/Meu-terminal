@@ -147,7 +147,7 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data, us10y_data)
         val_y = eixo_dol + (eixo_dol - media_pura_barra + folga)
         alvo_low = spot_data['mn'] + (eixo_dol - val_x)
         alvo_high = spot_data['mx'] + (val_y - eixo_dol)
-        dist_base_barra = abs(eixo_dol - media_pura_barra) + folga
+        dist_base_barra = abs(eixo_dol - media_pura_barra) 
         diff = spot_data['at'] - eixo_dol
         
         p_v, p_r = 0, 0
