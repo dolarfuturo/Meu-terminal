@@ -137,24 +137,24 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data, us10y_data)
         amp = spot_data['mx'] - spot_data['mn']
         v_spreed = amp / 3
         
-        # --- CALIBRAGEM CONFORME SOLICITADO ---
+        # --- SUBSTITUIÇÃO POR SPREDD CONFORME SOLICITADO ---
         alvo_low = spot_data['mn'] + v_spreed
         alvo_high = spot_data['mx'] + v_spreed
-        # --------------------------------------
-
-        folga = v_spreed / 2 
+        
+        # max_original e min_original mantidos como base da grade
         max_original, min_original = eixo_dol + (amp * 0.75), eixo_dol - (amp * 0.25)
         dolar_medio = ((max_original + min_original) / 2) - v_spreed
-        elastico_calculado = abs(eixo_dol - dolar_medio) if abs(eixo_dol - dolar_medio) != 0 else 1.0
         
-        media_pura_barra = (spot_data['mx'] + spot_data['mn']) / 2
-        dist_base_barra = abs(eixo_dol - media_pura_barra) + folga
+        # Elástico agora é puramente o SPREDD
+        dist_base_barra = v_spreed
         diff = spot_data['at'] - eixo_dol
         
         p_v, p_r = 0, 0
         seta_txt, seta_cor, piscando = "", "#000000", False
-        if dist_base_barra > 0 and div_spreed > 0:
-            calculo_pct = (abs(diff) / (dist_base_barra * div_spreed)) * 100
+        
+        # Acionamento da Barra baseado no SPREDD e no Divisor
+        if v_spreed > 0 and div_spreed > 0:
+            calculo_pct = (abs(diff) / (v_spreed * div_spreed)) * 100
             if diff < 0: p_v = min(100, calculo_pct)
             else: p_r = min(100, calculo_pct)
             
@@ -171,18 +171,18 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data, us10y_data)
         
         return {
             "vivo": vivo_val, "dolfut_calc": eixo_dol * (1 + v_final), "fraja": fraja_val, "medio": dolar_medio, 
-            "max_fut_5": eixo_dol + (elastico_calculado * 10), "max_fut_4": eixo_dol + (elastico_calculado * 8),
-            "max_fut_3": eixo_dol + (elastico_calculado * 6), "max_fut_2": eixo_dol + (elastico_calculado * 4),
-            "max_fut_1": eixo_dol + (elastico_calculado * 2), "min_fut_1": eixo_dol - (elastico_calculado * 2),
-            "min_fut_2": eixo_dol - (elastico_calculado * 4), "min_fut_3": eixo_dol - (elastico_calculado * 6),
-            "min_fut_4": eixo_dol - (elastico_calculado * 8), "min_fut_5": eixo_dol - (elastico_calculado * 10),
+            "max_fut_5": eixo_dol + (v_spreed * 10), "max_fut_4": eixo_dol + (v_spreed * 8),
+            "max_fut_3": eixo_dol + (v_spreed * 6), "max_fut_2": eixo_dol + (v_spreed * 4),
+            "max_fut_1": eixo_dol + (v_spreed * 2), "min_fut_1": eixo_dol - (v_spreed * 2),
+            "min_fut_2": eixo_dol - (v_spreed * 4), "min_fut_3": eixo_dol - (v_spreed * 6),
+            "min_fut_4": eixo_dol - (v_spreed * 8), "min_fut_5": eixo_dol - (v_spreed * 10),
             "v_v": v_final * 100, "v_spot": v_spot_pct * 100, "spreed": v_spreed, "p_v": p_v, "p_r": p_r, 
             "seta": seta_txt, "seta_cor": seta_cor, "piscando": piscando, "max_grade": max_original, "min_grade": min_original,
             "alvo_low": alvo_low, "alvo_high": alvo_high, "spreed_t": amp
         }
     except: return None
 
-# --- SIDEBAR ---
+# --- SIDEBAR E LOOP PRINCIPAL MANTIDOS ---
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
     i_div = st.number_input("DIVISOR SPREED:", value=st.session_state.div_spreed_mem, format="%.2f")
@@ -196,7 +196,6 @@ with st.sidebar:
 div_s, a_dol, a_fut = st.session_state.div_spreed_mem, st.session_state.a_dol_mem, st.session_state.a_fut_mem
 placeholder = st.empty()
 
-# --- LOOP PRINCIPAL ---
 while True:
     tz_sp, tz_ny, tz_ld, tz_utc = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London'), pytz.utc
     spot_live, ewz_live, us10y_live = fetch("USDBRL=X"), fetch("EWZ"), fetch("^TNX")
