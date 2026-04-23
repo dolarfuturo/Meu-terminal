@@ -137,7 +137,7 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data, us10y_data)
         if not spot_data or p_ewz_atual == 0 or not us10y_data: return None
         
         amp = spot_data['mx'] - spot_data['mn']
-        v_spreed = amp / 8
+        v_spreed = amp / 4
         folga = v_spreed / 2 
         max_original, min_original = eixo_dol + (amp * 0.75), eixo_dol - (amp * 0.25)
         dolar_medio = ((max_original + min_original) / 2) - v_spreed
