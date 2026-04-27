@@ -80,45 +80,35 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS AJUSTADO ---
+# --- MOTOR DE DADOS ---
 def fetch(s):
     fallback = {"at": 0.0, "cl": 1.0, "op": 0.0, "mx": 0.0, "mn": 0.0}
     try:
         t = yf.Ticker(s)
         tz_sp = pytz.timezone('America/Sao_Paulo')
-        
-        # Ajuste para capturar dados em tempo real (prepost=True) em todos os horários
-        d = t.history(period="1d", interval="1m", prepost=True)
-        
-        if d.empty: 
-            return st.session_state.market_data.get(s, fallback)
-        
-        current_p = float(d['Close'].iloc[-1])
-        ref_close = t.info.get('previousClose')
-        if not ref_close: 
-            ref_close = d['Open'].iloc[0]
-            
-        if s == "EWZ":
-            d_hist = t.history(period="3d", interval="1m", prepost=True)
-            if not d_hist.empty:
-                d_hist.index = d_hist.index.tz_convert(tz_sp)
-                unique_dates = sorted(list(set(d_hist.index.date)))
-                data_anterior = unique_dates[-2] if len(unique_dates) > 1 else unique_dates[0]
-                f_21h = d_hist.between_time('05:00', '21:00').loc[d_hist.index.date == data_anterior]
-                if not f_21h.empty: ref_close = f_21h['Close'].iloc[-1]
-                
-        m = 1000 if s == "USDBRL=X" else 1
-        data = {
-            "at": current_p * m, 
-            "cl": float(ref_close * m), 
-            "op": float(d['Open'].iloc[0] * m), 
-            "mx": float(d['High'].max() * m), 
-            "mn": float(d['Low'].min() * m)
-        }
+        if s == "^TNX":
+            info = t.fast_info
+            d = t.history(period="1d", interval="1m")
+            if d.empty: return st.session_state.market_data.get(s, fallback)
+            data = {"at": float(info.last_price), "cl": float(info.previous_close if info.previous_close else d['Open'].iloc[0]), "op": float(d['Open'].iloc[0]), "mx": float(d['High'].max()), "mn": float(d['Low'].min())}
+        else:
+            d = t.history(period="1d", interval="1m", prepost=True)
+            if d.empty: return st.session_state.market_data.get(s, fallback)
+            ref_close = t.info.get('previousClose')
+            if not ref_close: ref_close = d['Open'].iloc[0]
+            if s == "EWZ":
+                d_hist = t.history(period="3d", interval="1m", prepost=True)
+                if not d_hist.empty:
+                    d_hist.index = d_hist.index.tz_convert(tz_sp)
+                    unique_dates = sorted(list(set(d_hist.index.date)))
+                    data_anterior = unique_dates[-2] if len(unique_dates) > 1 else unique_dates[0]
+                    f_21h = d_hist.between_time('05:00', '21:00').loc[d_hist.index.date == data_anterior]
+                    if not f_21h.empty: ref_close = f_21h['Close'].iloc[-1]
+            m = 1000 if s == "USDBRL=X" else 1
+            data = {"at": float(d['Close'].iloc[-1] * m), "cl": float(ref_close * m), "op": float(d['Open'].iloc[0] * m), "mx": float(d['High'].max() * m), "mn": float(d['Low'].min() * m)}
         st.session_state.market_data[s] = data
         return data
-    except: 
-        return st.session_state.market_data.get(s, fallback)
+    except: return st.session_state.market_data.get(s, fallback)
 
 # --- CÁLCULOS K97 ---
 def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data, us10y_data):
@@ -130,12 +120,15 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data, us10y_data)
         # --- CALIBRAGEM ---
         alvo_low = spot_data['mn'] + v_spreed
         alvo_high = spot_data['mx'] + v_spreed
+        folga = v_spreed / 2 
         max_original, min_original = eixo_dol + (amp * 0.75), eixo_dol - (amp * 0.25)
         dolar_medio = ((max_original + min_original) / 2) - v_spreed
         
+        # BLOCO MAX/MIN FUT MANTIDO IGUAL AO ORIGINAL
         elastico_calculado = abs(eixo_dol - dolar_medio) if abs(eixo_dol - dolar_medio) != 0 else 1.0
         
-        dist_base_barra = v_spreed 
+        # --- AJUSTE EXCLUSIVO DA BARRA: FOCA NO SPREDD ---
+        dist_base_barra = v_spreed # Alterado de folga/médias para SPREDD puro
         diff = spot_data['at'] - eixo_dol
         
         p_v, p_r = 0, 0
