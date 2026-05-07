@@ -115,7 +115,7 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data, us10y_data)
     try:
         if not spot_data or p_ewz_atual == 0 or not us10y_data: return None
         amp = spot_data['mx'] - spot_data['mn']
-        v_spreed = amp / 3
+        v_spreed = amp / 2
         
         # --- CALIBRAGEM ---
         alvo_low = spot_data['mn'] + v_spreed
