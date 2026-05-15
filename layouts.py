@@ -115,24 +115,20 @@ def calcular_k97_total(spreed_do_dia, p_ewz_atual, eixo_dol, spot_data, us10y_da
     try:
         if not spot_data or p_ewz_atual == 0 or not us10y_data: return None
         
-        # 1. MÉDIA REAL DO SPOT (MAX + MIN / 2)
+        # MÉDIA REAL DO SPOT (MAX + MIN / 2)
         dolar_medio = (spot_data['mx'] + spot_data['mn']) / 2
         
-        # 2. PREÇO JUSTO (SPOT PRICE + SPREED DO DIA)
+        # PREÇO JUSTO (SPOT PRICE + SPREED DO DIA)
         fraja_val = spot_data['at'] + spreed_do_dia
         
-        # 3. CÁLCULO VAR DXY*0.7 - EWZ*0.3
+        # CÁLCULO VARIAÇÃO DOLB3 EM PORCENTAGEM
         dxy_data = fetch("DX-Y.NYB")
         v_dxy = ((dxy_data['at'] / dxy_data['cl']) - 1) if dxy_data['cl'] > 0 else 0
         ewz_ref = st.session_state.market_data.get("EWZ", {}).get('cl', 1)
         v_ewz = ((p_ewz_atual / ewz_ref) - 1) if ewz_ref > 0 else 0
-        calc_variacoes = (v_dxy * 0.7) - (v_ewz * 0.3)
+        calc_variacoes_pct = ((v_dxy * 0.7) - (v_ewz * 0.3)) * 100 # Em Porcentagem
         
-        # 4. DOLB3 (MÉDIA DO DOLAR + CALC VARIAÇÕES)
-        # Multiplicamos o cálculo por 100 para aplicar como pontos sobre a média, ou conforme sua lógica de escala
-        vivo_val = dolar_medio + (calc_variacoes * 100) 
-
-        # Resto dos cálculos mantidos para não quebrar a grade
+        # Resto dos cálculos mantidos para grade
         amp = spot_data['mx'] - spot_data['mn']
         v_spreed = amp / 2
         alvo_low = spot_data['mn'] + v_spreed
@@ -145,7 +141,7 @@ def calcular_k97_total(spreed_do_dia, p_ewz_atual, eixo_dol, spot_data, us10y_da
         p_v, p_r = 0, 0
         seta_txt, seta_cor, piscando = "", "#000000", False
         if dist_base_barra > 0 and spreed_do_dia > 0:
-            calculo_pct = (abs(diff) / (dist_base_barra * 5.0)) * 100 # Mantive 5.0 como divisor interno da barra
+            calculo_pct = (abs(diff) / (dist_base_barra * 5.0)) * 100 
             if diff < 0: p_v = min(100, calculo_pct)
             else: p_r = min(100, calculo_pct)
             
@@ -156,7 +152,7 @@ def calcular_k97_total(spreed_do_dia, p_ewz_atual, eixo_dol, spot_data, us10y_da
         v_final = (v_spot_pct * 0.6) - (v_ewz * 0.4)
         
         return {
-            "vivo": vivo_val, "dolfut_calc": eixo_dol * (1 + v_final), "fraja": fraja_val, "medio": dolar_medio, 
+            "vivo": calc_variacoes_pct, "dolfut_calc": eixo_dol * (1 + v_final), "fraja": fraja_val, "medio": dolar_medio, 
             "max_fut_5": eixo_dol + (elastico_calculado * 10), "max_fut_4": eixo_dol + (elastico_calculado * 8),
             "max_fut_3": eixo_dol + (elastico_calculado * 6), "max_fut_2": eixo_dol + (elastico_calculado * 4),
             "max_fut_1": eixo_dol + (elastico_calculado * 2), "min_fut_1": eixo_dol - (elastico_calculado * 2),
@@ -171,7 +167,6 @@ def calcular_k97_total(spreed_do_dia, p_ewz_atual, eixo_dol, spot_data, us10y_da
 # --- SIDEBAR ---
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
-    # ALTERADO PARA SPREED DO DIA
     i_div = st.number_input("SPREED DO DIA:", value=st.session_state.div_spreed_mem, format="%.2f")
     i_dol = st.number_input("AXIS DOLFUT:", value=st.session_state.a_dol_mem, format="%.2f")
     i_fut = st.number_input("AXIS FUT (DOLB3 VAR):", value=st.session_state.a_fut_mem, format="%.2f")
@@ -192,7 +187,6 @@ while True:
         st.markdown(f'''<div class="header-container"><h1 class="main-title"><span class="bair-blue">BAIR</span><span class="terminal-gold"> - TERMINAL DOLLAR</span></h1><div class="clock-row"><span class="clock-item">🇧🇷 BR: <span class="br-green">{now.astimezone(tz_sp).strftime("%H:%M:%S")}</span></span><span class="clock-item">🇺🇸 NY: <span class="white-time">{now.astimezone(tz_ny).strftime("%H:%M:%S")}</span></span><span class="clock-item">🇬🇧 LDN: <span class="white-time">{now.astimezone(tz_ld).strftime("%H:%M:%S")}</span></span><span class="clock-item">🌐 UTC: <span class="utc-gold">{now.astimezone(tz_utc).strftime("%H:%M:%S")}</span></span></div><div class="date-container">📅 {now.astimezone(tz_sp).strftime("%d/%m/%Y")}</div></div>''', unsafe_allow_html=True)
         res = calcular_k97_total(div_s, ewz_live['at'] if ewz_live else 0, a_dol, spot_live, us10y_live)
         if res:
-            var_dolb3_axis = ((res['vivo'] / a_fut) - 1) * 100
             c1, c2 = st.columns([2.8, 1.2])
             with c1:
                 st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
@@ -219,7 +213,8 @@ while True:
             with c2:
                 st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row txt-red"><span>MAX FUT 5</span> <span>{res['max_fut_5']:.2f}</span></div><div class="calc-row txt-yellow"><span>MAX FUT 4</span> <span>{res['max_fut_4']:.2f}</span></div><div class="calc-row txt-red"><span>MAX FUT 3</span> <span>{res['max_fut_3']:.2f}</span></div><div class="calc-row txt-yellow"><span>MAX FUT 2</span> <span>{res['max_fut_2']:.2f}</span></div><div class="calc-row txt-red"><span>MAX FUT 1</span> <span>{res['max_fut_1']:.2f}</span></div><div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 10px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">AXIS: {a_dol:.2f}</div><div class="calc-row txt-green"><span>MIN FUT 1</span> <span>{res['min_fut_1']:.2f}</span></div><div class="calc-row txt-yellow"><span>MIN FUT 2</span> <span>{res['min_fut_2']:.2f}</span></div><div class="calc-row txt-green"><span>MIN FUT 3</span> <span>{res['min_fut_3']:.2f}</span></div><div class="calc-row txt-yellow"><span>MIN FUT 4</span> <span>{res['min_fut_4']:.2f}</span></div><div class="calc-row txt-green" style="border-bottom: none;"><span>MIN FUT 5</span> <span>{res['min_fut_5']:.2f}</span></div></div>''', unsafe_allow_html=True)
-                st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">DOLB3</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if var_dolb3_axis >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{var_dolb3_axis:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">PREÇO JUSTO</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREED T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
+                # DOLB3 EXIBINDO APENAS A VARIÁVEL EM %
+                st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none;"><span style="color:#ffffff;">DOLB3</span> <span style="color:{("#00ff00" if res['vivo'] >= 0 else "#ff4d4d")}; font-weight:bold;">{res['vivo']:+.2f}%</span></div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">PREÇO JUSTO</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREED T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
             st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
         else: st.warning("Aguardando inicialização dos dados do mercado...")
     time.sleep(5)
