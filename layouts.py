@@ -111,42 +111,48 @@ def fetch(s):
     except: return st.session_state.market_data.get(s, fallback)
 
 # --- CÁLCULOS K97 ---
-def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data, us10y_data):
+def calcular_k97_total(spreed_do_dia, p_ewz_atual, eixo_dol, spot_data, us10y_data):
     try:
         if not spot_data or p_ewz_atual == 0 or not us10y_data: return None
+        
+        # 1. MÉDIA REAL DO SPOT (MAX + MIN / 2)
+        dolar_medio = (spot_data['mx'] + spot_data['mn']) / 2
+        
+        # 2. PREÇO JUSTO (SPOT PRICE + SPREED DO DIA)
+        fraja_val = spot_data['at'] + spreed_do_dia
+        
+        # 3. CÁLCULO VAR DXY*0.7 - EWZ*0.3
+        dxy_data = fetch("DX-Y.NYB")
+        v_dxy = ((dxy_data['at'] / dxy_data['cl']) - 1) if dxy_data['cl'] > 0 else 0
+        ewz_ref = st.session_state.market_data.get("EWZ", {}).get('cl', 1)
+        v_ewz = ((p_ewz_atual / ewz_ref) - 1) if ewz_ref > 0 else 0
+        calc_variacoes = (v_dxy * 0.7) - (v_ewz * 0.3)
+        
+        # 4. DOLB3 (MÉDIA DO DOLAR + CALC VARIAÇÕES)
+        # Multiplicamos o cálculo por 100 para aplicar como pontos sobre a média, ou conforme sua lógica de escala
+        vivo_val = dolar_medio + (calc_variacoes * 100) 
+
+        # Resto dos cálculos mantidos para não quebrar a grade
         amp = spot_data['mx'] - spot_data['mn']
         v_spreed = amp / 2
-        
-        # --- CALIBRAGEM ---
         alvo_low = spot_data['mn'] + v_spreed
         alvo_high = spot_data['mx'] + v_spreed
-        folga = v_spreed / 2
         max_original, min_original = eixo_dol + (amp * 0.75), eixo_dol - (amp * 0.25)
-        dolar_medio = ((max_original + min_original) / 2) - v_spreed
-        
-        # BLOCO MAX/MIN FUT MANTIDO IGUAL AO ORIGINAL
         elastico_calculado = abs(eixo_dol - dolar_medio) if abs(eixo_dol - dolar_medio) != 0 else 1.0
-        
-        # --- AJUSTE EXCLUSIVO DA BARRA: FOCA NO SPREDD ---
-        dist_base_barra = v_spreed # Alterado de folga/médias para SPREDD puro
+        dist_base_barra = v_spreed 
         diff = spot_data['at'] - eixo_dol
         
         p_v, p_r = 0, 0
         seta_txt, seta_cor, piscando = "", "#000000", False
-        if dist_base_barra > 0 and div_spreed > 0:
-            calculo_pct = (abs(diff) / (dist_base_barra * div_spreed)) * 100
+        if dist_base_barra > 0 and spreed_do_dia > 0:
+            calculo_pct = (abs(diff) / (dist_base_barra * 5.0)) * 100 # Mantive 5.0 como divisor interno da barra
             if diff < 0: p_v = min(100, calculo_pct)
             else: p_r = min(100, calculo_pct)
             
         if p_v >= 100: seta_txt, seta_cor, piscando = "▲ REGIÃO DE COMPRA", "#00ff88", True
         elif p_r >= 100: seta_txt, seta_cor, piscando = "▼ REGIÃO DE VENDA", "#ff4d4d", True
         
-        v_us10y = (us10y_data['at'] / us10y_data['cl']) - 1 if (us10y_data['cl'] > 0) else 0
-        fraja_val = eixo_dol * (1 + v_us10y)
-        vivo_val = spot_data['at'] + (amp / 2)
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
-        ewz_ref = st.session_state.market_data.get("EWZ", {}).get('cl', 1)
-        v_ewz = ((p_ewz_atual / ewz_ref) - 1) if ewz_ref > 0 else 0
         v_final = (v_spot_pct * 0.6) - (v_ewz * 0.4)
         
         return {
@@ -156,7 +162,7 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data, us10y_data)
             "max_fut_1": eixo_dol + (elastico_calculado * 2), "min_fut_1": eixo_dol - (elastico_calculado * 2),
             "min_fut_2": eixo_dol - (elastico_calculado * 4), "min_fut_3": eixo_dol - (elastico_calculado * 6),
             "min_fut_4": eixo_dol - (elastico_calculado * 8), "min_fut_5": eixo_dol - (elastico_calculado * 10),
-            "v_v": v_final * 100, "v_spot": v_spot_pct * 100, "spreed": v_spreed, "p_v": p_v, "p_r": p_r, 
+            "v_v": v_final * 100, "v_spot": v_spot_pct * 100, "spreed": spreed_do_dia, "p_v": p_v, "p_r": p_r, 
             "seta": seta_txt, "seta_cor": seta_cor, "piscando": piscando, "max_grade": max_original, "min_grade": min_original,
             "alvo_low": alvo_low, "alvo_high": alvo_high, "spreed_t": amp
         }
@@ -165,7 +171,8 @@ def calcular_k97_total(div_spreed, p_ewz_atual, eixo_dol, spot_data, us10y_data)
 # --- SIDEBAR ---
 with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
-    i_div = st.number_input("DIVISOR SPREED:", value=st.session_state.div_spreed_mem, format="%.2f")
+    # ALTERADO PARA SPREED DO DIA
+    i_div = st.number_input("SPREED DO DIA:", value=st.session_state.div_spreed_mem, format="%.2f")
     i_dol = st.number_input("AXIS DOLFUT:", value=st.session_state.a_dol_mem, format="%.2f")
     i_fut = st.number_input("AXIS FUT (DOLB3 VAR):", value=st.session_state.a_fut_mem, format="%.2f")
     if st.button("SALVAR CONFIGURAÇÕES"):
