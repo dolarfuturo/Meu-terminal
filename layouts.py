@@ -154,24 +154,22 @@ def calcular_k97_total(spreed_do_dia, p_ewz_atual, eixo_dol, spot_data, us10y_da
         }
     except: return None
 
-# --- SIDEBAR COM CALCULADORA DE JUROS ---
+# --- SIDEBAR COM CALCULADORA DE JUROS (FÓRMULA IMAGEM) ---
 with st.sidebar:
     st.markdown("### 🧮 CALCULADORA DE JUROS (FRP)")
     with st.expander("CALCULAR SPREED", expanded=False):
         c_spot_fech = st.number_input("FECH SPOT:", value=0.0, format="%.3f")
-        c_du = st.number_input("DIAS ÚTEIS (DU):", value=21, step=1)
-        # Taxas padrão 2026 para cálculo
-        t_br = st.number_input("JUROS BRL (%):", value=11.25, format="%.2f") / 100
-        t_us = st.number_input("JUROS USD (%):", value=5.25, format="%.2f") / 100
+        c_du = st.number_input("DIAS ÚTEIS (DU):", value=22, step=1)
+        t_br = st.number_input("JUROS BRL (%):", value=14.50, format="%.2f") / 100
+        t_us = st.number_input("JUROS USD (%):", value=3.75, format="%.2f") / 100
         
         if c_spot_fech > 0:
-            # Fórmula: Spot * (((1+iBR)/(1+iUS))^(DU/252) - 1)
-            calc_juros = ((1 + t_br) / (1 + t_us))**(c_du / 252) - 1
-            spreed_calc = c_spot_fech * calc_juros
+            # Fórmula conforme Imagem: Spot * (iBR - iUS) * (DU / 252)
+            spreed_calc = c_spot_fech * (t_br - t_us) * (c_du / 252)
             
             st.markdown(f"""
             <div style="background:#0d1b22; padding:8px; border:1px solid #FFD700; font-family:monospace; text-align:center;">
-                <span style="color:#AAA; font-size:10px;">SPREED CALCULADO</span><br>
+                <span style="color:#AAA; font-size:10px;">SPREED (REGRA DE BOLSO)</span><br>
                 <span style="color:#00ff88; font-size:18px; font-weight:bold;">{spreed_calc:.2f}</span>
             </div>
             """, unsafe_allow_html=True)
@@ -193,7 +191,7 @@ with st.sidebar:
 div_s, a_dol, a_fut = st.session_state.div_spreed_mem, st.session_state.a_dol_mem, st.session_state.a_fut_mem
 placeholder = st.empty()
 
-# --- LOOP PRINCIPAL (MANTIDO SEM ALTERAÇÕES) ---
+# --- LOOP PRINCIPAL ---
 while True:
     tz_sp, tz_ny, tz_ld, tz_utc = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London'), pytz.utc
     spot_live, ewz_live, us10y_live = fetch("USDBRL=X"), fetch("EWZ"), fetch("^TNX")
