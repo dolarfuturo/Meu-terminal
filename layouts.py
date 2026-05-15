@@ -114,34 +114,21 @@ def fetch(s):
 def calcular_k97_total(spreed_do_dia, p_ewz_atual, eixo_dol, spot_data, us10y_data):
     try:
         if not spot_data or p_ewz_atual == 0 or not us10y_data: return None
-        
-        # 1. MÉDIA REAL DO SPOT (MAX + MIN / 2)
         dolar_medio = (spot_data['mx'] + spot_data['mn']) / 2
-        
-        # 2. PREÇO JUSTO (SPOT PRICE + FRP ADM)
         fraja_val = spot_data['at'] + spreed_do_dia
-        
-        # 3. CÁLCULO VAR DXY*0.7 - EWZ*0.3
         dxy_data = fetch("DX-Y.NYB")
         v_dxy = ((dxy_data['at'] / dxy_data['cl']) - 1) if dxy_data['cl'] > 0 else 0
         ewz_ref = st.session_state.market_data.get("EWZ", {}).get('cl', 1)
         v_ewz = ((p_ewz_atual / ewz_ref) - 1) if ewz_ref > 0 else 0
         calc_variacoes_pct = (v_dxy * 0.7) - (v_ewz * 0.3)
-        
-        # 4. DOLB3 (MÉDIA + PERCENTUAL)
         vivo_val = dolar_medio * (1 + calc_variacoes_pct) 
-
-        # 5. SPREEDS CONFORME HIERARQUIA
         spreed_t = spot_data['mx'] - spot_data['mn']
         spreed_50 = spreed_t / 2
-        
-        # Resto dos cálculos funcionais
         v_spreed_calc = spreed_t / 2
         alvo_low = spot_data['mn'] + v_spreed_calc
         alvo_high = spot_data['mx'] + v_spreed_calc
         max_original, min_original = eixo_dol + (spreed_t * 0.75), eixo_dol - (spreed_t * 0.25)
         elastico_calculado = abs(eixo_dol - dolar_medio) if abs(eixo_dol - dolar_medio) != 0 else 1.0
-        
         diff = spot_data['at'] - eixo_dol
         p_v, p_r = 0, 0
         seta_txt, seta_cor, piscando = "", "#000000", False
@@ -149,13 +136,10 @@ def calcular_k97_total(spreed_do_dia, p_ewz_atual, eixo_dol, spot_data, us10y_da
             calculo_pct = (abs(diff) / (v_spreed_calc * 5.0)) * 100 
             if diff < 0: p_v = min(100, calculo_pct)
             else: p_r = min(100, calculo_pct)
-            
         if p_v >= 100: seta_txt, seta_cor, piscando = "▲ REGIÃO DE COMPRA", "#00ff88", True
         elif p_r >= 100: seta_txt, seta_cor, piscando = "▼ REGIÃO DE VENDA", "#ff4d4d", True
-        
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         v_final = (v_spot_pct * 0.6) - (v_ewz * 0.4)
-        
         return {
             "vivo": vivo_val, "vivo_pct": calc_variacoes_pct * 100, "dolfut_calc": eixo_dol * (1 + v_final), 
             "fraja": fraja_val, "medio": dolar_medio, 
@@ -170,8 +154,33 @@ def calcular_k97_total(spreed_do_dia, p_ewz_atual, eixo_dol, spot_data, us10y_da
         }
     except: return None
 
-# --- SIDEBAR ---
+# --- SIDEBAR COM CALCULADORA DE JUROS ---
 with st.sidebar:
+    st.markdown("### 🧮 CALCULADORA DE JUROS (FRP)")
+    with st.expander("CALCULAR SPREED", expanded=False):
+        c_spot_fech = st.number_input("FECH SPOT:", value=0.0, format="%.3f")
+        c_du = st.number_input("DIAS ÚTEIS (DU):", value=21, step=1)
+        # Taxas padrão 2026 para cálculo
+        t_br = st.number_input("JUROS BRL (%):", value=11.25, format="%.2f") / 100
+        t_us = st.number_input("JUROS USD (%):", value=5.25, format="%.2f") / 100
+        
+        if c_spot_fech > 0:
+            # Fórmula: Spot * (((1+iBR)/(1+iUS))^(DU/252) - 1)
+            calc_juros = ((1 + t_br) / (1 + t_us))**(c_du / 252) - 1
+            spreed_calc = c_spot_fech * calc_juros
+            
+            st.markdown(f"""
+            <div style="background:#0d1b22; padding:8px; border:1px solid #FFD700; font-family:monospace; text-align:center;">
+                <span style="color:#AAA; font-size:10px;">SPREED CALCULADO</span><br>
+                <span style="color:#00ff88; font-size:18px; font-weight:bold;">{spreed_calc:.2f}</span>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            if st.button("USAR ESTE SPREED NO ADM"):
+                st.session_state.div_spreed_mem = spreed_calc
+                st.rerun()
+
+    st.markdown("---")
     st.markdown("### ⚙️ PAINEL ADM")
     i_div = st.number_input("FRP (PARA JUSTO):", value=st.session_state.div_spreed_mem, format="%.2f")
     i_dol = st.number_input("AXIS DOLFUT:", value=st.session_state.a_dol_mem, format="%.2f")
@@ -184,7 +193,7 @@ with st.sidebar:
 div_s, a_dol, a_fut = st.session_state.div_spreed_mem, st.session_state.a_dol_mem, st.session_state.a_fut_mem
 placeholder = st.empty()
 
-# --- LOOP PRINCIPAL ---
+# --- LOOP PRINCIPAL (MANTIDO SEM ALTERAÇÕES) ---
 while True:
     tz_sp, tz_ny, tz_ld, tz_utc = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London'), pytz.utc
     spot_live, ewz_live, us10y_live = fetch("USDBRL=X"), fetch("EWZ"), fetch("^TNX")
@@ -198,9 +207,7 @@ while True:
                 st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
                 html = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
                 v_f, d_c = res['v_v'], res['dolfut_calc']
-                l_df = st.session_state.last_p.get('DF', d_c/1000)
-                cl_df = "f-up" if (d_c/1000) > l_df else "f-dn" if (d_c/1000) < l_df else ""
-                st.session_state.last_p['DF'] = d_c/1000
+                l_df = st.session_state.last_p.get('DF', d_c/1000); cl_df = "f-up" if (d_c/1000) > l_df else "f-dn" if (d_c/1000) < l_df else ""; st.session_state.last_p['DF'] = d_c/1000
                 html += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col {cl_df}' style='background-color:rgba({('0,255,0' if v_f >= 0 else '255,0,0')}, 0.1);'>{(d_c/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max_grade']/1000):.4f}</td><td>{(res['min_grade']/1000):.4f}</td><td style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_f:+.2f}%</td></tr>"
                 ticker_items = [f"DOLFUT: <span style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")};'>{v_f:+.2f}%</span>"]
                 outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F", "US10Y": "^TNX"}
@@ -219,8 +226,6 @@ while True:
             with c2:
                 st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row txt-red"><span>MAX FUT 5</span> <span>{res['max_fut_5']:.2f}</span></div><div class="calc-row txt-yellow"><span>MAX FUT 4</span> <span>{res['max_fut_4']:.2f}</span></div><div class="calc-row txt-red"><span>MAX FUT 3</span> <span>{res['max_fut_3']:.2f}</span></div><div class="calc-row txt-yellow"><span>MAX FUT 2</span> <span>{res['max_fut_2']:.2f}</span></div><div class="calc-row txt-red"><span>MAX FUT 1</span> <span>{res['max_fut_1']:.2f}</span></div><div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 10px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">AXIS: {a_dol:.2f}</div><div class="calc-row txt-green"><span>MIN FUT 1</span> <span>{res['min_fut_1']:.2f}</span></div><div class="calc-row txt-yellow"><span>MIN FUT 2</span> <span>{res['min_fut_2']:.2f}</span></div><div class="calc-row txt-green"><span>MIN FUT 3</span> <span>{res['min_fut_3']:.2f}</span></div><div class="calc-row txt-yellow"><span>MIN FUT 4</span> <span>{res['min_fut_4']:.2f}</span></div><div class="calc-row txt-green" style="border-bottom: none;"><span>MIN FUT 5</span> <span>{res['min_fut_5']:.2f}</span></div></div>''', unsafe_allow_html=True)
-                
-                # BLOCO HIERÁRQUICO
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">DOLB3</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">PREÇO JUSTO</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREED T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
             st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
         else: st.warning("Aguardando inicialização dos dados do mercado...")
