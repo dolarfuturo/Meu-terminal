@@ -125,8 +125,11 @@ def calcular_k97_total(spreed_do_dia, p_ewz_atual, eixo_dol, spot_data, us10y_da
         spreed_t = spot_data['mx'] - spot_data['mn']
         spreed_50 = spreed_t / 2
         v_spreed_calc = spreed_t / 2
-        alvo_low = spot_data['mn'] + v_spreed_calc
-        alvo_high = spot_data['mx'] + v_spreed_calc
+        
+        # ALTERAÇÃO CIRÚRGICA SOLICITADA: ALVOS COM BASE NO MIN/MAX SPOT + FRP DO ADM
+        alvo_low = spot_data['mn'] + spreed_do_dia
+        alvo_high = spot_data['mx'] + spreed_do_dia
+        
         max_original, min_original = eixo_dol + (spreed_t * 0.75), eixo_dol - (spreed_t * 0.25)
         elastico_calculado = abs(eixo_dol - dolar_medio) if abs(eixo_dol - dolar_medio) != 0 else 1.0
         diff = spot_data['at'] - eixo_dol
