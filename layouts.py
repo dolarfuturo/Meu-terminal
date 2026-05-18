@@ -33,6 +33,12 @@ if 'div_spreed_mem' not in st.session_state: st.session_state.div_spreed_mem = d
 if 'a_dol_mem' not in st.session_state: st.session_state.a_dol_mem = eixo_dol_salvo
 if 'a_fut_mem' not in st.session_state: st.session_state.a_fut_mem = axis_fut_salvo
 
+# --- MEMÓRIA DOS CAMPOS DA CALCULADORA ---
+if 'c_spot_fech_val' not in st.session_state: st.session_state.c_spot_fech_val = 0.0
+if 'c_du_val' not in st.session_state: st.session_state.c_du_val = 22
+if 't_br_val' not in st.session_state: st.session_state.t_br_val = 14.50
+if 't_us_val' not in st.session_state: st.session_state.t_us_val = 3.75
+
 # --- CSS ORIGINAL ---
 st.markdown("""
 <style>
@@ -126,7 +132,6 @@ def calcular_k97_total(spreed_do_dia, p_ewz_atual, eixo_dol, spot_data, us10y_da
         spreed_50 = spreed_t / 2
         v_spreed_calc = spreed_t / 2
         
-        # ALTERAÇÃO CIRÚRGICA SOLICITADA: ALVOS COM BASE NO MIN/MAX SPOT + FRP DO ADM
         alvo_low = spot_data['mn'] + spreed_do_dia
         alvo_high = spot_data['mx'] + spreed_do_dia
         
@@ -157,18 +162,25 @@ def calcular_k97_total(spreed_do_dia, p_ewz_atual, eixo_dol, spot_data, us10y_da
         }
     except: return None
 
-# --- SIDEBAR COM CALCULADORA DE JUROS (FÓRMULA IMAGEM) ---
+# --- SIDEBAR COM CALCULADORA DE JUROS MEMORIZADA ---
 with st.sidebar:
     st.markdown("### 🧮 CALCULADORA DE JUROS (FRP)")
     with st.expander("CALCULAR SPREED", expanded=False):
-        c_spot_fech = st.number_input("FECH SPOT:", value=0.0, format="%.3f")
-        c_du = st.number_input("DIAS ÚTEIS (DU):", value=22, step=1)
-        t_br = st.number_input("JUROS BRL (%):", value=14.50, format="%.2f") / 100
-        t_us = st.number_input("JUROS USD (%):", value=3.75, format="%.2f") / 100
+        # Captura e memoriza os valores diretamente no st.session_state para não zerarem
+        c_spot_fech = st.number_input("FECH SPOT:", value=st.session_state.c_spot_fech_val, format="%.3f")
+        c_du = st.number_input("DIAS ÚTEIS (DU):", value=st.session_state.c_du_val, step=1)
+        t_br = st.number_input("JUROS BRL (%):", value=st.session_state.t_br_val, format="%.2f")
+        t_us = st.number_input("JUROS USD (%):", value=st.session_state.t_us_val, format="%.2f")
+        
+        # Atualiza o estado da memória sempre que você digita algo
+        st.session_state.c_spot_fech_val = c_spot_fech
+        st.session_state.c_du_val = c_du
+        st.session_state.t_br_val = t_br
+        st.session_state.t_us_val = t_us
         
         if c_spot_fech > 0:
-            # Fórmula conforme Imagem: Spot * (iBR - iUS) * (DU / 252)
-            spreed_calc = c_spot_fech * (t_br - t_us) * (c_du / 252)
+            # Converte porcentagem para decimal apenas na execução do cálculo
+            spreed_calc = c_spot_fech * ((t_br / 100) - (t_us / 100)) * (c_du / 252)
             
             st.markdown(f"""
             <div style="background:#0d1b22; padding:8px; border:1px solid #FFD700; font-family:monospace; text-align:center;">
