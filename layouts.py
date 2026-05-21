@@ -33,6 +33,10 @@ if 'div_spreed_mem' not in st.session_state: st.session_state.div_spreed_mem = d
 if 'a_dol_mem' not in st.session_state: st.session_state.a_dol_mem = eixo_dol_salvo
 if 'a_fut_mem' not in st.session_state: st.session_state.a_fut_mem = axis_fut_salvo
 
+# --- MEMÓRIA ACUMULADA AUTOMÁTICA PARA MÁX/MÍN DO DOLFUT ---
+if 'dolfut_max_auto' not in st.session_state: st.session_state.dolfut_max_auto = float('-inf')
+if 'dolfut_min_auto' not in st.session_state: st.session_state.dolfut_min_auto = float('inf')
+
 # --- MEMÓRIA DOS CAMPOS DA CALCULADORA ---
 if 'c_spot_fech_val' not in st.session_state: st.session_state.c_spot_fech_val = 0.0
 if 'c_du_val' not in st.session_state: st.session_state.c_du_val = 22
@@ -126,8 +130,14 @@ def calcular_k97_total(spreed_do_dia, p_ewz_atual, eixo_dol, spot_data, us10y_da
         v_dxy = ((dxy_data['at'] / dxy_data['cl']) - 1) if dxy_data['cl'] > 0 else 0
         ewz_ref = st.session_state.market_data.get("EWZ", {}).get('cl', 1)
         v_ewz = ((p_ewz_atual / ewz_ref) - 1) if ewz_ref > 0 else 0
+        
+        # --- AJUSTE REGISTRADO: Variação internacional para DOLFUT e DOLB3 ---
         calc_variacoes_pct = (v_dxy * 0.7) - (v_ewz * 0.3)
         vivo_val = dolar_medio * (1 + calc_variacoes_pct) 
+        
+        # --- AJUSTE REGISTRADO: Novo Axis Dinâmico e Degraus pelo FRP ---
+        axis_dinamico = dolar_medio + spreed_do_dia
+        
         spreed_t = spot_data['mx'] - spot_data['mn']
         spreed_50 = spreed_t / 2
         v_spreed_calc = spreed_t / 2
@@ -135,9 +145,8 @@ def calcular_k97_total(spreed_do_dia, p_ewz_atual, eixo_dol, spot_data, us10y_da
         alvo_low = spot_data['mn'] + spreed_do_dia
         alvo_high = spot_data['mx'] + spreed_do_dia
         
-        max_original, min_original = eixo_dol + (spreed_t * 0.75), eixo_dol - (spreed_t * 0.25)
-        elastico_calculado = abs(eixo_dol - dolar_medio) if abs(eixo_dol - dolar_medio) != 0 else 1.0
-        diff = spot_data['at'] - eixo_dol
+        max_original, min_original = axis_dinamico + (spreed_t * 0.75), axis_dinamico - (spreed_t * 0.25)
+        diff = spot_data['at'] - axis_dinamico
         p_v, p_r = 0, 0
         seta_txt, seta_cor, piscando = "", "#000000", False
         if v_spreed_calc > 0:
@@ -147,18 +156,48 @@ def calcular_k97_total(spreed_do_dia, p_ewz_atual, eixo_dol, spot_data, us10y_da
         if p_v >= 100: seta_txt, seta_cor, piscando = "▲ REGIÃO DE COMPRA", "#00ff88", True
         elif p_r >= 100: seta_txt, seta_cor, piscando = "▼ REGIÃO DE VENDA", "#ff4d4d", True
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
-        v_final = (v_spot_pct * 0.6) - (v_ewz * 0.4)
+        
+        # --- AJUSTE REGISTRADO: Preço do DOLFUT ancorado no Axis Dinâmico ---
+        dolfut_atual_calc = axis_dinamico * (1 + calc_variacoes_pct)
+        
+        # --- AJUSTE REGISTRADO: Armazenamento das Máximas e Mínimas automáticas ---
+        if dolfut_atual_calc > st.session_state.dolfut_max_auto:
+            st.session_state.dolfut_max_auto = dolfut_atual_calc
+        if dolfut_atual_calc < st.session_state.dolfut_min_auto:
+            st.session_state.dolfut_min_auto = dolfut_atual_calc
+
         return {
-            "vivo": vivo_val, "vivo_pct": calc_variacoes_pct * 100, "dolfut_calc": eixo_dol * (1 + v_final), 
-            "fraja": fraja_val, "medio": dolar_medio, 
-            "max_fut_5": eixo_dol + (elastico_calculado * 10), "max_fut_4": eixo_dol + (elastico_calculado * 8),
-            "max_fut_3": eixo_dol + (elastico_calculado * 6), "max_fut_2": eixo_dol + (elastico_calculado * 4),
-            "max_fut_1": eixo_dol + (elastico_calculado * 2), "min_fut_1": eixo_dol - (elastico_calculado * 2),
-            "min_fut_2": eixo_dol - (elastico_calculado * 4), "min_fut_3": eixo_dol - (elastico_calculado * 6),
-            "min_fut_4": eixo_dol - (elastico_calculado * 8), "min_fut_5": eixo_dol - (elastico_calculado * 10),
-            "v_v": v_final * 100, "v_spot": v_spot_pct * 100, "spreed": spreed_50, "p_v": p_v, "p_r": p_r, 
-            "seta": seta_txt, "seta_cor": seta_cor, "piscando": piscando, "max_grade": max_original, "min_grade": min_original,
-            "alvo_low": alvo_low, "alvo_high": alvo_high, "spreed_t": spreed_t
+            "vivo": vivo_val, 
+            "vivo_pct": calc_variacoes_pct * 100, 
+            "dolfut_calc": dolfut_atual_calc, 
+            "fraja": fraja_val, 
+            "medio": dolar_medio, 
+            "axis_central": axis_dinamico,
+            # Degraus de Máxima (Alternando cores conforme solicitado)
+            "max_fut_1": axis_dinamico + spreed_do_dia,
+            "max_fut_2": axis_dinamico + (spreed_do_dia * 2),
+            "max_fut_3": axis_dinamico + (spreed_do_dia * 3),
+            "max_fut_4": axis_dinamico + (spreed_do_dia * 4),
+            "max_fut_5": axis_dinamico + (spreed_do_dia * 5),
+            # Degraus de Mínima (Alternando cores conforme solicitado)
+            "min_fut_1": axis_dinamico - spreed_do_dia,
+            "min_fut_2": axis_dinamico - (spreed_do_dia * 2),
+            "min_fut_3": axis_dinamico - (spreed_do_dia * 3),
+            "min_fut_4": axis_dinamico - (spreed_do_dia * 4),
+            "min_fut_5": axis_dinamico - (spreed_do_dia * 5),
+            "v_v": calc_variacoes_pct * 100, 
+            "v_spot": v_spot_pct * 100, 
+            "spreed": spreed_50, 
+            "p_v": p_v, 
+            "p_r": p_r, 
+            "seta": seta_txt, 
+            "seta_cor": seta_cor, 
+            "piscando": piscando, 
+            "max_grade": st.session_state.dolfut_max_auto, # Máxima automática trackeada
+            "min_grade": st.session_state.dolfut_min_auto, # Mínima automática trackeada
+            "alvo_low": alvo_low, 
+            "alvo_high": alvo_high, 
+            "spreed_t": spreed_t
         }
     except: return None
 
@@ -166,20 +205,17 @@ def calcular_k97_total(spreed_do_dia, p_ewz_atual, eixo_dol, spot_data, us10y_da
 with st.sidebar:
     st.markdown("### 🧮 CALCULADORA DE JUROS (FRP)")
     with st.expander("CALCULAR SPREED", expanded=False):
-        # Captura e memoriza os valores diretamente no st.session_state para não zerarem
         c_spot_fech = st.number_input("FECH SPOT:", value=st.session_state.c_spot_fech_val, format="%.3f")
         c_du = st.number_input("DIAS ÚTEIS (DU):", value=st.session_state.c_du_val, step=1)
         t_br = st.number_input("JUROS BRL (%):", value=st.session_state.t_br_val, format="%.2f")
         t_us = st.number_input("JUROS USD (%):", value=st.session_state.t_us_val, format="%.2f")
         
-        # Atualiza o estado da memória sempre que você digita algo
         st.session_state.c_spot_fech_val = c_spot_fech
         st.session_state.c_du_val = c_du
         st.session_state.t_br_val = t_br
         st.session_state.t_us_val = t_us
         
         if c_spot_fech > 0:
-            # Converte porcentagem para decimal apenas na execução do cálculo
             spreed_calc = c_spot_fech * ((t_br / 100) - (t_us / 100)) * (c_du / 252)
             
             st.markdown(f"""
@@ -221,7 +257,9 @@ while True:
                 html = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
                 v_f, d_c = res['v_v'], res['dolfut_calc']
                 l_df = st.session_state.last_p.get('DF', d_c/1000); cl_df = "f-up" if (d_c/1000) > l_df else "f-dn" if (d_c/1000) < l_df else ""; st.session_state.last_p['DF'] = d_c/1000
-                html += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col {cl_df}' style='background-color:rgba({('0,255,0' if v_f >= 0 else '255,0,0')}, 0.1);'>{(d_c/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(a_dol/1000):.4f}</td><td>{(res['max_grade']/1000):.4f}</td><td>{(res['min_grade']/1000):.4f}</td><td style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_f:+.2f}%</td></tr>"
+                
+                # Exibição do DOLFUT com as novas regras de amarração e máximas/mínimas calculadas em tempo real
+                html += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col {cl_df}' style='background-color:rgba({('0,255,0' if v_f >= 0 else '255,0,0')}, 0.1);'>{(d_c/1000):.4f}</td><td>{(res['axis_central']/1000):.4f}</td><td>{(res['axis_central']/1000):.4f}</td><td>{(res['max_grade']/1000):.4f}</td><td>{(res['min_grade']/1000):.4f}</td><td style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_f:+.2f}%</td></tr>"
                 ticker_items = [f"DOLFUT: <span style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")};'>{v_f:+.2f}%</span>"]
                 outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F", "US10Y": "^TNX"}
                 seta_spread, cor_seta_spread = ("▲", "#00ff88") if d_c > (spot_live['at'] if spot_live else 0) else ("▼", "#ff4d4d")
@@ -238,7 +276,8 @@ while True:
                 st.markdown(f'''<div class="bar-wrapper-full"><div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div></div><div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; font-family: monospace; color: #AAA; margin-top: 2px; padding: 0 2px;"><span>LOW: {res['alvo_low']:.2f}</span><span style="color:{cor_seta_spread}; font-size: 14px; font-weight: bold;">{seta_spread}</span><span>HIGH: {res['alvo_high']:.2f}</span></div><div class="sinal-indicator {"blink" if res["piscando"] else ""}" style="color:{res["seta_cor"]};">{res["seta"]}</div></div>''', unsafe_allow_html=True)
             with c2:
                 st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
-                st.markdown(f'''<div class="calc-panel"><div class="calc-row txt-red"><span>MAX FUT 5</span> <span>{res['max_fut_5']:.2f}</span></div><div class="calc-row txt-yellow"><span>MAX FUT 4</span> <span>{res['max_fut_4']:.2f}</span></div><div class="calc-row txt-red"><span>MAX FUT 3</span> <span>{res['max_fut_3']:.2f}</span></div><div class="calc-row txt-yellow"><span>MAX FUT 2</span> <span>{res['max_fut_2']:.2f}</span></div><div class="calc-row txt-red"><span>MAX FUT 1</span> <span>{res['max_fut_1']:.2f}</span></div><div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 10px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">AXIS: {a_dol:.2f}</div><div class="calc-row txt-green"><span>MIN FUT 1</span> <span>{res['min_fut_1']:.2f}</span></div><div class="calc-row txt-yellow"><span>MIN FUT 2</span> <span>{res['min_fut_2']:.2f}</span></div><div class="calc-row txt-green"><span>MIN FUT 3</span> <span>{res['min_fut_3']:.2f}</span></div><div class="calc-row txt-yellow"><span>MIN FUT 4</span> <span>{res['min_fut_4']:.2f}</span></div><div class="calc-row txt-green" style="border-bottom: none;"><span>MIN FUT 5</span> <span>{res['min_fut_5']:.2f}</span></div></div>''', unsafe_allow_html=True)
+                # Painel de cálculos renderizado rigorosamente com a nova lógica simétrica de degraus baseados no FRP do ADM
+                st.markdown(f'''<div class="calc-panel"><div class="calc-row txt-green"><span>MAX FUT 5</span> <span>{res['max_fut_5']:.2f}</span></div><div class="calc-row txt-yellow"><span>MAX FUT 4</span> <span>{res['max_fut_4']:.2f}</span></div><div class="calc-row txt-green"><span>MAX FUT 3</span> <span>{res['max_fut_3']:.2f}</span></div><div class="calc-row txt-yellow"><span>MAX FUT 2</span> <span>{res['max_fut_2']:.2f}</span></div><div class="calc-row txt-green"><span>MAX FUT 1</span> <span>{res['max_fut_1']:.2f}</span></div><div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 10px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">AXIS: {res['axis_central']:.2f}</div><div class="calc-row txt-green"><span>MIN FUT 1</span> <span>{res['min_fut_1']:.2f}</span></div><div class="calc-row txt-yellow"><span>MIN FUT 2</span> <span>{res['min_fut_2']:.2f}</span></div><div class="calc-row txt-green"><span>MIN FUT 3</span> <span>{res['min_fut_3']:.2f}</span></div><div class="calc-row txt-yellow"><span>MIN FUT 4</span> <span>{res['min_fut_4']:.2f}</span></div><div class="calc-row txt-green" style="border-bottom: none;"><span>MIN FUT 5</span> <span>{res['min_fut_5']:.2f}</span></div></div>''', unsafe_allow_html=True)
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">DOLB3</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">PREÇO JUSTO</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREED</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREED T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
             st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
         else: st.warning("Aguardando inicialização dos dados do mercado...")
