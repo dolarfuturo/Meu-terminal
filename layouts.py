@@ -57,6 +57,10 @@ max_init, min_init = carregar_historico_dolfut_diario()
 if 'dolfut_max_auto' not in st.session_state: st.session_state.dolfut_max_auto = max_init
 if 'dolfut_min_auto' not in st.session_state: st.session_state.dolfut_min_auto = min_init
 
+# --- MEMÓRIA ADICIONAL PARA SINALIZAR RUPTURA DE MÁX/MÍN DO SPOT ---
+if 'last_spot_max' not in st.session_state: st.session_state.last_spot_max = 0.0
+if 'last_spot_min' not in st.session_state: st.session_state.last_spot_min = float('inf')
+
 # --- MEMÓRIA DOS CAMPOS DA CALCULADORA ---
 if 'c_spot_fech_val' not in st.session_state: st.session_state.c_spot_fech_val = 0.0
 if 'c_du_val' not in st.session_state: st.session_state.c_du_val = 22
@@ -153,7 +157,9 @@ def calcular_k97_total(spreed_do_dia, p_ewz_atual, eixo_dol, spot_data, us10y_da
         
         # --- AJUSTE REGISTRADO: Variação internacional para DOLFUT e DOLB3 ---
         calc_variacoes_pct = (v_dxy * 0.7) - (v_ewz * 0.3)
-        vivo_val = dolar_medio * (1 + calc_variacoes_pct) 
+        
+        # --- MODIFICAÇÃO SOLICITADA: Preço Justo (vivo_val) partindo estritamente do FECHAMENTO DO SPOT (cl) ---
+        vivo_val = spot_data['cl'] * (1 + calc_variacoes_pct) 
         
         # --- AJUSTE REGISTRADO: Novo Axis Dinâmico e Degraus pelo FRP ---
         axis_dinamico = dolar_medio + spreed_do_dia
@@ -166,7 +172,9 @@ def calcular_k97_total(spreed_do_dia, p_ewz_atual, eixo_dol, spot_data, us10y_da
         alvo_high = spot_data['mx'] + spreed_do_dia
         
         max_original, min_original = axis_dinamico + (spreed_t * 0.75), axis_dinamico - (spreed_t * 0.25)
-        diff = spot_data['at'] - axis_dinamico
+        
+        # --- MODIFICAÇÃO SOLICITADA: Barra de força ancorada puramente na distância em relação ao PREÇO JUSTO (vivo_val) ---
+        diff = spot_data['at'] - vivo_val
         p_v, p_r = 0, 0
         seta_txt, seta_cor, piscando = "", "#000000", False
         if v_spreed_calc > 0:
@@ -300,7 +308,13 @@ while True:
                 html += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col {cl_df}' style='background-color:rgba({('0,255,0' if v_f >= 0 else '255,0,0')}, 0.1);'>{(d_c/1000):.4f}</td><td>{(res['axis_central']/1000):.4f}</td><td>{(res['axis_central']/1000):.4f}</td><td>{(res['max_grade']/1000):.4f}</td><td>{(res['min_grade']/1000):.4f}</td><td style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_f:+.2f}%</td></tr>"
                 ticker_items = [f"DOLFUT: <span style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")};'>{v_f:+.2f}%</span>"]
                 outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F", "US10Y": "^TNX"}
-                seta_spread, cor_seta_spread = ("▲", "#00ff88") if d_c > (spot_live['at'] if spot_live else 0) else ("▼", "#ff4d4d")
+                
+                # --- MODIFICAÇÃO SOLICITADA: Seta baseada exclusivamente se o SPOT PRICE está ACIMA ou ABAIXO da Média do Dólar ---
+                if spot_live and spot_live['at'] > res['medio']:
+                    seta_spread, cor_seta_spread = ("▲", "#00ff88")
+                else:
+                    seta_spread, cor_seta_spread = ("▼", "#ff4d4d")
+                    
                 for lbl, sym in outros.items():
                     d = fetch(sym)
                     if d:
@@ -308,7 +322,20 @@ while True:
                         p_v = d['at']/1000 if lbl == "DOLSPOT" else d['at']
                         l_a = st.session_state.last_p.get(lbl, p_v); cl_a = "f-up" if p_v > l_a else "f-dn" if p_v < l_a else ""; st.session_state.last_p[lbl] = p_v
                         var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
-                        html += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col {cl_a}'>{p_v:{f}}</td><td>{(d['cl']/1000 if lbl=='DOLSPOT' else d['cl']):{f}}</td><td>{(d['op']/1000 if lbl=='DOLSPOT' else d['op']):{f}}</td><td>{(d['mx']/1000 if lbl=='DOLSPOT' else d['mx']):{f}}</td><td>{(d['mn']/1000 if lbl=='DOLSPOT' else d['mn']):{f}}</td><td style='color:{("#00ff00" if var >= 0 else "#ff4d4d")}; font-weight:bold;'>{var:+.2f}%</td></tr>"
+                        
+                        # --- MODIFICAÇÃO SOLICITADA: Piscar Max ou Min do DOLSPOT no momento exato do rompimento intraday ---
+                        cl_max = ""
+                        cl_min = ""
+                        if lbl == "DOLSPOT":
+                            if st.session_state.last_spot_max > 0 and d['mx'] > st.session_state.last_spot_max:
+                                cl_max = "f-up"
+                            if st.session_state.last_spot_min < float('inf') and d['mn'] < st.session_state.last_spot_min:
+                                cl_min = "f-dn"
+                            
+                            st.session_state.last_spot_max = d['mx']
+                            st.session_state.last_spot_min = d['mn']
+                            
+                        html += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col {cl_a}'>{p_v:{f}}</td><td>{(d['cl']/1000 if lbl=='DOLSPOT' else d['cl']):{f}}</td><td>{(d['op']/1000 if lbl=='DOLSPOT' else d['op']):{f}}</td><td class='{cl_max}'>{(d['mx']/1000 if lbl=='DOLSPOT' else d['mx']):{f}}</td><td class='{cl_min}'>{(d['mn']/1000 if lbl=='DOLSPOT' else d['mn']):{f}}</td><td style='color:{("#00ff00" if var >= 0 else "#ff4d4d")}; font-weight:bold;'>{var:+.2f}%</td></tr>"
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 st.markdown(f'''<div class="bar-wrapper-full"><div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div></div><div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; font-family: monospace; color: #AAA; margin-top: 2px; padding: 0 2px;"><span>LOW: {res['alvo_low']:.2f}</span><span style="color:{cor_seta_spread}; font-size: 14px; font-weight: bold;">{seta_spread}</span><span>HIGH: {res['alvo_high']:.2f}</span></div><div class="sinal-indicator {"blink" if res["piscando"] else ""}" style="color:{res["seta_cor"]};">{res["seta"]}</div></div>''', unsafe_allow_html=True)
