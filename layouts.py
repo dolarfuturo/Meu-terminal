@@ -158,7 +158,7 @@ def calcular_k97_total(spreed_do_dia, p_ewz_atual, eixo_dol, spot_data, us10y_da
         # --- AJUSTE REGISTRADO: Variação internacional para DOLFUT e DOLB3 ---
         calc_variacoes_pct = (v_dxy * 0.7) - (v_ewz * 0.3)
         
-        # --- MODIFICAÇÃO SOLICITADA: Preço Justo (vivo_val) partindo estritamente do FECHAMENTO DO SPOT (cl) ---
+        # --- AJUSTE REGISTRADO: Preço Justo (vivo_val) partindo estritamente do FECHAMENTO DO SPOT (cl) ---
         vivo_val = spot_data['cl'] * (1 + calc_variacoes_pct) 
         
         # --- AJUSTE REGISTRADO: Novo Axis Dinâmico e Degraus pelo FRP ---
@@ -166,21 +166,22 @@ def calcular_k97_total(spreed_do_dia, p_ewz_atual, eixo_dol, spot_data, us10y_da
         
         spreed_t = spot_data['mx'] - spot_data['mn']
         spreed_50 = spreed_t / 2
-        v_spreed_calc = spreed_t / 2
         
         alvo_low = spot_data['mn'] + spreed_do_dia
         alvo_high = spot_data['mx'] + spreed_do_dia
         
         max_original, min_original = axis_dinamico + (spreed_t * 0.75), axis_dinamico - (spreed_t * 0.25)
         
-        # --- MODIFICAÇÃO SOLICITADA: Barra de força ancorada puramente na distância em relação ao PREÇO JUSTO (vivo_val) ---
+        # --- MODIFICAÇÃO SOLICITADA: Elástico calibrado estritamente para cravar 100% no tamanho do SPREAD T ---
         diff = spot_data['at'] - vivo_val
         p_v, p_r = 0, 0
         seta_txt, seta_cor, piscando = "", "#000000", False
-        if v_spreed_calc > 0:
-            calculo_pct = (abs(diff) / (v_spreed_calc * 5.0)) * 100 
+        
+        if spreed_t > 0:
+            calculo_pct = (abs(diff) / spreed_t) * 100 
             if diff < 0: p_v = min(100, calculo_pct)
             else: p_r = min(100, calculo_pct)
+            
         if p_v >= 100: seta_txt, seta_cor, piscando = "▲ REGIÃO DE COMPRA", "#00ff88", True
         elif p_r >= 100: seta_txt, seta_cor, piscando = "▼ REGIÃO DE VENDA", "#ff4d4d", True
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
@@ -309,7 +310,7 @@ while True:
                 ticker_items = [f"DOLFUT: <span style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")};'>{v_f:+.2f}%</span>"]
                 outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F", "US10Y": "^TNX"}
                 
-                # --- MODIFICAÇÃO SOLICITADA: Seta baseada exclusivamente se o SPOT PRICE está ACIMA ou ABAIXO da Média do Dólar ---
+                # --- Seta baseada exclusivamente se o SPOT PRICE está ACIMA ou ABAIXO da Média do Dólar ---
                 if spot_live and spot_live['at'] > res['medio']:
                     seta_spread, cor_seta_spread = ("▲", "#00ff88")
                 else:
@@ -323,7 +324,7 @@ while True:
                         l_a = st.session_state.last_p.get(lbl, p_v); cl_a = "f-up" if p_v > l_a else "f-dn" if p_v < l_a else ""; st.session_state.last_p[lbl] = p_v
                         var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
                         
-                        # --- MODIFICAÇÃO SOLICITADA: Piscar Max ou Min do DOLSPOT no momento exato do rompimento intraday ---
+                        # --- Piscar Max ou Min do DOLSPOT no momento exato do rompimento intraday ---
                         cl_max = ""
                         cl_min = ""
                         if lbl == "DOLSPOT":
