@@ -135,18 +135,18 @@ def monitor_terminal():
         axis_central = media_dolar + fpr
         media_azul = axis_central
         
-        # --- FATIAMENTO LINEAR SIMÉTRICO DO SPREAD M ---
+        # --- FATIAMENTO LINEAR DO SPREAD M EM 4 FATIAS IGUAIS ---
         spread_t = mx_spot - mn_spot
         spread_m = spread_t / 2
         fatia = spread_m / 4
 
-        # DO AXIS PRA CIMA (Soma Linear)
+        # DO AXIS PRA CIMA
         med_fut_1 = axis_central + (1 * fatia)
         max_fut_1 = axis_central + (2 * fatia)
         med_fut_2 = axis_central + (3 * fatia)
         max_fut   = axis_central + (4 * fatia)
 
-        # DO AXIS PRA BAIXO (Subtração Linear)
+        # DO AXIS PRA BAIXO
         med_fut_1_down = axis_central - (1 * fatia)
         min_fut_1      = axis_central - (2 * fatia)
         med_fut_2_down = axis_central - (3 * fatia)
@@ -157,7 +157,7 @@ def monitor_terminal():
         st.markdown(f'<div class="t-header"><div class="pulse-green"></div><div class="t-title">TERMINAL <span class="t-bold">DOLAR</span></div></div>', unsafe_allow_html=True)
         st.markdown(f'<div class="s-container"><div class="s-text">{spot:.4f} <span class="var-style" style="color:{cor_v_spot}">{v_spot:+.2f}%</span></div><div class="s-subtext">FECH. ANTERIOR: {prev_close:.4f}</div><div class="vies-indicator" style="color:{fut_clr}">{fut_seta} <span class="media-azul-val">{media_azul:.4f}</span></div></div>', unsafe_allow_html=True)
         
-        # --- EXIBIÇÃO DA GRADE EM ORDEM E COM AS CORES CORRETAS ---
+        # --- EXIBIÇÃO CONFIGURADA COM DISTRIBUIÇÃO E CORES EXATAS DO SEU OPERACIONAL ---
         st.markdown(f"""
         <div class="d-row"><div class="d-label" style="font-weight: bold; color: #00f2ff;">GRADE DE ALVOS (VOLATILIDADE FRACIONADA)</div><div class="d-value" style="color: #666; font-size: 11px;">AXIS: {axis_central:.4f}</div></div>
         <div class="d-row"><div class="d-label txt-green-line">MAX FUT</div><div class="d-value txt-green-line">{max_fut:.4f}</div></div>
@@ -207,7 +207,7 @@ def monitor_terminal():
             </div>
         """, unsafe_allow_html=True)
 
-# 7. PAINEL DE CONTROLE ADMINISTRATIVO (INTACTO)
+# 7. PAINEL DE CONTROLE ADMINISTRATIVO
 if st.session_state.user_type == "ADM":
     with st.expander("PAINEL ADM"):
         with st.form("adm"):
