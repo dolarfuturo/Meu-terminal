@@ -346,4 +346,4 @@ with placeholder.container():
 
 # Loop controlado nativo do Streamlit para evitar travar a Sidebar
 time.sleep(5)
-st.rerun()
+
