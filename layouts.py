@@ -5,69 +5,11 @@ import os
 from datetime import datetime
 import pytz
 
-# Configuração para Tablet
+# =============================================================================
+# # BLOCO 1: CONFIGURAÇÃO DE AMBIENTE E ESTILIZAÇÃO VISUAL (CSS)
+# =============================================================================
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLLAR", initial_sidebar_state="collapsed")
 
-# --- FUNÇÕES DE PERSISTÊNCIA ---
-def salvar_eixos(div_spreed, dol, axis_fut):
-    with open("config_axis.txt", "w") as f:
-        f.write(f"{div_spreed},{dol},{axis_fut}")
-
-def carregar_eixos():
-    if os.path.exists("config_axis.txt"):
-        try:
-            with open("config_axis.txt", "r") as f:
-                dados = f.read().split(",")
-                d1 = float(dados[0])
-                d2 = float(dados[1])
-                d3 = float(dados[2]) if len(dados) > 2 else d2
-                return d1, d2, d3
-        except: pass
-    return 8.0, 5246.0, 5246.0
-
-# --- PERSISTÊNCIA DIÁRIA EM ARQUIVO PARA MAX/MIN DO DOLFUT (SINC RESTRITO: 09:00 ÀS 18:30) ---
-def carregar_historico_dolfut_diario():
-    data_hoje = datetime.now(pytz.timezone('America/Sao_Paulo')).strftime("%Y-%m-%d")
-    if os.path.exists("dolfut_history.txt"):
-        try:
-            with open("dolfut_history.txt", "r") as f:
-                conteudo = f.read().split(",")
-                if conteudo[0] == data_hoje:
-                    return float(conteudo[1]), float(conteudo[2])
-        except: pass
-    return float('-inf'), float('inf')
-
-def salvar_historico_dolfut_diario(mx, mn):
-    data_hoje = datetime.now(pytz.timezone('America/Sao_Paulo')).strftime("%Y-%m-%d")
-    try:
-        with open("dolfut_history.txt", "w") as f:
-            f.write(f"{data_hoje},{mx},{mn}")
-    except: pass
-
-div_spreed_salvo, eixo_dol_salvo, axis_fut_salvo = carregar_eixos()
-
-if 'market_data' not in st.session_state: st.session_state.market_data = {}
-if 'last_p' not in st.session_state: st.session_state.last_p = {}
-if 'div_spreed_mem' not in st.session_state: st.session_state.div_spreed_mem = div_spreed_salvo
-if 'a_dol_mem' not in st.session_state: st.session_state.a_dol_mem = eixo_dol_salvo
-if 'a_fut_mem' not in st.session_state: st.session_state.a_fut_mem = axis_fut_salvo
-
-# Inicializa carregando do arquivo persistente para evitar perdas com F5
-max_init, min_init = carregar_historico_dolfut_diario()
-if 'dolfut_max_auto' not in st.session_state: st.session_state.dolfut_max_auto = max_init
-if 'dolfut_min_auto' not in st.session_state: st.session_state.dolfut_min_auto = min_init
-
-# --- MEMÓRIA ADICIONAL PARA SINALIZAR RUPTURA DE MÁX/MÍN DO SPOT ---
-if 'last_spot_max' not in st.session_state: st.session_state.last_spot_max = 0.0
-if 'last_spot_min' not in st.session_state: st.session_state.last_spot_min = float('inf')
-
-# --- MEMÓRIA DOS CAMPOS DA CALCULADORA ---
-if 'c_spot_fech_val' not in st.session_state: st.session_state.c_spot_fech_val = 0.0
-if 'c_du_val' not in st.session_state: st.session_state.c_du_val = 22
-if 't_br_val' not in st.session_state: st.session_state.t_br_val = 14.50
-if 't_us_val' not in st.session_state: st.session_state.t_us_val = 3.75
-
-# --- CSS ORIGINAL ---
 st.markdown("""
 <style>
     .block-container { padding-top: 3.5rem !important; padding-bottom: 0rem !important; max-width: 98% !important; }
@@ -114,7 +56,61 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- MOTOR DE DADOS ---
+# =============================================================================
+# # BLOCO 2: MEMÓRIA DA SESSÃO E PERSISTÊNCIA DE DADOS (ARQUIVOS)
+# =============================================================================
+def salvar_eixos(div_spreed):
+    with open("config_axis.txt", "w") as f:
+        f.write(f"{div_spreed}")
+
+def carregar_eixos():
+    if os.path.exists("config_axis.txt"):
+        try:
+            with open("config_axis.txt", "r") as f:
+                return float(f.read().split(",")[0])
+        except: pass
+    return 8.0
+
+def carregar_historico_dolfut_diario():
+    data_hoje = datetime.now(pytz.timezone('America/Sao_Paulo')).strftime("%Y-%m-%d")
+    if os.path.exists("dolfut_history.txt"):
+        try:
+            with open("dolfut_history.txt", "r") as f:
+                conteudo = f.read().split(",")
+                if conteudo[0] == data_hoje:
+                    return float(conteudo[1]), float(conteudo[2])
+        except: pass
+    return float('-inf'), float('inf')
+
+def salvar_historico_dolfut_diario(mx, mn):
+    data_hoje = datetime.now(pytz.timezone('America/Sao_Paulo')).strftime("%Y-%m-%d")
+    try:
+        with open("dolfut_history.txt", "w") as f:
+            f.write(f"{data_hoje},{mx},{mn}")
+    except: pass
+
+# Gerenciamento de Memória Central do Terminal
+div_spreed_salvo = carregar_eixos()
+
+if 'market_data' not in st.session_state: st.session_state.market_data = {}
+if 'last_p' not in st.session_state: st.session_state.last_p = {}
+if 'div_spreed_mem' not in st.session_state: st.session_state.div_spreed_mem = div_spreed_salvo
+
+max_init, min_init = carregar_historico_dolfut_diario()
+if 'dolfut_max_auto' not in st.session_state: st.session_state.dolfut_max_auto = max_init
+if 'dolfut_min_auto' not in st.session_state: st.session_state.dolfut_min_auto = min_init
+
+if 'last_spot_max' not in st.session_state: st.session_state.last_spot_max = 0.0
+if 'last_spot_min' not in st.session_state: st.session_state.last_spot_min = float('inf')
+
+if 'c_spot_fech_val' not in st.session_state: st.session_state.c_spot_fech_val = 0.0
+if 'c_du_val' not in st.session_state: st.session_state.c_du_val = 22
+if 't_br_val' not in st.session_state: st.session_state.t_br_val = 14.50
+if 't_us_val' not in st.session_state: st.session_state.t_us_val = 3.75
+
+# =============================================================================
+# # BLOCO 3: CONEXÃO COM API E MOTOR DE CAPTURA DE DADOS
+# =============================================================================
 def fetch(s):
     fallback = {"at": 0.0, "cl": 1.0, "op": 0.0, "mx": 0.0, "mn": 0.0}
     try:
@@ -144,36 +140,36 @@ def fetch(s):
         return data
     except: return st.session_state.market_data.get(s, fallback)
 
-# --- CÁLCULOS K97 ---
-def calcular_k97_total(spreed_do_dia, p_ewz_atual, eixo_dol, spot_data, us10y_data):
+# =============================================================================
+# # BLOCO 4: NÚCLEO MATEMÁTICO CENTRAL E CÁLCULOS DO K97
+# =============================================================================
+def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
     try:
-        if not spot_data or p_ewz_atual == 0 or not us10y_data: return None
+        if not spot_data or not ewz_data: return None
+        
+        # Centralização única dos dados do Spot Média
         dolar_medio = (spot_data['mx'] + spot_data['mn']) / 2
+        spreed_t = spot_data['mx'] - spot_data['mn']
+        spreed_50 = spreed_t / 2
+        
         fraja_val = spot_data['at'] + spreed_do_dia
+        
+        # Cálculos de variação internacional travados
         dxy_data = fetch("DX-Y.NYB")
         v_dxy = ((dxy_data['at'] / dxy_data['cl']) - 1) if dxy_data['cl'] > 0 else 0
         ewz_ref = st.session_state.market_data.get("EWZ", {}).get('cl', 1)
-        v_ewz = ((p_ewz_atual / ewz_ref) - 1) if ewz_ref > 0 else 0
+        v_ewz = ((ewz_data['at'] / ewz_ref) - 1) if ewz_ref > 0 else 0
         
-        # --- AJUSTE REGISTRADO: Variação internacional para DOLFUT e DOLB3 ---
         calc_variacoes_pct = (v_dxy * 0.7) - (v_ewz * 0.3)
         
-        # --- AJUSTE REGISTRADO: Preço Justo (vivo_val) partindo estritamente do FECHAMENTO DO SPOT (cl) ---
         vivo_val = spot_data['cl'] * (1 + calc_variacoes_pct) 
-        
-        # --- AJUSTE REGISTRADO: Novo Axis Dinâmico e Degraus pelo FRP ---
         axis_dinamico = dolar_medio + spreed_do_dia
-        
-        spreed_t = spot_data['mx'] - spot_data['mn']
-        spreed_50 = spreed_t / 2
+        passo_fixo = spreed_50 / 4
         
         alvo_low = spot_data['mn'] + spreed_do_dia
         alvo_high = spot_data['mx'] + spreed_do_dia
         
-        # --- CORREÇÃO TRAVADA: O Passo Fixo agora calcula em cima do SPREAD M real (spreed_50) ---
-        passo_fixo = spreed_50 / 4
-        
-        # --- MODIFICAÇÃO SOLICITADA: Elástico calibrado estritamente para cravar 100% no tamanho do SPREAD T ---
+        # Elástico / Indicador de Força
         diff = spot_data['at'] - vivo_val
         p_v, p_r = 0, 0
         seta_txt, seta_cor, piscando = "", "#000000", False
@@ -187,19 +183,16 @@ def calcular_k97_total(spreed_do_dia, p_ewz_atual, eixo_dol, spot_data, us10y_da
         elif p_r >= 100: seta_txt, seta_cor, piscando = "▼ REGIÃO DE VENDA", "#ff4d4d", True
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         
-        # --- AJUSTE REGISTRADO: Preço do DOLFUT ancorado no Axis Dinâmico ---
         dolfut_atual_calc = axis_dinamico * (1 + calc_variacoes_pct)
         
-        # --- AJUSTE EXCLUSIVO: RASTREAMENTO RESTRITO AO HORÁRIO COM PERSISTÊNCIA REAL NO DISCO ---
+        # Controle Horário e Persistência do DOLFUT Máx/Mín
         tz_sp = pytz.timezone('America/Sao_Paulo')
         now_br = datetime.now(tz_sp)
         
-        # Faz a leitura do arquivo para sincronizar caso outra thread/sessão tenha atualizado
         f_max, f_min = carregar_historico_dolfut_diario()
         if f_max != float('-inf'): st.session_state.dolfut_max_auto = max(st.session_state.dolfut_max_auto, f_max)
         if f_min != float('inf'): st.session_state.dolfut_min_auto = min(st.session_state.dolfut_min_auto, f_min)
         
-        # Verifica se estamos rigorosamente dentro do intervalo de tempo (09:00 às 18:30)
         if (now_br.hour > 9 or (now_br.hour == 9 and now_br.minute >= 0)) and (now_br.hour < 18 or (now_br.hour == 18 and now_br.minute <= 30)):
             mudou = False
             if dolfut_atual_calc > st.session_state.dolfut_max_auto:
@@ -208,47 +201,30 @@ def calcular_k97_total(spreed_do_dia, p_ewz_atual, eixo_dol, spot_data, us10y_da
             if dolfut_atual_calc < st.session_state.dolfut_min_auto:
                 st.session_state.dolfut_min_auto = dolfut_atual_calc
                 mudou = True
-            if mudou:
-                salvar_historico_dolfut_diario(st.session_state.dolfut_max_auto, st.session_state.dolfut_min_auto)
+            if mudou: salvar_historico_dolfut_diario(st.session_state.dolfut_max_auto, st.session_state.dolfut_min_auto)
         else:
-            # Fora do horário, se o arquivo diário não existir ou for de outro dia, força inicialização com o valor atual
             if st.session_state.dolfut_max_auto == float('-inf') or st.session_state.dolfut_min_auto == float('inf'):
                 st.session_state.dolfut_max_auto = dolfut_atual_calc
                 st.session_state.dolfut_min_auto = dolfut_atual_calc
                 salvar_historico_dolfut_diario(dolfut_atual_calc, dolfut_atual_calc)
 
         return {
-            "vivo": vivo_val, 
-            "vivo_pct": calc_variacoes_pct * 100, 
-            "dolfut_calc": dolfut_atual_calc, 
-            "fraja": fraja_val, 
-            "medio": dolar_medio, 
-            "axis_central": axis_dinamico,
-            "max_fut_1": axis_dinamico + passo_fixo,
-            "max_fut_1_b": axis_dinamico + (passo_fixo * 2),
-            "max_fut_2": axis_dinamico + (passo_fixo * 3),
-            "max_fut_2_b": axis_dinamico + (passo_fixo * 4),
-            "min_fut_1": axis_dinamico - passo_fixo,
-            "min_fut_1_b": axis_dinamico - (passo_fixo * 2),
-            "min_fut_2": axis_dinamico - (passo_fixo * 3),
-            "min_fut_2_b": axis_dinamico - (passo_fixo * 4),
-            "v_v": calc_variacoes_pct * 100, 
-            "v_spot": v_spot_pct * 100, 
-            "spreed": spreed_50, 
-            "p_v": p_v, 
-            "p_r": p_r, 
-            "seta": seta_txt, 
-            "seta_cor": seta_cor, 
-            "piscando": piscando, 
-            "max_grade": st.session_state.dolfut_max_auto, 
-            "min_grade": st.session_state.dolfut_min_auto, 
-            "alvo_low": alvo_low, 
-            "alvo_high": alvo_high, 
-            "spreed_t": spreed_t
+            "vivo": vivo_val, "vivo_pct": calc_variacoes_pct * 100, "dolfut_calc": dolfut_atual_calc, "fraja": fraja_val, 
+            "medio": dolar_medio, "axis_central": axis_dinamico,
+            "max_fut_1": axis_dinamico + passo_fixo, "max_fut_1_b": axis_dinamico + (passo_fixo * 2),
+            "max_fut_2": axis_dinamico + (passo_fixo * 3), "max_fut_2_b": axis_dinamico + (passo_fixo * 4),
+            "min_fut_1": axis_dinamico - passo_fixo, "min_fut_1_b": axis_dinamico - (passo_fixo * 2),
+            "min_fut_2": axis_dinamico - (passo_fixo * 3), "min_fut_2_b": axis_dinamico - (passo_fixo * 4),
+            "v_v": calc_variacoes_pct * 100, "v_spot": v_spot_pct * 100, "spreed": spreed_50, 
+            "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor, "piscando": piscando, 
+            "max_grade": st.session_state.dolfut_max_auto, "min_grade": st.session_state.dolfut_min_auto, 
+            "alvo_low": alvo_low, "alvo_high": alvo_high, "spreed_t": spreed_t
         }
     except: return None
 
-# --- SIDEBAR COM CALCULADORA DE JUROS MEMORIZADA ---
+# =============================================================================
+# # BLOCO 5: CONTROLES OPERACIONAIS FINANCEIROS (SIDEBAR / ADM)
+# =============================================================================
 with st.sidebar:
     st.markdown("### 🧮 CALCULADORA DE JUROS (FRP)")
     with st.expander("CALCULAR SPREED", expanded=False):
@@ -264,14 +240,12 @@ with st.sidebar:
         
         if c_spot_fech > 0:
             spreed_calc = c_spot_fech * ((t_br / 100) - (t_us / 100)) * (c_du / 252)
-            
             st.markdown(f"""
             <div style="background:#0d1b22; padding:8px; border:1px solid #FFD700; font-family:monospace; text-align:center;">
                 <span style="color:#AAA; font-size:10px;">SPREED (REGRA DE BOLSO)</span><br>
                 <span style="color:#00ff88; font-size:18px; font-weight:bold;">{spreed_calc:.2f}</span>
             </div>
             """, unsafe_allow_html=True)
-            
             if st.button("USAR ESTE SPREED NO ADM"):
                 st.session_state.div_spreed_mem = spreed_calc
                 st.rerun()
@@ -279,70 +253,75 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### ⚙️ PAINEL ADM")
     i_div = st.number_input("FRP (PARA JUSTO):", value=st.session_state.div_spreed_mem, format="%.2f")
-    i_dol = st.number_input("AXIS DOLFUT:", value=st.session_state.a_dol_mem, format="%.2f")
-    i_fut = st.number_input("AXIS FUT (DOLB3 VAR):", value=st.session_state.a_fut_mem, format="%.2f")
     if st.button("SALVAR CONFIGURAÇÕES"):
-        st.session_state.div_spreed_mem, st.session_state.a_dol_mem, st.session_state.a_fut_mem = i_div, i_dol, i_fut
-        salvar_eixos(i_div, i_dol, i_fut)
+        st.session_state.div_spreed_mem = i_div
+        salvar_eixos(i_div)
         st.success("Salvo!"); time.sleep(0.5); st.rerun()
 
-div_s, a_dol, a_fut = st.session_state.div_spreed_mem, st.session_state.a_dol_mem, st.session_state.a_fut_mem
+div_s = st.session_state.div_spreed_mem
 placeholder = st.empty()
 
-# --- LOOP PRINCIPAL ---
+# =============================================================================
+# # BLOCO 6: INTERFACE DO TERMINAL E ITERAÇÃO DE MERCADO (LOOP 5S)
+# =============================================================================
 while True:
     tz_sp, tz_ny, tz_ld, tz_utc = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London'), pytz.utc
     spot_live, ewz_live, us10y_live = fetch("USDBRL=X"), fetch("EWZ"), fetch("^TNX")
     now = datetime.now()
+    
     with placeholder.container():
+        # Topo de Horários Mundiais
         st.markdown(f'''<div class="header-container"><h1 class="main-title"><span class="bair-blue">BAIR</span><span class="terminal-gold"> - TERMINAL DOLLAR</span></h1><div class="clock-row"><span class="clock-item">🇧🇷 BR: <span class="br-green">{now.astimezone(tz_sp).strftime("%H:%M:%S")}</span></span><span class="clock-item">🇺🇸 NY: <span class="white-time">{now.astimezone(tz_ny).strftime("%H:%M:%S")}</span></span><span class="clock-item">🇬🇧 LDN: <span class="white-time">{now.astimezone(tz_ld).strftime("%H:%M:%S")}</span></span><span class="clock-item">🌐 UTC: <span class="utc-gold">{now.astimezone(tz_utc).strftime("%H:%M:%S")}</span></span></div><div class="date-container">📅 {now.astimezone(tz_sp).strftime("%d/%m/%Y")}</div></div>''', unsafe_allow_html=True)
-        res = calcular_k97_total(div_s, ewz_live['at'] if ewz_live else 0, a_dol, spot_live, us10y_live)
+        
+        res = calcular_k97_total(div_s, spot_live, ewz_live)
         if res:
             c1, c2 = st.columns([2.8, 1.2])
             with c1:
                 st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
                 html = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
+                
+                # Renderizador Dinâmico do DOLFUT
                 v_f, d_c = res['v_v'], res['dolfut_calc']
                 l_df = st.session_state.last_p.get('DF', d_c/1000); cl_df = "f-up" if (d_c/1000) > l_df else "f-dn" if (d_c/1000) < l_df else ""; st.session_state.last_p['DF'] = d_c/1000
-                
                 html += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col {cl_df}' style='background-color:rgba({('0,255,0' if v_f >= 0 else '255,0,0')}, 0.1);'>{(d_c/1000):.4f}</td><td>{(res['axis_central']/1000):.4f}</td><td>{(res['axis_central']/1000):.4f}</td><td>{(res['max_grade']/1000):.4f}</td><td>{(res['min_grade']/1000):.4f}</td><td style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_f:+.2f}%</td></tr>"
+                
                 ticker_items = [f"DOLFUT: <span style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")};'>{v_f:+.2f}%</span>"]
                 outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F", "US10Y": "^TNX"}
                 
-                # --- Seta baseada exclusivamente se o SPOT PRICE está ACIMA ou ABAIXO da Média do Dólar ---
-                if spot_live and spot_live['at'] > res['medio']:
-                    seta_spread, cor_seta_spread = ("▲", "#00ff88")
-                else:
-                    seta_spread, cor_seta_spread = ("▼", "#ff4d4d")
+                seta_spread, cor_seta_spread = ("▲", "#00ff88") if spot_live and spot_live['at'] > res['medio'] else ("▼", "#ff4d4d")
                     
+                # Loop Único de Renderização de Linhas de Ativos
                 for lbl, sym in outros.items():
-                    d = fetch(sym)
+                    d = st.session_state.market_data.get(sym, fetch(sym))
                     if d:
                         f = ".4f" if lbl in ["DOLSPOT", "GBP/USD", "JPY/USD", "EUR/USD"] else (".3f" if lbl=="US10Y" else ".2f")
                         p_v = d['at']/1000 if lbl == "DOLSPOT" else d['at']
                         l_a = st.session_state.last_p.get(lbl, p_v); cl_a = "f-up" if p_v > l_a else "f-dn" if p_v < l_a else ""; st.session_state.last_p[lbl] = p_v
                         var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
                         
-                        # --- Piscar Max ou Min do DOLSPOT no momento exato do rompimento intraday ---
-                        cl_max = ""
-                        cl_min = ""
+                        cl_max = "f-up" if lbl == "DOLSPOT" and st.session_state.last_spot_max > 0 and d['mx'] > st.session_state.last_spot_max else ""
+                        cl_min = "f-dn" if lbl == "DOLSPOT" and st.session_state.last_spot_min < float('inf') and d['mn'] < st.session_state.last_spot_min else ""
                         if lbl == "DOLSPOT":
-                            if st.session_state.last_spot_max > 0 and d['mx'] > st.session_state.last_spot_max:
-                                cl_max = "f-up"
-                            if st.session_state.last_spot_min < float('inf') and d['mn'] < st.session_state.last_spot_min:
-                                cl_min = "f-dn"
-                            
-                            st.session_state.last_spot_max = d['mx']
-                            st.session_state.last_spot_min = d['mn']
+                            st.session_state.last_spot_max, st.session_state.last_spot_min = d['mx'], d['mn']
                             
                         html += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col {cl_a}'>{p_v:{f}}</td><td>{(d['cl']/1000 if lbl=='DOLSPOT' else d['cl']):{f}}</td><td>{(d['op']/1000 if lbl=='DOLSPOT' else d['op']):{f}}</td><td class='{cl_max}'>{(d['mx']/1000 if lbl=='DOLSPOT' else d['mx']):{f}}</td><td class='{cl_min}'>{(d['mn']/1000 if lbl=='DOLSPOT' else d['mn']):{f}}</td><td style='color:{("#00ff00" if var >= 0 else "#ff4d4d")}; font-weight:bold;'>{var:+.2f}%</td></tr>"
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
+                
+                # Barra de Força / Elástico K97
                 st.markdown(f'''<div class="bar-wrapper-full"><div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div></div><div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; font-family: monospace; color: #AAA; margin-top: 2px; padding: 0 2px;"><span>LOW: {res['alvo_low']:.2f}</span><span style="color:{cor_seta_spread}; font-size: 14px; font-weight: bold;">{seta_spread}</span><span>HIGH: {res['alvo_high']:.2f}</span></div><div class="sinal-indicator {"blink" if res["piscando"] else ""}" style="color:{res["seta_cor"]};">{res["seta"]}</div></div>''', unsafe_allow_html=True)
+            
             with c2:
+                # Grade Lateral de Níveis Operacionais
                 st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row txt-green"><span>MAX FUT 2</span> <span>{res['max_fut_2_b']:.2f}</span></div><div class="calc-row txt-yellow"><span>MED FUT 2</span> <span>{res['max_fut_2']:.2f}</span></div><div class="calc-row txt-green"><span>MAX FUT 1</span> <span>{res['max_fut_1_b']:.2f}</span></div><div class="calc-row txt-yellow"><span>MED FUT 1</span> <span>{res['max_fut_1']:.2f}</span></div><div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 10px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">AXIS: {res['axis_central']:.2f}</div><div class="calc-row txt-yellow"><span>MED FUT 1</span> <span>{res['min_fut_1']:.2f}</span></div><div class="calc-row txt-green"><span>MIN FUT 1</span> <span>{res['min_fut_1_b']:.2f}</span></div><div class="calc-row txt-yellow"><span>MED FUT 2</span> <span>{res['min_fut_2']:.2f}</span></div><div class="calc-row txt-green" style="border-bottom: none;"><span>MIN FUT 2</span> <span>{res['min_fut_2_b']:.2f}</span></div></div>''', unsafe_allow_html=True)
+                
+                # Painel de Métricas e Spreads Fixados
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
+            
+            # Letreiro Inferior de Cotações Rápidas
             st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
-        else: st.warning("Aguardando inicialização dos dados do mercado...")
+        else: 
+            st.warning("Aguardando inicialização dos dados do mercado...")
+            
     time.sleep(5)
