@@ -89,31 +89,6 @@ def salvar_historico_dolfut_diario(mx, mn):
             f.write(f"{data_hoje},{mx},{mn}")
     except: pass
 
-def calcular_dias_uteis_b3(data_inicio, data_fim):
-    # Feriados Oficiais da B3 para 2026 (Sem negociação)
-    feriados = {
-        date(2026, 1, 1),   # Ano Novo
-        date(2026, 2, 16),  # Carnaval
-        date(2026, 2, 17),  # Carnaval
-        date(2026, 4, 3),   # Sexta-Feira Santa
-        date(2026, 4, 21),  # Tiradentes
-        date(2026, 5, 1),   # Dia do Trabalho
-        date(2026, 6, 4),   # Corpus Christi
-        date(2026, 9, 7),   # Independência
-        date(2026, 10, 12), # N. Sra. Aparecida
-        date(2026, 11, 2),  # Finados
-        date(2026, 11, 15), # Proclamação da República
-        date(2026, 11, 20), # Consciência Negra
-        date(2026, 12, 25)  # Natal
-    }
-    dias_uteis = 0
-    curr = data_inicio + timedelta(days=1)
-    while curr <= data_fim:
-        if curr.weekday() < 5 and curr not in feriados:
-            dias_uteis += 1
-        curr += timedelta(days=1)
-    return dias_uteis
-
 # Gerenciamento de Memória Central do Terminal
 div_spreed_salvo = carregar_eixos()
 
@@ -132,14 +107,15 @@ if 'c_spot_fech_val' not in st.session_state: st.session_state.c_spot_fech_val =
 if 't_br_val' not in st.session_state: st.session_state.t_br_val = 14.50
 if 't_us_val' not in st.session_state: st.session_state.t_us_val = 3.75
 
-# CORREÇÃO CRUCIAL AQUI: Inicializando as variáveis locais antes de usar na Session State
-hoje_br = datetime.now(pytz.timezone('America/Sao_Paulo')).date()
+# Inicialização global segura de datas na session_state
+if 'hoje_br_data' not in st.session_state:
+    st.session_state.hoje_br_data = datetime.now(pytz.timezone('America/Sao_Paulo')).date()
 
 if 'data_venc_contrato' not in st.session_state:
-    st.session_state.data_venc_contrato = hoje_br + timedelta(days=20)
+    st.session_state.data_venc_contrato = st.session_state.hoje_br_data + timedelta(days=20)
     
 if 'c_du_val' not in st.session_state:
-    st.session_state.c_du_val = calcular_dias_uteis_b3(hoje_br, st.session_state.data_venc_contrato)
+    st.session_state.c_du_val = 22
 
 # =============================================================================
 # # BLOCO 3: CONEXÃO COM API E MOTOR DE CAPTURA DE DADOS
@@ -262,18 +238,35 @@ with st.sidebar:
     st.markdown("### 🧮 CALCULADORA DE JUROS (FRP)")
     with st.expander("CALCULAR SPREED", expanded=False):
         
-        # 1. Seletor de Data de Vencimento do Contrato
+        # Função local para garantir que a execução na sidebar não falhe
+        def calcular_dias_uteis_b3_local(data_inicio, data_fim):
+            feriados = {
+                date(2026, 1, 1), date(2026, 2, 16), date(2026, 2, 17),
+                date(2026, 4, 3), date(2026, 4, 21), date(2026, 5, 1),
+                date(2026, 6, 4), date(2026, 9, 7), date(2026, 10, 12),
+                date(2026, 11, 2), date(2026, 11, 15), date(2026, 11, 20),
+                date(2026, 12, 25)
+            }
+            dias_uteis = 0
+            curr = data_inicio + timedelta(days=1)
+            while curr <= data_fim:
+                if curr.weekday() < 5 and curr not in feriados:
+                    dias_uteis += 1
+                curr += timedelta(days=1)
+            return dias_uteis
+
+        # Seletor do Calendário
         venc_sel = st.date_input("VENCIMENTO CONTRATO:", value=st.session_state.data_venc_contrato)
         
-        # Se o usuário alterar a data no calendário, recalculamos e atualizamos a memória do DU
+        # Se mudar a data, recalcula os dias úteis automaticamente
         if venc_sel != st.session_state.data_venc_contrato:
             st.session_state.data_venc_contrato = venc_sel
-            st.session_state.c_du_val = calcular_dias_uteis_b3(hoje_br, venc_sel)
+            st.session_state.c_du_val = calcular_dias_uteis_b3_local(st.session_state.hoje_br_data, venc_sel)
             st.rerun()
             
         c_spot_fech = st.number_input("FECH SPOT:", value=st.session_state.c_spot_fech_val, format="%.3f")
         
-        # 2. Campo numérico aberto que permite alterar o dia útil livremente
+        # Input numérico para troca livre caso queira alterar manualmente
         c_du = st.number_input("DIAS ÚTEIS (DU):", value=int(st.session_state.c_du_val), step=1)
         
         t_br = st.number_input("JUROS BRL (%):", value=st.session_state.t_br_val, format="%.2f")
@@ -306,6 +299,7 @@ with st.sidebar:
 
 div_s = st.session_state.div_spreed_mem
 placeholder = st.empty()
+
 
 
 # =============================================================================
