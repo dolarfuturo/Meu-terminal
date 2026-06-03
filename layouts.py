@@ -132,11 +132,12 @@ if 'c_spot_fech_val' not in st.session_state: st.session_state.c_spot_fech_val =
 if 't_br_val' not in st.session_state: st.session_state.t_br_val = 14.50
 if 't_us_val' not in st.session_state: st.session_state.t_us_val = 3.75
 
-# Inicialização da data base do calendário
-tz_sp = pytz.timezone('America/Sao_Paulo')
-hoje_br = datetime.now(tz_sp).date()
+# CORREÇÃO CRUCIAL AQUI: Inicializando as variáveis locais antes de usar na Session State
+hoje_br = datetime.now(pytz.timezone('America/Sao_Paulo')).date()
+
 if 'data_venc_contrato' not in st.session_state:
     st.session_state.data_venc_contrato = hoje_br + timedelta(days=20)
+    
 if 'c_du_val' not in st.session_state:
     st.session_state.c_du_val = calcular_dias_uteis_b3(hoje_br, st.session_state.data_venc_contrato)
 
