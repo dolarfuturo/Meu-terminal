@@ -35,26 +35,30 @@ st.markdown("""
     .price-col { font-weight: bold; color: #ffffff !important; }
     .f-up { background-color: #00ff00aa !important; }
     .f-dn { background-color: #ff0000aa !important; }
-    .calc-panel { border: 1.5px solid #ffffff; border-radius: 4px; padding: 4px; background: #0a141a; font-family: monospace; margin-bottom: 0px; margin-top: 4px; }
-    .calc-row { display: flex; justify-content: space-between; padding: 2px 6px; border-bottom: 1px solid #444; font-size: 10px; font-weight: bold; align-items: center; }
+    
+    /* Tabelas operacionais laterais compactadas para caber todos os blocos */
+    .calc-panel { border: 1.5px solid #ffffff; border-radius: 4px; padding: 2px 4px; background: #0a141a; font-family: monospace; margin-bottom: 0px; margin-top: 4px; }
+    .calc-row { display: flex; justify-content: space-between; padding: 1px 4px; border-bottom: 1px solid #444; font-size: 10px; font-weight: bold; align-items: center; }
     
     /* Novo Termômetro de Força de Direção K97 */
-    .thermometer-box { border: 1.5px solid #ffffff; border-radius: 4px; padding: 6px; background: #0a141a; font-family: monospace; margin-top: 4px; text-align: center; }
-    .thermometer-title { color: #FFD700; font-size: 11px; font-weight: bold; margin-bottom: 2px; text-transform: uppercase; }
-    .thermometer-bar { font-size: 22px; font-weight: bold; letter-spacing: 2px; margin: 2px 0; line-height: 1.1; }
-    .thermometer-status { font-size: 10px; font-weight: bold; text-transform: uppercase; margin-top: 2px; }
-    .thermometer-value { font-size: 9px; color: #888; margin-top: 1px; }
+    .thermometer-box { border: 1.5px solid #ffffff; border-radius: 4px; padding: 4px; background: #0a141a; font-family: monospace; margin-top: 4px; text-align: center; }
+    .thermometer-title { color: #FFD700; font-size: 10px; font-weight: bold; margin-bottom: 1px; text-transform: uppercase; }
+    .thermometer-bar { font-size: 18px; font-weight: bold; letter-spacing: 2px; margin: 1px 0; line-height: 1.1; }
+    .thermometer-status { font-size: 9px; font-weight: bold; text-transform: uppercase; margin-top: 1px; }
+    .thermometer-value { font-size: 8px; color: #888; margin-top: 1px; }
     
-    .bar-wrapper-full { background: #0a141a; padding: 6px; border: 1.5px solid #ffffff; border-radius: 4px; text-align: center; margin-top: 4px; }
+    /* Barra de Força / Elástico K97 */
+    .bar-wrapper-full { background: #0a141a; padding: 4px; border: 1.5px solid #ffffff; border-radius: 4px; text-align: center; margin-top: 4px; }
     .force-scale { display: flex; justify-content: space-between; font-size: 8px; font-family: monospace; color: #AAA; margin-bottom: 2px; padding: 0 5px; }
     .force-container-dual { background: #111; height: 10px; width: 100%; border-radius: 2px; position: relative; overflow: hidden; display: flex; border: 1px solid #444; }
     .center-line { position: absolute; left: 50%; top: 0; width: 1px; height: 100%; background: #fff; z-index: 10; }
     .bar-side { width: 50%; height: 100%; position: relative; background: #050a0e; }
     .fill-green { background: #00ff88; float: right; height: 100%; transition: width 0.4s; }
     .fill-red { background: #ff4d4d; float: left; height: 100%; transition: width 0.4s; }
-    .sinal-indicator { font-size: 11px; font-weight: 900; line-height: 1; margin-top: 4px; }
+    .sinal-indicator { font-size: 10px; font-weight: 900; line-height: 1; margin-top: 3px; }
     .blink { animation: blinker 1.5s linear infinite; }
     @keyframes blinker { 50% { opacity: 0.1; } }
+    
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 1.5px solid #ffffff; border-bottom: 1.5px solid #ffffff; padding: 4px 0; overflow: hidden; white-space: nowrap; margin-top: 8px; }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 12px; font-weight: bold; color: #fff; }
     @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
@@ -224,10 +228,8 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         var_brent = ((brent_data['at'] / brent_data['cl']) - 1) * 100 if brent_data['cl'] > 0 else 0
         var_xau = ((xau_data['at'] / xau_data['cl']) - 1) * 100 if xau_data['cl'] > 0 else 0
         
-        # Fórmula de Consolidação do Vetor Macro-Micro (Isolado do preço do spot)
         vetor_macro_pontos = (var_dxy * 0.45) + (var_us10y * 0.20) - (var_ewz * 0.20) - (var_brent * 0.10) - (var_xau * 0.05)
         
-        # Filtros de Sensibilidade Estrita (7 Níveis Simétricos)
         if abs(vetor_macro_pontos) < 0.15:
             term_str = "░░░░█░░░░"
             term_status = "ESTÁVEL"
@@ -365,15 +367,15 @@ while True:
             with c2:
                 # Grade Lateral de Níveis Operacionais
                 st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
-                st.markdown(f'''<div class="calc-panel" style="margin-top:0px;"><div class="calc-row txt-green"><span>MAX FUT 2</span> <span>{res['max_fut_2_b']:.2f}</span></div><div class="calc-row txt-yellow"><span>MED FUT 2</span> <span>{res['max_fut_2']:.2f}</span></div><div class="calc-row txt-green"><span>MAX FUT 1</span> <span>{res['max_fut_1_b']:.2f}</span></div><div class="calc-row txt-yellow"><span>MED FUT 1</span> <span>{res['max_fut_1']:.2f}</span></div><div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 10px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">AXIS: {res['axis_central']:.2f}</div><div class="calc-row txt-yellow"><span>MED FUT 1</span> <span>{res['min_fut_1']:.2f}</span></div><div class="calc-row txt-green"><span>MIN FUT 1</span> <span>{res['min_fut_1_b']:.2f}</span></div><div class="calc-row txt-yellow"><span>MED FUT 2</span> <span>{res['min_fut_2']:.2f}</span></div><div class="calc-row txt-green" style="border-bottom: none;"><span>MIN FUT 2</span> <span>{res['min_fut_2_b']:.2f}</span></div></div>''', unsafe_allow_html=True)
+                st.markdown(f'''<div class="calc-panel" style="margin-top:0px;"><div class="calc-row txt-green"><span>MAX FUT 2</span> <span>{res['max_fut_2_b']:.2f}</span></div><div class="calc-row txt-yellow"><span>MED FUT 2</span> <span>{res['max_fut_2']:.2f}</span></div><div class="calc-row txt-green"><span>MAX FUT 1</span> <span>{res['max_fut_1_b']:.2f}</span></div><div class="calc-row txt-yellow"><span>MED FUT 1</span> <span>{res['max_fut_1']:.2f}</span></div><div style="text-align:center; padding: 2px; color: #00f2ff; font-size: 10px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">AXIS: {res['axis_central']:.2f}</div><div class="calc-row txt-yellow"><span>MED FUT 1</span> <span>{res['min_fut_1']:.2f}</span></div><div class="calc-row txt-green"><span>MIN FUT 1</span> <span>{res['min_fut_1_b']:.2f}</span></div><div class="calc-row txt-yellow"><span>MED FUT 2</span> <span>{res['min_fut_2']:.2f}</span></div><div class="calc-row txt-green" style="border-bottom: none;"><span>MIN FUT 2</span> <span>{res['min_fut_2_b']:.2f}</span></div></div>''', unsafe_allow_html=True)
                 
                 # Bloco Pequeno de Métricas (Subido)
-                st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
+                st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:2px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
                 
-                # NOVO BLOCO: Termômetro de Força de Direção K97 (Abaixo do bloco pequeno)
+                # TERMÔMETRO DE FORÇA DE DIREÇÃO K97
                 st.markdown(f'''<div class="thermometer-box"><div class="thermometer-title">🌡️ FORÇA DE DIREÇÃO K97</div><div class="thermometer-bar" style="color: {res['term_color']};">{res['term_str']}</div><div class="thermometer-status {"blink" if res['term_blink'] else ""}" style="color: {res['term_color']};">{res['term_status']}</div><div class="thermometer-value">VETOR MACRO: {res['term_pts']:+.2f} pts</div></div>''', unsafe_allow_html=True)
                 
-                # Barra de Força / Elástico K97 (Mantido Intacto)
+                # BARRA DE FORÇA / ELÁSTICO K97 (Sempre visível no final da fila)
                 st.markdown(f'''<div class="bar-wrapper-full"><div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div></div><div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; font-family: monospace; color: #AAA; margin-top: 2px; padding: 0 2px;"><span>LOW: {res['alvo_low']:.2f}</span><span style="color:{cor_seta_spread}; font-size: 14px; font-weight: bold;">{seta_spread}</span><span>HIGH: {res['alvo_high']:.2f}</span></div><div class="sinal-indicator {"blink" if res["piscando"] else ""}" style="color:{res["seta_cor"]};">{res["seta"]}</div></div>''', unsafe_allow_html=True)
             
             st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
