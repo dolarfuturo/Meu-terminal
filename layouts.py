@@ -170,7 +170,8 @@ def calcular_k97_total(spreed_do_dia, p_ewz_atual, eixo_dol, spot_data, us10y_da
         alvo_low = spot_data['mn'] + spreed_do_dia
         alvo_high = spot_data['mx'] + spreed_do_dia
         
-        max_original, min_original = axis_dinamico + (spreed_t * 0.75), axis_dinamico - (spreed_t * 0.25)
+        # --- MODIFICAÇÃO SOLICITADA: Fracionar o Spread M em 4 partes iguais e fazer somas/subtrações ---
+        passo_fixo = spreed_do_dia / 4
         
         # --- MODIFICAÇÃO SOLICITADA: Elástico calibrado estritamente para cravar 100% no tamanho do SPREAD T ---
         diff = spot_data['at'] - vivo_val
@@ -223,16 +224,14 @@ def calcular_k97_total(spreed_do_dia, p_ewz_atual, eixo_dol, spot_data, us10y_da
             "fraja": fraja_val, 
             "medio": dolar_medio, 
             "axis_central": axis_dinamico,
-            "max_fut_1": axis_dinamico + spreed_do_dia,
-            "max_fut_2": axis_dinamico + (spreed_do_dia * 2),
-            "max_fut_3": axis_dinamico + (spreed_do_dia * 3),
-            "max_fut_4": axis_dinamico + (spreed_do_dia * 4),
-            "max_fut_5": axis_dinamico + (spreed_do_dia * 5),
-            "min_fut_1": axis_dinamico - spreed_do_dia,
-            "min_fut_2": axis_dinamico - (spreed_do_dia * 2),
-            "min_fut_3": axis_dinamico - (spreed_do_dia * 3),
-            "min_fut_4": axis_dinamico - (spreed_do_dia * 4),
-            "min_fut_5": axis_dinamico - (spreed_do_dia * 5),
+            "max_fut_1": axis_dinamico + passo_fixo,
+            "max_fut_1_b": axis_dinamico + (passo_fixo * 2),
+            "max_fut_2": axis_dinamico + (passo_fixo * 3),
+            "max_fut_2_b": axis_dinamico + (passo_fixo * 4),
+            "min_fut_1": axis_dinamico - passo_fixo,
+            "min_fut_1_b": axis_dinamico - (passo_fixo * 2),
+            "min_fut_2": axis_dinamico - (passo_fixo * 3),
+            "min_fut_2_b": axis_dinamico - (passo_fixo * 4),
             "v_v": calc_variacoes_pct * 100, 
             "v_spot": v_spot_pct * 100, 
             "spreed": spreed_50, 
@@ -342,7 +341,7 @@ while True:
                 st.markdown(f'''<div class="bar-wrapper-full"><div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div></div><div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; font-family: monospace; color: #AAA; margin-top: 2px; padding: 0 2px;"><span>LOW: {res['alvo_low']:.2f}</span><span style="color:{cor_seta_spread}; font-size: 14px; font-weight: bold;">{seta_spread}</span><span>HIGH: {res['alvo_high']:.2f}</span></div><div class="sinal-indicator {"blink" if res["piscando"] else ""}" style="color:{res["seta_cor"]};">{res["seta"]}</div></div>''', unsafe_allow_html=True)
             with c2:
                 st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
-                st.markdown(f'''<div class="calc-panel"><div class="calc-row txt-green"><span>MAX FUT 5</span> <span>{res['max_fut_5']:.2f}</span></div><div class="calc-row txt-yellow"><span>MAX FUT 4</span> <span>{res['max_fut_4']:.2f}</span></div><div class="calc-row txt-green"><span>MAX FUT 3</span> <span>{res['max_fut_3']:.2f}</span></div><div class="calc-row txt-yellow"><span>MAX FUT 2</span> <span>{res['max_fut_2']:.2f}</span></div><div class="calc-row txt-green"><span>MAX FUT 1</span> <span>{res['max_fut_1']:.2f}</span></div><div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 10px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">AXIS: {res['axis_central']:.2f}</div><div class="calc-row txt-green"><span>MIN FUT 1</span> <span>{res['min_fut_1']:.2f}</span></div><div class="calc-row txt-yellow"><span>MIN FUT 2</span> <span>{res['min_fut_2']:.2f}</span></div><div class="calc-row txt-green"><span>MIN FUT 3</span> <span>{res['min_fut_3']:.2f}</span></div><div class="calc-row txt-yellow"><span>MIN FUT 4</span> <span>{res['min_fut_4']:.2f}</span></div><div class="calc-row txt-green" style="border-bottom: none;"><span>MIN FUT 5</span> <span>{res['min_fut_5']:.2f}</span></div></div>''', unsafe_allow_html=True)
+                st.markdown(f'''<div class="calc-panel"><div class="calc-row txt-green"><span>MAX FUT 2</span> <span>{res['max_fut_2_b']:.2f}</span></div><div class="calc-row txt-yellow"><span>MED FUT 2</span> <span>{res['max_fut_2']:.2f}</span></div><div class="calc-row txt-green"><span>MAX FUT 1</span> <span>{res['max_fut_1_b']:.2f}</span></div><div class="calc-row txt-yellow"><span>MED FUT 1</span> <span>{res['max_fut_1']:.2f}</span></div><div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 10px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">AXIS: {res['axis_central']:.2f}</div><div class="calc-row txt-yellow"><span>MED FUT 1</span> <span>{res['min_fut_1']:.2f}</span></div><div class="calc-row txt-green"><span>MIN FUT 1</span> <span>{res['min_fut_1_b']:.2f}</span></div><div class="calc-row txt-yellow"><span>MED FUT 2</span> <span>{res['min_fut_2']:.2f}</span></div><div class="calc-row txt-green" style="border-bottom: none;"><span>MIN FUT 2</span> <span>{res['min_fut_2_b']:.2f}</span></div></div>''', unsafe_allow_html=True)
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
             st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
         else: st.warning("Aguardando inicialização dos dados do mercado...")
