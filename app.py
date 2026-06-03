@@ -84,7 +84,7 @@ st.markdown("""
     .tk-item { padding-right: 50px; display: inline-block; font-family: 'Chakra Petch'; font-size: 13px; color: #fff; }
     @keyframes slide { from { transform: translateX(0); } to { transform: translateX(-50%); } }
     
-    /* CLASSES DE CORES UNIFICADAS SOLICITADAS PARA AS LINHAS DOS ALVOS */
+    /* CORES UNIFICADAS SOLICITADAS (RÓTULO E NÚMERO NA MESMA COR) */
     .txt-green-line { color: #00cc66 !important; font-family: 'Chakra Petch'; font-weight: 700; }
     .txt-yellow-line { color: #ffff00 !important; font-family: 'Chakra Petch'; font-weight: 700; }
 </style>
@@ -108,12 +108,10 @@ def monitor_terminal():
     if s_m["last"] > 0:
         from datetime import datetime
         try:
-            # Captura de máximas e mínimas do Spot via fast_info para alimentar o Spread dinâmico
             t_spot = yf.Ticker("BRL=X")
             mx_spot = t_spot.fast_info.day_high
             mn_spot = t_spot.fast_info.day_low
             if mx_spot is None or mn_spot is None or mx_spot == mn_spot:
-                # Fallback de segurança estrutural caso a API venha vazia
                 mx_spot, mn_spot = s_m["last"] * 1.005, s_m["last"] * 0.995
         except:
             mx_spot, mn_spot = s_m["last"] * 1.005, s_m["last"] * 0.995
@@ -131,36 +129,32 @@ def monitor_terminal():
         justo = round((spot * v_global["v_jus"]) * 2000) / 2000
         equilibrio = round((v_global["ref"] * v_global["v_min"]) * 2000) / 2000
         
-        # --- IMPLEMENTAÇÃO DA NOVA ARQUITETURA MATEMÁTICA REGISTRADA ---
-        # 1. Definição do AXIS Central: Média Dólar (Máxima + Mínima do Spot / 2) + FRP (Ajuste/Cupom do Painel ADM)
+        # --- AJUSTE EXATO DOS CÁLCULOS E DA ESCALA FRACIONADA ---
         media_dolar = (mx_spot + mn_spot) / 2
-        axis_central = media_dolar + (v_global["ajuste"] - 5.4000) # Mantém o desvio do painel ADM ancorado
-        
-        # Substitui a antiga média azul simples pelo AXIS dinâmico estrutural nas telas
+        axis_central = media_dolar + (v_global["ajuste"] - 5.4000) 
         media_azul = axis_central
         
-        # 2. Cálculo do Spread M (Metade do Spread Total)
         spread_t = mx_spot - mn_spot
         spread_m = spread_t / 2
 
-        # 3. Fracionamento Proporcional dos Alvos Simétricos entre as Máximas (25%, 50%, 75%, 100%)
-        max_fut = axis_central + spread_m
-        med_fut_2 = axis_central + (spread_m * 0.75)
-        max_fut_1 = axis_central + (spread_m * 0.50)
-        med_fut_1 = axis_central + (spread_m * 0.25)
+        # Alvos para CIMA corrigidos com a matemática exata do seu exemplo prático
+        max_fut = axis_central + spread_m          # Ex: 5065 + 24 = 5089 (Verde)
+        med_fut_2 = axis_central + (spread_m / 2)  # Ex: 5065 + 12 = 5077 (Amarelo)
+        max_fut_1 = axis_central + (spread_m / 3)  # Ex: 5065 + 8  = 5073 (Verde)
+        med_fut_1 = axis_central + (spread_m / 4)  # Ex: 5065 + 6  = 5071 (Amarelo)
 
-        # 4. Fracionamento Proporcional dos Alvos Simétricos para Baixo usando MIN FUT (25%, 50%, 75%, 100%)
-        min_fut_1 = axis_central - (spread_m * 0.25)
-        min_fut_2 = axis_central - (spread_m * 0.50)
-        min_fut_3 = axis_central - (spread_m * 0.75)
-        min_fut = axis_central - spread_m
+        # Alvos para BAIXO seguindo rigorosamente a mesma simetria com "MIN FUT"
+        min_fut_1 = axis_central - (spread_m / 4)  # Ex: 5065 - 6  = 5059 (Amarelo)
+        min_fut_2 = axis_central - (spread_m / 3)  # Ex: 5065 - 8  = 5057 (Amarelo)
+        min_fut_3 = axis_central - (spread_m / 2)  # Ex: 5065 - 12 = 5053 (Amarelo)
+        min_fut = axis_central - spread_m          # Ex: 5065 - 24 = 5041 (Verde)
         
         fut_seta, fut_clr = ("▲ FUTURO", "#00cc66") if spot < (paridade_global - 0.0030) else (("▼ FUTURO", "#cc3333") if spot > (paridade_global + 0.0030) else ("● ESTÁVEL", "#444"))
 
         st.markdown(f'<div class="t-header"><div class="pulse-green"></div><div class="t-title">TERMINAL <span class="t-bold">DOLAR</span></div></div>', unsafe_allow_html=True)
         st.markdown(f'<div class="s-container"><div class="s-text">{spot:.4f} <span class="var-style" style="color:{cor_v_spot}">{v_spot:+.2f}%</span></div><div class="s-subtext">FECH. ANTERIOR: {prev_close:.4f}</div><div class="vies-indicator" style="color:{fut_clr}">{fut_seta} <span class="media-azul-val">{media_azul:.4f}</span></div></div>', unsafe_allow_html=True)
         
-        # --- PAINEL DE REF INSTITUCIONAL REESTRUTURADO COM A NOVA ORDEM, CORES E NOMENCLATURAS UNIFICADAS ---
+        # --- EXIBIÇÃO EM TELA COM ORDEM, NOMENCLATURA E CORES UNIFICADAS SOLICITADAS ---
         st.markdown(f"""
         <div class="d-row"><div class="d-label" style="font-weight: bold; color: #00f2ff;">GRADE DE ALVOS (VOLATILIDADE FRACIONADA)</div><div class="d-value" style="color: #666; font-size: 11px;">AXIS: {axis_central:.4f}</div></div>
         <div class="d-row"><div class="d-label txt-green-line">MAX FUT</div><div class="d-value txt-green-line">{max_fut:.4f}</div></div>
@@ -174,13 +168,12 @@ def monitor_terminal():
         <div class="d-row"><div class="d-label txt-green-line">MIN FUT</div><div class="d-value txt-green-line">{min_fut:.4f}</div></div>
         """, unsafe_allow_html=True)
 
-        # MANTIDO O RESTO DO DESIGN ORIGINAL SEM ALTERAR MAIS NADA
+        # MANTIDO TODO O RESTANTE DO CÓDIGO ORIGINAL DA SUA MENSAGEM
         st.markdown(f'<div class="d-row"><div class="d-label">PARIDADE GLOBAL</div><div class="d-value c-pari">{paridade_global:.4f}</div></div>', unsafe_allow_html=True)
         st.markdown(f'<div class="d-row"><div class="d-label">EQUILÍBRIO</div><div class="d-value c-equi">{equilibrio:.4f}</div></div>', unsafe_allow_html=True)
         st.markdown(f'<div class="d-row"><div class="d-label">PREÇO JUSTO</div><div class="d-value c-jus">{justo:.4f}</div></div>', unsafe_allow_html=True)
         st.markdown(f'<div class="d-row"><div class="d-label">REF. INSTITUCIONAL</div><div class="sub-grid"><div class="sub-item"><span class="sub-l">MIN</span><span class="sub-v c-min">{(round((v_global["ref"]*v_global["v_min"])*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">JUSTO</span><span class="sub-v c-jus">{(round((v_global["ref"]*v_global["v_jus"])*2000)/2000):.4f}</span></div><div class="sub-item"><span class="sub-l">MAX</span><span class="sub-v c-max">{(round((v_global["ref"]*v_global["v_max"])*2000)/2000):.4f}</span></div></div></div>', unsafe_allow_html=True)
 
-        # REGIÃO DE CORREÇÃO (MANTIDO ORIGINAL)
         st.markdown(f"""
         <div class="d-row" style="padding-top:10px; border-bottom: none; align-items: flex-start;">
             <div class="d-label" style="opacity:0.6; margin-top:5px;">REGIÃO DE CORREÇÃO</div>
@@ -212,7 +205,7 @@ def monitor_terminal():
             </div>
         """, unsafe_allow_html=True)
 
-# PAINEL ADM (MANTIDO ORIGINAL)
+# PAINEL ADM ORIGINAL MANTIDO 100% IGUAL
 if st.session_state.user_type == "ADM":
     with st.expander("PAINEL ADM"):
         with st.form("adm"):
