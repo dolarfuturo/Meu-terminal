@@ -38,10 +38,12 @@ st.markdown("""
     .calc-panel { border: 1.5px solid #ffffff; border-radius: 4px; padding: 4px; background: #0a141a; font-family: monospace; margin-bottom: 0px; margin-top: 4px; }
     .calc-row { display: flex; justify-content: space-between; padding: 2px 6px; border-bottom: 1px solid #444; font-size: 10px; font-weight: bold; align-items: center; }
     
-    /* Termômetro K97 Estilização */
+    /* Novo Termômetro de Força de Direção K97 */
     .thermometer-box { border: 1.5px solid #ffffff; border-radius: 4px; padding: 6px; background: #0a141a; font-family: monospace; margin-top: 4px; text-align: center; }
-    .thermometer-title { color: #FFD700; font-size: 11px; font-weight: bold; margin-bottom: 4px; text-transform: uppercase; }
-    .thermometer-display { font-size: 20px; font-weight: bold; color: #ffffff; margin: 4px 0; }
+    .thermometer-title { color: #FFD700; font-size: 11px; font-weight: bold; margin-bottom: 2px; text-transform: uppercase; }
+    .thermometer-bar { font-size: 22px; font-weight: bold; letter-spacing: 2px; margin: 2px 0; line-height: 1.1; }
+    .thermometer-status { font-size: 10px; font-weight: bold; text-transform: uppercase; margin-top: 2px; }
+    .thermometer-value { font-size: 9px; color: #888; margin-top: 1px; }
     
     .bar-wrapper-full { background: #0a141a; padding: 6px; border: 1.5px solid #ffffff; border-radius: 4px; text-align: center; margin-top: 4px; }
     .force-scale { display: flex; justify-content: space-between; font-size: 8px; font-family: monospace; color: #AAA; margin-bottom: 2px; padding: 0 5px; }
@@ -209,6 +211,59 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
                 st.session_state.dolfut_min_auto = dolfut_atual_calc
                 salvar_historico_dolfut_diario(dolfut_atual_calc, dolfut_atual_calc)
 
+        # =====================================================================
+        # CÁLCULO EXCLUSIVO DO TERMÔMETRO DE FORÇA DE DIREÇÃO K97 (VETOR MACRO)
+        # =====================================================================
+        brent_data = fetch("BZ=F")
+        xau_data = fetch("GC=F")
+        us10y_data = fetch("^TNX")
+        
+        var_dxy = ((dxy_data['at'] / dxy_data['cl']) - 1) * 100 if dxy_data['cl'] > 0 else 0
+        var_us10y = ((us10y_data['at'] / us10y_data['cl']) - 1) * 100 if us10y_data['cl'] > 0 else 0
+        var_ewz = ((ewz_data['at'] / ewz_ref) - 1) * 100 if ewz_ref > 0 else 0
+        var_brent = ((brent_data['at'] / brent_data['cl']) - 1) * 100 if brent_data['cl'] > 0 else 0
+        var_xau = ((xau_data['at'] / xau_data['cl']) - 1) * 100 if xau_data['cl'] > 0 else 0
+        
+        # Fórmula de Consolidação do Vetor Macro-Micro (Isolado do preço do spot)
+        vetor_macro_pontos = (var_dxy * 0.45) + (var_us10y * 0.20) - (var_ewz * 0.20) - (var_brent * 0.10) - (var_xau * 0.05)
+        
+        # Filtros de Sensibilidade Estrita (7 Níveis Simétricos)
+        if abs(vetor_macro_pontos) < 0.15:
+            term_str = "░░░░█░░░░"
+            term_status = "ESTÁVEL"
+            term_color = "#888888"
+            term_blink = False
+        elif vetor_macro_pontos >= 0.15:
+            term_blink = False
+            if vetor_macro_pontos <= 0.60:
+                term_str = "░░░░██░░░"
+                term_status = "Fluxo Comprador Entrando"
+                term_color = "#00cc66"
+            elif vetor_macro_pontos <= 1.50:
+                term_str = "░░░░███░░"
+                term_status = "Acelerando Compra"
+                term_color = "#00ff88"
+            else:
+                term_str = "░░░░█████"
+                term_status = "Ultra Turbo / Explosão Compradora"
+                term_color = "#00ff33"
+                term_blink = True
+        else:
+            term_blink = False
+            if vetor_macro_pontos >= -0.60:
+                term_str = "░░░██░░░░"
+                term_status = "Fluxo Vendedor Entrando"
+                term_color = "#ff6666"
+            elif vetor_macro_pontos >= -1.50:
+                term_str = "░░███░░░░"
+                term_status = "Acelerando Venda"
+                term_color = "#ff3333"
+            else:
+                term_str = "█████░░░░"
+                term_status = "Ultra Turbo / Documento Vendedor"
+                term_color = "#ff0000"
+                term_blink = True
+
         return {
             "vivo": vivo_val, "vivo_pct": calc_variacoes_pct * 100, "dolfut_calc": dolfut_atual_calc, "fraja": fraja_val, 
             "medio": dolar_medio, "axis_central": axis_dinamico,
@@ -219,7 +274,8 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             "v_v": calc_variacoes_pct * 100, "v_spot": v_spot_pct * 100, "spreed": spreed_50, 
             "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor, "piscando": piscando, 
             "max_grade": st.session_state.dolfut_max_auto, "min_grade": st.session_state.dolfut_min_auto, 
-            "alvo_low": alvo_low, "alvo_high": alvo_high, "spreed_t": spreed_t
+            "alvo_low": alvo_low, "alvo_high": alvo_high, "spreed_t": spreed_t,
+            "term_str": term_str, "term_status": term_status, "term_color": term_color, "term_pts": vetor_macro_pontos, "term_blink": term_blink
         }
     except: return None
 
@@ -314,8 +370,8 @@ while True:
                 # Bloco Pequeno de Métricas (Subido)
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
                 
-                # NOVO BLOCO: Termômetro K97 Monitor (Embaixo do bloco pequeno)
-                st.markdown(f'''<div class="thermometer-box"><div class="thermometer-title">🌡️ TERMÔMETRO K97</div><div class="thermometer-display">{(res['dolfut_calc']/1000):.4f}</div><div style="font-size:10px; color:#AAA;">Preço calculado em tempo real para o terminal K97</div></div>''', unsafe_allow_html=True)
+                # NOVO BLOCO: Termômetro de Força de Direção K97 (Abaixo do bloco pequeno)
+                st.markdown(f'''<div class="thermometer-box"><div class="thermometer-title">🌡️ FORÇA DE DIREÇÃO K97</div><div class="thermometer-bar" style="color: {res['term_color']};">{res['term_str']}</div><div class="thermometer-status {"blink" if res['term_blink'] else ""}" style="color: {res['term_color']};">{res['term_status']}</div><div class="thermometer-value">VETOR MACRO: {res['term_pts']:+.2f} pts</div></div>''', unsafe_allow_html=True)
                 
                 # Barra de Força / Elástico K97 (Mantido Intacto)
                 st.markdown(f'''<div class="bar-wrapper-full"><div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div></div><div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; font-family: monospace; color: #AAA; margin-top: 2px; padding: 0 2px;"><span>LOW: {res['alvo_low']:.2f}</span><span style="color:{cor_seta_spread}; font-size: 14px; font-weight: bold;">{seta_spread}</span><span>HIGH: {res['alvo_high']:.2f}</span></div><div class="sinal-indicator {"blink" if res["piscando"] else ""}" style="color:{res["seta_cor"]};">{res["seta"]}</div></div>''', unsafe_allow_html=True)
