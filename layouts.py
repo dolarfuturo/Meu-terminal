@@ -170,8 +170,8 @@ def calcular_k97_total(spreed_do_dia, p_ewz_atual, eixo_dol, spot_data, us10y_da
         alvo_low = spot_data['mn'] + spreed_do_dia
         alvo_high = spot_data['mx'] + spreed_do_dia
         
-        # --- MODIFICAÇÃO SOLICITADA: Fracionar o Spread M em 4 partes iguais e fazer somas/subtrações ---
-        passo_fixo = spreed_do_dia / 4
+        # --- CORREÇÃO TRAVADA: O Passo Fixo agora calcula em cima do SPREAD M real (spreed_50) ---
+        passo_fixo = spreed_50 / 4
         
         # --- MODIFICAÇÃO SOLICITADA: Elástico calibrado estritamente para cravar 100% no tamanho do SPREAD T ---
         diff = spot_data['at'] - vivo_val
