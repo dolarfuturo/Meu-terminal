@@ -355,4 +355,4 @@ while True:
         else: 
             st.warning("Aguardando inicialização dos dados do mercado...")
             
-    time.sleep(4)
+    time.sleep(2)
