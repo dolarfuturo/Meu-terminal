@@ -217,7 +217,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         # =====================================================================
         agora_timestamp = time.time()
         
-        # Garante que o preço guardado esteja na escala correta de pontos (ex: 5048.00)
+        # Garante que o preço guardado esteja na escala correta de pontos
         preco_em_pontos = spot_data['at'] if spot_data['at'] > 100 else spot_data['at'] * 1000
         st.session_state.spot_time_series.append((agora_timestamp, preco_em_pontos))
         
@@ -227,12 +227,17 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         
         v_instantanea = 0.0
         if len(st.session_state.spot_time_series) > 1:
-            # Preço de agora menos o preço do início da janela de tempo
             dif_preco = preco_em_pontos - st.session_state.spot_time_series[0][1]
             v_instantanea = dif_preco / 4
             
-        # O filtro exponencial agora recebe a variação e o sinal direcional limpos
+        # O filtro exponencial recebe a variação limpa
         st.session_state.delta_forca_acumulado = (v_instantanea * 0.15) + (st.session_state.delta_forca_acumulado * (1 - 0.15))
+
+        # 🛑 TRAVA DE SEGURANÇA (THRESHOLD ANTIRRUÍDO DO VOLANTE)
+        if st.session_state.delta_forca_acumulado > 3.0:
+            st.session_state.delta_forca_acumulado = 3.0
+        elif st.session_state.delta_forca_acumulado < -3.0:
+            st.session_state.delta_forca_acumulado = -3.0
 
         return {
             "vivo": vivo_val, "vivo_pct": calc_variacoes_pct * 100, "dolfut_calc": dolfut_atual_calc, "fraja": fraja_val, 
@@ -289,7 +294,7 @@ div_s = st.session_state.div_spreed_mem
 placeholder = st.empty()
 
 # =============================================================================
-# # BLOCO 6: INTERFACE DO TERMINAL E ITERAÇÃO DE MERCADO (LOOP 5S)
+# # BLOCO 6: INTERFACE DO TERMINAL E ITERAÇÃO DE MERCADO (LOOP REESTABILIZADO COORDENADO)
 # =============================================================================
 while True:
     tz_sp, tz_ny, tz_ld, tz_utc = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London'), pytz.utc
@@ -346,7 +351,7 @@ while True:
                 # Painel de Métricas e Spreads Fixados
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
                 
-                # Painel do Indicador de Delta do Spot (Aceleração Contínua)
+                # Painel do Indicador de Delta do Spot (Aceleração Contínua com Trava)
                 cor_delta_txt = "#00ff88" if res['delta_spot_forca'] > 0.05 else "#ff4d4d" if res['delta_spot_forca'] < -0.05 else "#00BFFF"
                 st.markdown(f'''<div class="calc-panel" style="margin-top: 4px;"><div class="calc-row" style="border-bottom: none;"><span style="color:#ffffff;">𝚫 SPOT (FORÇA)</span> <span style="color:{cor_delta_txt};">{res['delta_spot_forca']:+.2f}</span></div></div>''', unsafe_allow_html=True)
             
@@ -355,4 +360,4 @@ while True:
         else: 
             st.warning("Aguardando inicialização dos dados do mercado...")
             
-    time.sleep(2)
+    time.sleep(4)
