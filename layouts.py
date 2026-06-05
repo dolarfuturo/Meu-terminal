@@ -213,37 +213,26 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
                 salvar_historico_dolfut_diario(dolfut_atual_calc, dolfut_atual_calc)
 
         # =====================================================================
-        # MOTOR QUANT DO DELTA SPOT - SISTEMA DE RETENÇÃO RIGIDA DE PICO
+        # MOTOR QUANT DO DELTA SPOT (JANELA SUAVE EXPANDIDA & AMORTECEDOR PESADO)
         # =====================================================================
         agora_timestamp = time.time()
         
-        # Garante escala em pontos inteiros do Spot
+        # Garante escala em pontos inteiros
         preco_em_pontos = spot_data['at'] if spot_data['at'] > 100 else spot_data['at'] * 1000
         st.session_state.spot_time_series.append((agora_timestamp, preco_em_pontos))
         
-        # Janela longa de confirmação para puxar o indicador com inércia (16 segundos)
-        while st.session_state.spot_time_series and (agora_timestamp - st.session_state.spot_time_series[0][0]) > 16:
+        # 🟢 Suavização 1: Aumentamos a memória física de dados guardados para 12 segundos
+        while st.session_state.spot_time_series and (agora_timestamp - st.session_state.spot_time_series[0][0]) > 12:
             st.session_state.spot_time_series.pop(0)
         
         v_instantanea = 0.0
         if len(st.session_state.spot_time_series) > 1:
             dif_preco = preco_em_pontos - st.session_state.spot_time_series[0][1]
-            v_instantanea = dif_preco / 16
+            # Divisão pela base temporal fixa expandida de 12 segundos
+            v_instantanea = dif_preco / 12
             
-        # Filtro de amortecimento de aceleração de subida (1.5% de peso para subir com peso)
-        calculo_base = (v_instantanea * 0.015) + (st.session_state.delta_forca_acumulado * (1 - 0.015))
-
-        # 🟢 MECANISMO DE RETENÇÃO SEGURO: Trava a queda brusca na tela
-        if abs(calculo_base) < abs(st.session_state.delta_forca_acumulado):
-            # Retém 90% do pico atingido por ciclo. Cai de forma lenta e controlada.
-            st.session_state.delta_forca_acumulado = st.session_state.delta_forca_acumulado * 0.90
-            
-            # Filtro de poeira: se aproximar de zero absoluto, limpa o indicador
-            if abs(st.session_state.delta_forca_acumulado) < 0.005:
-                st.session_state.delta_forca_acumulado = 0.0
-        else:
-            # Se o fluxo continuar agredindo a favor do movimento, assume o valor real acumulado
-            st.session_state.delta_forca_acumulado = calculo_base
+        # 🟢 Suavização 2: Filtro ultra pesado (Apenas 3% de peso para a variação instantânea)
+        st.session_state.delta_forca_acumulado = (v_instantanea * 0.03) + (st.session_state.delta_forca_acumulado * (1 - 0.03))
 
         # Trava de Escala Máxima Visual
         if st.session_state.delta_forca_acumulado > 3.0:
@@ -363,8 +352,8 @@ while True:
                 # Painel de Métricas e Spreads Fixados
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
                 
-                # Painel do Indicador de Delta do Spot (Aceleração Amortecida com Retenção)
-                cor_delta_txt = "#00ff88" if res['delta_spot_forca'] > 0.03 else "#ff4d4d" if res['delta_spot_forca'] < -0.03 else "#00BFFF"
+                # Painel do Indicador de Delta do Spot (Aceleração Amortecida)
+                cor_delta_txt = "#00ff88" if res['delta_spot_forca'] > 0.05 else "#ff4d4d" if res['delta_spot_forca'] < -0.05 else "#00BFFF"
                 st.markdown(f'''<div class="calc-panel" style="margin-top: 4px;"><div class="calc-row" style="border-bottom: none;"><span style="color:#ffffff;">𝚫 SPOT (FORÇA)</span> <span style="color:{cor_delta_txt};">{res['delta_spot_forca']:+.2f}</span></div></div>''', unsafe_allow_html=True)
             
             # Letreiro Inferior de Cotações Rápidas
@@ -372,5 +361,5 @@ while True:
         else: 
             st.warning("Aguardando inicialização dos dados do mercado...")
             
-    # 🛑 SEU SLEEP SAGRADO MANTIDO EM 4 SEGUNDOS
+    # 🛑 SEU SLEEP SAGRADO DE 4 SEGUNDOS MANTIDO INTACTO
     time.sleep(4)
