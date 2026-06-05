@@ -228,7 +228,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         v_instantanea = 0.0
         if len(st.session_state.spot_time_series) > 1:
             dif_preco = preco_em_pontos - st.session_state.spot_time_series[0][1]
-            v_instantanea = dif_preco / 16
+            v_instantanea = dif_preco / 12
             
         # Filtro de amortecimento de aceleração de subida (1.5% de peso para subir com peso)
         calculo_base = (v_instantanea * 0.015) + (st.session_state.delta_forca_acumulado * (1 - 0.015))
