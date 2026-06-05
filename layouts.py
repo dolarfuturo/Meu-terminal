@@ -108,6 +108,10 @@ if 'c_du_val' not in st.session_state: st.session_state.c_du_val = 22
 if 't_br_val' not in st.session_state: st.session_state.t_br_val = 14.50
 if 't_us_val' not in st.session_state: st.session_state.t_us_val = 3.75
 
+# Inicialização da memória de rolagem para o cálculo de aceleração contínua do Spot
+if 'spot_time_series' not in st.session_state: st.session_state.spot_time_series = []
+if 'delta_forca_acumulado' not in st.session_state: st.session_state.delta_forca_acumulado = 0.0
+
 # =============================================================================
 # # BLOCO 3: CONEXÃO COM API E MOTOR DE CAPTURA DE DADOS
 # =============================================================================
@@ -208,6 +212,19 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
                 st.session_state.dolfut_min_auto = dolfut_atual_calc
                 salvar_historico_dolfut_diario(dolfut_atual_calc, dolfut_atual_calc)
 
+        # Cálculo de Aceleração Contínua do Preço/Tempo (Módulo Quant Delta do Spot)
+        agora_timestamp = time.time()
+        st.session_state.spot_time_series.append((agora_timestamp, spot_data['at']))
+        while st.session_state.spot_time_series and (agora_timestamp - st.session_state.spot_time_series[0][0]) > 4:
+            st.session_state.spot_time_series.pop(0)
+        
+        v_instantanea = 0.0
+        if len(st.session_state.spot_time_series) > 1:
+            dif_preco = spot_data['at'] - st.session_state.spot_time_series[0][1]
+            v_instantanea = dif_preco / 4
+            
+        st.session_state.delta_forca_acumulado = (v_instantanea * 0.15) + (st.session_state.delta_forca_acumulado * (1 - 0.15))
+
         return {
             "vivo": vivo_val, "vivo_pct": calc_variacoes_pct * 100, "dolfut_calc": dolfut_atual_calc, "fraja": fraja_val, 
             "medio": dolar_medio, "axis_central": axis_dinamico,
@@ -218,7 +235,8 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             "v_v": calc_variacoes_pct * 100, "v_spot": v_spot_pct * 100, "spreed": spreed_50, 
             "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor, "piscando": piscando, 
             "max_grade": st.session_state.dolfut_max_auto, "min_grade": st.session_state.dolfut_min_auto, 
-            "alvo_low": alvo_low, "alvo_high": alvo_high, "spreed_t": spreed_t
+            "alvo_low": alvo_low, "alvo_high": alvo_high, "spreed_t": spreed_t,
+            "delta_spot_forca": st.session_state.delta_forca_acumulado
         }
     except: return None
 
@@ -318,6 +336,10 @@ while True:
                 
                 # Painel de Métricas e Spreads Fixados
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
+                
+                # Painel do Indicador de Delta do Spot (Aceleração Contínua)
+                cor_delta_txt = "#00ff88" if res['delta_spot_forca'] > 0.05 else "#ff4d4d" if res['delta_spot_forca'] < -0.05 else "#00BFFF"
+                st.markdown(f'''<div class="calc-panel" style="margin-top: 4px;"><div class="calc-row" style="border-bottom: none;"><span style="color:#ffffff;">$\Delta$ SPOT (FORÇA)</span> <span style="color:{cor_delta_txt};">{res['delta_spot_forca']:+.2f}</span></div></div>''', unsafe_allow_html=True)
             
             # Letreiro Inferior de Cotações Rápidas
             st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
