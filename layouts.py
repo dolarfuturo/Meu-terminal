@@ -222,7 +222,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         st.session_state.spot_time_series.append((agora_timestamp, preco_em_pontos))
         
         # Janela longa de confirmação para puxar o indicador com inércia (16 segundos)
-        while st.session_state.spot_time_series and (agora_timestamp - st.session_state.spot_time_series[0][0]) > 16:
+        while st.session_state.spot_time_series and (agora_timestamp - st.session_state.spot_time_series[0][0]) > 12:
             st.session_state.spot_time_series.pop(0)
         
         v_instantanea = 0.0
