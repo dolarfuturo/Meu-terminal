@@ -212,17 +212,26 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
                 st.session_state.dolfut_min_auto = dolfut_atual_calc
                 salvar_historico_dolfut_diario(dolfut_atual_calc, dolfut_atual_calc)
 
-        # Cálculo de Aceleração Contínua do Preço/Tempo (Módulo Quant Delta do Spot)
+        # =====================================================================
+        # MOTOR QUANT DO DELTA SPOT AJUSTADO (NORMALIZAÇÃO EM PONTOS INTEIROS)
+        # =====================================================================
         agora_timestamp = time.time()
-        st.session_state.spot_time_series.append((agora_timestamp, spot_data['at']))
+        
+        # Garante que o preço guardado esteja na escala correta de pontos (ex: 5048.00)
+        preco_em_pontos = spot_data['at'] if spot_data['at'] > 100 else spot_data['at'] * 1000
+        st.session_state.spot_time_series.append((agora_timestamp, preco_em_pontos))
+        
+        # Mantém estrita a janela móvel de 4 segundos
         while st.session_state.spot_time_series and (agora_timestamp - st.session_state.spot_time_series[0][0]) > 4:
             st.session_state.spot_time_series.pop(0)
         
         v_instantanea = 0.0
         if len(st.session_state.spot_time_series) > 1:
-            dif_preco = spot_data['at'] - st.session_state.spot_time_series[0][1]
+            # Preço de agora menos o preço do início da janela de tempo
+            dif_preco = preco_em_pontos - st.session_state.spot_time_series[0][1]
             v_instantanea = dif_preco / 4
             
+        # O filtro exponencial agora recebe a variação e o sinal direcional limpos
         st.session_state.delta_forca_acumulado = (v_instantanea * 0.15) + (st.session_state.delta_forca_acumulado * (1 - 0.15))
 
         return {
@@ -339,7 +348,7 @@ while True:
                 
                 # Painel do Indicador de Delta do Spot (Aceleração Contínua)
                 cor_delta_txt = "#00ff88" if res['delta_spot_forca'] > 0.05 else "#ff4d4d" if res['delta_spot_forca'] < -0.05 else "#00BFFF"
-                st.markdown(f'''<div class="calc-panel" style="margin-top: 4px;"><div class="calc-row" style="border-bottom: none;"><span style="color:#ffffff;">$\Delta$ SPOT (FORÇA)</span> <span style="color:{cor_delta_txt};">{res['delta_spot_forca']:+.2f}</span></div></div>''', unsafe_allow_html=True)
+                st.markdown(f'''<div class="calc-panel" style="margin-top: 4px;"><div class="calc-row" style="border-bottom: none;"><span style="color:#ffffff;">𝚫 SPOT (FORÇA)</span> <span style="color:{cor_delta_txt};">{res['delta_spot_forca']:+.2f}</span></div></div>''', unsafe_allow_html=True)
             
             # Letreiro Inferior de Cotações Rápidas
             st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
