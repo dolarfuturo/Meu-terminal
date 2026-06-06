@@ -2,9 +2,8 @@ import streamlit as st
 import yfinance as yf
 import time
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 import pytz
-import pandas as pd
 
 # =============================================================================
 # # BLOCO 1: CONFIGURAÇÃO DE AMBIENTE E ESTILIZAÇÃO VISUAL (CSS)
@@ -113,12 +112,6 @@ if 't_us_val' not in st.session_state: st.session_state.t_us_val = 3.75
 if 'spot_time_series' not in st.session_state: st.session_state.spot_time_series = []
 if 'delta_forca_acumulado' not in st.session_state: st.session_state.delta_forca_acumulado = 0.0
 
-# MEMÓRIA EXCLUSIVA DO MOTOR DE REPLAY
-if 'replay_df' not in st.session_state: st.session_state.replay_df = None
-if 'replay_index' not in st.session_state: st.session_state.replay_index = 0
-if 'replay_active' not in st.session_state: st.session_state.replay_active = False
-if 'replay_date' not in st.session_state: st.session_state.replay_date = None
-
 # =============================================================================
 # # BLOCO 3: CONEXÃO COM API E MOTOR DE CAPTURA DE DADOS
 # =============================================================================
@@ -151,59 +144,10 @@ def fetch(s):
         return data
     except: return st.session_state.market_data.get(s, fallback)
 
-# MOTOR DE DOWNLOAD DE DADOS HISTÓRICOS PARA O REPLAY
-def carregar_dados_replay(data_selecionada):
-    try:
-        tz_sp = pytz.timezone('America/Sao_Paulo')
-        start_date = data_selecionada.strftime("%Y-%m-%d")
-        end_date = (data_selecionada + timedelta(days=1)).strftime("%Y-%m-%d")
-        
-        ativos = ["USDBRL=X", "EWZ", "DX-Y.NYB", "^TNX"]
-        dfs_carregados = {}
-        
-        for s in ativos:
-            t = yf.Ticker(s)
-            d = t.history(start=start_date, end=end_date, interval="1m", prepost=True)
-            if not d.empty:
-                d.index = d.index.tz_convert(tz_sp)
-                dfs_carregados[s] = d
-        
-        if "USDBRL=X" not in dfs_carregados or dfs_carregados["USDBRL=X"].empty:
-            return None
-            
-        base_df = dfs_carregados["USDBRL=X"]
-        registros = []
-        
-        # Sincroniza e monta a tabela unificada de ticks pelo índice de minutos do Spot
-        for idx, row in base_df.iterrows():
-            timestamp_str = idx.strftime("%H:%M:%S")
-            
-            def extrair_ativos(sym, multi=1):
-                if sym in dfs_carregados and idx in dfs_carregados[sym].index:
-                    r = dfs_carregados[sym].loc[idx]
-                    df_full = dfs_carregados[sym]
-                    # Closes de referência calculados dinamicamente
-                    ref_cl = df_full['Close'].iloc[0] * multi
-                    if sym == "EWZ" and len(df_full) > 1: ref_cl = df_full['Open'].iloc[0] * multi
-                    return {"at": float(r['Close'] * multi), "cl": float(ref_cl), "op": float(df_full['Open'].iloc[0] * multi), "mx": float(df_full['High'].loc[:idx].max() * multi), "mn": float(df_full['Low'].loc[:idx].min() * multi)}
-                return {"at": 0.0, "cl": 1.0, "op": 0.0, "mx": 0.0, "mn": 0.0}
-            
-            # Puxa o estado cumulativo do mercado naquele minuto exato do dia
-            registros.append({
-                "time": timestamp_str,
-                "USDBRL=X": {"at": float(row['Close'] * 1000), "cl": float(base_df['Open'].iloc[0] * 1000), "op": float(base_df['Open'].iloc[0] * 1000), "mx": float(base_df['High'].loc[:idx].max() * 1000), "mn": float(base_df['Low'].loc[:idx].min() * 1000)},
-                "EWZ": extrair_ativos("EWZ"),
-                "DX-Y.NYB": extrair_ativos("DX-Y.NYB"),
-                "^TNX": extrair_ativos("^TNX")
-            })
-            
-        return registros
-    except: return None
-
 # =============================================================================
 # # BLOCO 4: NÚCLEO MATEMÁTICO CENTRAL E CÁLCULOS DO K97
 # =============================================================================
-def calcular_k97_total(spreed_do_dia, spot_data, ewz_data, dxy_data, simulation_time=None):
+def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
     try:
         if not spot_data or not ewz_data: return None
         
@@ -215,8 +159,9 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data, dxy_data, simulation_
         fraja_val = spot_data['at'] + spreed_do_dia
         
         # Cálculos de variação internacional travados
-        v_dxy = ((dxy_data['at'] / dxy_data['cl']) - 1) if dxy_data and dxy_data['cl'] > 0 else 0
-        ewz_ref = ewz_data['cl'] if ewz_data['cl'] > 0 else 1
+        dxy_data = fetch("DX-Y.NYB")
+        v_dxy = ((dxy_data['at'] / dxy_data['cl']) - 1) if dxy_data['cl'] > 0 else 0
+        ewz_ref = st.session_state.market_data.get("EWZ", {}).get('cl', 1)
         v_ewz = ((ewz_data['at'] / ewz_ref) - 1) if ewz_ref > 0 else 0
         
         calc_variacoes_pct = (v_dxy * 0.7) - (v_ewz * 0.3)
@@ -245,18 +190,14 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data, dxy_data, simulation_
         dolfut_atual_calc = axis_dinamico * (1 + calc_variacoes_pct)
         
         # Controle Horário e Persistência do DOLFUT Máx/Mín
-        if simulation_time:
-            # Se for replay, extrai a hora da simulação
-            h_val = int(simulation_time.split(":")[0])
-        else:
-            tz_sp = pytz.timezone('America/Sao_Paulo')
-            h_val = datetime.now(tz_sp).hour
+        tz_sp = pytz.timezone('America/Sao_Paulo')
+        now_br = datetime.now(tz_sp)
         
         f_max, f_min = carregar_historico_dolfut_diario()
         if f_max != float('-inf'): st.session_state.dolfut_max_auto = max(st.session_state.dolfut_max_auto, f_max)
         if f_min != float('inf'): st.session_state.dolfut_min_auto = min(st.session_state.dolfut_min_auto, f_min)
         
-        if h_val >= 9 and h_val <= 18:
+        if (now_br.hour > 9 or (now_br.hour == 9 and now_br.minute >= 0)) and (now_br.hour < 18 or (now_br.hour == 18 and now_br.minute <= 30)):
             mudou = False
             if dolfut_atual_calc > st.session_state.dolfut_max_auto:
                 st.session_state.dolfut_max_auto = dolfut_atual_calc
@@ -264,12 +205,12 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data, dxy_data, simulation_
             if dolfut_atual_calc < st.session_state.dolfut_min_auto:
                 st.session_state.dolfut_min_auto = dolfut_atual_calc
                 mudou = True
-            if mudou and not simulation_time: salvar_historico_dolfut_diario(st.session_state.dolfut_max_auto, st.session_state.dolfut_min_auto)
+            if mudou: salvar_historico_dolfut_diario(st.session_state.dolfut_max_auto, st.session_state.dolfut_min_auto)
         else:
             if st.session_state.dolfut_max_auto == float('-inf') or st.session_state.dolfut_min_auto == float('inf'):
                 st.session_state.dolfut_max_auto = dolfut_atual_calc
                 st.session_state.dolfut_min_auto = dolfut_atual_calc
-                if not simulation_time: salvar_historico_dolfut_diario(dolfut_atual_calc, dolfut_atual_calc)
+                salvar_historico_dolfut_diario(dolfut_atual_calc, dolfut_atual_calc)
 
         # =====================================================================
         # MOTOR QUANT DO DELTA SPOT - SISTEMA DE RETENÇÃO RIGIDA DE PICO
@@ -280,14 +221,14 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data, dxy_data, simulation_
         preco_em_pontos = spot_data['at'] if spot_data['at'] > 100 else spot_data['at'] * 1000
         st.session_state.spot_time_series.append((agora_timestamp, preco_em_pontos))
         
-        # Janela longa de confirmação para puxar o indicador com inércia (12 segundos na janela de corte)
-        while st.session_state.spot_time_series and (agora_timestamp - st.session_state.spot_time_series[0][0]) > 4:
+        # Janela longa de confirmação para puxar o indicador com inércia (16 segundos)
+        while st.session_state.spot_time_series and (agora_timestamp - st.session_state.spot_time_series[0][0]) > 16:
             st.session_state.spot_time_series.pop(0)
         
         v_instantanea = 0.0
         if len(st.session_state.spot_time_series) > 1:
             dif_preco = preco_em_pontos - st.session_state.spot_time_series[0][1]
-            v_instantanea = dif_preco / 4
+            v_instantanea = dif_preco / 16
             
         # Filtro de amortecimento de aceleração de subida (1.5% de peso para subir com peso)
         calculo_base = (v_instantanea * 0.015) + (st.session_state.delta_forca_acumulado * (1 - 0.015))
@@ -329,49 +270,6 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data, dxy_data, simulation_
 # # BLOCO 5: CONTROLES OPERACIONAIS FINANCEIROS (SIDEBAR / ADM)
 # =============================================================================
 with st.sidebar:
-    st.markdown("### 🕹️ MODO DE OPERAÇÃO")
-    op_mode = st.selectbox("AMBIENTE DO TERMINAL:", ["Tempo Real", "Replay de Mercado"], index=0)
-    
-    if op_mode == "Replay de Mercado":
-        st.markdown('<div style="border:1px solid #FFD700; padding:6px; background:#0a141a; font-family:monospace; font-size:10px; color:#FFD700; text-align:center;">MODO SIMULAÇÃO ATIVADO</div>', unsafe_allow_html=True)
-        rep_date = st.date_input("DATA DO REPLAY:", value=st.session_state.replay_date if st.session_state.replay_date else datetime.now().date() - timedelta(days=1))
-        
-        c_rep1, c_rep2 = st.columns(2)
-        with c_rep1:
-            if st.button("📥 CARREGAR"):
-                with st.spinner("Buscando histórico..."):
-                    dados = carregar_dados_replay(rep_date)
-                    if dados:
-                        st.session_state.replay_df = dados
-                        st.session_state.replay_index = 0
-                        st.session_state.replay_date = rep_date
-                        # Reseta as máximas/mínimas para não poluir com o dia de hoje ao vivo
-                        st.session_state.dolfut_max_auto = float('-inf')
-                        st.session_state.dolfut_min_auto = float('inf')
-                        st.success("Pronto!")
-                        time.sleep(0.5); st.rerun()
-                    else:
-                        st.error("Sem dados para esta data.")
-        with c_rep2:
-            if st.button("🔄 RESET"):
-                st.session_state.replay_index = 0
-                st.session_state.dolfut_max_auto = float('-inf')
-                st.session_state.dolfut_min_auto = float('inf')
-                st.rerun()
-        
-        # Altera flag de controle ativo baseado nos dados guardados
-        if st.session_state.replay_df is not None:
-            total_m = len(st.session_state.replay_df)
-            progresso_pct = (st.session_state.replay_index / total_m) if total_m > 0 else 0.0
-            st.progress(min(1.0, progresso_pct))
-            st.markdown(f"<span style='font-family:monospace; font-size:11px; color:#aaa;'>Card do Replay: Line {st.session_state.replay_index} / {total_m}</span>", unsafe_allow_html=True)
-            
-            if st.checkbox("▶️ PLAY / REPRODUZIR", value=st.session_state.replay_active):
-                st.session_state.replay_active = True
-            else:
-                st.session_state.replay_active = False
-
-    st.markdown("---")
     st.markdown("### 🧮 CALCULADORA DE JUROS (FRP)")
     with st.expander("CALCULAR SPREED", expanded=False):
         c_spot_fech = st.number_input("FECH SPOT:", value=st.session_state.c_spot_fech_val, format="%.3f")
@@ -412,51 +310,14 @@ placeholder = st.empty()
 # =============================================================================
 while True:
     tz_sp, tz_ny, tz_ld, tz_utc = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London'), pytz.utc
+    spot_live, ewz_live, us10y_live = fetch("USDBRL=X"), fetch("EWZ"), fetch("^TNX")
+    now = datetime.now()
     
-    # BIFURCAÇÃO DA CAPTURA: Tempo Real ou Replay Interno
-    if op_mode == "Replay de Mercado" and st.session_state.replay_df is not None:
-        idx_atual = st.session_state.replay_index
-        dados_minuto = st.session_state.replay_df[idx_atual]
-        
-        # Injeta variáveis estruturadas simulando o tick histórico
-        spot_live = dados_minuto["USDBRL=X"]
-        ewz_live = dados_minuto["EWZ"]
-        dxy_live = dados_minuto["DX-Y.NYB"]
-        us10y_live = dados_minuto["^TNX"]
-        
-        # Sobrescreve dados de memória volátil interna para tabelas renderizarem certo
-        st.session_state.market_data["USDBRL=X"] = spot_live
-        st.session_state.market_data["EWZ"] = ewz_live
-        st.session_state.market_data["DX-Y.NYB"] = dxy_live
-        st.session_state.market_data["^TNX"] = us10y_live
-        
-        # Relógio fake travado no minuto exato do histórico estudado
-        relogio_simulado = dados_minuto["time"]
-        clock_br_html = f'<span class="br-green">{relogio_simulado}</span>'
-        clock_inter_html = f'<span class="white-time">{relogio_simulado}</span>'
-        data_topo_html = f"📅 {st.session_state.replay_date.strftime('%d/%m/%Y')} (REPLAY)"
-        
-        # Avança a linha caso o botão Play esteja pressionado na lateral
-        if st.session_state.replay_active and idx_atual < len(st.session_state.replay_df) - 1:
-            st.session_state.replay_index += 1
-            
-        res = calcular_k97_total(div_s, spot_live, ewz_live, dxy_live, simulation_time=relogio_simulado)
-    else:
-        # Puxa do mercado ao vivo (Original)
-        spot_live, ewz_live, us10y_live = fetch("USDBRL=X"), fetch("EWZ"), fetch("^TNX")
-        dxy_live = st.session_state.market_data.get("DX-Y.NYB", fetch("DX-Y.NYB"))
-        now_live = datetime.now()
-        
-        clock_br_html = f'<span class="br-green">{now_live.astimezone(tz_sp).strftime("%H:%M:%S")}</span>'
-        clock_inter_html = f'<span class="white-time">{now_live.astimezone(tz_ny).strftime("%H:%M:%S")}</span>'
-        data_topo_html = f"📅 {now_live.astimezone(tz_sp).strftime('%d/%m/%Y')}"
-        
-        res = calcular_k97_total(div_s, spot_live, ewz_live, dxy_live)
-
     with placeholder.container():
         # Topo de Horários Mundiais
-        st.markdown(f'''<div class="header-container"><h1 class="main-title"><span class="bair-blue">BAIR</span><span class="terminal-gold"> - TERMINAL DOLLAR</span></h1><div class="clock-row"><span class="clock-item">🇧🇷 BR: {clock_br_html}</span><span class="clock-item">🇺🇸 NY: {clock_inter_html}</span><span class="clock-item">🇬🇧 LDN: {clock_inter_html}</span><span class="clock-item">🌐 UTC: {clock_inter_html}</span></div><div class="date-container">{data_topo_html}</div></div>''', unsafe_allow_html=True)
+        st.markdown(f'''<div class="header-container"><h1 class="main-title"><span class="bair-blue">BAIR</span><span class="terminal-gold"> - TERMINAL DOLLAR</span></h1><div class="clock-row"><span class="clock-item">🇧🇷 BR: <span class="br-green">{now.astimezone(tz_sp).strftime("%H:%M:%S")}</span></span><span class="clock-item">🇺🇸 NY: <span class="white-time">{now.astimezone(tz_ny).strftime("%H:%M:%S")}</span></span><span class="clock-item">🇬🇧 LDN: <span class="white-time">{now.astimezone(tz_ld).strftime("%H:%M:%S")}</span></span><span class="clock-item">🌐 UTC: <span class="utc-gold">{now.astimezone(tz_utc).strftime("%H:%M:%S")}</span></span></div><div class="date-container">📅 {now.astimezone(tz_sp).strftime("%d/%m/%Y")}</div></div>''', unsafe_allow_html=True)
         
+        res = calcular_k97_total(div_s, spot_live, ewz_live)
         if res:
             c1, c2 = st.columns([2.8, 1.2])
             with c1:
