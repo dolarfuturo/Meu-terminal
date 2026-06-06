@@ -281,13 +281,13 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data, dxy_data, simulation_
         st.session_state.spot_time_series.append((agora_timestamp, preco_em_pontos))
         
         # Janela longa de confirmação para puxar o indicador com inércia (12 segundos na janela de corte)
-        while st.session_state.spot_time_series and (agora_timestamp - st.session_state.spot_time_series[0][0]) > 12:
+        while st.session_state.spot_time_series and (agora_timestamp - st.session_state.spot_time_series[0][0]) > 4:
             st.session_state.spot_time_series.pop(0)
         
         v_instantanea = 0.0
         if len(st.session_state.spot_time_series) > 1:
             dif_preco = preco_em_pontos - st.session_state.spot_time_series[0][1]
-            v_instantanea = dif_preco / 12
+            v_instantanea = dif_preco / 4
             
         # Filtro de amortecimento de aceleração de subida (1.5% de peso para subir com peso)
         calculo_base = (v_instantanea * 0.015) + (st.session_state.delta_forca_acumulado * (1 - 0.015))
