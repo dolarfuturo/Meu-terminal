@@ -271,8 +271,8 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data, dxy_data, simulation_
                 st.session_state.dolfut_min_auto = dolfut_atual_calc
                 if not simulation_time: salvar_historico_dolfut_diario(dolfut_atual_calc, dolfut_atual_calc)
 
-                # =====================================================================
-        # MOTOR QUANT DO DELTA SPOT - SISTEMA DE RETENÇÃO ULTRA-REATIVO (SEM LAG)
+        # =====================================================================
+        # MOTOR QUANT DO DELTA SPOT - SISTEMA DE RETENÇÃO RIGIDA DE PICO
         # =====================================================================
         agora_timestamp = time.time()
         
@@ -280,32 +280,29 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data, dxy_data, simulation_
         preco_em_pontos = spot_data['at'] if spot_data['at'] > 100 else spot_data['at'] * 1000
         st.session_state.spot_time_series.append((agora_timestamp, preco_em_pontos))
         
-        # JANELA REDUZIDA PARA 4 SEGUNDOS: Elimina o rastro de memórias antigas e foca no fluxo presente
-        while st.session_state.spot_time_series and (agora_timestamp - st.session_state.spot_time_series[0][0]) > 4:
+        # Janela longa de confirmação para puxar o indicador com inércia (12 segundos na janela de corte)
+        while st.session_state.spot_time_series and (agora_timestamp - st.session_state.spot_time_series[0][0]) > 12:
             st.session_state.spot_time_series.pop(0)
         
         v_instantanea = 0.0
         if len(st.session_state.spot_time_series) > 1:
             dif_preco = preco_em_pontos - st.session_state.spot_time_series[0][1]
-            v_instantanea = dif_preco / 4
+            v_instantanea = dif_preco / 12
             
-        # Aumentamos o peso do presente de 1.5% para 25% para o indicador responder instantaneamente à agressão
-        calculo_base = (v_instantanea * 0.25) + (st.session_state.delta_forca_acumulado * (1 - 0.25))
+        # Filtro de amortecimento de aceleração de subida (1.5% de peso para subir com peso)
+        calculo_base = (v_instantanea * 0.015) + (st.session_state.delta_forca_acumulado * (1 - 0.015))
 
-        # 🟢 VERIFICAÇÃO DE INVERSÃO DE FLUXO (ANTI-ATRASO)
-        # Se o preço começou a andar forte contra a direção do acumulado, quebramos a retenção na hora
-        if (calculo_base > 0 and st.session_state.delta_forca_acumulado < 0) or (calculo_base < 0 and st.session_state.delta_forca_acumulado > 0):
-            # Teve inversão real de agressão: Limpa o rastro antigo para o indicador virar rápido
-            st.session_state.delta_forca_acumulado = calculo_base
+        # 🟢 MECANISMO DE RETENÇÃO SEGURO: Trava a queda brusca na tela
+        if abs(calculo_base) < abs(st.session_state.delta_forca_acumulado):
+            # Retém 90% do pico atingido por ciclo. Cai de forma lenta e controlada.
+            st.session_state.delta_forca_acumulado = st.session_state.delta_forca_acumulado * 0.90
+            
+            # Filtro de poeira: se aproximar de zero absoluto, limpa o indicador
+            if abs(st.session_state.delta_forca_acumulado) < 0.005:
+                st.session_state.delta_forca_acumulado = 0.0
         else:
-            # Se continuar na mesma direção, aplica o filtro normal de amortecimento/retenção
-            if abs(calculo_base) < abs(st.session_state.delta_forca_acumulado):
-                # Reduzimos a retenção de 90% para 70% para o indicador "esvaziar" mais rápido quando o mercado parar
-                st.session_state.delta_forca_acumulado = st.session_state.delta_forca_acumulado * 0.70
-                if abs(st.session_state.delta_forca_acumulado) < 0.005:
-                    st.session_state.delta_forca_acumulado = 0.0
-            else:
-                st.session_state.delta_forca_acumulado = calculo_base
+            # Se o fluxo continuar agredindo a favor do movimento, assume o valor real acumulado
+            st.session_state.delta_forca_acumulado = calculo_base
 
         # Trava de Escala Máxima Visual
         if st.session_state.delta_forca_acumulado > 3.0:
