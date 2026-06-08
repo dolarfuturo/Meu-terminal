@@ -211,7 +211,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
                 salvar_historico_dolfut_diario(dolfut_atual_calc, dolfut_atual_calc)
 
         # =====================================================================
-        # ⚡ BLINDAGEM DO MOTOR QUANT: HISTÓRICO INTERNO DE 8M MANTIDO INTEGRAL
+        # ⚡ BLINDAGEM DO MOTOR QUANT: HISTÓRICO INTERNO DE 8M
         # =====================================================================
         agora_timestamp = datetime.now(tz_sp)
         preco_spot_atual = spot_data['at'] if spot_data['at'] > 100 else spot_data['at'] * 1000
@@ -248,11 +248,11 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         if not dentro_horario_b3:
             st.session_state.k97_proximo_timestamp_8m = None
 
-        fracao_4s = (preco_spot_atual - st.session_state.k97_abertura_base) / 1000
+        fracao_4s = (preco_spot_atual - st.session_state.k97_abertura_base) / 10
         st.session_state.k97_delta_acumulado = st.session_state.k97_base_forca_ciclo + fracao_4s
 
-        # 🔄 RETORNO DA CONTA DE 4S ORIGINAL: Oscilando dinamicamente ao vivo a cada ciclo!
-        saida_indicador_tela = (preco_spot_atual - preco_open_oficial) / 4 / 10
+        # ⚡ NOVA FÓRMULA PEDIDA: Spot Atual - Preço Base de 8 minutos (sem ruído do Open!)
+        saida_indicador_tela = (preco_spot_atual - st.session_state.k97_abertura_base) / 10
 
         output_res = {
             "white": True, "vivo": vivo_val, "vivo_pct": calc_variacoes_pct * 100, "dolfut_calc": dolfut_atual_calc, "fraja": fraja_val, 
