@@ -234,7 +234,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
 
         if dentro_horario_b3 and st.session_state.k97_proximo_timestamp_8m is None:
             st.session_state.k97_abertura_base = preco_spot_atual
-            st.session_state.k97_proximo_timestamp_8m = agora_timestamp + timedelta(minutes=30)
+            st.session_state.k97_proximo_timestamp_8m = agora_timestamp + timedelta(minutes=8)
             st.session_state.k97_delta_acumulado = 0.0
             st.session_state.k97_base_forca_ciclo = 0.0
             is_reset_moment = True
@@ -246,7 +246,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
                 st.session_state.k97_delta_acumulado = quarto_movimento / 100
                 st.session_state.k97_base_forca_ciclo = st.session_state.k97_delta_acumulado
                 st.session_state.k97_abertura_base = preco_spot_atual
-                st.session_state.k97_proximo_timestamp_8m = agora_timestamp + timedelta(minutes=30)
+                st.session_state.k97_proximo_timestamp_8m = agora_timestamp + timedelta(minutes=8)
                 is_reset_moment = True
         
         if not dentro_horario_b3:
@@ -419,7 +419,7 @@ while True:
                 st.markdown(f'''
                 <div class="calc-panel" style="margin-top: 4px;">
                     <div class="calc-row">
-                        <span style="color:#AAA;">PREÇO BASE (30M)</span> 
+                        <span style="color:#AAA;">PREÇO BASE (8)</span> 
                         <span style="color:#ffffff; font-weight: bold;">{p_base_visual:.4f}</span>
                     </div>
                     <div class="calc-row" style="border-bottom: none; margin-top: 2px;">
