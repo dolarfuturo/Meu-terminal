@@ -257,12 +257,11 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         # Mantém a regra interna dos 4s intacta na memória
         st.session_state.k97_delta_acumulado = st.session_state.k97_base_forca_ciclo + fracao_4s
 
-        # 🔄 TROCA EXCLUSIVA DE SAÍDA: O indicador mostra a diferença entre o Preço Base (8m) e o OPEN oficial
-        # Converte a diferença pura para a escala padrão de pontos do terminal (/ 1000)
-        saida_indicador_tela = (st.session_state.k97_abertura_base - preco_open_oficial) / 1000
+        # 🎯 INDICADOR CORRIGIDO: PREÇO BASE - OPEN (Tudo em número cheio, sem divisão)
+        saida_indicador_tela = st.session_state.k97_abertura_base - preco_open_oficial
 
         output_res = {
-            "vivo": vivo_val, "vivo_pct": calc_variacoes_pct * 100, "dolfut_calc": dolfut_atual_calc, "fraja": fraja_val, 
+            "white": True, "vivo": vivo_val, "vivo_pct": calc_variacoes_pct * 100, "dolfut_calc": dolfut_atual_calc, "fraja": fraja_val, 
             "medio": dolar_medio, "axis_central": axis_dinamico,
             "max_fut_1": axis_dinamico + passo_fixo, "max_fut_1_b": axis_dinamico + (passo_fixo * 2),
             "max_fut_2": axis_dinamico + (passo_fixo * 3), "max_fut_2_b": axis_dinamico + (passo_fixo * 4),
@@ -272,10 +271,10 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor, "piscando": piscando, 
             "max_grade": st.session_state.dolfut_max_auto, "min_grade": st.session_state.dolfut_min_auto, 
             "alvo_low": alvo_low, "alvo_high": alvo_high, "spreed_t": spreed_t,
-            "delta_spot_forca": saida_indicador_tela,  # Passa o desvio puro da Abertura vs Base para a tela
+            "delta_spot_forca": saida_indicador_tela,  
             "base_forca_ciclo": st.session_state.k97_base_forca_ciclo,
             "is_reset": is_reset_moment,
-            "preco_base_atual": st.session_state.k97_abertura_base / 1000  
+            "preco_base_atual": st.session_state.k97_abertura_base  # Número cheio exibido diretamente na tela
         }
         
         st.session_state.last_valid_res = output_res
@@ -409,21 +408,20 @@ while True:
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
                 
                 delta_atual = res['delta_spot_forca']
-                trincheira_base = res['base_forca_ciclo']
                 p_base_visual = res['preco_base_atual']
                 
                 if delta_atual >= 0:
                     cor_delta_txt = "#00ff88"
-                    str_delta = f"+{delta_atual:.3f}"
+                    str_delta = f"+{delta_atual:.2f}"
                 else:
                     cor_delta_txt = "#ff4d4d"
-                    str_delta = f"{delta_atual:.3f}"
+                    str_delta = f"{delta_atual:.2f}"
 
                 st.markdown(f'''
                 <div class="calc-panel" style="margin-top: 4px;">
                     <div class="calc-row">
                         <span style="color:#AAA;">PREÇO BASE (8M)</span> 
-                        <span style="color:#ffffff; font-weight: bold;">{p_base_visual:.4f}</span>
+                        <span style="color:#ffffff; font-weight: bold;">{p_base_visual:.2f}</span>
                     </div>
                     <div class="calc-row" style="border-bottom: none; margin-top: 2px;">
                         <span style="color:#ffffff;">𝚫 SPOT (FORÇA)</span> 
