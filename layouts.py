@@ -89,7 +89,7 @@ def salvar_historico_dolfut_diario(mx, mn):
             f.write(f"{data_hoje},{mx},{mn}")
     except: pass
 
-# Gerenciamento de Memória Central do Terminal
+# Gerenciamento de Memória Central do Terminal K97
 div_spreed_salvo = carregar_eixos()
 
 if 'market_data' not in st.session_state: st.session_state.market_data = {}
@@ -113,6 +113,7 @@ if 'k97_abertura_base' not in st.session_state: st.session_state.k97_abertura_ba
 if 'k97_proximo_timestamp_8m' not in st.session_state: st.session_state.k97_proximo_timestamp_8m = None
 if 'k97_delta_acumulado' not in st.session_state: st.session_state.k97_delta_acumulado = 0.0
 if 'k97_ultimo_preco_4s' not in st.session_state: st.session_state.k97_ultimo_preco_4s = None
+if 'k97_base_forca_ciclo' not in st.session_state: st.session_state.k97_base_forca_ciclo = 0.0
 
 # =============================================================================
 # # BLOCO 3: CONEXÃO COM API E MOTOR DE CAPTURA DE DADOS
@@ -220,42 +221,38 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         agora_timestamp = datetime.now(tz_sp)
         preco_spot_atual = spot_data['at'] if spot_data['at'] > 100 else spot_data['at'] * 1000
         
-        # Memória auxiliar do preço do loop imediatamente anterior (4 segundos)
         if st.session_state.k97_ultimo_preco_4s is None:
             st.session_state.k97_ultimo_preco_4s = preco_spot_atual
 
-        # 1. Inicialização na primeira execução do dia
+        # Inicialização na primeira execução do dia
         if st.session_state.k97_abertura_base is None:
             st.session_state.k97_abertura_base = preco_spot_atual
             st.session_state.k97_proximo_timestamp_8m = agora_timestamp + timedelta(minutes=8)
             st.session_state.k97_delta_acumulado = 0.0
+            st.session_state.k97_base_forca_ciclo = 0.0
 
-        # 2. MARCO OPERACIONAL DOS 8 MINUTOS (Gatilho de Reset e Ajuste da Trincheira)
+        # MARCO OPERACIONAL DOS 8 MINUTOS (Gatilho de Reset do Candle)
         if agora_timestamp >= st.session_state.k97_proximo_timestamp_8m:
             deslocamento_8m = preco_spot_atual - st.session_state.k97_abertura_base
             quarto_movimento = deslocamento_8m / 4
             
-            # O Delta sofre o RESET rígido: vira a fração do quarto dividida por 100 (Ex: 26.25 / 100 = 0.26)
+            # Reset Rígido com sinal preservado (+ ou -)
             st.session_state.k97_delta_acumulado = quarto_movimento / 100
             
-            # Abertura avança para o primeiro quarto calculado do movimento macro anterior
+            # Memoriza qual é o valor exato da trincheira base para o novo ciclo
+            st.session_state.k97_base_forca_ciclo = st.session_state.k97_delta_acumulado
+            
+            # Ajusta a ancoragem e joga o relógio 8 minutos para frente
             st.session_state.k97_abertura_base = st.session_state.k97_abertura_base + quarto_movimento
-            
-            # Renova a contagem de tempo para o próximo bloco cheio
             st.session_state.k97_proximo_timestamp_8m = agora_timestamp + timedelta(minutes=8)
-        
-        # 3. LOOP CONTÍNUO DE 4 SEGUNDOS (Soma ou Subtrai a variação instantânea)
+            is_reset_moment = True
         else:
-            # Mede o tranco milimétrico ocorrido exclusivamente nos últimos 4 segundos
+            # LOOP CONTÍNUO DE 4 SEGUNDOS
             variacao_instantanea = preco_spot_atual - st.session_state.k97_ultimo_preco_4s
-            
-            # Fração rápida: divide o passo por 4 e aplica o amortecimento microscópico (/1000)
             fracao_4s = (variacao_instantanea / 4) / 1000
-            
-            # Adiciona ou deduz livremente do indicador de força atual
             st.session_state.k97_delta_acumulado += fracao_4s
+            is_reset_moment = False
 
-        # Salva o preço deste loop para servir de comparação na próxima piscada de 4s
         st.session_state.k97_ultimo_preco_4s = preco_spot_atual
 
         return {
@@ -269,7 +266,9 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor, "piscando": piscando, 
             "max_grade": st.session_state.dolfut_max_auto, "min_grade": st.session_state.dolfut_min_auto, 
             "alvo_low": alvo_low, "alvo_high": alvo_high, "spreed_t": spreed_t,
-            "delta_spot_forca": st.session_state.k97_delta_acumulado
+            "delta_spot_forca": st.session_state.k97_delta_acumulado,
+            "base_forca_ciclo": st.session_state.k97_base_forca_ciclo,
+            "is_reset": is_reset_moment
         }
     except: return None
 
@@ -371,13 +370,30 @@ while True:
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
                 
                 # Painel do Indicador de Delta do Spot (Aceleração por Ciclos e Micro-Variação)
-                cor_delta_txt = "#00ff88" if res['delta_spot_forca'] > 0.01 else "#ff4d4d" if res['delta_spot_forca'] < -0.01 else "#00BFFF"
-                st.markdown(f'''<div class="calc-panel" style="margin-top: 4px;"><div class="calc-row" style="border-bottom: none;"><span style="color:#ffffff;">𝚫 SPOT (FORÇA)</span> <span style="color:{cor_delta_txt};">{res['delta_spot_forca']:+.2f}</span></div></div>''', unsafe_allow_html=True)
+                delta_atual = res['delta_spot_forca']
+                trincheira_base = res['base_forca_ciclo']
+                
+                if res['is_reset']:
+                    cor_delta_txt = "#00d2ff"  # Azul no momento do Reset
+                elif delta_atual > trincheira_base:
+                    cor_delta_txt = "#00ff88"  # Verde Vivo acima da Base
+                elif delta_atual < trincheira_base:
+                    cor_delta_txt = "#ff4d4d"  # Vermelho Vivo abaixo da Base
+                else:
+                    cor_delta_txt = "#00d2ff"  # Azul em Equilíbrio Perfeito
+                
+                st.markdown(f'''
+                <div class="calc-panel" style="margin-top: 4px;">
+                    <div class="calc-row" style="border-bottom: none;">
+                        <span style="color:#ffffff;">𝚫 SPOT (FORÇA)</span> 
+                        <span style="color:{cor_delta_txt}; font-size: 14px; font-weight: bold;">{delta_atual:+.2f}</span>
+                    </div>
+                </div>
+                ''', unsafe_allow_html=True)
             
             # Letreiro Inferior de Cotações Rápidas
             st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
         else: 
             st.warning("Aguardando inicialização dos dados do mercado...")
             
-    # O tempo de execução entre requisições está travado no seu padrão de 4s
     time.sleep(4)
