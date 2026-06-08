@@ -227,6 +227,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         
         is_reset_moment = False
 
+        # Garante que a abertura base do ciclo sempre nasça do OPEN oficial
         if st.session_state.k97_abertura_base is None:
             st.session_state.k97_abertura_base = preco_open_oficial
             st.session_state.k97_delta_acumulado = 0.0
@@ -240,12 +241,13 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
 
         if dentro_horario_b3 and st.session_state.k97_proximo_timestamp_8m is not None:
             if agora_timestamp >= st.session_state.k97_proximo_timestamp_8m:
-                # 1. Trava a Força do ciclo medindo a variação real do Spot contra o OPEN oficial
+                # Mudança solicitada: O cálculo do fechamento do ciclo parte da diferença em relação ao OPEN oficial
                 deslocamento_base_open = preco_spot_atual - preco_open_oficial
                 quarto_movimento = deslocamento_base_open / 4
-                st.session_state.k97_base_forca_ciclo = quarto_movimento / 10
+                st.session_state.k97_delta_acumulado = quarto_movimento / 10
+                st.session_state.k97_base_forca_ciclo = st.session_state.k97_delta_acumulado
                 
-                # 2. Reseta o preço base de oscilação curta (4s) para o patamar atual do Spot (fechamento dos 8m)
+                # Sincroniza o preço base visual do ciclo com o fechamento atual do Spot
                 st.session_state.k97_abertura_base = preco_spot_atual
                 st.session_state.k97_proximo_timestamp_8m = agora_timestamp + timedelta(minutes=8)
                 is_reset_moment = True
@@ -253,10 +255,9 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         if not dentro_horario_b3:
             st.session_state.k97_proximo_timestamp_8m = None
 
-        # 3. CORREÇÃO: A oscilação rápida de 4s pega estritamente a distância contra a base dos 8m
+        # Fração de variação instantânea em tempo real calculada sobre o fechamento do último ciclo
         fracao_4s = (preco_spot_atual - st.session_state.k97_abertura_base) / 10
 
-        # O Delta Final une o desvio do OPEN com a variação direta sobre a base estável dos 8m
         st.session_state.k97_delta_acumulado = st.session_state.k97_base_forca_ciclo + fracao_4s
 
         output_res = {
@@ -273,7 +274,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             "delta_spot_forca": st.session_state.k97_delta_acumulado,
             "base_forca_ciclo": st.session_state.k97_base_forca_ciclo,
             "is_reset": is_reset_moment,
-            "preco_base_atual": st.session_state.k97_abertura_base / 1000  # Último Fechamento de 8m visível na escala padrão
+            "preco_base_atual": st.session_state.k97_abertura_base / 1000  # Converte para escala padrão (ex: 5.1677)
         }
         
         st.session_state.last_valid_res = output_res
@@ -363,7 +364,7 @@ while True:
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 
-                # 📊 SEÇÃO DA BARRA OPERACIONAL FILTRADA
+                # 📊 SEÇÃO DA BARRA OPERACIONAL FILTRADA (PROTEÇÃO CONTRA CONFLITO DE CHAVES DE CSS)
                 seta_spread, cor_seta_spread = ("▲", "#00ff88") if spot_live and spot_live['at'] > res['medio'] else ("▼", "#ff4d4d")
                 
                 html_barra = '''
