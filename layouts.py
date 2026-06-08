@@ -215,40 +215,52 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
                 salvar_historico_dolfut_diario(dolfut_atual_calc, dolfut_atual_calc)
 
         # =====================================================================
-        # ⚡ REGRA DO RENATO: MOTOR QUANT DO DELTA AJUSTADO (LOOP DE 4S COM DIVISOR POR 4)
+        # ⚡ REGRA DO RENATO: MOTOR QUANT DO DELTA TRAVADO POR HORÁRIO (09:00 - 18:30)
         # =====================================================================
         agora_timestamp = datetime.now(tz_sp)
         preco_spot_atual = spot_data['at'] if spot_data['at'] > 100 else spot_data['at'] * 1000
         
-        # Puxa obrigatoriamente o OPEN oficial do DOLSPOT vindo da API para a largada
-        if st.session_state.k97_abertura_base is None:
-            preco_open_oficial = spot_data['op'] if spot_data['op'] > 100 else spot_data['op'] * 1000
-            st.session_state.k97_abertura_base = preco_open_oficial
-            st.session_state.k97_proximo_timestamp_8m = agora_timestamp + timedelta(minutes=8)
+        # Checagem se estamos dentro da janela operacional da B3
+        hora_inicio = agora_timestamp.replace(hour=9, minute=0, second=0, microsecond=0)
+        hora_fim = agora_timestamp.replace(hour=18, minute=30, second=0, microsecond=0)
+        
+        dentro_horario_b3 = hora_inicio <= agora_timestamp <= hora_fim
+        is_reset_moment = False
+
+        if dentro_horario_b3:
+            # Puxa obrigatoriamente o OPEN oficial do DOLSPOT vindo da API para a largada às 09:00
+            if st.session_state.k97_abertura_base is None:
+                preco_open_oficial = spot_data['op'] if spot_data['op'] > 100 else spot_data['op'] * 1000
+                st.session_state.k97_abertura_base = preco_open_oficial
+                st.session_state.k97_proximo_timestamp_8m = agora_timestamp + timedelta(minutes=8)
+                st.session_state.k97_delta_acumulado = 0.0
+                st.session_state.k97_base_forca_ciclo = 0.0
+
+            # MARCO OPERACIONAL DOS 8 MINUTOS (Gatilho Macro de Reset do Bloco)
+            if agora_timestamp >= st.session_state.k97_proximo_timestamp_8m:
+                deslocamento_8m = preco_spot_atual - st.session_state.k97_abertura_base
+                quarto_movimento = deslocamento_8m / 4
+                
+                # Fechamento Macro: Divide por 100 para fixar o peso do ciclo consolidado
+                st.session_state.k97_delta_acumulado = quarto_movimento / 100
+                
+                # Memoriza o valor da nova trincheira estável
+                st.session_state.k97_base_forca_ciclo = st.session_state.k97_delta_acumulado
+                
+                # Atualiza ancoragem de preço e joga o relógio 8 minutos para frente
+                st.session_state.k97_abertura_base = preco_spot_atual
+                st.session_state.k97_proximo_timestamp_8m = agora_timestamp + timedelta(minutes=8)
+                is_reset_moment = True
+            else:
+                # LOOP CONTÍNUO DE 4 SEGUNDOS ANCORADO NA ABERTURA DO CICLO ATUAL
+                fracao_4s = ((preco_spot_atual - st.session_state.k97_abertura_base) / 4) / 1000
+                st.session_state.k97_delta_acumulado = st.session_state.k97_base_forca_ciclo + fracao_4s
+        else:
+            # Fora do horário comercial da B3, o indicador zera/congela para evitar ruídos da madrugada
+            st.session_state.k97_abertura_base = None
+            st.session_state.k97_proximo_timestamp_8m = None
             st.session_state.k97_delta_acumulado = 0.0
             st.session_state.k97_base_forca_ciclo = 0.0
-
-        # MARCO OPERACIONAL DOS 8 MINUTOS (Gatilho Macro de Reset do Bloco)
-        if agora_timestamp >= st.session_state.k97_proximo_timestamp_8m:
-            deslocamento_8m = preco_spot_atual - st.session_state.k97_abertura_base
-            quarto_movimento = deslocamento_8m / 4
-            
-            # Fechamento Macro: Divide por 100 para fixar o peso do ciclo consolidado
-            st.session_state.k97_delta_acumulado = quarto_movimento / 100
-            
-            # Memoriza o valor da nova trincheira estável
-            st.session_state.k97_base_forca_ciclo = st.session_state.k97_delta_acumulado
-            
-            # Atualiza ancoragem de preço e joga o relógio 8 minutos para frente
-            st.session_state.k97_abertura_base = preco_spot_atual
-            st.session_state.k97_proximo_timestamp_8m = agora_timestamp + timedelta(minutes=8)
-            is_reset_moment = True
-        else:
-            # LOOP CONTÍNUO DE 4 SEGUNDOS ANCORADO NA ABERTURA DO CICLO ATUAL
-            # Fórmula validada: Base + ((PRICE - Abertura) / 4) / 1000
-            fracao_4s = ((preco_spot_atual - st.session_state.k97_abertura_base) / 4) / 1000
-            st.session_state.k97_delta_acumulado = st.session_state.k97_base_forca_ciclo + fracao_4s
-            is_reset_moment = False
 
         return {
             "vivo": vivo_val, "vivo_pct": calc_variacoes_pct * 100, "dolfut_calc": dolfut_atual_calc, "fraja": fraja_val, 
