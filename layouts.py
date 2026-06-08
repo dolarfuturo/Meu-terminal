@@ -248,7 +248,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         if not dentro_horario_b3:
             st.session_state.k97_proximo_timestamp_8m = None
 
-        fracao_4s = (preco_spot_atual - st.session_state.k97_abertura_base) / 10
+        fracao_4s = (preco_spot_atual - st.session_state.k97_abertura_base) / 100
         st.session_state.k97_delta_acumulado = st.session_state.k97_base_forca_ciclo + fracao_4s
 
         # 🔄 RETORNO DA CONTA DE 4S ORIGINAL: Oscilando dinamicamente ao vivo a cada ciclo!
