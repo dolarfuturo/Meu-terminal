@@ -89,6 +89,7 @@ def salvar_historico_dolfut_diario(mx, mn):
             f.write(f"{data_hoje},{mx},{mn}")
     except: pass
 
+# Gerenciamento de Memória Central do Terminal
 div_spreed_salvo = carregar_eixos()
 
 if 'market_data' not in st.session_state: st.session_state.market_data = {}
@@ -107,11 +108,13 @@ if 'c_du_val' not in st.session_state: st.session_state.c_du_val = 22
 if 't_br_val' not in st.session_state: st.session_state.t_br_val = 14.50
 if 't_us_val' not in st.session_state: st.session_state.t_us_val = 3.75
 
+# Inicialização das variáveis do Delta Híbrido K97
 if 'k97_abertura_base' not in st.session_state: st.session_state.k97_abertura_base = None
 if 'k97_proximo_timestamp_8m' not in st.session_state: st.session_state.k97_proximo_timestamp_8m = None
 if 'k97_delta_acumulado' not in st.session_state: st.session_state.k97_delta_acumulado = 0.0
 if 'k97_base_forca_ciclo' not in st.session_state: st.session_state.k97_base_forca_ciclo = 0.0
 
+# Memória de backup global para evitar apagamento de tela
 if 'last_valid_res' not in st.session_state: st.session_state.last_valid_res = None
 
 # =============================================================================
@@ -211,6 +214,9 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
                 st.session_state.dolfut_min_auto = dolfut_atual_calc
                 salvar_historico_dolfut_diario(dolfut_atual_calc, dolfut_atual_calc)
 
+        # =====================================================================
+        # ⚡ BLINDAGEM DO MOTOR QUANT: DELTA HÍBRIDO SEM TRAVAMENTO NA ABERTURA
+        # =====================================================================
         agora_timestamp = datetime.now(tz_sp)
         preco_spot_atual = spot_data['at'] if spot_data['at'] > 100 else spot_data['at'] * 1000
         
@@ -237,7 +243,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             if agora_timestamp >= st.session_state.k97_proximo_timestamp_8m:
                 deslocamento_8m = preco_spot_atual - st.session_state.k97_abertura_base
                 quarto_movimento = deslocamento_8m / 4
-                st.session_state.k97_delta_acumulado = quarto_movimento / 10
+                st.session_state.k97_delta_acumulado = quarto_movimento / 100
                 st.session_state.k97_base_forca_ciclo = st.session_state.k97_delta_acumulado
                 st.session_state.k97_abertura_base = preco_spot_atual
                 st.session_state.k97_proximo_timestamp_8m = agora_timestamp + timedelta(minutes=8)
@@ -246,8 +252,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         if not dentro_horario_b3:
             st.session_state.k97_proximo_timestamp_8m = None
 
-        fracao_4s = (preco_spot_atual - st.session_state.k97_abertura_base) / 1000
-
+        fracao_4s = ((preco_spot_atual - st.session_state.k97_abertura_base) / 4) / 1000
         st.session_state.k97_delta_acumulado = st.session_state.k97_base_forca_ciclo + fracao_4s
 
         output_res = {
@@ -261,10 +266,10 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor, "piscando": piscando, 
             "max_grade": st.session_state.dolfut_max_auto, "min_grade": st.session_state.dolfut_min_auto, 
             "alvo_low": alvo_low, "alvo_high": alvo_high, "spreed_t": spreed_t,
-            "delta_spot_forca": round(st.session_state.k97_delta_acumulado, 2), # AJUSTE: Arredondado
+            "delta_spot_forca": st.session_state.k97_delta_acumulado,
             "base_forca_ciclo": st.session_state.k97_base_forca_ciclo,
             "is_reset": is_reset_moment,
-            "preco_base_atual": st.session_state.k97_abertura_base / 1000 
+            "preco_base_atual": st.session_state.k97_abertura_base / 1000  # Converte para escala padrão (ex: 5.1677)
         }
         
         st.session_state.last_valid_res = output_res
@@ -339,9 +344,7 @@ while True:
                 
                 for lbl, sym in outros.items():
                     d = st.session_state.market_data.get(sym)
-                    if d is None or d.get('at', 0) == 0:
-                        html += f"<tr><td class='asset-name'>{lbl}</td><td colspan='6' style='color:#555; text-align:center;'>AGUARDANDO DADOS...</td></tr>"
-                    else:
+                    if d:
                         f = ".4f" if lbl in ["DOLSPOT", "GBP/USD", "JPY/USD", "EUR/USD"] else (".3f" if lbl=="US10Y" else ".2f")
                         p_v = d['at']/1000 if lbl == "DOLSPOT" else d['at']
                         l_a = st.session_state.last_p.get(lbl, p_v); cl_a = "f-up" if p_v > l_a else "f-dn" if p_v < l_a else ""; st.session_state.last_p[lbl] = p_v
@@ -349,29 +352,48 @@ while True:
                         
                         cl_max = "f-up" if lbl == "DOLSPOT" and st.session_state.last_spot_max > 0 and d['mx'] > st.session_state.last_spot_max else ""
                         cl_min = "f-dn" if lbl == "DOLSPOT" and st.session_state.last_spot_min < float('inf') and d['mn'] < st.session_state.last_spot_min else ""
-                        if lbl == "DOLSPOT": st.session_state.last_spot_max, st.session_state.last_spot_min = d['mx'], d['mn']
+                        if lbl == "DOLSPOT":
+                            st.session_state.last_spot_max, st.session_state.last_spot_min = d['mx'], d['mn']
                             
                         html += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col {cl_a}'>{p_v:{f}}</td><td>{(d['cl']/1000 if lbl=='DOLSPOT' else d['cl']):{f}}</td><td>{(d['op']/1000 if lbl=='DOLSPOT' else d['op']):{f}}</td><td class='{cl_max}'>{(d['mx']/1000 if lbl=='DOLSPOT' else d['mx']):{f}}</td><td class='{cl_min}'>{(d['mn']/1000 if lbl=='DOLSPOT' else d['mn']):{f}}</td><td style='color:{("#00ff00" if var >= 0 else "#ff4d4d")}; font-weight:bold;'>{var:+.2f}%</td></tr>"
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
-                
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 
+                # 📊 SEÇÃO DA BARRA OPERACIONAL FILTRADA (PROTEÇÃO CONTRA CONFLITO DE CHAVES DE CSS)
                 seta_spread, cor_seta_spread = ("▲", "#00ff88") if spot_live and spot_live['at'] > res['medio'] else ("▼", "#ff4d4d")
-                html_barra = f'''
+                
+                html_barra = '''
                 <div class="bar-wrapper-full">
-                    <div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div>
+                    <div class="force-scale">
+                        <span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span>
+                    </div>
                     <div class="force-container-dual">
                         <div class="center-line"></div>
-                        <div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div>
-                        <div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div>
+                        <div class="bar-side">
+                            <div class="fill-green" style="width: __PV__%;"></div>
+                        </div>
+                        <div class="bar-side">
+                            <div class="fill-red" style="width: __PR__%;"></div>
+                        </div>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; font-family: monospace; color: #AAA; margin-top: 2px; padding: 0 2px;">
-                        <span>LOW: {res['alvo_low']:.2f}</span>
-                        <span style="color:{cor_seta_spread}; font-size: 14px; font-weight: bold;">{seta_spread}</span>
-                        <span>HIGH: {res['alvo_high']:.2f}</span>
+                        <span>LOW: __LOW__</span>
+                        <span style="color:__COR_SETA__; font-size: 14px; font-weight: bold;">__SETA__</span>
+                        <span>HIGH: __HIGH__</span>
                     </div>
-                    <div class="sinal-indicator {'blink' if res["piscando"] else ''}" style="color:{res["seta_cor"]};">{res["seta"]}</div>
-                </div>'''
+                    <div class="sinal-indicator __BLINK__" style="color:__SETA_COR__;">__SETA_TXT__</div>
+                </div>
+                '''
+                html_barra = html_barra.replace("__PV__", str(res["p_v"]))
+                html_barra = html_barra.replace("__PR__", str(res["p_r"]))
+                html_barra = html_barra.replace("__LOW__", f"{res['alvo_low']:.2f}")
+                html_barra = html_barra.replace("__HIGH__", f"{res['alvo_high']:.2f}")
+                html_barra = html_barra.replace("__COR_SETA__", cor_seta_spread)
+                html_barra = html_barra.replace("__SETA__", seta_spread)
+                html_barra = html_barra.replace("__BLINK__", "blink" if res["piscando"] else "")
+                html_barra = html_barra.replace("__SETA_COR__", res["seta_cor"])
+                html_barra = html_barra.replace("__SETA_TXT__", res["seta"])
+                
                 st.markdown(html_barra, unsafe_allow_html=True)
             
             with c2:
@@ -381,18 +403,24 @@ while True:
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
                 
                 delta_atual = res['delta_spot_forca']
-                # Lógica de cor e sinal explícito
-                cor_delta_txt = "#00ff88" if delta_atual > 0 else ("#ff4d4d" if delta_atual < 0 else "#00d2ff")
+                trincheira_base = res['base_forca_ciclo']
+                p_base_visual = res['preco_base_atual']
+                
+                if res['is_reset']: cor_delta_txt = "#00d2ff"
+                elif delta_atual > trincheira_base: cor_delta_txt = "#00ff88"
+                elif delta_atual < trincheira_base: cor_delta_txt = "#ff4d4d"
+                else: cor_delta_txt = "#00d2ff"
 
+                # Adicionado campo dinâmico que exibe o preço exato da trincheira atual
                 st.markdown(f'''
                 <div class="calc-panel" style="margin-top: 4px;">
                     <div class="calc-row">
                         <span style="color:#AAA;">PREÇO BASE (8M)</span> 
-                        <span style="color:#ffffff; font-weight: bold;">{res['preco_base_atual']:.4f}</span>
+                        <span style="color:#ffffff; font-weight: bold;">{p_base_visual:.4f}</span>
                     </div>
                     <div class="calc-row" style="border-bottom: none; margin-top: 2px;">
                         <span style="color:#ffffff;">𝚫 SPOT (FORÇA)</span> 
-                        <span style="color:{cor_delta_txt}; font-size: 14px; font-weight: bold;">{delta_atual:+.3f}</span>
+                        <span style="color:{cor_delta_txt}; font-size: 14px; font-weight: bold;">{delta_atual:+.4f}</span>
                     </div>
                 </div>
                 ''', unsafe_allow_html=True)
