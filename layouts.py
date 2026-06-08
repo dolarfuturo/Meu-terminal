@@ -89,7 +89,6 @@ def salvar_historico_dolfut_diario(mx, mn):
             f.write(f"{data_hoje},{mx},{mn}")
     except: pass
 
-# Gerenciamento de Memória Central do Terminal
 div_spreed_salvo = carregar_eixos()
 
 if 'market_data' not in st.session_state: st.session_state.market_data = {}
@@ -108,13 +107,10 @@ if 'c_du_val' not in st.session_state: st.session_state.c_du_val = 22
 if 't_br_val' not in st.session_state: st.session_state.t_br_val = 14.50
 if 't_us_val' not in st.session_state: st.session_state.t_us_val = 3.75
 
-# Inicialização das variáveis do Delta Híbrido K97
 if 'k97_abertura_base' not in st.session_state: st.session_state.k97_abertura_base = None
 if 'k97_proximo_timestamp_8m' not in st.session_state: st.session_state.k97_proximo_timestamp_8m = None
 if 'k97_delta_acumulado' not in st.session_state: st.session_state.k97_delta_acumulado = 0.0
 if 'k97_base_forca_ciclo' not in st.session_state: st.session_state.k97_base_forca_ciclo = 0.0
-
-# Memória de backup global para evitar apagamento de tela
 if 'last_valid_res' not in st.session_state: st.session_state.last_valid_res = None
 
 # =============================================================================
@@ -215,7 +211,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
                 salvar_historico_dolfut_diario(dolfut_atual_calc, dolfut_atual_calc)
 
         # =====================================================================
-        # ⚡ BLINDAGEM DO MOTOR QUANT: DELTA HÍBRIDO SEM TRAVAMENTO NA ABERTURA
+        # ⚡ BLINDAGEM DO MOTOR QUANT: HISTÓRICO INTERNO DE 8M MANTIDO INTEGRAL
         # =====================================================================
         agora_timestamp = datetime.now(tz_sp)
         preco_spot_atual = spot_data['at'] if spot_data['at'] > 100 else spot_data['at'] * 1000
@@ -255,8 +251,8 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         fracao_4s = (preco_spot_atual - st.session_state.k97_abertura_base) / 10
         st.session_state.k97_delta_acumulado = st.session_state.k97_base_forca_ciclo + fracao_4s
 
-        # 🎯 CORRIGIDO E INVERTIDO: (PREÇO BASE - OPEN) / 4 / 10
-        saida_indicador_tela = (st.session_state.k97_abertura_base - preco_open_oficial) / 4 / 10
+        # 🔄 RETORNO DA CONTA DE 4S ORIGINAL: Oscilando dinamicamente ao vivo a cada ciclo!
+        saida_indicador_tela = (preco_spot_atual - preco_open_oficial) / 4 / 10
 
         output_res = {
             "white": True, "vivo": vivo_val, "vivo_pct": calc_variacoes_pct * 100, "dolfut_calc": dolfut_atual_calc, "fraja": fraja_val, 
