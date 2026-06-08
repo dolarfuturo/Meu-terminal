@@ -89,7 +89,7 @@ def salvar_historico_dolfut_diario(mx, mn):
             f.write(f"{data_hoje},{mx},{mn}")
     except: pass
 
-# Gerenciamento de Memória Central do Terminal K97
+# Gerenciamento de Memória Central do Terminal
 div_spreed_salvo = carregar_eixos()
 
 if 'market_data' not in st.session_state: st.session_state.market_data = {}
@@ -108,11 +108,14 @@ if 'c_du_val' not in st.session_state: st.session_state.c_du_val = 22
 if 't_br_val' not in st.session_state: st.session_state.t_br_val = 14.50
 if 't_us_val' not in st.session_state: st.session_state.t_us_val = 3.75
 
-# Inicialização das variáveis de controle do novo Delta Quantizado por Ciclos
+# Inicialização das variáveis do Delta Híbrido K97
 if 'k97_abertura_base' not in st.session_state: st.session_state.k97_abertura_base = None
 if 'k97_proximo_timestamp_8m' not in st.session_state: st.session_state.k97_proximo_timestamp_8m = None
 if 'k97_delta_acumulado' not in st.session_state: st.session_state.k97_delta_acumulado = 0.0
 if 'k97_base_forca_ciclo' not in st.session_state: st.session_state.k97_base_forca_ciclo = 0.0
+
+# Memória de backup para evitar tela amarela/preta em falhas de API
+if 'last_valid_res' not in st.session_state: st.session_state.last_valid_res = None
 
 # =============================================================================
 # # BLOCO 3: CONEXÃO COM API E MOTOR DE CAPTURA DE DADOS
@@ -151,8 +154,10 @@ def fetch(s):
 # =============================================================================
 def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
     try:
-        if not spot_data or not ewz_data: return None
-        
+        if not spot_data or not ewz_data or spot_data['at'] == 0: 
+            # Se a API falhar ou vier zerada, retorna imediatamente o último cálculo salvo na memória
+            return st.session_state.last_valid_res
+            
         # Centralização única dos dados do Spot Média
         dolar_medio = (spot_data['mx'] + spot_data['mn']) / 2
         spreed_t = spot_data['mx'] - spot_data['mn']
@@ -215,28 +220,34 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
                 salvar_historico_dolfut_diario(dolfut_atual_calc, dolfut_atual_calc)
 
         # =====================================================================
-        # ⚡ REGRA DO RENATO: MOTOR QUANT DO DELTA HÍBRIDO (4S LIVRE + 8M NA B3)
+        # ⚡ BLINDAGEM DO MOTOR QUANT: DELTA HÍBRIDO SEM TRAVAMENTO NA ABERTURA
         # =====================================================================
         agora_timestamp = datetime.now(tz_sp)
         preco_spot_atual = spot_data['at'] if spot_data['at'] > 100 else spot_data['at'] * 1000
         
-        # Parâmetros de tempo para a B3
         hora_inicio = agora_timestamp.replace(hour=9, minute=0, second=0, microsecond=0)
         hora_fim = agora_timestamp.replace(hour=18, minute=30, second=0, microsecond=0)
         dentro_horario_b3 = hora_inicio <= agora_timestamp <= hora_fim
         
         is_reset_moment = False
 
-        # 1. Inicialização Forçada ou Garante a Captura Inicial de Madrugada
+        # 1. Se amanheceu ou o sistema iniciou sem base, captura o preço atual imediatamente
         if st.session_state.k97_abertura_base is None:
             preco_open_oficial = spot_data['op'] if spot_data['op'] > 100 else spot_data['op'] * 1000
             st.session_state.k97_abertura_base = preco_open_oficial
-            st.session_state.k97_proximo_timestamp_8m = agora_timestamp + timedelta(minutes=8)
             st.session_state.k97_delta_acumulado = 0.0
             st.session_state.k97_base_forca_ciclo = 0.0
 
-        # 2. Execução dos Ciclos Macros de 8 minutos (Apenas dentro do Horário da B3)
-        if dentro_horario_b3:
+        # 2. Transição Cirúrgica da Abertura (Entrou no horário B3 e o cronômetro macro estava desligado)
+        if dentro_horario_b3 and st.session_state.k97_proximo_timestamp_8m is None:
+            st.session_state.k97_abertura_base = preco_spot_atual
+            st.session_state.k97_proximo_timestamp_8m = agora_timestamp + timedelta(minutes=8)
+            st.session_state.k97_delta_acumulado = 0.0
+            st.session_state.k97_base_forca_ciclo = 0.0
+            is_reset_moment = True
+
+        # 3. Execução dos Ciclos Macros de 8 minutos durante o pregão regular
+        if dentro_horario_b3 and st.session_state.k97_proximo_timestamp_8m is not None:
             if agora_timestamp >= st.session_state.k97_proximo_timestamp_8m:
                 deslocamento_8m = preco_spot_atual - st.session_state.k97_abertura_base
                 quarto_movimento = deslocamento_8m / 4
@@ -245,25 +256,16 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
                 st.session_state.k97_abertura_base = preco_spot_atual
                 st.session_state.k97_proximo_timestamp_8m = agora_timestamp + timedelta(minutes=8)
                 is_reset_moment = True
-        else:
-            # Fora do horário B3, o relógio dos 8 minutos fica em modo de espera (None)
-            # para que às 09:00:00 o próximo ciclo seja disparado de forma limpa.
+        
+        # 4. Desativa o cronômetro macro após as 18:30 (Modo Madrugada Ativo)
+        if not dentro_horario_b3:
             st.session_state.k97_proximo_timestamp_8m = None
 
-        # 3. Alinhamento de transição exata às 09:00: Captura a abertura real da B3
-        if agora_timestamp.hour == 9 and agora_timestamp.minute == 0 and st.session_state.k97_proximo_timestamp_8m is None:
-            preco_open_oficial = spot_data['op'] if spot_data['op'] > 100 else spot_data['op'] * 1000
-            st.session_state.k97_abertura_base = preco_open_oficial
-            st.session_state.k97_proximo_timestamp_8m = agora_timestamp + timedelta(minutes=8)
-            st.session_state.k97_delta_acumulado = 0.0
-            st.session_state.k97_base_forca_ciclo = 0.0
-            is_reset_moment = True
-
-        # 4. LOOP DE 4 SEGUNDOS TOTALMENTE LIVRE (Roda Sempre)
+        # 5. LOOP DE 4 SEGUNDOS LIVRE (Cálculo contínuo baseado na última trincheira ativa)
         fracao_4s = ((preco_spot_atual - st.session_state.k97_abertura_base) / 4) / 1000
         st.session_state.k97_delta_acumulado = st.session_state.k97_base_forca_ciclo + fracao_4s
 
-        return {
+        output_res = {
             "vivo": vivo_val, "vivo_pct": calc_variacoes_pct * 100, "dolfut_calc": dolfut_atual_calc, "fraja": fraja_val, 
             "medio": dolar_medio, "axis_central": axis_dinamico,
             "max_fut_1": axis_dinamico + passo_fixo, "max_fut_1_b": axis_dinamico + (passo_fixo * 2),
@@ -278,7 +280,14 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             "base_forca_ciclo": st.session_state.k97_base_forca_ciclo,
             "is_reset": is_reset_moment
         }
-    except: return None
+        
+        # Guarda na memória global o resultado estável
+        st.session_state.last_valid_res = output_res
+        return output_res
+        
+    except: 
+        # Sistema anti-queda: se houver qualquer erro de API ou cálculo, entrega o último backup válido
+        return st.session_state.last_valid_res
 
 # =============================================================================
 # # BLOCO 5: CONTROLES OPERACIONAIS FINANCEIROS (SIDEBAR / ADM)
@@ -350,7 +359,7 @@ while True:
                     
                 # Loop Único de Renderização de Linhas de Ativos
                 for lbl, sym in outros.items():
-                    d = st.session_state.market_data.get(sym, fetch(sym))
+                    d = st.session_state.market_data.get(sym)
                     if d:
                         f = ".4f" if lbl in ["DOLSPOT", "GBP/USD", "JPY/USD", "EUR/USD"] else (".3f" if lbl=="US10Y" else ".2f")
                         p_v = d['at']/1000 if lbl == "DOLSPOT" else d['at']
@@ -367,43 +376,4 @@ while True:
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 
                 # Barra de Força / Elástico K97
-                st.markdown(f'''<div class="bar-wrapper-full"><div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div></div><div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; font-family: monospace; color: #AAA; margin-top: 2px; padding: 0 2px;"><span>LOW: {res['alvo_low']:.2f}</span><span style="color:{cor_seta_spread}; font-size: 14px; font-weight: bold;">{seta_spread}</span><span>HIGH: {res['alvo_high']:.2f}</span></div><div class="sinal-indicator {"blink" if res["piscando"] else ""}" style="color:{res["seta_cor"]};">{res["seta"]}</div></div>''', unsafe_allow_html=True)
-            
-            with c2:
-                # Grade Lateral de Níveis Operacionais
-                st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
-                st.markdown(f'''<div class="calc-panel"><div class="calc-row txt-green"><span>MAX FUT 2</span> <span>{res['max_fut_2_b']:.2f}</span></div><div class="calc-row txt-yellow"><span>MED FUT 2</span> <span>{res['max_fut_2']:.2f}</span></div><div class="calc-row txt-green"><span>MAX FUT 1</span> <span>{res['max_fut_1_b']:.2f}</span></div><div class="calc-row txt-yellow"><span>MED FUT 1</span> <span>{res['max_fut_1']:.2f}</span></div><div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 10px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">AXIS: {res['axis_central']:.2f}</div><div class="calc-row txt-yellow"><span>MED FUT 1</span> <span>{res['min_fut_1']:.2f}</span></div><div class="calc-row txt-green"><span>MIN FUT 1</span> <span>{res['min_fut_1_b']:.2f}</span></div><div class="calc-row txt-yellow"><span>MED FUT 2</span> <span>{res['min_fut_2']:.2f}</span></div><div class="calc-row txt-green" style="border-bottom: none;"><span>MIN FUT 2</span> <span>{res['min_fut_2_b']:.2f}</span></div></div>''', unsafe_allow_html=True)
-                
-                # Painel de Métricas e Spreads Fixados
-                st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
-                
-                # =====================================================================
-                # 📺 VISUAL DO DELTA AJUSTADO: LÓGICA DE SINAL OPERACIONAL POR TRINCHEIRA
-                # =====================================================================
-                delta_atual = res['delta_spot_forca']
-                trincheira_base = res['base_forca_ciclo']
-                
-                if res['is_reset']:
-                    cor_delta_txt = "#00d2ff"  # Azul estático no Reset exato
-                elif delta_atual > trincheira_base:
-                    cor_delta_txt = "#00ff88"  # Verde: Preço defendendo/trabalhando acima da base
-                elif delta_atual < trincheira_base:
-                    cor_delta_txt = "#ff4d4d"  # Vermelho: Preço perdendo a base do ciclo
-                else:
-                    cor_delta_txt = "#00d2ff"  # Azul: Equilíbrio cirúrgico na base
-
-                st.markdown(f'''
-                <div class="calc-panel" style="margin-top: 4px;">
-                    <div class="calc-row" style="border-bottom: none;">
-                        <span style="color:#ffffff;">𝚫 SPOT (FORÇA)</span> 
-                        <span style="color:{cor_delta_txt}; font-size: 14px; font-weight: bold;">{delta_atual:+.4f}</span>
-                    </div>
-                </div>
-                ''', unsafe_allow_html=True)
-            
-            # Letreiro Inferior de Cotações Rápidas
-            st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
-        else: 
-            st.warning("Aguardando inicialização dos dados do mercado...")
-            
-    time.sleep(4)
+                st.markdown(f'''<div class="bar-wrapper-full"><div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div></div><div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; font-family: monospace; color: #AAA; margin-top: 2px; padding: 0 2px;"><span>LOW: {res['alvo_low']:.2f}</span><span style="color:{cor_seta_spread}; font-size: 14px; font-weight: bold;">{seta_spread}</span><span>HIGH: {res['alvo_high']:.2f}</span></div><div class="sinal-indicator {"blink" if res["piscando"] else
