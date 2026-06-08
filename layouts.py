@@ -215,10 +215,11 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
                 salvar_historico_dolfut_diario(dolfut_atual_calc, dolfut_atual_calc)
 
         # =====================================================================
-        # ⚡ BLINDAGEM DO MOTOR QUANT: DELTA HÍBRIDO SEM TRAVAMENTO NA ABERTURA
+        # ⚡ BLINDAGEM DO MOTOR QUANT: DELTA BASEADO NO OPEN (CICLO DE 8 MINUTOS)
         # =====================================================================
         agora_timestamp = datetime.now(tz_sp)
         preco_spot_atual = spot_data['at'] if spot_data['at'] > 100 else spot_data['at'] * 1000
+        preco_open_oficial = spot_data['op'] if spot_data['op'] > 100 else spot_data['op'] * 1000
         
         hora_inicio = agora_timestamp.replace(hour=9, minute=0, second=0, microsecond=0)
         hora_fim = agora_timestamp.replace(hour=18, minute=30, second=0, microsecond=0)
@@ -227,13 +228,11 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         is_reset_moment = False
 
         if st.session_state.k97_abertura_base is None:
-            preco_open_oficial = spot_data['op'] if spot_data['op'] > 100 else spot_data['op'] * 1000
             st.session_state.k97_abertura_base = preco_open_oficial
             st.session_state.k97_delta_acumulado = 0.0
             st.session_state.k97_base_forca_ciclo = 0.0
 
         if dentro_horario_b3 and st.session_state.k97_proximo_timestamp_8m is None:
-            st.session_state.k97_abertura_base = preco_spot_atual
             st.session_state.k97_proximo_timestamp_8m = agora_timestamp + timedelta(minutes=8)
             st.session_state.k97_delta_acumulado = 0.0
             st.session_state.k97_base_forca_ciclo = 0.0
@@ -241,10 +240,12 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
 
         if dentro_horario_b3 and st.session_state.k97_proximo_timestamp_8m is not None:
             if agora_timestamp >= st.session_state.k97_proximo_timestamp_8m:
-                deslocamento_8m = preco_spot_atual - st.session_state.k97_abertura_base
-                quarto_movimento = deslocamento_8m / 4
-                st.session_state.k97_delta_acumulado = quarto_movimento / 10
-                st.session_state.k97_base_forca_ciclo = st.session_state.k97_delta_acumulado
+                # 1. Trava a Força do ciclo medindo a variação real do Spot contra o OPEN oficial
+                deslocamento_base_open = preco_spot_atual - preco_open_oficial
+                quarto_movimento = deslocamento_base_open / 4
+                st.session_state.k97_base_forca_ciclo = quarto_movimento / 10
+                
+                # 2. Reseta o preço base de oscilação curta (4s) para o patamar atual do Spot (fechamento dos 8m)
                 st.session_state.k97_abertura_base = preco_spot_atual
                 st.session_state.k97_proximo_timestamp_8m = agora_timestamp + timedelta(minutes=8)
                 is_reset_moment = True
@@ -252,8 +253,10 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         if not dentro_horario_b3:
             st.session_state.k97_proximo_timestamp_8m = None
 
+        # 3. CORREÇÃO: A oscilação rápida de 4s pega estritamente a distância contra a base dos 8m
         fracao_4s = (preco_spot_atual - st.session_state.k97_abertura_base) / 10
 
+        # O Delta Final une o desvio do OPEN com a variação direta sobre a base estável dos 8m
         st.session_state.k97_delta_acumulado = st.session_state.k97_base_forca_ciclo + fracao_4s
 
         output_res = {
@@ -270,7 +273,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             "delta_spot_forca": st.session_state.k97_delta_acumulado,
             "base_forca_ciclo": st.session_state.k97_base_forca_ciclo,
             "is_reset": is_reset_moment,
-            "preco_base_atual": st.session_state.k97_abertura_base / 1000  # Converte para escala padrão (ex: 5.1677)
+            "preco_base_atual": st.session_state.k97_abertura_base / 1000  # Último Fechamento de 8m visível na escala padrão
         }
         
         st.session_state.last_valid_res = output_res
@@ -360,7 +363,7 @@ while True:
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 
-                # 📊 SEÇÃO DA BARRA OPERACIONAL FILTRADA (PROTEÇÃO CONTRA CONFLITO DE CHAVES DE CSS)
+                # 📊 SEÇÃO DA BARRA OPERACIONAL FILTRADA
                 seta_spread, cor_seta_spread = ("▲", "#00ff88") if spot_live and spot_live['at'] > res['medio'] else ("▼", "#ff4d4d")
                 
                 html_barra = '''
@@ -404,10 +407,8 @@ while True:
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
                 
                 delta_atual = res['delta_spot_forca']
-                trincheira_base = res['base_forca_ciclo']
                 p_base_visual = res['preco_base_atual']
                 
-                # Definição dinâmica de cor e sinal com base no valor do Delta K97
                 if delta_atual >= 0:
                     cor_delta_txt = "#00ff88"
                     str_delta = f"+{delta_atual:.3f}"
@@ -415,15 +416,14 @@ while True:
                     cor_delta_txt = "#ff4d4d"
                     str_delta = f"{delta_atual:.3f}"
 
-                # Renderização ajustada exibindo a cor dinâmica e o sinal correto do Delta
                 st.markdown(f'''
                 <div class="calc-panel" style="margin-top: 4px;">
                     <div class="calc-row">
-                        <span style="color:#AAA;">PREÇO BASE (8M)</span> 
+                        <span style="color:#AAA;">ÚLT. FECH (8M)</span> 
                         <span style="color:#ffffff; font-weight: bold;">{p_base_visual:.4f}</span>
                     </div>
                     <div class="calc-row" style="border-bottom: none; margin-top: 2px;">
-                        <span style="color:#ffffff;">𝚫 SPOT (FORÇA)</span> 
+                        <span style="color:#ffffff;">𝚫 SPOT vs OPEN</span> 
                         <span style="color:{cor_delta_txt}; font-size: 14px; font-weight: bold;">{str_delta}</span>
                     </div>
                 </div>
