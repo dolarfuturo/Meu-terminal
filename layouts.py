@@ -243,7 +243,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             if agora_timestamp >= st.session_state.k97_proximo_timestamp_8m:
                 deslocamento_8m = preco_spot_atual - st.session_state.k97_abertura_base
                 quarto_movimento = deslocamento_8m / 4
-                st.session_state.k97_delta_acumulado = quarto_movimento / 10
+                st.session_state.k97_delta_acumulado = quarto_movimento / 100
                 st.session_state.k97_base_forca_ciclo = st.session_state.k97_delta_acumulado
                 st.session_state.k97_abertura_base = preco_spot_atual
                 st.session_state.k97_proximo_timestamp_8m = agora_timestamp + timedelta(minutes=30)
@@ -252,7 +252,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         if not dentro_horario_b3:
             st.session_state.k97_proximo_timestamp_8m = None
 
-        fracao_4s = (preco_spot_atual - st.session_state.k97_abertura_base) / 10
+        fracao_4s = (preco_spot_atual - st.session_state.k97_abertura_base) / 100
 
         st.session_state.k97_delta_acumulado = st.session_state.k97_base_forca_ciclo + fracao_4s
 
