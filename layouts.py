@@ -255,8 +255,8 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         fracao_4s = (preco_spot_atual - st.session_state.k97_abertura_base) / 10
         st.session_state.k97_delta_acumulado = st.session_state.k97_base_forca_ciclo + fracao_4s
 
-        # 🎯 INDICADOR VISUAL CALIBRADO: (OPEN - PREÇO BASE) / 4 / 10
-        saida_indicador_tela = (preco_open_oficial - st.session_state.k97_abertura_base) / 4 / 10
+        # 🎯 CORRIGIDO E INVERTIDO: (PREÇO BASE - OPEN) / 4 / 10
+        saida_indicador_tela = (st.session_state.k97_abertura_base - preco_open_oficial) / 4 / 10
 
         output_res = {
             "white": True, "vivo": vivo_val, "vivo_pct": calc_variacoes_pct * 100, "dolfut_calc": dolfut_atual_calc, "fraja": fraja_val, 
