@@ -253,12 +253,10 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             st.session_state.k97_proximo_timestamp_8m = None
 
         fracao_4s = (preco_spot_atual - st.session_state.k97_abertura_base) / 10
-
-        # Mantém a regra interna dos 4s intacta na memória
         st.session_state.k97_delta_acumulado = st.session_state.k97_base_forca_ciclo + fracao_4s
 
-        # 🎯 INDICADOR CORRIGIDO: PREÇO BASE - OPEN (Tudo em número cheio, sem divisão)
-        saida_indicador_tela = st.session_state.k97_abertura_base - preco_open_oficial
+        # 🎯 INDICADOR VISUAL CALIBRADO: (OPEN - PREÇO BASE) / 4 / 10
+        saida_indicador_tela = (preco_open_oficial - st.session_state.k97_abertura_base) / 4 / 10
 
         output_res = {
             "white": True, "vivo": vivo_val, "vivo_pct": calc_variacoes_pct * 100, "dolfut_calc": dolfut_atual_calc, "fraja": fraja_val, 
@@ -274,7 +272,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             "delta_spot_forca": saida_indicador_tela,  
             "base_forca_ciclo": st.session_state.k97_base_forca_ciclo,
             "is_reset": is_reset_moment,
-            "preco_base_atual": st.session_state.k97_abertura_base  # Número cheio exibido diretamente na tela
+            "preco_base_atual": st.session_state.k97_abertura_base
         }
         
         st.session_state.last_valid_res = output_res
@@ -412,10 +410,10 @@ while True:
                 
                 if delta_atual >= 0:
                     cor_delta_txt = "#00ff88"
-                    str_delta = f"+{delta_atual:.2f}"
+                    str_delta = f"+{delta_atual:.4f}"
                 else:
                     cor_delta_txt = "#ff4d4d"
-                    str_delta = f"{delta_atual:.2f}"
+                    str_delta = f"{delta_atual:.4f}"
 
                 st.markdown(f'''
                 <div class="calc-panel" style="margin-top: 4px;">
