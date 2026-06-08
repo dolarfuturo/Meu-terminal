@@ -345,7 +345,9 @@ while True:
                 
                 for lbl, sym in outros.items():
                     d = st.session_state.market_data.get(sym)
-                    if d:
+                    if d is None or d.get('at', 0) == 0:
+                        html += f"<tr><td class='asset-name'>{lbl}</td><td colspan='6' style='color:#555; text-align:center;'>AGUARDANDO DADOS...</td></tr>"
+                    else:
                         f = ".4f" if lbl in ["DOLSPOT", "GBP/USD", "JPY/USD", "EUR/USD"] else (".3f" if lbl=="US10Y" else ".2f")
                         p_v = d['at']/1000 if lbl == "DOLSPOT" else d['at']
                         l_a = st.session_state.last_p.get(lbl, p_v); cl_a = "f-up" if p_v > l_a else "f-dn" if p_v < l_a else ""; st.session_state.last_p[lbl] = p_v
@@ -353,48 +355,30 @@ while True:
                         
                         cl_max = "f-up" if lbl == "DOLSPOT" and st.session_state.last_spot_max > 0 and d['mx'] > st.session_state.last_spot_max else ""
                         cl_min = "f-dn" if lbl == "DOLSPOT" and st.session_state.last_spot_min < float('inf') and d['mn'] < st.session_state.last_spot_min else ""
-                        if lbl == "DOLSPOT":
-                            st.session_state.last_spot_max, st.session_state.last_spot_min = d['mx'], d['mn']
+                        if lbl == "DOLSPOT": st.session_state.last_spot_max, st.session_state.last_spot_min = d['mx'], d['mn']
                             
                         html += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col {cl_a}'>{p_v:{f}}</td><td>{(d['cl']/1000 if lbl=='DOLSPOT' else d['cl']):{f}}</td><td>{(d['op']/1000 if lbl=='DOLSPOT' else d['op']):{f}}</td><td class='{cl_max}'>{(d['mx']/1000 if lbl=='DOLSPOT' else d['mx']):{f}}</td><td class='{cl_min}'>{(d['mn']/1000 if lbl=='DOLSPOT' else d['mn']):{f}}</td><td style='color:{("#00ff00" if var >= 0 else "#ff4d4d")}; font-weight:bold;'>{var:+.2f}%</td></tr>"
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
+                
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 
-                # 📊 SEÇÃO DA BARRA OPERACIONAL FILTRADA (PROTEÇÃO CONTRA CONFLITO DE CHAVES DE CSS)
+                # Renderização da barra operacional corrigida
                 seta_spread, cor_seta_spread = ("▲", "#00ff88") if spot_live and spot_live['at'] > res['medio'] else ("▼", "#ff4d4d")
-                
-                html_barra = '''
+                html_barra = f'''
                 <div class="bar-wrapper-full">
-                    <div class="force-scale">
-                        <span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span>
-                    </div>
+                    <div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div>
                     <div class="force-container-dual">
                         <div class="center-line"></div>
-                        <div class="bar-side">
-                            <div class="fill-green" style="width: __PV__%;"></div>
-                        </div>
-                        <div class="bar-side">
-                            <div class="fill-red" style="width: __PR__%;"></div>
-                        </div>
+                        <div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div>
+                        <div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; font-family: monospace; color: #AAA; margin-top: 2px; padding: 0 2px;">
-                        <span>LOW: __LOW__</span>
-                        <span style="color:__COR_SETA__; font-size: 14px; font-weight: bold;">__SETA__</span>
-                        <span>HIGH: __HIGH__</span>
+                        <span>LOW: {res['alvo_low']:.2f}</span>
+                        <span style="color:{cor_seta_spread}; font-size: 14px; font-weight: bold;">{seta_spread}</span>
+                        <span>HIGH: {res['alvo_high']:.2f}</span>
                     </div>
-                    <div class="sinal-indicator __BLINK__" style="color:__SETA_COR__;">__SETA_TXT__</div>
-                </div>
-                '''
-                html_barra = html_barra.replace("__PV__", str(res["p_v"]))
-                html_barra = html_barra.replace("__PR__", str(res["p_r"]))
-                html_barra = html_barra.replace("__LOW__", f"{res['alvo_low']:.2f}")
-                html_barra = html_barra.replace("__HIGH__", f"{res['alvo_high']:.2f}")
-                html_barra = html_barra.replace("__COR_SETA__", cor_seta_spread)
-                html_barra = html_barra.replace("__SETA__", seta_spread)
-                html_barra = html_barra.replace("__BLINK__", "blink" if res["piscando"] else "")
-                html_barra = html_barra.replace("__SETA_COR__", res["seta_cor"])
-                html_barra = html_barra.replace("__SETA_TXT__", res["seta"])
-                
+                    <div class="sinal-indicator {'blink' if res["piscando"] else ''}" style="color:{res["seta_cor"]};">{res["seta"]}</div>
+                </div>'''
                 st.markdown(html_barra, unsafe_allow_html=True)
             
             with c2:
@@ -406,13 +390,8 @@ while True:
                 delta_atual = res['delta_spot_forca']
                 trincheira_base = res['base_forca_ciclo']
                 p_base_visual = res['preco_base_atual']
-                
-                if res['is_reset']: cor_delta_txt = "#00d2ff"
-                elif delta_atual > trincheira_base: cor_delta_txt = "#00ff88"
-                elif delta_atual < trincheira_base: cor_delta_txt = "#ff4d4d"
-                else: cor_delta_txt = "#00d2ff"
+                cor_delta_txt = "#00ff88" if delta_atual > trincheira_base else ("#ff4d4d" if delta_atual < trincheira_base else "#00d2ff")
 
-                # Adicionado campo dinâmico que exibe o preço exato da trincheira atual
                 st.markdown(f'''
                 <div class="calc-panel" style="margin-top: 4px;">
                     <div class="calc-row">
