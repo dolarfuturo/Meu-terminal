@@ -216,7 +216,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
                 salvar_historico_dolfut_diario(dolfut_atual_calc, dolfut_atual_calc)
 
         # =====================================================================
-        # ⚡ REGRA DO RENATO: MOTOR QUANT DO DELTA COM RESET DE CICLO POR QUARTOS
+        # ⚡ REGRA DO RENATO: MOTOR QUANT DO DELTA COM BASE CORRETA NO OPEN OFICIAL
         # =====================================================================
         agora_timestamp = datetime.now(tz_sp)
         preco_spot_atual = spot_data['at'] if spot_data['at'] > 100 else spot_data['at'] * 1000
@@ -224,9 +224,10 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         if st.session_state.k97_ultimo_preco_4s is None:
             st.session_state.k97_ultimo_preco_4s = preco_spot_atual
 
-        # Inicialização na primeira execução do dia
+        # CORREÇÃO DA BASE INICIAL: Agora puxa obrigatoriamente o OPEN do DOLSPOT vindo da API
         if st.session_state.k97_abertura_base is None:
-            st.session_state.k97_abertura_base = preco_spot_atual
+            preco_open_oficial = spot_data['op'] if spot_data['op'] > 100 else spot_data['op'] * 1000
+            st.session_state.k97_abertura_base = preco_open_oficial
             st.session_state.k97_proximo_timestamp_8m = agora_timestamp + timedelta(minutes=8)
             st.session_state.k97_delta_acumulado = 0.0
             st.session_state.k97_base_forca_ciclo = 0.0
