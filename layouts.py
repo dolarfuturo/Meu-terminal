@@ -388,11 +388,11 @@ while True:
                 <div class="calc-panel" style="margin-top: 4px;">
                     <div class="calc-row">
                         <span style="color:#AAA;">PREÇO BASE (8M)</span> 
-                        <span style="color:#ffffff; font-weight: bold;">{res['preco_base_atual']:.3f}</span>
+                        <span style="color:#ffffff; font-weight: bold;">{res['preco_base_atual']:.4f}</span>
                     </div>
                     <div class="calc-row" style="border-bottom: none; margin-top: 2px;">
                         <span style="color:#ffffff;">𝚫 SPOT (FORÇA)</span> 
-                        <span style="color:{cor_delta_txt}; font-size: 14px; font-weight: bold;">{delta_atual:+.4f}</span>
+                        <span style="color:{cor_delta_txt}; font-size: 14px; font-weight: bold;">{delta_atual:+.3f}</span>
                     </div>
                 </div>
                 ''', unsafe_allow_html=True)
