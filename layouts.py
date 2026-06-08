@@ -362,7 +362,6 @@ while True:
                 
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 
-                # Renderização da barra operacional corrigida
                 seta_spread, cor_seta_spread = ("▲", "#00ff88") if spot_live and spot_live['at'] > res['medio'] else ("▼", "#ff4d4d")
                 html_barra = f'''
                 <div class="bar-wrapper-full">
@@ -388,19 +387,18 @@ while True:
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
                 
                 delta_atual = res['delta_spot_forca']
-                trincheira_base = res['base_forca_ciclo']
-                p_base_visual = res['preco_base_atual']
-                cor_delta_txt = "#00ff88" if delta_atual > trincheira_base else ("#ff4d4d" if delta_atual < trincheira_base else "#00d2ff")
+                # Lógica de cor e sinal explícito
+                cor_delta_txt = "#00ff88" if delta_atual > 0 else ("#ff4d4d" if delta_atual < 0 else "#00d2ff")
 
                 st.markdown(f'''
                 <div class="calc-panel" style="margin-top: 4px;">
                     <div class="calc-row">
                         <span style="color:#AAA;">PREÇO BASE (8M)</span> 
-                        <span style="color:#ffffff; font-weight: bold;">{p_base_visual:.4f}</span>
+                        <span style="color:#ffffff; font-weight: bold;">{res['preco_base_atual']:.4f}</span>
                     </div>
                     <div class="calc-row" style="border-bottom: none; margin-top: 2px;">
                         <span style="color:#ffffff;">𝚫 SPOT (FORÇA)</span> 
-                        <span style="color:{cor_delta_txt}; font-size: 14px; font-weight: bold;">{delta_atual:+.3f}</span>
+                        <span style="color:{cor_delta_txt}; font-size: 14px; font-weight: bold;">{delta_atual:+.4f}</span>
                     </div>
                 </div>
                 ''', unsafe_allow_html=True)
