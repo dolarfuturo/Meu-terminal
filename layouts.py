@@ -419,7 +419,7 @@ while True:
                 st.markdown(f'''
                 <div class="calc-panel" style="margin-top: 4px;">
                     <div class="calc-row">
-                        <span style="color:#AAA;">PREÇO BASE (8)</span> 
+                        <span style="color:#AAA;">PREÇO BASE (8M)</span> 
                         <span style="color:#ffffff; font-weight: bold;">{p_base_visual:.4f}</span>
                     </div>
                     <div class="calc-row" style="border-bottom: none; margin-top: 2px;">
