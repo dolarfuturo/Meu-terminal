@@ -2,7 +2,7 @@ import streamlit as st
 import yfinance as yf
 import time
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 
 # =============================================================================
@@ -108,9 +108,11 @@ if 'c_du_val' not in st.session_state: st.session_state.c_du_val = 22
 if 't_br_val' not in st.session_state: st.session_state.t_br_val = 14.50
 if 't_us_val' not in st.session_state: st.session_state.t_us_val = 3.75
 
-# Inicialização da memória de rolagem para o cálculo de aceleração contínua do Spot
-if 'spot_time_series' not in st.session_state: st.session_state.spot_time_series = []
-if 'delta_forca_acumulado' not in st.session_state: st.session_state.delta_forca_acumulado = 0.0
+# Inicialização das variáveis de controle do novo Delta Quantizado por Ciclos
+if 'k97_abertura_base' not in st.session_state: st.session_state.k97_abertura_base = None
+if 'k97_proximo_timestamp_8m' not in st.session_state: st.session_state.k97_proximo_timestamp_8m = None
+if 'k97_delta_acumulado' not in st.session_state: st.session_state.k97_delta_acumulado = 0.0
+if 'k97_ultimo_preco_4s' not in st.session_state: st.session_state.k97_ultimo_preco_4s = None
 
 # =============================================================================
 # # BLOCO 3: CONEXÃO COM API E MOTOR DE CAPTURA DE DADOS
@@ -213,43 +215,48 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
                 salvar_historico_dolfut_diario(dolfut_atual_calc, dolfut_atual_calc)
 
         # =====================================================================
-        # MOTOR QUANT DO DELTA SPOT - SISTEMA DE RETENÇÃO RIGIDA DE PICO
+        # ⚡ REGRA DO RENATO: MOTOR QUANT DO DELTA COM RESET DE CICLO POR QUARTOS
         # =====================================================================
-        agora_timestamp = time.time()
+        agora_timestamp = datetime.now(tz_sp)
+        preco_spot_atual = spot_data['at'] if spot_data['at'] > 100 else spot_data['at'] * 1000
         
-        # Garante escala em pontos inteiros do Spot
-        preco_em_pontos = spot_data['at'] if spot_data['at'] > 100 else spot_data['at'] * 1000
-        st.session_state.spot_time_series.append((agora_timestamp, preco_em_pontos))
-        
-        # Janela longa de confirmação para puxar o indicador com inércia (16 segundos)
-        while st.session_state.spot_time_series and (agora_timestamp - st.session_state.spot_time_series[0][0]) > 16:
-            st.session_state.spot_time_series.pop(0)
-        
-        v_instantanea = 0.0
-        if len(st.session_state.spot_time_series) > 1:
-            dif_preco = preco_em_pontos - st.session_state.spot_time_series[0][1]
-            v_instantanea = dif_preco / 16
-            
-        # Filtro de amortecimento de aceleração de subida (1.5% de peso para subir com peso)
-        calculo_base = (v_instantanea * 0.015) + (st.session_state.delta_forca_acumulado * (1 - 0.015))
+        # Memória auxiliar do preço do loop imediatamente anterior (4 segundos)
+        if st.session_state.k97_ultimo_preco_4s is None:
+            st.session_state.k97_ultimo_preco_4s = preco_spot_atual
 
-        # 🟢 MECANISMO DE RETENÇÃO SEGURO: Trava a queda brusca na tela
-        if abs(calculo_base) < abs(st.session_state.delta_forca_acumulado):
-            # Retém 90% do pico atingido por ciclo. Cai de forma lenta e controlada.
-            st.session_state.delta_forca_acumulado = st.session_state.delta_forca_acumulado * 0.90
+        # 1. Inicialização na primeira execução do dia
+        if st.session_state.k97_abertura_base is None:
+            st.session_state.k97_abertura_base = preco_spot_atual
+            st.session_state.k97_proximo_timestamp_8m = agora_timestamp + timedelta(minutes=8)
+            st.session_state.k97_delta_acumulado = 0.0
+
+        # 2. MARCO OPERACIONAL DOS 8 MINUTOS (Gatilho de Reset e Ajuste da Trincheira)
+        if agora_timestamp >= st.session_state.k97_proximo_timestamp_8m:
+            deslocamento_8m = preco_spot_atual - st.session_state.k97_abertura_base
+            quarto_movimento = deslocamento_8m / 4
             
-            # Filtro de poeira: se aproximar de zero absoluto, limpa o indicador
-            if abs(st.session_state.delta_forca_acumulado) < 0.005:
-                st.session_state.delta_forca_acumulado = 0.0
+            # O Delta sofre o RESET rígido: vira a fração do quarto dividida por 100 (Ex: 26.25 / 100 = 0.26)
+            st.session_state.k97_delta_acumulado = quarto_movimento / 100
+            
+            # Abertura avança para o primeiro quarto calculado do movimento macro anterior
+            st.session_state.k97_abertura_base = st.session_state.k97_abertura_base + quarto_movimento
+            
+            # Renova a contagem de tempo para o próximo bloco cheio
+            st.session_state.k97_proximo_timestamp_8m = agora_timestamp + timedelta(minutes=8)
+        
+        # 3. LOOP CONTÍNUO DE 4 SEGUNDOS (Soma ou Subtrai a variação instantânea)
         else:
-            # Se o fluxo continuar agredindo a favor do movimento, assume o valor real acumulado
-            st.session_state.delta_forca_acumulado = calculo_base
+            # Mede o tranco milimétrico ocorrido exclusivamente nos últimos 4 segundos
+            variacao_instantanea = preco_spot_atual - st.session_state.k97_ultimo_preco_4s
+            
+            # Fração rápida: divide o passo por 4 e aplica o amortecimento microscópico (/1000)
+            fracao_4s = (variacao_instantanea / 4) / 1000
+            
+            # Adiciona ou deduz livremente do indicador de força atual
+            st.session_state.k97_delta_acumulado += fracao_4s
 
-        # Trava de Escala Máxima Visual
-        if st.session_state.delta_forca_acumulado > 3.0:
-            st.session_state.delta_forca_acumulado = 3.0
-        elif st.session_state.delta_forca_acumulado < -3.0:
-            st.session_state.delta_forca_acumulado = -3.0
+        # Salva o preço deste loop para servir de comparação na próxima piscada de 4s
+        st.session_state.k97_ultimo_preco_4s = preco_spot_atual
 
         return {
             "vivo": vivo_val, "vivo_pct": calc_variacoes_pct * 100, "dolfut_calc": dolfut_atual_calc, "fraja": fraja_val, 
@@ -262,7 +269,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor, "piscando": piscando, 
             "max_grade": st.session_state.dolfut_max_auto, "min_grade": st.session_state.dolfut_min_auto, 
             "alvo_low": alvo_low, "alvo_high": alvo_high, "spreed_t": spreed_t,
-            "delta_spot_forca": st.session_state.delta_forca_acumulado
+            "delta_spot_forca": st.session_state.k97_delta_acumulado
         }
     except: return None
 
@@ -363,8 +370,8 @@ while True:
                 # Painel de Métricas e Spreads Fixados
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
                 
-                # Painel do Indicador de Delta do Spot (Aceleração Amortecida com Retenção)
-                cor_delta_txt = "#00ff88" if res['delta_spot_forca'] > 0.03 else "#ff4d4d" if res['delta_spot_forca'] < -0.03 else "#00BFFF"
+                # Painel do Indicador de Delta do Spot (Aceleração por Ciclos e Micro-Variação)
+                cor_delta_txt = "#00ff88" if res['delta_spot_forca'] > 0.01 else "#ff4d4d" if res['delta_spot_forca'] < -0.01 else "#00BFFF"
                 st.markdown(f'''<div class="calc-panel" style="margin-top: 4px;"><div class="calc-row" style="border-bottom: none;"><span style="color:#ffffff;">𝚫 SPOT (FORÇA)</span> <span style="color:{cor_delta_txt};">{res['delta_spot_forca']:+.2f}</span></div></div>''', unsafe_allow_html=True)
             
             # Letreiro Inferior de Cotações Rápidas
@@ -372,5 +379,5 @@ while True:
         else: 
             st.warning("Aguardando inicialização dos dados do mercado...")
             
-    # 🛑 SEU SLEEP SAGRADO MANTIDO EM 4 SEGUNDOS
+    # O tempo de execução entre requisições está travado no seu padrão de 4s
     time.sleep(4)
