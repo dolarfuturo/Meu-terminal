@@ -215,7 +215,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
                 salvar_historico_dolfut_diario(dolfut_atual_calc, dolfut_atual_calc)
 
         # =====================================================================
-        # ⚡ BLINDAGEM DO MOTOR QUANT: DELTA BASEADO NO OPEN (CICLO DE 8 MINUTOS)
+        # ⚡ BLINDAGEM DO MOTOR QUANT: DELTA HÍBRIDO SEM TRAVAMENTO NA ABERTURA
         # =====================================================================
         agora_timestamp = datetime.now(tz_sp)
         preco_spot_atual = spot_data['at'] if spot_data['at'] > 100 else spot_data['at'] * 1000
@@ -227,13 +227,13 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         
         is_reset_moment = False
 
-        # Garante que a abertura base do ciclo sempre nasça do OPEN oficial
         if st.session_state.k97_abertura_base is None:
             st.session_state.k97_abertura_base = preco_open_oficial
             st.session_state.k97_delta_acumulado = 0.0
             st.session_state.k97_base_forca_ciclo = 0.0
 
         if dentro_horario_b3 and st.session_state.k97_proximo_timestamp_8m is None:
+            st.session_state.k97_abertura_base = preco_spot_atual
             st.session_state.k97_proximo_timestamp_8m = agora_timestamp + timedelta(minutes=8)
             st.session_state.k97_delta_acumulado = 0.0
             st.session_state.k97_base_forca_ciclo = 0.0
@@ -241,13 +241,10 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
 
         if dentro_horario_b3 and st.session_state.k97_proximo_timestamp_8m is not None:
             if agora_timestamp >= st.session_state.k97_proximo_timestamp_8m:
-                # Mudança solicitada: O cálculo do fechamento do ciclo parte da diferença em relação ao OPEN oficial
-                deslocamento_base_open = preco_spot_atual - preco_open_oficial
-                quarto_movimento = deslocamento_base_open / 4
+                deslocamento_8m = preco_spot_atual - st.session_state.k97_abertura_base
+                quarto_movimento = deslocamento_8m / 4
                 st.session_state.k97_delta_acumulado = quarto_movimento / 10
                 st.session_state.k97_base_forca_ciclo = st.session_state.k97_delta_acumulado
-                
-                # Sincroniza o preço base visual do ciclo com o fechamento atual do Spot
                 st.session_state.k97_abertura_base = preco_spot_atual
                 st.session_state.k97_proximo_timestamp_8m = agora_timestamp + timedelta(minutes=8)
                 is_reset_moment = True
@@ -255,10 +252,14 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         if not dentro_horario_b3:
             st.session_state.k97_proximo_timestamp_8m = None
 
-        # Fração de variação instantânea em tempo real calculada sobre o fechamento do último ciclo
         fracao_4s = (preco_spot_atual - st.session_state.k97_abertura_base) / 10
 
+        # Mantém a regra interna dos 4s intacta na memória
         st.session_state.k97_delta_acumulado = st.session_state.k97_base_forca_ciclo + fracao_4s
+
+        # 🔄 TROCA EXCLUSIVA DE SAÍDA: O indicador mostra a diferença entre o Preço Base (8m) e o OPEN oficial
+        # Converte a diferença pura para a escala padrão de pontos do terminal (/ 1000)
+        saida_indicador_tela = (st.session_state.k97_abertura_base - preco_open_oficial) / 1000
 
         output_res = {
             "vivo": vivo_val, "vivo_pct": calc_variacoes_pct * 100, "dolfut_calc": dolfut_atual_calc, "fraja": fraja_val, 
@@ -271,10 +272,10 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor, "piscando": piscando, 
             "max_grade": st.session_state.dolfut_max_auto, "min_grade": st.session_state.dolfut_min_auto, 
             "alvo_low": alvo_low, "alvo_high": alvo_high, "spreed_t": spreed_t,
-            "delta_spot_forca": st.session_state.k97_delta_acumulado,
+            "delta_spot_forca": saida_indicador_tela,  # Passa o desvio puro da Abertura vs Base para a tela
             "base_forca_ciclo": st.session_state.k97_base_forca_ciclo,
             "is_reset": is_reset_moment,
-            "preco_base_atual": st.session_state.k97_abertura_base / 1000  # Converte para escala padrão (ex: 5.1677)
+            "preco_base_atual": st.session_state.k97_abertura_base / 1000  
         }
         
         st.session_state.last_valid_res = output_res
@@ -364,7 +365,7 @@ while True:
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 
-                # 📊 SEÇÃO DA BARRA OPERACIONAL FILTRADA (PROTEÇÃO CONTRA CONFLITO DE CHAVES DE CSS)
+                # 📊 SEÇÃO DA BARRA OPERACIONAL FILTRADA
                 seta_spread, cor_seta_spread = ("▲", "#00ff88") if spot_live and spot_live['at'] > res['medio'] else ("▼", "#ff4d4d")
                 
                 html_barra = '''
@@ -408,6 +409,7 @@ while True:
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
                 
                 delta_atual = res['delta_spot_forca']
+                trincheira_base = res['base_forca_ciclo']
                 p_base_visual = res['preco_base_atual']
                 
                 if delta_atual >= 0:
@@ -420,11 +422,11 @@ while True:
                 st.markdown(f'''
                 <div class="calc-panel" style="margin-top: 4px;">
                     <div class="calc-row">
-                        <span style="color:#AAA;">ÚLT. FECH (8M)</span> 
+                        <span style="color:#AAA;">PREÇO BASE (8M)</span> 
                         <span style="color:#ffffff; font-weight: bold;">{p_base_visual:.4f}</span>
                     </div>
                     <div class="calc-row" style="border-bottom: none; margin-top: 2px;">
-                        <span style="color:#ffffff;">𝚫 SPOT vs OPEN</span> 
+                        <span style="color:#ffffff;">𝚫 SPOT (FORÇA)</span> 
                         <span style="color:{cor_delta_txt}; font-size: 14px; font-weight: bold;">{str_delta}</span>
                     </div>
                 </div>
