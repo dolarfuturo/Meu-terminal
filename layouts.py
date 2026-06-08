@@ -215,52 +215,53 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
                 salvar_historico_dolfut_diario(dolfut_atual_calc, dolfut_atual_calc)
 
         # =====================================================================
-        # ⚡ REGRA DO RENATO: MOTOR QUANT DO DELTA TRAVADO POR HORÁRIO (09:00 - 18:30)
+        # ⚡ REGRA DO RENATO: MOTOR QUANT DO DELTA HÍBRIDO (4S LIVRE + 8M NA B3)
         # =====================================================================
         agora_timestamp = datetime.now(tz_sp)
         preco_spot_atual = spot_data['at'] if spot_data['at'] > 100 else spot_data['at'] * 1000
         
-        # Checagem se estamos dentro da janela operacional da B3
+        # Parâmetros de tempo para a B3
         hora_inicio = agora_timestamp.replace(hour=9, minute=0, second=0, microsecond=0)
         hora_fim = agora_timestamp.replace(hour=18, minute=30, second=0, microsecond=0)
-        
         dentro_horario_b3 = hora_inicio <= agora_timestamp <= hora_fim
+        
         is_reset_moment = False
 
-        if dentro_horario_b3:
-            # Puxa obrigatoriamente o OPEN oficial do DOLSPOT vindo da API para a largada às 09:00
-            if st.session_state.k97_abertura_base is None:
-                preco_open_oficial = spot_data['op'] if spot_data['op'] > 100 else spot_data['op'] * 1000
-                st.session_state.k97_abertura_base = preco_open_oficial
-                st.session_state.k97_proximo_timestamp_8m = agora_timestamp + timedelta(minutes=8)
-                st.session_state.k97_delta_acumulado = 0.0
-                st.session_state.k97_base_forca_ciclo = 0.0
+        # 1. Inicialização Forçada ou Garante a Captura Inicial de Madrugada
+        if st.session_state.k97_abertura_base is None:
+            preco_open_oficial = spot_data['op'] if spot_data['op'] > 100 else spot_data['op'] * 1000
+            st.session_state.k97_abertura_base = preco_open_oficial
+            st.session_state.k97_proximo_timestamp_8m = agora_timestamp + timedelta(minutes=8)
+            st.session_state.k97_delta_acumulado = 0.0
+            st.session_state.k97_base_forca_ciclo = 0.0
 
-            # MARCO OPERACIONAL DOS 8 MINUTOS (Gatilho Macro de Reset do Bloco)
+        # 2. Execução dos Ciclos Macros de 8 minutos (Apenas dentro do Horário da B3)
+        if dentro_horario_b3:
             if agora_timestamp >= st.session_state.k97_proximo_timestamp_8m:
                 deslocamento_8m = preco_spot_atual - st.session_state.k97_abertura_base
                 quarto_movimento = deslocamento_8m / 4
-                
-                # Fechamento Macro: Divide por 100 para fixar o peso do ciclo consolidado
                 st.session_state.k97_delta_acumulado = quarto_movimento / 100
-                
-                # Memoriza o valor da nova trincheira estável
                 st.session_state.k97_base_forca_ciclo = st.session_state.k97_delta_acumulado
-                
-                # Atualiza ancoragem de preço e joga o relógio 8 minutos para frente
                 st.session_state.k97_abertura_base = preco_spot_atual
                 st.session_state.k97_proximo_timestamp_8m = agora_timestamp + timedelta(minutes=8)
                 is_reset_moment = True
-            else:
-                # LOOP CONTÍNUO DE 4 SEGUNDOS ANCORADO NA ABERTURA DO CICLO ATUAL
-                fracao_4s = ((preco_spot_atual - st.session_state.k97_abertura_base) / 4) / 1000
-                st.session_state.k97_delta_acumulado = st.session_state.k97_base_forca_ciclo + fracao_4s
         else:
-            # Fora do horário comercial da B3, o indicador zera/congela para evitar ruídos da madrugada
-            st.session_state.k97_abertura_base = None
+            # Fora do horário B3, o relógio dos 8 minutos fica em modo de espera (None)
+            # para que às 09:00:00 o próximo ciclo seja disparado de forma limpa.
             st.session_state.k97_proximo_timestamp_8m = None
+
+        # 3. Alinhamento de transição exata às 09:00: Captura a abertura real da B3
+        if agora_timestamp.hour == 9 and agora_timestamp.minute == 0 and st.session_state.k97_proximo_timestamp_8m is None:
+            preco_open_oficial = spot_data['op'] if spot_data['op'] > 100 else spot_data['op'] * 1000
+            st.session_state.k97_abertura_base = preco_open_oficial
+            st.session_state.k97_proximo_timestamp_8m = agora_timestamp + timedelta(minutes=8)
             st.session_state.k97_delta_acumulado = 0.0
             st.session_state.k97_base_forca_ciclo = 0.0
+            is_reset_moment = True
+
+        # 4. LOOP DE 4 SEGUNDOS TOTALMENTE LIVRE (Roda Sempre)
+        fracao_4s = ((preco_spot_atual - st.session_state.k97_abertura_base) / 4) / 1000
+        st.session_state.k97_delta_acumulado = st.session_state.k97_base_forca_ciclo + fracao_4s
 
         return {
             "vivo": vivo_val, "vivo_pct": calc_variacoes_pct * 100, "dolfut_calc": dolfut_atual_calc, "fraja": fraja_val, 
