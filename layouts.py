@@ -89,7 +89,6 @@ def salvar_historico_dolfut_diario(mx, mn):
             f.write(f"{data_hoje},{mx},{mn}")
     except: pass
 
-# Gerenciamento de Memória Central do Terminal
 div_spreed_salvo = carregar_eixos()
 
 if 'market_data' not in st.session_state: st.session_state.market_data = {}
@@ -108,13 +107,11 @@ if 'c_du_val' not in st.session_state: st.session_state.c_du_val = 22
 if 't_br_val' not in st.session_state: st.session_state.t_br_val = 14.50
 if 't_us_val' not in st.session_state: st.session_state.t_us_val = 3.75
 
-# Inicialização das variáveis do Delta Híbrido K97
 if 'k97_abertura_base' not in st.session_state: st.session_state.k97_abertura_base = None
 if 'k97_proximo_timestamp_8m' not in st.session_state: st.session_state.k97_proximo_timestamp_8m = None
 if 'k97_delta_acumulado' not in st.session_state: st.session_state.k97_delta_acumulado = 0.0
 if 'k97_base_forca_ciclo' not in st.session_state: st.session_state.k97_base_forca_ciclo = 0.0
 
-# Memória de backup global para evitar apagamento de tela
 if 'last_valid_res' not in st.session_state: st.session_state.last_valid_res = None
 
 # =============================================================================
@@ -214,9 +211,6 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
                 st.session_state.dolfut_min_auto = dolfut_atual_calc
                 salvar_historico_dolfut_diario(dolfut_atual_calc, dolfut_atual_calc)
 
-        # =====================================================================
-        # ⚡ BLINDAGEM DO MOTOR QUANT: DELTA HÍBRIDO SEM TRAVAMENTO NA ABERTURA
-        # =====================================================================
         agora_timestamp = datetime.now(tz_sp)
         preco_spot_atual = spot_data['at'] if spot_data['at'] > 100 else spot_data['at'] * 1000
         
@@ -252,7 +246,8 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         if not dentro_horario_b3:
             st.session_state.k97_proximo_timestamp_8m = None
 
-        fracao_4s = ((preco_spot_atual - st.session_state.k97_abertura_base) / 4) / 1000
+        fracao_4s = (preco_spot_atual - st.session_state.k97_abertura_base) / 1000
+
         st.session_state.k97_delta_acumulado = st.session_state.k97_base_forca_ciclo + fracao_4s
 
         output_res = {
@@ -266,9 +261,10 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor, "piscando": piscando, 
             "max_grade": st.session_state.dolfut_max_auto, "min_grade": st.session_state.dolfut_min_auto, 
             "alvo_low": alvo_low, "alvo_high": alvo_high, "spreed_t": spreed_t,
-            "delta_spot_forca": st.session_state.k97_delta_acumulado,
+            "delta_spot_forca": round(st.session_state.k97_delta_acumulado, 2), # AJUSTE: Arredondado
             "base_forca_ciclo": st.session_state.k97_base_forca_ciclo,
-            "is_reset": is_reset_moment
+            "is_reset": is_reset_moment,
+            "preco_base_atual": st.session_state.k97_abertura_base / 1000 
         }
         
         st.session_state.last_valid_res = output_res
@@ -358,7 +354,6 @@ while True:
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 
-                # 📊 SEÇÃO DA BARRA OPERACIONAL FILTRADA (PROTEÇÃO CONTRA CONFLITO DE CHAVES DE CSS)
                 seta_spread, cor_seta_spread = ("▲", "#00ff88") if spot_live and spot_live['at'] > res['medio'] else ("▼", "#ff4d4d")
                 
                 html_barra = '''
@@ -403,6 +398,7 @@ while True:
                 
                 delta_atual = res['delta_spot_forca']
                 trincheira_base = res['base_forca_ciclo']
+                p_base_visual = res['preco_base_atual']
                 
                 if res['is_reset']: cor_delta_txt = "#00d2ff"
                 elif delta_atual > trincheira_base: cor_delta_txt = "#00ff88"
@@ -411,9 +407,13 @@ while True:
 
                 st.markdown(f'''
                 <div class="calc-panel" style="margin-top: 4px;">
-                    <div class="calc-row" style="border-bottom: none;">
+                    <div class="calc-row">
+                        <span style="color:#AAA;">PREÇO BASE (8M)</span> 
+                        <span style="color:#ffffff; font-weight: bold;">{p_base_visual:.4f}</span>
+                    </div>
+                    <div class="calc-row" style="border-bottom: none; margin-top: 2px;">
                         <span style="color:#ffffff;">𝚫 SPOT (FORÇA)</span> 
-                        <span style="color:{cor_delta_txt}; font-size: 14px; font-weight: bold;">{delta_atual:+.4f}</span>
+                        <span style="color:{cor_delta_txt}; font-size: 14px; font-weight: bold;">{delta_atual:+.2f}</span>
                     </div>
                 </div>
                 ''', unsafe_allow_html=True)
