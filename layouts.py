@@ -268,7 +268,8 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             "alvo_low": alvo_low, "alvo_high": alvo_high, "spreed_t": spreed_t,
             "delta_spot_forca": st.session_state.k97_delta_acumulado,
             "base_forca_ciclo": st.session_state.k97_base_forca_ciclo,
-            "is_reset": is_reset_moment
+            "is_reset": is_reset_moment,
+            "preco_base_atual": st.session_state.k97_abertura_base / 1000  # Converte para escala padrão (ex: 5.1677)
         }
         
         st.session_state.last_valid_res = output_res
@@ -403,15 +404,21 @@ while True:
                 
                 delta_atual = res['delta_spot_forca']
                 trincheira_base = res['base_forca_ciclo']
+                p_base_visual = res['preco_base_atual']
                 
                 if res['is_reset']: cor_delta_txt = "#00d2ff"
                 elif delta_atual > trincheira_base: cor_delta_txt = "#00ff88"
                 elif delta_atual < trincheira_base: cor_delta_txt = "#ff4d4d"
                 else: cor_delta_txt = "#00d2ff"
 
+                # Adicionado campo dinâmico que exibe o preço exato da trincheira atual
                 st.markdown(f'''
                 <div class="calc-panel" style="margin-top: 4px;">
-                    <div class="calc-row" style="border-bottom: none;">
+                    <div class="calc-row">
+                        <span style="color:#AAA;">PREÇO BASE (8M)</span> 
+                        <span style="color:#ffffff; font-weight: bold;">{p_base_visual:.4f}</span>
+                    </div>
+                    <div class="calc-row" style="border-bottom: none; margin-top: 2px;">
                         <span style="color:#ffffff;">𝚫 SPOT (FORÇA)</span> 
                         <span style="color:{cor_delta_txt}; font-size: 14px; font-weight: bold;">{delta_atual:+.4f}</span>
                     </div>
