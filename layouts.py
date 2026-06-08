@@ -407,12 +407,15 @@ while True:
                 trincheira_base = res['base_forca_ciclo']
                 p_base_visual = res['preco_base_atual']
                 
-                if res['is_reset']: cor_delta_txt = "#00d2ff"
-                elif delta_atual > trincheira_base: cor_delta_txt = "#00ff88"
-                elif delta_atual < trincheira_base: cor_delta_txt = "#ff4d4d"
-                else: cor_delta_txt = "#00d2ff"
+                # Definição dinâmica de cor e sinal com base no valor do Delta K97
+                if delta_atual >= 0:
+                    cor_delta_txt = "#00ff88"
+                    str_delta = f"+{delta_atual:.3f}"
+                else:
+                    cor_delta_txt = "#ff4d4d"
+                    str_delta = f"{delta_atual:.3f}"
 
-                # Adicionado campo dinâmico que exibe o preço exato da trincheira atual
+                # Renderização ajustada exibindo a cor dinâmica e o sinal correto do Delta
                 st.markdown(f'''
                 <div class="calc-panel" style="margin-top: 4px;">
                     <div class="calc-row">
@@ -421,7 +424,7 @@ while True:
                     </div>
                     <div class="calc-row" style="border-bottom: none; margin-top: 2px;">
                         <span style="color:#ffffff;">𝚫 SPOT (FORÇA)</span> 
-                        <span style="color:{cor_delta_txt}; font-size: 14px; font-weight: bold;">{delta_atual:+.3f}</span>
+                        <span style="color:{cor_delta_txt}; font-size: 14px; font-weight: bold;">{str_delta}</span>
                     </div>
                 </div>
                 ''', unsafe_allow_html=True)
