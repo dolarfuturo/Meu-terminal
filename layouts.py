@@ -360,6 +360,7 @@ while True:
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 
+                # 📊 SEÇÃO DA BARRA OPERACIONAL FILTRADA (PROTEÇÃO CONTRA CONFLITO DE CHAVES DE CSS)
                 seta_spread, cor_seta_spread = ("▲", "#00ff88") if spot_live and spot_live['at'] > res['medio'] else ("▼", "#ff4d4d")
                 
                 html_barra = '''
@@ -402,15 +403,25 @@ while True:
                 
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
                 
+                delta_atual = res['delta_spot_forca']
+                trincheira_base = res['base_forca_ciclo']
+                p_base_visual = res['preco_base_atual']
+                
+                if res['is_reset']: cor_delta_txt = "#00d2ff"
+                elif delta_atual > trincheira_base: cor_delta_txt = "#00ff88"
+                elif delta_atual < trincheira_base: cor_delta_txt = "#ff4d4d"
+                else: cor_delta_txt = "#00d2ff"
+
+                # Adicionado campo dinâmico que exibe o preço exato da trincheira atual
                 st.markdown(f'''
                 <div class="calc-panel" style="margin-top: 4px;">
                     <div class="calc-row">
                         <span style="color:#AAA;">PREÇO BASE (8M)</span> 
-                        <span style="color:#ffffff; font-weight: bold;">{res['preco_base_atual']:.4f}</span>
+                        <span style="color:#ffffff; font-weight: bold;">{p_base_visual:.4f}</span>
                     </div>
                     <div class="calc-row" style="border-bottom: none; margin-top: 2px;">
                         <span style="color:#ffffff;">𝚫 SPOT (FORÇA)</span> 
-                        <span style="color:{res['cor_delta']}; font-size: 14px; font-weight: bold;">{res['delta_spot_forca']:+.3f}</span>
+                        <span style="color:{cor_delta_txt}; font-size: 14px; font-weight: bold;">{delta_atual:+.3f}</span>
                     </div>
                 </div>
                 ''', unsafe_allow_html=True)
@@ -420,4 +431,3 @@ while True:
             st.warning("Aguardando inicialização dos dados do mercado...")
             
     time.sleep(4)
-
