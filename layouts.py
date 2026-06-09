@@ -321,7 +321,7 @@ while True:
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
                 
                 # =============================================================================
-                # # BLOCO ADICIONADO: INDICADOR DE EXAUSTÃO / REVERSÃO NUMÉRICA DO DOLSPOT
+                # # BLOCO ADICIONADO: INDICADOR DE EXAUSTÃO COM ALVOS DOS GATILHOS EXIBIDOS
                 # =============================================================================
                 x_val = res['passo_fixo']
                 gatilho_c = spot_live['mn'] + x_val
@@ -341,9 +341,14 @@ while True:
                     ind_val = spot_live['at'] - gatilho_v
                     cor_ind = "#ff4d4d"
 
-                st.markdown(f'''<div class="calc-panel" style="text-align:center; border: 1.5px solid {cor_ind};">
+                # Layout interno atualizado com a adição dos dois alvos mapeados
+                st.markdown(f'''<div class="calc-panel" style="text-align:center; border: 1.5px solid {cor_ind}; padding-bottom:6px;">
                     <div style="color:#AAA; font-size:10px; font-weight:bold; text-transform:uppercase;">INDICADOR REVERSÃO</div>
-                    <div style="color:{cor_ind}; font-size:20px; font-weight:bold; margin-top:4px;">{ind_val:+.2f}</div>
+                    <div style="color:{cor_ind}; font-size:22px; font-weight:bold; margin-top:2px; margin-bottom:4px;">{ind_val:+.2f}</div>
+                    <div style="display:flex; justify-content:space-between; border-top:1px solid #333; padding-top:4px; font-size:9px; font-weight:bold; padding-left:4px; padding-right:4px;">
+                        <span style="color:#00ff88;">GAT. COMPRA: <span style="color:#fff;">{gatilho_c:.2f}</span></span>
+                        <span style="color:#ff4d4d;">GAT. VENDA: <span style="color:#fff;">{gatilho_v:.2f}</span></span>
+                    </div>
                 </div>''', unsafe_allow_html=True)
             
             # Letreiro Inferior de Cotações Rápidas
