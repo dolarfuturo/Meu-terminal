@@ -95,7 +95,6 @@ div_spreed_salvo = carregar_eixos()
 if 'market_data' not in st.session_state: st.session_state.market_data = {}
 if 'last_p' not in st.session_state: st.session_state.last_p = {}
 if 'div_spreed_mem' not in st.session_state: st.session_state.div_spreed_mem = div_spreed_salvo
-if 'status_rev' not in st.session_state: st.session_state.status_rev = "NEUTRO"
 
 max_init, min_init = carregar_historico_dolfut_diario()
 if 'dolfut_max_auto' not in st.session_state: st.session_state.dolfut_max_auto = max_init
@@ -297,7 +296,7 @@ while True:
                     if d:
                         f = ".4f" if lbl in ["DOLSPOT", "GBP/USD", "JPY/USD", "EUR/USD"] else (".3f" if lbl=="US10Y" else ".2f")
                         p_v = d['at']/1000 if lbl == "DOLSPOT" else d['at']
-                        l_a = st.session_state.last_p.get(lbl, p_v); cl_a = "f-up" if p_v > l_a else "f-dn" if p_v < l_a else ""; st.session_state.last_p[lbl] = p_v
+                        l_a = st.session_state.last_p.get(lbl, p_v); cl_a = "f-up" if p_v > l_a else "f-dn" if p_v < l_a else ""; st.session_state.last_p['lbl'] = p_v
                         var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
                         
                         cl_max = "f-up" if lbl == "DOLSPOT" and st.session_state.last_spot_max > 0 and d['mx'] > st.session_state.last_spot_max else ""
@@ -321,33 +320,21 @@ while True:
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
                 
                 # =============================================================================
-                # # BLOCO CORRIGIDO: LOGICA DE ATIVACAO APROXIMADA DA EXAUSTAO 
+                # # BLOCO TOTALMENTE LIVRE: SEM TRAVAS, OSCILAÇÃO EM TEMPO REAL CONSTANTE
                 # =============================================================================
                 x_val = res['passo_fixo']
                 gatilho_c = spot_live['mn'] + x_val
                 gatilho_v = spot_live['mx'] - x_val
                 
-                # Margem de tolerância para capturar a colada nas extremidades
-                if spot_live['at'] <= (spot_live['mn'] + 0.50): 
-                    st.session_state.status_rev = "RENOVA_MIN"
-                elif spot_live['at'] >= (spot_live['mx'] - 0.50): 
-                    st.session_state.status_rev = "RENOVA_MAX"
-                
-                ind_val, cor_ind = 0.0, "#ffffff"
-                
-                # Checa os gatilhos de reversão após bater na mínima ou máxima
-                if st.session_state.status_rev == "RENOVA_MIN" and spot_live['at'] > gatilho_c: 
-                    st.session_state.status_rev = "REV_ALTA"
-                elif st.session_state.status_rev == "RENOVA_MAX" and spot_live['at'] < gatilho_v: 
-                    st.session_state.status_rev = "REV_BAIXA"
-                
-                # Calcula os pontos baseados na distância da reversão
-                if st.session_state.status_rev == "REV_ALTA": 
-                    ind_val = spot_live['at'] - gatilho_c
-                    cor_ind = "#00ff88"
-                elif st.session_state.status_rev == "REV_BAIXA": 
+                # Mede a distância livre do preço atual até o respectivo alvo baseado na posição dele
+                if spot_live['at'] >= res['medio']:
+                    # Tendência de Venda (Acima da Média): Mede os pontos em relação ao gatilho de venda
                     ind_val = spot_live['at'] - gatilho_v
                     cor_ind = "#ff4d4d"
+                else:
+                    # Tendência de Compra (Abaixo da Média): Mede os pontos em relação ao gatilho de compra
+                    ind_val = spot_live['at'] - gatilho_c
+                    cor_ind = "#00ff88"
 
                 # Layout interno atualizado com a adição dos dois alvos mapeados
                 st.markdown(f'''<div class="calc-panel" style="text-align:center; border: 1.5px solid {cor_ind}; padding-bottom:6px;">
