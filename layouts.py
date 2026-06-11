@@ -53,6 +53,7 @@ st.markdown("""
     .txt-green { color: #00ff88 !important; }
     .txt-yellow { color: #ffff00 !important; }
     .txt-red { color: #ff4d4d !important; }
+    .txt-cyan { color: #00f2ff !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -169,23 +170,50 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         alvo_low = spot_data['mn'] + spreed_do_dia
         alvo_high = spot_data['mx'] + spreed_do_dia
         
-        # Elástico / Indicador de Força
-        diff = spot_data['at'] - vivo_val
+        # Bloco de Volatilidade (Diferença entre Máxima e Mínima da Madrugada)
+        bloco_vol = spot_data['mx'] - spot_data['mn']
+        
+        # Gatilhos do Indicador de Reversão
+        gatilho_c = spot_data['mn'] + passo_fixo
+        gatilho_v = spot_data['mx'] - passo_fixo
+        
+        # Nova Dinâmica do Indicador de Reversão e Alinhamento com a Barra de Força
         p_v, p_r = 0, 0
         seta_txt, seta_cor, piscando = "", "#000000", False
         
-        if spreed_t > 0:
-            calculo_pct = (abs(diff) / spreed_t) * 100 
-            if diff < 0: p_v = min(100, calculo_pct)
-            else: p_r = min(100, calculo_pct)
+        if spot_data['at'] > gatilho_v:
+            # Zona de Venda (Vermelho)
+            ind_val = spot_data['at'] - gatilho_v
+            cor_ind = "#ff4d4d"
+            seta_txt, seta_cor, piscando = "▼ REGIÃO DE VENDA", "#ff4d4d", True
+        elif spot_data['at'] < gatilho_c:
+            # Zona de Compra (Verde)
+            ind_val = spot_data['at'] - gatilho_c
+            cor_ind = "#00ff88"
+            seta_txt, seta_cor, piscando = "▲ REGIÃO DE COMPRA", "#00ff88", True
+        else:
+            # Zona Neutra (Azul Claro)
+            if spot_data['at'] >= dolar_medio:
+                ind_val = spot_data['at'] - gatilho_v
+            else:
+                ind_val = spot_data['at'] - gatilho_c
+            cor_ind = "#00f2ff"
             
-        if p_v >= 100: seta_txt, seta_cor, piscando = "▲ REGIÃO DE COMPRA", "#00ff88", True
-        elif p_r >= 100: seta_txt, seta_cor, piscando = "▼ REGIÃO DE VENDA", "#ff4d4d", True
+        # Recalibração da Barra de Força (Referenciada na Média Dólar, movendo-se com o Preço)
+        diff_media = spot_data['at'] - dolar_medio
+        if diff_media < 0:
+            # Preço caindo em direção à mínima (Enche o lado Verde)
+            if (dolar_medio - spot_data['mn']) > 0:
+                p_v = min(100, (abs(diff_media) / (dolar_medio - spot_data['mn'])) * 100)
+        else:
+            # Preço subindo em direção à máxima (Enche o lado Vermelho)
+            if (spot_data['mx'] - dolar_medio) > 0:
+                p_r = min(100, (diff_media / (spot_data['mx'] - dolar_medio)) * 100)
+            
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
-        
         dolfut_atual_calc = axis_dinamico * (1 + calc_variacoes_pct)
         
-        # Controle Horário e Persistência do DOLFUT Máx/Mín
+        # Control Horário e Persistência do DOLFUT Máx/Mín
         tz_sp = pytz.timezone('America/Sao_Paulo')
         now_br = datetime.now(tz_sp)
         
@@ -218,7 +246,9 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             "v_v": calc_variacoes_pct * 100, "v_spot": v_spot_pct * 100, "spreed": spreed_50, 
             "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor, "piscando": piscando, 
             "max_grade": st.session_state.dolfut_max_auto, "min_grade": st.session_state.dolfut_min_auto, 
-            "alvo_low": alvo_low, "alvo_high": alvo_high, "spreed_t": spreed_t, "passo_fixo": passo_fixo
+            "alvo_low": alvo_low, "alvo_high": alvo_high, "spreed_t": spreed_t, "passo_fixo": passo_fixo,
+            "gatilho_c": gatilho_c, "gatilho_v": gatilho_v, "ind_val": ind_val, "cor_ind": cor_ind,
+            "bloco_vol": bloco_vol, "mx_spot": spot_data['mx'], "mn_spot": spot_data['mn']
         }
     except: return None
 
@@ -308,41 +338,43 @@ while True:
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 
-                # Barra de Força / Elástico K97
-                st.markdown(f'''<div class="bar-wrapper-full"><div class="force-scale"><span>100%</span><span>50%</span><span>0%</span><span>50%</span><span>100%</span></div><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div></div><div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; font-family: monospace; color: #AAA; margin-top: 2px; padding: 0 2px;"><span>LOW: {res['alvo_low']:.2f}</span><span style="color:{cor_seta_spread}; font-size: 14px; font-weight: bold;">{seta_spread}</span><span>HIGH: {res['alvo_high']:.2f}</span></div><div class="sinal-indicator {"blink" if res["piscando"] else ""}" style="color:{res["seta_cor"]};">{res["seta"]}</div></div>''', unsafe_allow_html=True)
+                # Barra de Força / Elástico K97 Recalibrada pela Média do Dólar
+                st.markdown(f'''<div class="bar-wrapper-full"><div class="force-scale"><span>MÍNIMA</span><span>50%</span><span>MÉDIA</span><span>50%</span><span>MÁXIMA</span></div><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div></div><div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; font-family: monospace; color: #AAA; margin-top: 2px; padding: 0 2px;"><span>GAT. C: {res['gatilho_c']:.2f}</span><span style="color:{cor_seta_spread}; font-size: 14px; font-weight: bold;">{seta_spread}</span><span>GAT. V: {res['gatilho_v']:.2f}</span></div><div class="sinal-indicator {"blink" if res["piscando"] else ""}" style="color:{res["seta_cor"]};">{res["seta"]}</div></div>''', unsafe_allow_html=True)
             
             with c2:
-                # Grade Lateral de Níveis Operacionais
-                st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
-                st.markdown(f'''<div class="calc-panel"><div class="calc-row txt-green"><span>MAX FUT 2</span> <span>{res['max_fut_2_b']:.2f}</span></div><div class="calc-row txt-yellow"><span>MED FUT 2</span> <span>{res['max_fut_2']:.2f}</span></div><div class="calc-row txt-green"><span>MAX FUT 1</span> <span>{res['max_fut_1_b']:.2f}</span></div><div class="calc-row txt-yellow"><span>MED FUT 1</span> <span>{res['max_fut_1']:.2f}</span></div><div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 10px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">AXIS: {res['axis_central']:.2f}</div><div class="calc-row txt-yellow"><span>MED FUT 1</span> <span>{res['min_fut_1']:.2f}</span></div><div class="calc-row txt-green"><span>MIN FUT 1</span> <span>{res['min_fut_1_b']:.2f}</span></div><div class="calc-row txt-yellow"><span>MED FUT 2</span> <span>{res['min_fut_2']:.2f}</span></div><div class="calc-row txt-green" style="border-bottom: none;"><span>MIN FUT 2</span> <span>{res['min_fut_2_b']:.2f}</span></div></div>''', unsafe_allow_html=True)
+                # Criação das Subcolunas para Lado a Lado: Eixos vs Blocos de Volatilidade
+                sc1, sc2 = st.columns([1, 1])
                 
-                # Painel de Métricas e Spreads Fixados
+                with sc1:
+                    st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
+                    st.markdown(f'''<div class="calc-panel"><div class="calc-row txt-green"><span>MX F2</span> <span>{res['max_fut_2_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F2</span> <span>{res['max_fut_2']:.1f}</span></div><div class="calc-row txt-green"><span>MX F1</span> <span>{res['max_fut_1_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F1</span> <span>{res['max_fut_1']:.1f}</span></div><div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 9px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">AXIS: {res['axis_central']:.1f}</div><div class="calc-row txt-yellow"><span>MD F1</span> <span>{res['min_fut_1']:.1f}</span></div><div class="calc-row txt-green"><span>MN F1</span> <span>{res['min_fut_1_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F2</span> <span>{res['min_fut_2']:.1f}</span></div><div class="calc-row txt-green" style="border-bottom: none;"><span>MN F2</span> <span>{res['min_fut_2_b']:.1f}</span></div></div>''', unsafe_allow_html=True)
+                
+                with sc2:
+                    st.markdown('<div class="section-title">VOLATILIDADE</div>', unsafe_allow_html=True)
+                    bv = res['bloco_vol']
+                    mx_m = res['mx_spot']
+                    mn_m = res['mn_spot']
+                    st.markdown(f'''<div class="calc-panel">
+                        <div class="calc-row txt-red"><span>BL. V3</span> <span>{(mx_m + (bv * 3)):.1f}</span></div>
+                        <div class="calc-row txt-red"><span>BL. V2</span> <span>{(mx_m + (bv * 2)):.1f}</span></div>
+                        <div class="calc-row txt-red"><span>BL. V1</span> <span>{(mx_m + bv):.1f}</span></div>
+                        <div style="text-align:center; padding: 4px; color: #FFD700; font-size: 9px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">B. MADR: {bv:.1f}</div>
+                        <div class="calc-row txt-green"><span>BL. C1</span> <span>{(mn_m - bv):.1f}</span></div>
+                        <div class="calc-row txt-green"><span>BL. C2</span> <span>{(mn_m - (bv * 2)):.1f}</span></div>
+                        <div class="calc-row txt-green" style="border-bottom: none;"><span>BL. C3</span> <span>{(mn_m - (bv * 3)):.1f}</span></div>
+                    </div>''', unsafe_allow_html=True)
+                
+                # Painel de Métricas e Spreads Fixados (Ocupando Largura Total do bloco c2)
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
                 
-                # =============================================================================
-                # # BLOCO TOTALMENTE LIVRE: SEM TRAVAS, OSCILAÇÃO EM TEMPO REAL CONSTANTE
-                # =============================================================================
-                x_val = res['passo_fixo']
-                gatilho_c = spot_live['mn'] + x_val
-                gatilho_v = spot_live['mx'] - x_val
-                
-                # Mede a distância livre do preço atual até o respectivo alvo baseado na posição dele
-                if spot_live['at'] >= res['medio']:
-                    # Tendência de Venda (Acima da Média): Mede os pontos em relação ao gatilho de venda
-                    ind_val = spot_live['at'] - gatilho_v
-                    cor_ind = "#ff4d4d"
-                else:
-                    # Tendência de Compra (Abaixo da Média): Mede os pontos em relação ao gatilho de compra
-                    ind_val = spot_live['at'] - gatilho_c
-                    cor_ind = "#00ff88"
-
-                # Layout interno atualizado com a adição dos dois alvos mapeados
-                st.markdown(f'''<div class="calc-panel" style="text-align:center; border: 1.5px solid {cor_ind}; padding-bottom:6px;">
+                # Indicador de Reversão com Lógica Dinâmica de 3 Cores e Distância do Passo (Spread T / 4)
+                st.markdown(f'''<div class="calc-panel" style="text-align:center; border: 1.5px solid {res['cor_ind']}; padding-bottom:6px;">
                     <div style="color:#AAA; font-size:10px; font-weight:bold; text-transform:uppercase;">INDICADOR REVERSÃO</div>
-                    <div style="color:{cor_ind}; font-size:22px; font-weight:bold; margin-top:2px; margin-bottom:4px;">{ind_val:+.2f}</div>
+                    <div style="color:{res['cor_ind']}; font-size:22px; font-weight:bold; margin-top:2px; margin-bottom:2px;">{res['ind_val']:+.2f}</div>
+                    <div style="color:#ffffff; font-size:10px; font-weight:bold; font-family:monospace; margin-bottom:4px;">DISTÂNCIA BASE (STEP): {res['passo_fixo']:.2f} pts</div>
                     <div style="display:flex; justify-content:space-between; border-top:1px solid #333; padding-top:4px; font-size:9px; font-weight:bold; padding-left:4px; padding-right:4px;">
-                        <span style="color:#00ff88;">GAT. COMPRA: <span style="color:#fff;">{gatilho_c:.2f}</span></span>
-                        <span style="color:#ff4d4d;">GAT. VENDA: <span style="color:#fff;">{gatilho_v:.2f}</span></span>
+                        <span style="color:#00ff88;">GAT. COMPRA: <span style="color:#fff;">{res['gatilho_c']:.2f}</span></span>
+                        <span style="color:#ff4d4d;">GAT. VENDA: <span style="color:#fff;">{res['gatilho_v']:.2f}</span></span>
                     </div>
                 </div>''', unsafe_allow_html=True)
             
