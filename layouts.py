@@ -54,6 +54,7 @@ st.markdown("""
     .txt-yellow { color: #ffff00 !important; }
     .txt-red { color: #ff4d4d !important; }
     .txt-cyan { color: #00f2ff !important; }
+    .txt-white { color: #ffffff !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -168,11 +169,10 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         axis_dinamico = dolar_medio + spreed_do_dia
         passo_fixo = spreed_50 / 4
         
-        # Alvos originais exibidos nas extremidades da barra de força
         alvo_low = spot_data['mn'] + spreed_do_dia
         alvo_high = spot_data['mx'] + spreed_do_dia
         
-        # Bloco de Volatilidade manual calculado a partir dos inputs do ADM
+        # Bloco de Volatilidade Manual vindo do ADM
         mx_adm = st.session_state.max_madr_mem
         mn_adm = st.session_state.min_madr_mem
         bloco_vol = mx_adm - mn_adm if mx_adm > mn_adm else 0.0
@@ -181,10 +181,12 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         gatilho_c = spot_data['mn'] + passo_fixo
         gatilho_v = spot_data['mx'] - passo_fixo
         
+        # Distância calculada da base corrigida: diferença exata entre a mínima e a base de compra
+        distancia_base_calc = abs(spot_data['mn'] - gatilho_c)
+        
         p_v, p_r = 0, 0
         seta_txt, seta_cor, piscando = "", "#000000", False
         
-        # Lógica de Cores e Sincronização do Indicador
         if spot_data['at'] > gatilho_v:
             ind_val = spot_data['at'] - gatilho_v
             cor_ind = "#ff4d4d"
@@ -200,7 +202,6 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
                 ind_val = spot_data['at'] - gatilho_c
             cor_ind = "#00f2ff"
             
-        # Recalibração da Barra de Força (Referenciada na Média Dólar, dinâmica com o Preço)
         diff_media = spot_data['at'] - dolar_medio
         if diff_media < 0:
             if (dolar_medio - spot_data['mn']) > 0:
@@ -246,7 +247,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             "max_grade": st.session_state.dolfut_max_auto, "min_grade": st.session_state.dolfut_min_auto, 
             "alvo_low": alvo_low, "alvo_high": alvo_high, "spreed_t": spreed_t, "passo_fixo": passo_fixo,
             "gatilho_c": gatilho_c, "gatilho_v": gatilho_v, "ind_val": ind_val, "cor_ind": cor_ind,
-            "bloco_vol": bloco_vol, "mx_adm": mx_adm, "mn_adm": mn_adm
+            "bloco_vol": bloco_vol, "mx_adm": mx_adm, "mn_adm": mn_adm, "distancia_base_calc": distancia_base_calc
         }
     except: return None
 
@@ -282,7 +283,6 @@ with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
     i_div = st.number_input("FRP (PARA JUSTO):", value=st.session_state.div_spreed_mem, format="%.2f")
     
-    # Novos Inputs manuais da Volatilidade da Madrugada requeridos
     i_max_madr = st.number_input("MAX MADRUGADA:", value=st.session_state.max_madr_mem, format="%.2f")
     i_min_madr = st.number_input("MIN MADRUGADA:", value=st.session_state.min_madr_mem, format="%.2f")
     
@@ -305,7 +305,6 @@ while True:
     now = datetime.now()
     
     with placeholder.container():
-        # Topo de Horários Mundiais - Intacto
         st.markdown(f'''<div class="header-container"><h1 class="main-title"><span class="bair-blue">BAIR</span><span class="terminal-gold"> - TERMINAL DOLLAR</span></h1><div class="clock-row"><span class="clock-item">🇧🇷 BR: <span class="br-green">{now.astimezone(tz_sp).strftime("%H:%M:%S")}</span></span><span class="clock-item">🇺🇸 NY: <span class="white-time">{now.astimezone(tz_ny).strftime("%H:%M:%S")}</span></span><span class="clock-item">🇬🇧 LDN: <span class="white-time">{now.astimezone(tz_ld).strftime("%H:%M:%S")}</span></span><span class="clock-item">🌐 UTC: <span class="utc-gold">{now.astimezone(tz_utc).strftime("%H:%M:%S")}</span></span></div><div class="date-container">📅 {now.astimezone(tz_sp).strftime("%d/%m/%Y")}</div></div>''', unsafe_allow_html=True)
         
         res = calcular_k97_total(div_s, spot_live, ewz_live)
@@ -341,7 +340,7 @@ while True:
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 
-                # Barra de Força: Escala original restaurada de volta (MIN + FRP e MAX + FRP)
+                # Barra de Força: Mantendo as escalas corretas e dinâmicas
                 st.markdown(f'''<div class="bar-wrapper-full"><div class="force-scale"><span>MIN + FRP</span><span>50%</span><span>MÉDIA</span><span>50%</span><span>MAX + FRP</span></div><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div></div><div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; font-family: monospace; color: #AAA; margin-top: 2px; padding: 0 2px;"><span>LOW: {res['alvo_low']:.2f}</span><span style="color:{cor_seta_spread}; font-size: 14px; font-weight: bold;">{seta_spread}</span><span>HIGH: {res['alvo_high']:.2f}</span></div><div class="sinal-indicator {"blink" if res["piscando"] else ""}" style="color:{res["seta_cor"]};">{res["seta"]}</div></div>''', unsafe_allow_html=True)
             
             with c2:
@@ -357,30 +356,31 @@ while True:
                     mx_a = res['mx_adm']
                     mn_a = res['mn_adm']
                     st.markdown(f'''<div class="calc-panel">
-                        <div class="calc-row txt-red"><span>BL. V3</span> <span>{(mx_a + (bv * 3)):.1f}</span></div>
-                        <div class="calc-row txt-red"><span>BL. V2</span> <span>{(mx_a + (bv * 2)):.1f}</span></div>
-                        <div class="calc-row txt-red"><span>BL. V1</span> <span>{(mx_a + bv):.1f}</span></div>
-                        <div style="text-align:center; padding: 3px; color: #FFD700; font-size: 9px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444; background: #111;">B. ADM: {bv:.1f}</div>
-                        <div class="calc-row txt-green"><span>BL. C1</span> <span>{(mn_a - bv):.1f}</span></div>
-                        <div class="calc-row txt-green"><span>BL. C2</span> <span>{(mn_a - (bv * 2)):.1f}</span></div>
-                        <div class="calc-row txt-green" style="border-bottom: none;"><span>BL. C3</span> <span>{(mn_a - (bv * 3)):.1f}</span></div>
+                        <div class="calc-row txt-white"><span>BL. V3</span> <span>{(mx_a + (bv * 3)):.1f}</span></div>
+                        <div class="calc-row txt-white"><span>BL. V2</span> <span>{(mx_a + (bv * 2)):.1f}</span></div>
+                        <div class="calc-row txt-white"><span>BL. V1</span> <span>{(mx_a + bv):.1f}</span></div>
+                        <div class="calc-row txt-cyan" style="background: #091a24;"><span>MAX MAD</span> <span>{mx_a:.1f}</span></div>
+                        <div style="text-align:center; padding: 3px; color: #00f2ff; font-size: 9px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444; background: #050a0e;">BLOCO: {bv:.1f}</div>
+                        <div class="calc-row txt-cyan" style="background: #091a24;"><span>MIN MAD</span> <span>{mn_a:.1f}</span></div>
+                        <div class="calc-row txt-white"><span>BL. C1</span> <span>{(mn_a - bv):.1f}</span></div>
+                        <div class="calc-row txt-white"><span>BL. C2</span> <span>{(mn_a - (bv * 2)):.1f}</span></div>
+                        <div class="calc-row txt-white" style="border-bottom: none;"><span>BL. C3</span> <span>{(mn_a - (bv * 3)):.1f}</span></div>
                     </div>''', unsafe_allow_html=True)
                 
-                # Painel de Métricas e Spreads - Ocupando a largura total do c2
+                # Painel de Métricas e Spreads
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
                 
-                # Indicador de Reversão com Medição Alinhada à Distância Base do Passo (Spread T / 4)
+                # Indicador de Reversão com Cálculo Corrigido de Distância (Mínima até a Base)
                 st.markdown(f'''<div class="calc-panel" style="text-align:center; border: 1.5px solid {res['cor_ind']}; padding-bottom:6px;">
                     <div style="color:#AAA; font-size:10px; font-weight:bold; text-transform:uppercase;">INDICADOR REVERSÃO</div>
                     <div style="color:{res['cor_ind']}; font-size:22px; font-weight:bold; margin-top:2px; margin-bottom:2px;">{res['ind_val']:+.2f}</div>
-                    <div style="color:#ffffff; font-size:10px; font-weight:bold; font-family:monospace; margin-bottom:4px;">DISTÂNCIA BASE (STEP): {res['passo_fixo']:.2f} pts</div>
+                    <div style="color:#ffffff; font-size:10px; font-weight:bold; font-family:monospace; margin-bottom:4px;">DIST. BASE (MÍN À BASE): {res['distancia_base_calc']:.2f} pts</div>
                     <div style="display:flex; justify-content:space-between; border-top:1px solid #333; padding-top:4px; font-size:9px; font-weight:bold; padding-left:4px; padding-right:4px;">
                         <span style="color:#00ff88;">GAT. COMPRA: <span style="color:#fff;">{res['gatilho_c']:.2f}</span></span>
                         <span style="color:#ff4d4d;">GAT. VENDA: <span style="color:#fff;">{res['gatilho_v']:.2f}</span></span>
                     </div>
                 </div>''', unsafe_allow_html=True)
             
-            # Letreiro Inferior de Cotações Rápidas
             st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
             
     time.sleep(5)
