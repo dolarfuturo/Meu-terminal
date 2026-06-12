@@ -184,6 +184,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         # Distância calculada da base corrigida: diferença exata entre a mínima e a base de compra
         distancia_base_calc = abs(spot_data['mn'] - gatilho_c)
         
+        p_v, p_r = 0, 0
         seta_txt, seta_cor, piscando = "", "#000000", False
         
         if spot_data['at'] > gatilho_v:
@@ -201,18 +202,13 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
                 ind_val = spot_data['at'] - gatilho_c
             cor_ind = "#00f2ff"
             
-        # CALIBRAGEM DA BARRA DE FORÇA POR PORCENTAGEM DA MÉDIA DÓLAR (+-0.6%)
-        p_v, p_r = 0, 0
         diff_media = spot_data['at'] - dolar_medio
-        
-        if dolar_medio > 0:
-            pct_afastamento = (diff_media / dolar_medio) * 100
-            if pct_afastamento < 0:
-                # Preço abaixo da média: enche o lado Verde (Compra) proporcionalmente até o limite de -0.6%
-                p_v = min(100.0, (abs(pct_afastamento) / 0.6) * 100)
-            else:
-                # Preço acima da média: enche o lado Vermelho (Venda) proporcionalmente até o limite de +0.6%
-                p_r = min(100.0, (pct_afastamento / 0.6) * 100)
+        if diff_media < 0:
+            if (dolar_medio - spot_data['mn']) > 0:
+                p_v = min(100, (abs(diff_media) / (dolar_medio - spot_data['mn'])) * 100)
+        else:
+            if (spot_data['mx'] - dolar_medio) > 0:
+                p_r = min(100, (diff_media / (spot_data['mx'] - dolar_medio)) * 100)
             
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         dolfut_atual_calc = axis_dinamico * (1 + calc_variacoes_pct)
