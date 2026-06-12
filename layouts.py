@@ -101,6 +101,10 @@ if 'div_spreed_mem' not in st.session_state: st.session_state.div_spreed_mem = d
 if 'max_madr_mem' not in st.session_state: st.session_state.max_madr_mem = max_madr_salvo
 if 'min_madr_mem' not in st.session_state: st.session_state.min_madr_mem = min_madr_salvo
 
+# Memórias de Estado para a Histerese do Sinal de Alerta (Evita desligar acima de 0.55%)
+if 'sinal_venda_ativo' not in st.session_state: st.session_state.sinal_venda_ativo = False
+if 'sinal_compra_ativo' not in st.session_state: st.session_state.sinal_compra_ativo = False
+
 max_init, min_init = carregar_historico_dolfut_diario()
 if 'dolfut_max_auto' not in st.session_state: st.session_state.dolfut_max_auto = max_init
 if 'dolfut_min_auto' not in st.session_state: st.session_state.dolfut_min_auto = min_init
@@ -177,38 +181,50 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         mn_adm = st.session_state.min_madr_mem
         bloco_vol = mx_adm - mn_adm if mx_adm > mn_adm else 0.0
         
-        # Gatilhos do Indicador de Reversão
+        # Gatilhos originais para o painel inferior
         gatilho_c = spot_data['mn'] + passo_fixo
         gatilho_v = spot_data['mx'] - passo_fixo
-        
-        # Distância calculada da base corrigida: diferença exata entre a mínima e a base de compra
         distancia_base_calc = abs(spot_data['mn'] - gatilho_c)
         
+        # 1. CÁLCULO DE AFASTAMENTO PERCENTUAL DA MÉDIA DÓLAR
         p_v, p_r = 0, 0
+        diff_media = spot_data['at'] - dolar_medio
+        pct_afastamento = (diff_media / dolar_medio) * 100 if dolar_medio > 0 else 0
+        
+        # 2. DEFINIÇÃO DO PREENCHIMENTO DA BARRA (Escala baseada em até 0.6% de exaustão)
+        if pct_afastamento < 0:
+            p_v = min(100.0, (abs(pct_afastamento) / 0.6) * 100)
+        else:
+            p_r = min(100.0, (pct_afastamento / 0.6) * 100)
+            
+        # 3. CRITÉRIO DE LIGA/DESLIGA DO SINAL (Regra de Memória Direcionada)
         seta_txt, seta_cor, piscando = "", "#000000", False
         
-        if spot_data['at'] > gatilho_v:
-            ind_val = spot_data['at'] - gatilho_v
+        # Monitoramento para a Região de Venda (Afastamento Positivo)
+        if pct_afastamento >= 0.55:
+            st.session_state.sinal_venda_ativo = True
+        elif pct_afastamento < 0.55:
+            st.session_state.sinal_venda_ativo = False
+            
+        # Monitoramento para a Região de Compra (Afastamento Negativo)
+        if pct_afastamento <= -0.55:
+            st.session_state.sinal_compra_ativo = True
+        elif pct_afastamento > -0.55:
+            st.session_state.sinal_compra_ativo = False
+            
+        # Aplicação visual baseada nos estados retidos na memória da sessão
+        if st.session_state.sinal_venda_ativo:
+            ind_val = diff_media
             cor_ind = "#ff4d4d"
             seta_txt, seta_cor, piscando = "▼ REGIÃO DE VENDA", "#ff4d4d", True
-        elif spot_data['at'] < gatilho_c:
-            ind_val = spot_data['at'] - gatilho_c
+        elif st.session_state.sinal_compra_ativo:
+            ind_val = diff_media
             cor_ind = "#00ff88"
             seta_txt, seta_cor, piscando = "▲ REGIÃO DE COMPRA", "#00ff88", True
         else:
-            if spot_data['at'] >= dolar_medio:
-                ind_val = spot_data['at'] - gatilho_v
-            else:
-                ind_val = spot_data['at'] - gatilho_c
+            ind_val = diff_media
             cor_ind = "#00f2ff"
-            
-        diff_media = spot_data['at'] - dolar_medio
-        if diff_media < 0:
-            if (dolar_medio - spot_data['mn']) > 0:
-                p_v = min(100, (abs(diff_media) / (dolar_medio - spot_data['mn'])) * 100)
-        else:
-            if (spot_data['mx'] - dolar_medio) > 0:
-                p_r = min(100, (diff_media / (spot_data['mx'] - dolar_medio)) * 100)
+            seta_txt, seta_cor, piscando = "", "#000000", False
             
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         dolfut_atual_calc = axis_dinamico * (1 + calc_variacoes_pct)
@@ -238,7 +254,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         return {
             "vivo": vivo_val, "vivo_pct": calc_variacoes_pct * 100, "dolfut_calc": dolfut_atual_calc, "fraja": fraja_val, 
             "medio": dolar_medio, "axis_central": axis_dinamico,
-            "max_fut_1": axis_dinamico + passo_fixo, "max_fut_1_b": axis_dinamico + (passo_fixo * 2),
+            "max_fut_1": axis_dinamico + passo_fixo, "max_fut_1_b": axis_fut_1_b := axis_dinamico + (passo_fixo * 2),
             "max_fut_2": axis_dinamico + (passo_fixo * 3), "max_fut_2_b": axis_dinamico + (passo_fixo * 4),
             "min_fut_1": axis_dinamico - passo_fixo, "min_fut_1_b": axis_dinamico - (passo_fixo * 2),
             "min_fut_2": axis_dinamico - (passo_fixo * 3), "min_fut_2_b": axis_dinamico - (passo_fixo * 4),
