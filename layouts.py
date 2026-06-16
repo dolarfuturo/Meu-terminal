@@ -167,7 +167,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         ewz_ref = st.session_state.market_data.get("EWZ", {}).get('cl', 1)
         v_ewz = ((ewz_data['at'] / ewz_ref) - 1) if ewz_ref > 0 else 0
         
-        calc_variacoes_pct = (v_dxy * 0.7) - (v_ewz * 0.3)
+        calc_variacoes_pct = (v_dxy) - (v_ewz)
         
         vivo_val = spot_data['cl'] * (1 + calc_variacoes_pct) 
         axis_dinamico = dolar_medio + spreed_do_dia
