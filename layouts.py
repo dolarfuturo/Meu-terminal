@@ -188,20 +188,20 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         # Distância calculada da base corrigida: diferença exata entre a mínima e a base de compra
         distancia_base_calc = abs(spot_data['mn'] - gatilho_c)
         
-        # --- LÓGICA DE SINAL RETIDO POR HISTERESE (0.55% ATÉ 0.60% DA MÉDIA DO DÓLAR) ---
+        # --- LÓGICA DE SINAL RETIDO POR HISTERESE (0.45% ATÉ 0.50% DA MÉDIA DO DÓLAR) ---
         diff_media = spot_data['at'] - dolar_medio
         pct_afastamento = (diff_media / dolar_medio) * 100 if dolar_medio > 0 else 0
         
         # Verificação do teto de Venda (Afastamento positivo)
-        if pct_afastamento >= 0.55:
+        if pct_afastamento >= 0.45:
             st.session_state.sinal_venda_ativo = True
-        elif pct_afastamento < 0.55:
+        elif pct_afastamento < 0.45:
             st.session_state.sinal_venda_ativo = False
             
         # Verificação do teto de Compra (Afastamento negativo)
-        if pct_afastamento <= -0.55:
+        if pct_afastamento <= -0.45:
             st.session_state.sinal_compra_ativo = True
-        elif pct_afastamento > -0.55:
+        elif pct_afastamento > -0.45:
             st.session_state.sinal_compra_ativo = False
             
         # Atribuição visual baseada nos estados salvos em memória
@@ -225,9 +225,9 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         # Preenchimento da barra de força (Escala de visualização normalizada em até 0.6% máximo)
         p_v, p_r = 0, 0
         if diff_media < 0:
-            p_v = min(100.0, (abs(pct_afastamento) / 0.6) * 100)
+            p_v = min(100.0, (abs(pct_afastamento) / 0.5) * 100)
         else:
-            p_r = min(100.0, (pct_afastamento / 0.6) * 100)
+            p_r = min(100.0, (pct_afastamento / 0.5) * 100)
             
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         dolfut_atual_calc = axis_dinamico * (1 + calc_variacoes_pct)
