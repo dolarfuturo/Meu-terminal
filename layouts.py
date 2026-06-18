@@ -42,13 +42,16 @@ st.markdown("""
     .bar-wrapper-full { background: #0a141a; padding: 6px; border: 1.5px solid #ffffff; border-radius: 4px; text-align: center; margin-top: 5px; font-family: monospace; }
     .force-scale-top { display: flex; justify-content: space-between; font-size: 9px; font-weight: bold; color: #ffffff; margin-bottom: 2px; padding: 0 2px; }
     .force-scale-bottom { display: flex; justify-content: space-between; font-size: 9px; font-weight: bold; color: #00BFFF; margin-top: 2px; padding: 0 2px; }
-    .force-container-dual { background: #111; height: 12px; width: 100%; border-radius: 2px; position: relative; overflow: hidden; display: flex; border: 1px solid #ffffff; }
+    
+    /* Altura aumentada para comportar o texto interno confortavelmente */
+    .force-container-dual { background: #111; height: 16px; width: 100%; border-radius: 2px; position: relative; overflow: hidden; display: flex; border: 1px solid #ffffff; }
     .center-line { position: absolute; left: 50%; top: 0; width: 1px; height: 100%; background: #fff; z-index: 10; }
     .bar-side { width: 50%; height: 100%; position: relative; background: #050a0e; }
-    .fill-green { background: #00ff88; float: right; height: 100%; transition: width 0.4s; }
-    .fill-red { background: #ff4d4d; float: left; height: 100%; transition: width 0.4s; }
     
-    /* Modificado para diminuir um pouco o tamanho da seta pura */
+    /* Classes de preenchimento ajustadas para alinhar e formatar o texto interno */
+    .fill-green { background: #00ff88; float: right; height: 100%; transition: width 0.4s; display: flex; align-items: center; justify-content: flex-start; padding-left: 5px; color: #000000; font-size: 10px; font-weight: bold; white-space: nowrap; }
+    .fill-red { background: #ff4d4d; float: left; height: 100%; transition: width 0.4s; display: flex; align-items: center; justify-content: flex-end; padding-right: 5px; color: #000000; font-size: 10px; font-weight: bold; white-space: nowrap; }
+    
     .sinal-indicator { font-size: 18px; font-weight: bold; line-height: 1; margin-top: 4px; }
     
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 1.5px solid #ffffff; border-bottom: 1.5px solid #ffffff; padding: 4px 0; overflow: hidden; white-space: nowrap; margin-top: 8px; }
@@ -203,13 +206,12 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         diff_media = spot_data['at'] - dolar_medio
         pct_afastamento = (diff_media / dolar_medio) * 100 if dolar_medio > 0 else 0
         
-        # Ajuste: Seta pura. Pra cima Verde, Pra baixo Vermelha.
         if spot_data['at'] >= dolar_medio:
             seta_txt = "▲"
-            seta_cor = "#00ff88"  # Verde
+            seta_cor = "#00ff88"
         else:
             seta_txt = "▼"
-            seta_cor = "#ff4d4d"  # Vermelha
+            seta_cor = "#ff4d4d"
             
         p_v, p_r = 0, 0
         if diff_media < 0:
@@ -327,109 +329,4 @@ while True:
                 html += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col {cl_df}' style='background-color:rgba({('0,255,0' if v_f >= 0 else '255,0,0')}, 0.1);'>{(d_c/1000):.4f}</td><td>{(res['axis_central']/1000):.4f}</td><td>{(res['axis_central']/1000):.4f}</td><td>{(res['max_grade']/1000):.4f}</td><td>{(res['min_grade']/1000):.4f}</td><td style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_f:+.2f}%</td></tr>"
                 
                 ticker_items = [f"DOLFUT: <span style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")};'>{v_f:+.2f}%</span>"]
-                outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F", "US10Y": "^TNX"}
-                
-                for lbl, sym in outros.items():
-                    d = st.session_state.market_data.get(sym, fetch(sym))
-                    if d:
-                        f = ".4f" if lbl in ["DOLSPOT", "GBP/USD", "JPY/USD", "EUR/USD"] else (".3f" if lbl=="US10Y" else ".2f")
-                        p_v = d['at']/1000 if lbl == "DOLSPOT" else d['at']
-                        l_a = st.session_state.last_p.get(lbl, p_v); cl_a = "f-up" if p_v > l_a else "f-dn" if p_v < l_a else ""; st.session_state.last_p[lbl] = p_v
-                        var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
-                        
-                        cl_max = "f-up" if lbl == "DOLSPOT" and st.session_state.last_spot_max > 0 and d['mx'] > st.session_state.last_spot_max else ""
-                        cl_min = "f-dn" if lbl == "DOLSPOT" and st.session_state.last_spot_min < float('inf') and d['mn'] < st.session_state.last_spot_min else ""
-                        if lbl == "DOLSPOT":
-                            st.session_state.last_spot_max, st.session_state.last_spot_min = d['mx'], d['mn']
-                            
-                        html += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col {cl_a}'>{p_v:{f}}</td><td>{(d['cl']/1000 if lbl=='DOLSPOT' else d['cl']):{f}}</td><td>{(d['op']/1000 if lbl=='DOLSPOT' else d['op']):{f}}</td><td class='{cl_max}'>{(d['mx']/1000 if lbl=='DOLSPOT' else d['mx']):{f}}</td><td class='{cl_min}'>{(d['mn']/1000 if lbl=='DOLSPOT' else d['mn']):{f}}</td><td style='color:{("#00ff00" if var >= 0 else "#ff4d4d")}; font-weight:bold;'>{var:+.2f}%</td></tr>"
-                        ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
-                st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
-                
-                # --- BARRA DE FORÇA AJUSTADA (CENTRO COM 0 E SETA DISCRETA) ---
-                p_v_val = "{:.1f}".format(res['p_v'])
-                p_r_val = "{:.1f}".format(res['p_r'])
-                c3_val = "{:.4f}".format(res['p_c3_v'] / 1000)
-                c2_val = "{:.4f}".format(res['p_c2_v'] / 1000)
-                c1_val = "{:.4f}".format(res['p_c1_v'] / 1000)
-                v1_val = "{:.4f}".format(res['p_v1_v'] / 1000)
-                v2_val = "{:.4f}".format(res['p_v2_v'] / 1000)
-                v3_val = "{:.4f}".format(res['p_v3_v'] / 1000)
-                sinal_txt = res["seta"] if res["seta"] else "&nbsp;"
-
-                render_barra = (
-                    '<div class="bar-wrapper-full">'
-                    '    <div class="force-scale-top">'
-                    '        <span style="color:#00ff88; width:15%; text-align:left;">-1.05%</span>'
-                    '        <span style="color:#00ff88; width:15%; text-align:left;">-0.70%</span>'
-                    '        <span style="color:#00ff88; width:15%; text-align:left;">-0.35%</span>'
-                    '        <span style="color:#ffffff; width:10%; text-align:center;">0</span>'  # Trocado de MÉDIA para 0
-                    '        <span style="color:#ff4d4d; width:15%; text-align:right;">+0.35%</span>'
-                    '        <span style="color:#ff4d4d; width:15%; text-align:right;">+0.70%</span>'
-                    '        <span style="color:#ff4d4d; width:15%; text-align:right;">+1.05%</span>'
-                    '    </div>'
-                    '    <div class="force-container-dual">'
-                    '        <div class="center-line"></div>'
-                    '        <div class="bar-side">'
-                    '            <div class="fill-green" style="width: ' + p_v_val + '%;"></div>'
-                    '        </div>'
-                    '        <div class="bar-side">'
-                    '            <div class="fill-red" style="width: ' + p_r_val + '%;"></div>'
-                    '        </div>'
-                    '    </div>'
-                    '    <div class="force-scale-bottom">'
-                    '        <span style="width:15%; text-align:left;">' + c3_val + '</span>'
-                    '        <span style="width:15%; text-align:left;">' + c2_val + '</span>'
-                    '        <span style="width:15%; text-align:left;">' + c1_val + '</span>'
-                    '        <span style="color:#ffffff; width:10%; text-align:center;">&nbsp;</span>'
-                    '        <span style="width:15%; text-align:right;">' + v1_val + '</span>'
-                    '        <span style="width:15%; text-align:right;">' + v2_val + '</span>'
-                    '        <span style="width:15%; text-align:right;">' + v3_val + '</span>'
-                    '    </div>'
-                    '    <div class="sinal-indicator" style="color:' + res["seta_cor"] + '; min-height:18px;">'
-                    '        ' + sinal_txt + ''
-                    '    </div>'
-                    '</div>'
-                )
-                
-                st.markdown(render_barra, unsafe_allow_html=True)
-            
-            with c2:
-                sc1, sc2 = st.columns([1, 1])
-                
-                with sc1:
-                    st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
-                    st.markdown(f'''<div class="calc-panel"><div class="calc-row txt-green"><span>MX F2</span> <span>{res['max_fut_2_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F2</span> <span>{res['max_fut_2']:.1f}</span></div><div class="calc-row txt-green"><span>MX F1</span> <span>{res['max_fut_1_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F1</span> <span>{res['max_fut_1']:.1f}</span></div><div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 9px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">AXIS: {res['axis_central']:.1f}</div><div class="calc-row txt-yellow"><span>MD F1</span> <span>{res['min_fut_1']:.1f}</span></div><div class="calc-row txt-green"><span>MN F1</span> <span>{res['min_fut_1_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F2</span> <span>{res['min_fut_2']:.1f}</span></div><div class="calc-row txt-green" style="border-bottom: none;"><span>MN F2</span> <span>{res['min_fut_2_b']:.1f}</span></div></div>''', unsafe_allow_html=True)
-                
-                with sc2:
-                    st.markdown('<div class="section-title">VOLATILIDADE</div>', unsafe_allow_html=True)
-                    bv = res['bloco_vol']
-                    mx_a = res['mx_adm']
-                    mn_a = res['mn_adm']
-                    st.markdown(f'''<div class="calc-panel">
-                        <div class="calc-row txt-white"><span>BL. V3</span> <span>{(mx_a + (bv * 3)):.1f}</span></div>
-                        <div class="calc-row txt-white"><span>BL. V2</span> <span>{(mx_a + (bv * 2)):.1f}</span></div>
-                        <div class="calc-row txt-white"><span>BL. V1</span> <span>{(mx_a + bv):.1f}</span></div>
-                        <div class="calc-row txt-cyan" style="background: #091a24;"><span>MAX MAD</span> <span>{mx_a:.1f}</span></div>
-                        <div style="text-align:center; padding: 3px; color: #00f2ff; font-size: 9px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444; background: #050a0e;">BLOCO: {bv:.1f}</div>
-                        <div class="calc-row txt-cyan" style="background: #091a24;"><span>MIN MAD</span> <span>{mn_a:.1f}</span></div>
-                        <div class="calc-row txt-white"><span>BL. C1</span> <span>{(mn_a - bv):.1f}</span></div>
-                        <div class="calc-row txt-white"><span>BL. C2</span> <span>{(mn_a - (bv * 2)):.1f}</span></div>
-                        <div class="calc-row txt-white" style="border-bottom: none;"><span>BL. C3</span> <span>{(mn_a - (bv * 3)):.1f}</span></div>
-                    </div>''', unsafe_allow_html=True)
-                
-                st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
-                
-                st.markdown(f'''<div class="calc-panel" style="text-align:center; border: 1.5px solid {res['cor_ind']}; padding-bottom:6px;">
-                    <div style="color:#AAA; font-size:10px; font-weight:bold; text-transform:uppercase;">INDICADOR REVERSÃO</div>
-                    <div style="color:{res['cor_ind']}; font-size:22px; font-weight:bold; margin-top:2px; margin-bottom:2px;">{res['ind_val']:+.2f}</div>
-                    <div style="color:#ffffff; font-size:10px; font-weight:bold; font-family:monospace; margin-bottom:4px;">DIST. BASE (MÍN À BASE): {res['distancia_base_calc']:.2f} pts</div>
-                    <div style="display:flex; justify-content:space-between; border-top:1px solid #333; padding-top:4px; font-size:9px; font-weight:bold; padding-left:4px; padding-right:4px;">
-                        <span style="color:#00ff88;">GAT. COMPRA: <span style="color:#fff;">{res['gatilho_c']:.2f}</span></span>
-                        <span style="color:#ff4d4d;">GAT. VENDA: <span style="color:#ffffff;">{res['gatilho_v']:.2f}</span></span>
-                    </div>
-                </div>''', unsafe_allow_html=True)
-            
-            st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
-            
-    time.sleep(5)
+                outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NY
