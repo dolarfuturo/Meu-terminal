@@ -114,7 +114,7 @@ if 'last_spot_min' not in st.session_state: st.session_state.last_spot_min = flo
 
 if 'c_spot_fech_val' not in st.session_state: st.session_state.c_spot_fech_val = 0.0
 if 'c_du_val' not in st.session_state: st.session_state.c_du_val = 22
-if 't_br_val' not in st.session_state: st.session_state.t_br_val = 14.50
+if 't_br_val' not in st.session_state: st.session_state.t_br_val = 14.25
 if 't_us_val' not in st.session_state: st.session_state.t_us_val = 3.75
 
 # =============================================================================
@@ -222,7 +222,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
                 ind_val = spot_data['at'] - gatilho_c
             cor_ind = "#00f2ff"
             
-        # Preenchimento da barra de força (Escala de visualização normalizada em até 0.6% máximo)
+        # Preenchimento da barra de força (Escala de visualização normalizada em até 0.5% máximo)
         p_v, p_r = 0, 0
         if diff_media < 0:
             p_v = min(100.0, (abs(pct_afastamento) / 0.5) * 100)
@@ -396,7 +396,7 @@ while True:
                     <div style="color:#ffffff; font-size:10px; font-weight:bold; font-family:monospace; margin-bottom:4px;">DIST. BASE (MÍN À BASE): {res['distancia_base_calc']:.2f} pts</div>
                     <div style="display:flex; justify-content:space-between; border-top:1px solid #333; padding-top:4px; font-size:9px; font-weight:bold; padding-left:4px; padding-right:4px;">
                         <span style="color:#00ff88;">GAT. COMPRA: <span style="color:#fff;">{res['gatilho_c']:.2f}</span></span>
-                        <span style="color:#ff4d4d;">GAT. VENDA: <span style="color:#fff;">{res['gatilho_v']:.2f}</span></span>
+                        <span style="color:#ff4d4d;">GAT. VENDA: <span style="color:#f okff;">{res['gatilho_v']:.2f}</span></span>
                     </div>
                 </div>''', unsafe_allow_html=True)
             
