@@ -371,59 +371,53 @@ while True:
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 
-                # --- FIX DA BARRA DE FORÇA (ISOLADA SEM CONFLITO DE CHAVES COM O INTERPRETADOR PYTHON) ---
-                raw_html_barra = """
-                <div class="bar-wrapper-full">
-                    <div class="force-scale-top">
-                        <span style="color:#00ff88; width:15%; text-align:left;">-0.90%</span>
-                        <span style="color:#00ff88; width:15%; text-align:left;">-0.60%</span>
-                        <span style="color:#00ff88; width:15%; text-align:left;">-0.30%</span>
-                        <span style="color:#ffffff; width:10%; text-align:center;">MÉDIA</span>
-                        <span style="color:#ff4d4d; width:15%; text-align:right;">+0.30%</span>
-                        <span style="color:#ff4d4d; width:15%; text-align:right;">+0.60%</span>
-                        <span style="color:#ff4d4d; width:15%; text-align:right;">+0.90%</span>
-                    </div>
-                    
-                    <div class="force-container-dual">
-                        <div class="center-line"></div>
-                        <div class="bar-side">
-                            <div class="fill-green" style="width: __PV__%;"></div>
-                        </div>
-                        <div class="bar-side">
-                            <div class="fill-red" style="width: __PR__%;"></div>
-                        </div>
-                    </div>
-                    
-                    <div class="force-scale-bottom">
-                        <span style="width:15%; text-align:left;">__C3__</span>
-                        <span style="width:15%; text-align:left;">__C2__</span>
-                        <span style="width:15%; text-align:left;">__C1__</span>
-                        <span style="color:#ffffff; width:10%; text-align:center;">__MED__</span>
-                        <span style="width:15%; text-align:right;">__V1__</span>
-                        <span style="width:15%; text-align:right;">__V2__</span>
-                        <span style="width:15%; text-align:right;">__V3__</span>
-                    </div>
-                    
-                    <div class="sinal-indicator __BLINK__" style="color:__SETACOR__; min-height:14px;">
-                        __SETATXT__
-                    </div>
-                </div>
-                """
-                
-                # Injeção cirúrgica de valores substituindo marcadores de texto planos
-                render_barra = raw_html_barra \
-                    .replace("__PV__", f"{res['p_v']:.1f}") \
-                    .replace("__PR__", f"{res['p_r']:.1f}") \
-                    .replace("__C3__", f"{(res['p_c3_v']/1000):.4f}") \
-                    .replace("__C2__", f"{(res['p_c2_v']/1000):.4f}") \
-                    .replace("__C1__", f"{(res['p_c1_v']/1000):.4f}") \
-                    .replace("__MED__", f"{(res['medio']/1000):.4f}") \
-                    .replace("__V1__", f"{(res['p_v1_v']/1000):.4f}") \
-                    .replace("__V2__", f"{(res['p_v2_v']/1000):.4f}") \
-                    .replace("__V3__", f"{(res['p_v3_v']/1000):.4f}") \
-                    .replace("__BLINK__", "blink" if res["piscando"] else "") \
-                    .replace("__SETACOR__", res["seta_cor"]) \
-                    .replace("__SETATXT__", res["seta"] if res["seta"] else "&nbsp;")
+                # --- FIX DEFINITIVO DA BARRA DE FORÇA (CONCATENAÇÃO COMPLETA E LIMPA) ---
+                p_v_val = "{:.1f}".format(res['p_v'])
+                p_r_val = "{:.1f}".format(res['p_r'])
+                c3_val = "{:.4f}".format(res['p_c3_v'] / 1000)
+                c2_val = "{:.4f}".format(res['p_c2_v'] / 1000)
+                c1_val = "{:.4f}".format(res['p_c1_v'] / 1000)
+                med_val = "{:.4f}".format(res['medio'] / 1000)
+                v1_val = "{:.4f}".format(res['p_v1_v'] / 1000)
+                v2_val = "{:.4f}".format(res['p_v2_v'] / 1000)
+                v3_val = "{:.4f}".format(res['p_v3_v'] / 1000)
+                blink_class = "blink" if res["piscando"] else ""
+                sinal_txt = res["seta"] if res["seta"] else "&nbsp;"
+
+                render_barra = (
+                    '<div class="bar-wrapper-full">'
+                    '    <div class="force-scale-top">'
+                    '        <span style="color:#00ff88; width:15%; text-align:left;">-0.90%</span>'
+                    '        <span style="color:#00ff88; width:15%; text-align:left;">-0.60%</span>'
+                    '        <span style="color:#00ff88; width:15%; text-align:left;">-0.30%</span>'
+                    '        <span style="color:#ffffff; width:10%; text-align:center;">MÉDIA</span>'
+                    '        <span style="color:#ff4d4d; width:15%; text-align:right;">+0.30%</span>'
+                    '        <span style="color:#ff4d4d; width:15%; text-align:right;">+0.60%</span>'
+                    '        <span style="color:#ff4d4d; width:15%; text-align:right;">+0.90%</span>'
+                    '    </div>'
+                    '    <div class="force-container-dual">'
+                    '        <div class="center-line"></div>'
+                    '        <div class="bar-side">'
+                    '            <div class="fill-green" style="width: ' + p_v_val + '%;"></div>'
+                    '        </div>'
+                    '        <div class="bar-side">'
+                    '            <div class="fill-red" style="width: ' + p_r_val + '%;"></div>'
+                    '        </div>'
+                    '    </div>'
+                    '    <div class="force-scale-bottom">'
+                    '        <span style="width:15%; text-align:left;">' + c3_val + '</span>'
+                    '        <span style="width:15%; text-align:left;">' + c2_val + '</span>'
+                    '        <span style="width:15%; text-align:left;">' + c1_val + '</span>'
+                    '        <span style="color:#ffffff; width:10%; text-align:center;">' + med_val + '</span>'
+                    '        <span style="width:15%; text-align:right;">' + v1_val + '</span>'
+                    '        <span style="width:15%; text-align:right;">' + v2_val + '</span>'
+                    '        <span style="width:15%; text-align:right;">' + v3_val + '</span>'
+                    '    </div>'
+                    '    <div class="sinal-indicator ' + blink_class + '" style="color:' + res["seta_cor"] + '; min-height:14px;">'
+                    '        ' + sinal_txt + ''
+                    '    </div>'
+                    '</div>'
+                )
                 
                 st.markdown(render_barra, unsafe_allow_html=True)
             
