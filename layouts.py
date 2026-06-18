@@ -371,9 +371,8 @@ while True:
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 
-                # --- BARRA DE FORÇA (RÉGUA TRIPLA DINÂMICA COMPLETA) ---
-                # AQUI ESTÁ A CORREÇÃO: ADICIONADO O ARGUMENTO unsafe_allow_html=True!
-                st.markdown(f'''
+                # --- FIX DA BARRA DE FORÇA (ISOLADA SEM CONFLITO DE CHAVES COM O INTERPRETADOR PYTHON) ---
+                raw_html_barra = """
                 <div class="bar-wrapper-full">
                     <div class="force-scale-top">
                         <span style="color:#00ff88; width:15%; text-align:left;">-0.90%</span>
@@ -388,28 +387,45 @@ while True:
                     <div class="force-container-dual">
                         <div class="center-line"></div>
                         <div class="bar-side">
-                            <div class="fill-green" style="width: {res["p_v"]}%;"></div>
+                            <div class="fill-green" style="width: __PV__%;"></div>
                         </div>
                         <div class="bar-side">
-                            <div class="fill-red" style="width: {res["p_r"]}%;"></div>
+                            <div class="fill-red" style="width: __PR__%;"></div>
                         </div>
                     </div>
                     
                     <div class="force-scale-bottom">
-                        <span style="width:15%; text-align:left;">{(res['p_c3_v']/1000):.4f}</span>
-                        <span style="width:15%; text-align:left;">{(res['p_c2_v']/1000):.4f}</span>
-                        <span style="width:15%; text-align:left;">{(res['p_c1_v']/1000):.4f}</span>
-                        <span style="color:#ffffff; width:10%; text-align:center;">{(res['medio']/1000):.4f}</span>
-                        <span style="width:15%; text-align:right;">{(res['p_v1_v']/1000):.4f}</span>
-                        <span style="width:15%; text-align:right;">{(res['p_v2_v']/1000):.4f}</span>
-                        <span style="width:15%; text-align:right;">{(res['p_v3_v']/1000):.4f}</span>
+                        <span style="width:15%; text-align:left;">__C3__</span>
+                        <span style="width:15%; text-align:left;">__C2__</span>
+                        <span style="width:15%; text-align:left;">__C1__</span>
+                        <span style="color:#ffffff; width:10%; text-align:center;">__MED__</span>
+                        <span style="width:15%; text-align:right;">__V1__</span>
+                        <span style="width:15%; text-align:right;">__V2__</span>
+                        <span style="width:15%; text-align:right;">__V3__</span>
                     </div>
                     
-                    <div class="sinal-indicator {"blink" if res["piscando"] else ""}" style="color:{res["seta_cor"]}; min-height:14px;">
-                        {res["seta"] if res["seta"] else "&nbsp;"}
+                    <div class="sinal-indicator __BLINK__" style="color:__SETACOR__; min-height:14px;">
+                        __SETATXT__
                     </div>
                 </div>
-                ''', unsafe_allow_html=True)
+                """
+                
+                # Injeção cirúrgica de valores substituindo marcadores de texto planos
+                render_barra = raw_html_barra \
+                    .replace("__PV__", f"{res['p_v']:.1f}") \
+                    .replace("__PR__", f"{res['p_r']:.1f}") \
+                    .replace("__C3__", f"{(res['p_c3_v']/1000):.4f}") \
+                    .replace("__C2__", f"{(res['p_c2_v']/1000):.4f}") \
+                    .replace("__C1__", f"{(res['p_c1_v']/1000):.4f}") \
+                    .replace("__MED__", f"{(res['medio']/1000):.4f}") \
+                    .replace("__V1__", f"{(res['p_v1_v']/1000):.4f}") \
+                    .replace("__V2__", f"{(res['p_v2_v']/1000):.4f}") \
+                    .replace("__V3__", f"{(res['p_v3_v']/1000):.4f}") \
+                    .replace("__BLINK__", "blink" if res["piscando"] else "") \
+                    .replace("__SETACOR__", res["seta_cor"]) \
+                    .replace("__SETATXT__", res["seta"] if res["seta"] else "&nbsp;")
+                
+                st.markdown(render_barra, unsafe_allow_html=True)
             
             with c2:
                 sc1, sc2 = st.columns([1, 1])
