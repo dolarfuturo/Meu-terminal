@@ -255,7 +255,8 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             "alvo_low": alvo_low, "alvo_high": alvo_high, "spreed_t": spreed_t, "passo_fixo": passo_fixo,
             "gatilho_c": gatilho_c, "gatilho_v": gatilho_v, "ind_val": ind_val, "cor_ind": cor_ind,
             "bloco_vol": bloco_vol, "mx_adm": mx_adm, "mn_adm": mn_adm, "distancia_base_calc": distancia_base_calc,
-            "p_c3_v": p_c3_v, "p_c2_v": p_c2_v, "p_c1_v": p_c1_v, "p_v1_v": p_v1_v, "p_v2_v": p_v2_v, "p_v3_v": p_v3_v
+            "p_c3_v": p_c3_v, "p_c2_v": p_c2_v, "p_c1_v": p_c1_v, "p_v1_v": p_v1_v, "p_v2_v": p_v2_v, "p_v3_v": p_v3_v,
+            "pct_afastamento": pct_afastamento  # Passando o afastamento real da média para a interface
         }
     except: return None
 
@@ -357,12 +358,12 @@ while True:
                 v3_val = "{:.4f}".format(res['p_v3_v'] / 1000)
                 sinal_txt = res["seta"] if res["seta"] else "&nbsp;"
                 
-                # ALTERAÇÃO CRÍTICA AQUI: Mudamos para a variação pura do DOLSPOT (sem FRP)
-                var_spot_pura_txt = "{:+.2f}%".format(res['v_spot'])
+                # CORREÇÃO: Usamos o res['pct_afastamento'], que mede o Spot em relação à Média Dólar.
+                var_da_barra_txt = "{:+.2f}%".format(res['pct_afastamento'])
                 
-                # Vincula a variação móvel do Spot ao lado correspondente da barra que está expandindo
-                conteudo_verde = var_spot_pura_txt if res['p_v'] > 0 else "&nbsp;"
-                conteudo_vermelho = var_spot_pura_txt if res['p_r'] > 0 else "&nbsp;"
+                # Vincula perfeitamente o texto do afastamento ao preenchimento móvel
+                conteudo_verde = var_da_barra_txt if res['p_v'] > 0 else "&nbsp;"
+                conteudo_vermelho = var_da_barra_txt if res['p_r'] > 0 else "&nbsp;"
 
                 render_barra = (
                     '<div class="bar-wrapper-full">'
