@@ -43,12 +43,10 @@ st.markdown("""
     .force-scale-top { display: flex; justify-content: space-between; font-size: 9px; font-weight: bold; color: #ffffff; margin-bottom: 2px; padding: 0 2px; }
     .force-scale-bottom { display: flex; justify-content: space-between; font-size: 9px; font-weight: bold; color: #00BFFF; margin-top: 2px; padding: 0 2px; }
     
-    /* Altura aumentada para comportar o texto interno confortavelmente */
     .force-container-dual { background: #111; height: 16px; width: 100%; border-radius: 2px; position: relative; overflow: hidden; display: flex; border: 1px solid #ffffff; }
     .center-line { position: absolute; left: 50%; top: 0; width: 1px; height: 100%; background: #fff; z-index: 10; }
     .bar-side { width: 50%; height: 100%; position: relative; background: #050a0e; }
     
-    /* Classes de preenchimento ajustadas para alinhar e formatar o texto interno */
     .fill-green { background: #00ff88; float: right; height: 100%; transition: width 0.4s; display: flex; align-items: center; justify-content: flex-start; padding-left: 5px; color: #000000; font-size: 10px; font-weight: bold; white-space: nowrap; }
     .fill-red { background: #ff4d4d; float: left; height: 100%; transition: width 0.4s; display: flex; align-items: center; justify-content: flex-end; padding-right: 5px; color: #000000; font-size: 10px; font-weight: bold; white-space: nowrap; }
     
@@ -245,7 +243,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
                 salvar_historico_dolfut_diario(dolfut_atual_calc, dolfut_atual_calc)
 
         return {
-            "vivo": vivo_val, "vivo_pct": calc_variacoes_pct * 100, "dolfut_calc": dolfut_atual_calc, "fraja": fraja_val, 
+            "white": vivo_val, "vivo_pct": calc_variacoes_pct * 100, "dolfut_calc": dolfut_atual_calc, "fraja": fraja_val, 
             "medio": dolar_medio, "axis_central": axis_dinamico,
             "max_fut_1": axis_dinamico + passo_fixo, "max_fut_1_b": axis_dinamico + (passo_fixo * 2),
             "max_fut_2": axis_dinamico + (passo_fixo * 3), "max_fut_2_b": axis_dinamico + (passo_fixo * 4),
@@ -359,13 +357,12 @@ while True:
                 v3_val = "{:.4f}".format(res['p_v3_v'] / 1000)
                 sinal_txt = res["seta"] if res["seta"] else "&nbsp;"
                 
-                # Formata a variação real do dia
-                var_real_txt = "{:+.2f}%".format(res['v_v'])
+                # ALTERAÇÃO CRÍTICA AQUI: Mudamos para a variação pura do DOLSPOT (sem FRP)
+                var_spot_pura_txt = "{:+.2f}%".format(res['v_spot'])
                 
-                # Só joga o texto dentro do lado ativo (se for compradora, joga na verde. Se for vendedora, na vermelha)
-                # Se estiver zerado no meio (0), as duas ficam vazias para manter o design limpo.
-                conteudo_verde = var_real_txt if res['p_v'] > 0 else "&nbsp;"
-                conteudo_vermelho = var_real_txt if res['p_r'] > 0 else "&nbsp;"
+                # Vincula a variação móvel do Spot ao lado correspondente da barra que está expandindo
+                conteudo_verde = var_spot_pura_txt if res['p_v'] > 0 else "&nbsp;"
+                conteudo_vermelho = var_spot_pura_txt if res['p_r'] > 0 else "&nbsp;"
 
                 render_barra = (
                     '<div class="bar-wrapper-full">'
@@ -428,7 +425,7 @@ while True:
                         <div class="calc-row txt-white" style="border-bottom: none;"><span>BL. C3</span> <span>{(mn_a - (bv * 3)):.1f}</span></div>
                     </div>''', unsafe_allow_html=True)
                 
-                st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
+                st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{res['white']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
                 
                 st.markdown(f'''<div class="calc-panel" style="text-align:center; border: 1.5px solid {res['cor_ind']}; padding-bottom:6px;">
                     <div style="color:#AAA; font-size:10px; font-weight:bold; text-transform:uppercase;">INDICADOR REVERSÃO</div>
