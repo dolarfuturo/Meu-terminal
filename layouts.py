@@ -47,7 +47,9 @@ st.markdown("""
     .bar-side { width: 50%; height: 100%; position: relative; background: #050a0e; }
     .fill-green { background: #00ff88; float: right; height: 100%; transition: width 0.4s; }
     .fill-red { background: #ff4d4d; float: left; height: 100%; transition: width 0.4s; }
-    .sinal-indicator { font-size: 12px; font-weight: 900; line-height: 1; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    
+    /* Modificado para destacar apenas a seta grande */
+    .sinal-indicator { font-size: 26px; font-weight: bold; line-height: 1; margin-top: 4px; }
     
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 1.5px solid #ffffff; border-bottom: 1.5px solid #ffffff; padding: 4px 0; overflow: hidden; white-space: nowrap; margin-top: 8px; }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 12px; font-weight: bold; color: #fff; }
@@ -201,13 +203,13 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         diff_media = spot_data['at'] - dolar_medio
         pct_afastamento = (diff_media / dolar_medio) * 100 if dolar_medio > 0 else 0
         
-        # Definição exclusiva do Delta Direção (sem alertas de região)
+        # Ajuste: Seta pura (sem texto). Pra cima Verde, Pra baixo Vermelha.
         if spot_data['at'] >= dolar_medio:
-            seta_txt = "▲ DELTA PARA CIMA"
-            seta_cor = "#ff4d4d"
+            seta_txt = "▲"
+            seta_cor = "#00ff88"  # Pra cima -> Verde
         else:
-            seta_txt = "▼ DELTA PARA BAIXO"
-            seta_cor = "#00ff88"
+            seta_txt = "▼"
+            seta_cor = "#ff4d4d"  # Pra baixo -> Vermelha
             
         p_v, p_r = 0, 0
         if diff_media < 0:
@@ -344,7 +346,7 @@ while True:
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 
-                # --- BARRA DE FORÇA EXCLUSIVA COM INDICAÇÃO DELTA DIREÇÃO ---
+                # --- BARRA DE FORÇA EXCLUSIVA COM SETA PURA (SEM TEXTO) ---
                 p_v_val = "{:.1f}".format(res['p_v'])
                 p_r_val = "{:.1f}".format(res['p_r'])
                 c3_val = "{:.4f}".format(res['p_c3_v'] / 1000)
@@ -384,7 +386,7 @@ while True:
                     '        <span style="width:15%; text-align:right;">' + v2_val + '</span>'
                     '        <span style="width:15%; text-align:right;">' + v3_val + '</span>'
                     '    </div>'
-                    '    <div class="sinal-indicator" style="color:' + res["seta_cor"] + '; min-height:14px;">'
+                    '    <div class="sinal-indicator" style="color:' + res["seta_cor"] + '; min-height:26px;">'
                     '        ' + sinal_txt + ''
                     '    </div>'
                     '</div>'
