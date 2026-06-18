@@ -38,7 +38,7 @@ st.markdown("""
     .calc-panel { border: 1.5px solid #ffffff; border-radius: 4px; padding: 4px; background: #0a141a; font-family: monospace; margin-bottom: 4px; margin-top: 8px; }
     .calc-row { display: flex; justify-content: space-between; padding: 2px 6px; border-bottom: 1px solid #444; font-size: 10px; font-weight: bold; align-items: center; }
     
-    /* Customizações Ajustadas da Barra de Força */
+    /* Customizações da Barra de Força */
     .bar-wrapper-full { background: #0a141a; padding: 6px; border: 1.5px solid #ffffff; border-radius: 4px; text-align: center; margin-top: 5px; font-family: monospace; }
     .force-scale-top { display: flex; justify-content: space-between; font-size: 9px; font-weight: bold; color: #ffffff; margin-bottom: 2px; padding: 0 2px; }
     .force-scale-bottom { display: flex; justify-content: space-between; font-size: 9px; font-weight: bold; color: #00BFFF; margin-top: 2px; padding: 0 2px; }
@@ -49,8 +49,6 @@ st.markdown("""
     .fill-red { background: #ff4d4d; float: left; height: 100%; transition: width 0.4s; }
     .sinal-indicator { font-size: 12px; font-weight: 900; line-height: 1; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
     
-    .blink { animation: blinker 1.5s linear infinite; }
-    @keyframes blinker { 50% { opacity: 0.1; } }
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 1.5px solid #ffffff; border-bottom: 1.5px solid #ffffff; padding: 4px 0; overflow: hidden; white-space: nowrap; margin-top: 8px; }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 12px; font-weight: bold; color: #fff; }
     @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
@@ -96,7 +94,6 @@ def salvar_historico_dolfut_diario(mx, mn):
             f.write(f"{data_hoje},{mx},{mn}")
     except: pass
 
-# Gerenciamento de Memória Central do Terminal
 div_spreed_salvo, max_madr_salvo, min_madr_salvo = carregar_eixos()
 
 if 'market_data' not in st.session_state: st.session_state.market_data = {}
@@ -104,9 +101,6 @@ if 'last_p' not in st.session_state: st.session_state.last_p = {}
 if 'div_spreed_mem' not in st.session_state: st.session_state.div_spreed_mem = div_spreed_salvo
 if 'max_madr_mem' not in st.session_state: st.session_state.max_madr_mem = max_madr_salvo
 if 'min_madr_mem' not in st.session_state: st.session_state.min_madr_mem = min_madr_salvo
-
-if 'grau_venda_ativo' not in st.session_state: st.session_state.grau_venda_ativo = 0
-if 'grau_compra_ativo' not in st.session_state: st.session_state.grau_compra_ativo = 0
 
 max_init, min_init = carregar_historico_dolfut_diario()
 if 'dolfut_max_auto' not in st.session_state: st.session_state.dolfut_max_auto = max_init
@@ -207,43 +201,13 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         diff_media = spot_data['at'] - dolar_medio
         pct_afastamento = (diff_media / dolar_medio) * 100 if dolar_medio > 0 else 0
         
-        seta_txt, seta_cor, piscando = "", "#000000", False
-        
-        st.session_state.grau_venda_ativo = 0
-        st.session_state.grau_compra_ativo = 0
-
-        if pct_afastamento >= 0.25 and pct_afastamento <= 0.35:
-            st.session_state.grau_venda_ativo = 1
-        elif pct_afastamento >= 0.55 and pct_afastamento <= 0.65:
-            st.session_state.grau_venda_ativo = 2
-        elif pct_afastamento >= 0.85 and pct_afastamento <= 0.95:
-            st.session_state.grau_venda_ativo = 3
-
-        if pct_afastamento <= -0.25 and pct_afastamento >= -0.35:
-            st.session_state.grau_compra_ativo = 1
-        elif pct_afastamento <= -0.55 and pct_afastamento >= -0.65:
-            st.session_state.grau_compra_ativo = 2
-        elif pct_afastamento <= -0.85 and pct_afastamento >= -0.95:
-            st.session_state.grau_compra_ativo = 3
-
-        # Lógica de Alertas Limpos + Indicador de Direção Delta Restaurado
-        if st.session_state.grau_venda_ativo > 0:
-            seta_txt = "▼ REGIÃO DE VENDA"
+        # Definição exclusiva do Delta Direção (sem alertas de região)
+        if spot_data['at'] >= dolar_medio:
+            seta_txt = "▲ DELTA PARA CIMA"
             seta_cor = "#ff4d4d"
-            piscando = True
-        elif st.session_state.grau_compra_ativo > 0:
-            seta_txt = "▲ REGIÃO DE COMPRA"
-            seta_cor = "#00ff88"
-            piscando = True
         else:
-            # Caso não esteja em região de compra/venda, ativa o Indicador Delta
-            if spot_data['at'] >= dolar_medio:
-                seta_txt = "▲ DELTA PARA CIMA"
-                seta_cor = "#ff4d4d"
-            else:
-                seta_txt = "▼ DELTA PARA BAIXO"
-                seta_cor = "#00ff88"
-            piscando = False
+            seta_txt = "▼ DELTA PARA BAIXO"
+            seta_cor = "#00ff88"
             
         p_v, p_r = 0, 0
         if diff_media < 0:
@@ -284,7 +248,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             "min_fut_1": axis_dinamico - passo_fixo, "min_fut_1_b": axis_dinamico - (passo_fixo * 2),
             "min_fut_2": axis_dinamico - (passo_fixo * 3), "min_fut_2_b": axis_dinamico - (passo_fixo * 4),
             "v_v": calc_variacoes_pct * 100, "v_spot": v_spot_pct * 100, "spreed": spreed_50, 
-            "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor, "piscando": piscando, 
+            "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor, 
             "max_grade": st.session_state.dolfut_max_auto, "min_grade": st.session_state.dolfut_min_auto, 
             "alvo_low": alvo_low, "alvo_high": alvo_high, "spreed_t": spreed_t, "passo_fixo": passo_fixo,
             "gatilho_c": gatilho_c, "gatilho_v": gatilho_v, "ind_val": ind_val, "cor_ind": cor_ind,
@@ -380,7 +344,7 @@ while True:
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 
-                # --- BARRA DE FORÇA AJUSTADA (REMOVIDO PREÇO DA MÉDIA E REINSERIDO DELTA DIREÇÃO) ---
+                # --- BARRA DE FORÇA EXCLUSIVA COM INDICAÇÃO DELTA DIREÇÃO ---
                 p_v_val = "{:.1f}".format(res['p_v'])
                 p_r_val = "{:.1f}".format(res['p_r'])
                 c3_val = "{:.4f}".format(res['p_c3_v'] / 1000)
@@ -389,7 +353,6 @@ while True:
                 v1_val = "{:.4f}".format(res['p_v1_v'] / 1000)
                 v2_val = "{:.4f}".format(res['p_v2_v'] / 1000)
                 v3_val = "{:.4f}".format(res['p_v3_v'] / 1000)
-                blink_class = "blink" if res["piscando"] else ""
                 sinal_txt = res["seta"] if res["seta"] else "&nbsp;"
 
                 render_barra = (
@@ -421,7 +384,7 @@ while True:
                     '        <span style="width:15%; text-align:right;">' + v2_val + '</span>'
                     '        <span style="width:15%; text-align:right;">' + v3_val + '</span>'
                     '    </div>'
-                    '    <div class="sinal-indicator ' + blink_class + '" style="color:' + res["seta_cor"] + '; min-height:14px;">'
+                    '    <div class="sinal-indicator" style="color:' + res["seta_cor"] + '; min-height:14px;">'
                     '        ' + sinal_txt + ''
                     '    </div>'
                     '</div>'
