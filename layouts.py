@@ -47,13 +47,13 @@ st.markdown("""
     .center-line { position: absolute; left: 50%; top: 0; width: 1px; height: 100%; background: #fff; z-index: 10; }
     .bar-side { width: 50%; height: 100%; position: relative; background: #050a0e; }
     
-    /* Ajuste de cores da barra (Esquerda preenche Verde / Direita preenche Vermelho) */
+    /* Tons originais do Terminal para o preenchimento da Barra */
     .fill-green { background: #00ff88; float: right; height: 100%; transition: width 0.4s; display: flex; align-items: center; justify-content: flex-start; padding-left: 5px; font-size: 10px; font-weight: bold; white-space: nowrap; }
     .fill-red { background: #ff4d4d; float: left; height: 100%; transition: width 0.4s; display: flex; align-items: center; justify-content: flex-end; padding-right: 5px; font-size: 10px; font-weight: bold; white-space: nowrap; }
     
-    /* Cores do texto interno espelhado */
-    .txt-interno-vermelho { color: #ff0000 !important; } /* Texto vermelho sobre fundo verde */
-    .txt-interno-verde { color: #008000 !important; }    /* Texto verde escuro sobre fundo vermelho para dar leitura */
+    /* Cores de Texto Interno Inversas (Mesmos tons do seu Terminal) */
+    .txt-interno-tom-vermelho { color: #ff4d4d !important; } /* Texto vermelho idêntico à barra de venda */
+    .txt-interno-tom-verde { color: #00ff88 !important; }    /* Texto verde idêntico à barra de compra */
     
     .sinal-indicator { font-size: 18px; font-weight: bold; line-height: 1; margin-top: 4px; }
     
@@ -363,16 +363,14 @@ while True:
                 v3_val = "{:.4f}".format(res['p_v3_v'] / 1000)
                 sinal_txt = res["seta"] if res["seta"] else "&nbsp;"
                 
-                # Formatando o afastamento real em relação à média
+                # Afastamento percentual do Spot em relação à Média Dólar
                 var_da_barra_txt = "{:+.2f}%".format(res['pct_afastamento'])
                 
-                # CORREÇÃO CRÍTICA CRUZADA:
-                # Se p_r > 0 -> Preço está SUBINDO (Afastamento positivo). 
-                # A barra preenche Vermelho (.fill-red), mas o texto interno fica VERDE (.txt-interno-verde).
-                # Se p_v > 0 -> Preço está CAINDO (Afastamento negativo). 
-                # A barra preenche Verde (.fill-green), mas o texto interno fica VERMELHO (.txt-interno-vermelho).
-                conteudo_verde = f'<span class="txt-interno-vermelho">{var_da_barra_txt}</span>' if res['p_v'] > 0 else "&nbsp;"
-                conteudo_vermelho = f'<span class="txt-interno-verde">{var_da_barra_txt}</span>' if res['p_r'] > 0 else "&nbsp;"
+                # MODIFICAÇÃO TONAL DO INDICADOR INVERSO:
+                # fill-green (Fundo Verde de Compra) -> Texto com tom exato Vermelho (#ff4d4d)
+                # fill-red (Fundo Vermelho de Venda) -> Texto com tom exato Verde (#00ff88)
+                conteudo_verde = f'<span class="txt-interno-tom-vermelho">{var_da_barra_txt}</span>' if res['p_v'] > 0 else "&nbsp;"
+                conteudo_vermelho = f'<span class="txt-interno-tom-verde">{var_da_barra_txt}</span>' if res['p_r'] > 0 else "&nbsp;"
 
                 render_barra = (
                     '<div class="bar-wrapper-full">'
