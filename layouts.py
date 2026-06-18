@@ -382,8 +382,11 @@ while True:
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 
-                # --- BARRA DE FORÇA (RÉGUA TRIPLA DINÂMICA) ---
-                st.markdown(f'''
+                # --- BARRA DE FORÇA (CONSTRUÇÃO STRING BLINDADA) ---
+                piscando_classe = "blink" if res["piscando"] else ""
+                seta_render = res["seta"] if res["seta"] else "&nbsp;"
+                
+                html_barra = f"""
                 <div class="bar-wrapper-full">
                     <div class="force-scale-top">
                         <span style="color:#00ff88; width:15%; text-align:left;">-0.90%</span>
@@ -398,10 +401,10 @@ while True:
                     <div class="force-container-dual">
                         <div class="center-line"></div>
                         <div class="bar-side">
-                            <div class="fill-green" style="width: {res["p_v"]}%;"></div>
+                            <div class="fill-green" style="width: {res['p_v']}%;"></div>
                         </div>
                         <div class="bar-side">
-                            <div class="fill-red" style="width: {res["p_r"]}%;"></div>
+                            <div class="fill-red" style="width: {res['p_r']}%;"></div>
                         </div>
                     </div>
                     
@@ -415,11 +418,12 @@ while True:
                         <span style="width:15%; text-align:right;">{res['p_v3_v']:.1f}</span>
                     </div>
                     
-                    <div class="sinal-indicator {"blink" if res["piscando"] else ""}" style="color:{res["seta_cor"]}; min-height:14px;">
-                        {res["seta"] if res["seta"] else "&nbsp;"}
+                    <div class="sinal-indicator {piscando_classe}" style="color:{res['seta_cor']}; min-height:14px;">
+                        {seta_render}
                     </div>
                 </div>
-                ''', unsafe_allow_html=True)
+                """
+                st.markdown(html_barra, unsafe_allow_html=True)
             
             with c2:
                 sc1, sc2 = st.columns([1, 1])
