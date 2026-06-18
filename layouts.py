@@ -105,7 +105,6 @@ if 'div_spreed_mem' not in st.session_state: st.session_state.div_spreed_mem = d
 if 'max_madr_mem' not in st.session_state: st.session_state.max_madr_mem = max_madr_salvo
 if 'min_madr_mem' not in st.session_state: st.session_state.min_madr_mem = min_madr_salvo
 
-# Memória de estado exclusiva da barra de força
 if 'grau_venda_ativo' not in st.session_state: st.session_state.grau_venda_ativo = 0
 if 'grau_compra_ativo' not in st.session_state: st.session_state.grau_compra_ativo = 0
 
@@ -198,7 +197,6 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             ind_val = 0.0
             cor_ind = "#00f2ff"
         
-        # Mantendo os multiplicadores de escala originais para as contas matemáticas de fundo
         p_c3_v = (dolar_medio * (1 - 0.0105)) + spreed_do_dia
         p_c2_v = (dolar_medio * (1 - 0.0070)) + spreed_do_dia
         p_c1_v = (dolar_medio * (1 - 0.0035)) + spreed_do_dia
@@ -214,7 +212,6 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         st.session_state.grau_venda_ativo = 0
         st.session_state.grau_compra_ativo = 0
 
-        # Regra de cálculo de 0.05% mantida perfeitamente intacta
         if pct_afastamento >= 0.25 and pct_afastamento <= 0.35:
             st.session_state.grau_venda_ativo = 1
         elif pct_afastamento >= 0.55 and pct_afastamento <= 0.65:
@@ -229,7 +226,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         elif pct_afastamento <= -0.85 and pct_afastamento >= -0.95:
             st.session_state.grau_compra_ativo = 3
 
-        # Remoção da palavra "Grau 1, 2, 3" - Exibindo somente Região de Venda/Compra
+        # Lógica de Alertas Limpos + Indicador de Direção Delta Restaurado
         if st.session_state.grau_venda_ativo > 0:
             seta_txt = "▼ REGIÃO DE VENDA"
             seta_cor = "#ff4d4d"
@@ -238,6 +235,15 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             seta_txt = "▲ REGIÃO DE COMPRA"
             seta_cor = "#00ff88"
             piscando = True
+        else:
+            # Caso não esteja em região de compra/venda, ativa o Indicador Delta
+            if spot_data['at'] >= dolar_medio:
+                seta_txt = "▲ DELTA PARA CIMA"
+                seta_cor = "#ff4d4d"
+            else:
+                seta_txt = "▼ DELTA PARA BAIXO"
+                seta_cor = "#00ff88"
+            piscando = False
             
         p_v, p_r = 0, 0
         if diff_media < 0:
@@ -374,13 +380,12 @@ while True:
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 
-                # --- ATUALIZAÇÃO DA ESCALA DA BARRA DE FORÇA (0.35%, 0.70%, 1.05%) ---
+                # --- BARRA DE FORÇA AJUSTADA (REMOVIDO PREÇO DA MÉDIA E REINSERIDO DELTA DIREÇÃO) ---
                 p_v_val = "{:.1f}".format(res['p_v'])
                 p_r_val = "{:.1f}".format(res['p_r'])
                 c3_val = "{:.4f}".format(res['p_c3_v'] / 1000)
                 c2_val = "{:.4f}".format(res['p_c2_v'] / 1000)
                 c1_val = "{:.4f}".format(res['p_c1_v'] / 1000)
-                med_val = "{:.4f}".format(res['medio'] / 1000)
                 v1_val = "{:.4f}".format(res['p_v1_v'] / 1000)
                 v2_val = "{:.4f}".format(res['p_v2_v'] / 1000)
                 v3_val = "{:.4f}".format(res['p_v3_v'] / 1000)
@@ -411,7 +416,7 @@ while True:
                     '        <span style="width:15%; text-align:left;">' + c3_val + '</span>'
                     '        <span style="width:15%; text-align:left;">' + c2_val + '</span>'
                     '        <span style="width:15%; text-align:left;">' + c1_val + '</span>'
-                    '        <span style="color:#ffffff; width:10%; text-align:center;">' + med_val + '</span>'
+                    '        <span style="color:#ffffff; width:10%; text-align:center;">&nbsp;</span>'
                     '        <span style="width:15%; text-align:right;">' + v1_val + '</span>'
                     '        <span style="width:15%; text-align:right;">' + v2_val + '</span>'
                     '        <span style="width:15%; text-align:right;">' + v3_val + '</span>'
