@@ -48,6 +48,7 @@ st.markdown("""
     .fill-green { background: #00ff88; float: right; height: 100%; transition: width 0.4s; }
     .fill-red { background: #ff4d4d; float: left; height: 100%; transition: width 0.4s; }
     
+    /* Modificado para diminuir um pouco o tamanho da seta pura */
     .sinal-indicator { font-size: 18px; font-weight: bold; line-height: 1; margin-top: 4px; }
     
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 1.5px solid #ffffff; border-bottom: 1.5px solid #ffffff; padding: 4px 0; overflow: hidden; white-space: nowrap; margin-top: 8px; }
@@ -202,12 +203,13 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         diff_media = spot_data['at'] - dolar_medio
         pct_afastamento = (diff_media / dolar_medio) * 100 if dolar_medio > 0 else 0
         
+        # Ajuste: Seta pura. Pra cima Verde, Pra baixo Vermelha.
         if spot_data['at'] >= dolar_medio:
             seta_txt = "▲"
-            seta_cor = "#00ff88"
+            seta_cor = "#00ff88"  # Verde
         else:
             seta_txt = "▼"
-            seta_cor = "#ff4d4d"
+            seta_cor = "#ff4d4d"  # Vermelha
             
         p_v, p_r = 0, 0
         if diff_media < 0:
@@ -344,7 +346,7 @@ while True:
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 
-                # --- BARRA DE FORÇA MODIFICADA COM AS VARIAÇÕES EM TEMPO REAL NO TOPO ---
+                # --- BARRA DE FORÇA AJUSTADA (CENTRO COM 0 E SETA DISCRETA) ---
                 p_v_val = "{:.1f}".format(res['p_v'])
                 p_r_val = "{:.1f}".format(res['p_r'])
                 c3_val = "{:.4f}".format(res['p_c3_v'] / 1000)
@@ -354,17 +356,17 @@ while True:
                 v2_val = "{:.4f}".format(res['p_v2_v'] / 1000)
                 v3_val = "{:.4f}".format(res['p_v3_v'] / 1000)
                 sinal_txt = res["seta"] if res["seta"] else "&nbsp;"
-                
-                # Formata as variações dinâmicas atuais para exibir na régua
-                v_spot_txt = "{:+.2f}%".format(res['v_spot'])
-                v_fut_txt = "{:+.2f}%".format(res['v_v'])
 
                 render_barra = (
                     '<div class="bar-wrapper-full">'
                     '    <div class="force-scale-top">'
-                    '        <span style="color:#00ff88; width:25%; text-align:left;">SPOT: ' + v_spot_txt + '</span>'
-                    '        <span style="color:#ffffff; width:50%; text-align:center;">0</span>'
-                    '        <span style="color:#ff4d4d; width:25%; text-align:right;">FUT: ' + v_fut_txt + '</span>'
+                    '        <span style="color:#00ff88; width:15%; text-align:left;">-1.05%</span>'
+                    '        <span style="color:#00ff88; width:15%; text-align:left;">-0.70%</span>'
+                    '        <span style="color:#00ff88; width:15%; text-align:left;">-0.35%</span>'
+                    '        <span style="color:#ffffff; width:10%; text-align:center;">0</span>'  # Trocado de MÉDIA para 0
+                    '        <span style="color:#ff4d4d; width:15%; text-align:right;">+0.35%</span>'
+                    '        <span style="color:#ff4d4d; width:15%; text-align:right;">+0.70%</span>'
+                    '        <span style="color:#ff4d4d; width:15%; text-align:right;">+1.05%</span>'
                     '    </div>'
                     '    <div class="force-container-dual">'
                     '        <div class="center-line"></div>'
