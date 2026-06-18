@@ -48,8 +48,8 @@ st.markdown("""
     .fill-green { background: #00ff88; float: right; height: 100%; transition: width 0.4s; }
     .fill-red { background: #ff4d4d; float: left; height: 100%; transition: width 0.4s; }
     
-    /* Modificado para destacar apenas a seta grande */
-    .sinal-indicator { font-size: 26px; font-weight: bold; line-height: 1; margin-top: 4px; }
+    /* Modificado para diminuir um pouco o tamanho da seta pura */
+    .sinal-indicator { font-size: 18px; font-weight: bold; line-height: 1; margin-top: 4px; }
     
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 1.5px solid #ffffff; border-bottom: 1.5px solid #ffffff; padding: 4px 0; overflow: hidden; white-space: nowrap; margin-top: 8px; }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 12px; font-weight: bold; color: #fff; }
@@ -203,13 +203,13 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         diff_media = spot_data['at'] - dolar_medio
         pct_afastamento = (diff_media / dolar_medio) * 100 if dolar_medio > 0 else 0
         
-        # Ajuste: Seta pura (sem texto). Pra cima Verde, Pra baixo Vermelha.
+        # Ajuste: Seta pura. Pra cima Verde, Pra baixo Vermelha.
         if spot_data['at'] >= dolar_medio:
             seta_txt = "▲"
-            seta_cor = "#00ff88"  # Pra cima -> Verde
+            seta_cor = "#00ff88"  # Verde
         else:
             seta_txt = "▼"
-            seta_cor = "#ff4d4d"  # Pra baixo -> Vermelha
+            seta_cor = "#ff4d4d"  # Vermelha
             
         p_v, p_r = 0, 0
         if diff_media < 0:
@@ -346,7 +346,7 @@ while True:
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 
-                # --- BARRA DE FORÇA EXCLUSIVA COM SETA PURA (SEM TEXTO) ---
+                # --- BARRA DE FORÇA AJUSTADA (CENTRO COM 0 E SETA DISCRETA) ---
                 p_v_val = "{:.1f}".format(res['p_v'])
                 p_r_val = "{:.1f}".format(res['p_r'])
                 c3_val = "{:.4f}".format(res['p_c3_v'] / 1000)
@@ -363,7 +363,7 @@ while True:
                     '        <span style="color:#00ff88; width:15%; text-align:left;">-1.05%</span>'
                     '        <span style="color:#00ff88; width:15%; text-align:left;">-0.70%</span>'
                     '        <span style="color:#00ff88; width:15%; text-align:left;">-0.35%</span>'
-                    '        <span style="color:#ffffff; width:10%; text-align:center;">MÉDIA</span>'
+                    '        <span style="color:#ffffff; width:10%; text-align:center;">0</span>'  # Trocado de MÉDIA para 0
                     '        <span style="color:#ff4d4d; width:15%; text-align:right;">+0.35%</span>'
                     '        <span style="color:#ff4d4d; width:15%; text-align:right;">+0.70%</span>'
                     '        <span style="color:#ff4d4d; width:15%; text-align:right;">+1.05%</span>'
@@ -386,7 +386,7 @@ while True:
                     '        <span style="width:15%; text-align:right;">' + v2_val + '</span>'
                     '        <span style="width:15%; text-align:right;">' + v3_val + '</span>'
                     '    </div>'
-                    '    <div class="sinal-indicator" style="color:' + res["seta_cor"] + '; min-height:26px;">'
+                    '    <div class="sinal-indicator" style="color:' + res["seta_cor"] + '; min-height:18px;">'
                     '        ' + sinal_txt + ''
                     '    </div>'
                     '</div>'
