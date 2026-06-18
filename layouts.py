@@ -37,14 +37,18 @@ st.markdown("""
     .f-dn { background-color: #ff0000aa !important; }
     .calc-panel { border: 1.5px solid #ffffff; border-radius: 4px; padding: 4px; background: #0a141a; font-family: monospace; margin-bottom: 4px; margin-top: 8px; }
     .calc-row { display: flex; justify-content: space-between; padding: 2px 6px; border-bottom: 1px solid #444; font-size: 10px; font-weight: bold; align-items: center; }
-    .bar-wrapper-full { background: #0a141a; padding: 6px; border: 1.5px solid #ffffff; border-radius: 4px; text-align: center; margin-top: 5px; }
-    .force-scale { display: flex; justify-content: space-between; font-size: 8px; font-family: monospace; color: #AAA; margin-bottom: 2px; padding: 0 5px; }
-    .force-container-dual { background: #111; height: 10px; width: 100%; border-radius: 2px; position: relative; overflow: hidden; display: flex; border: 1px solid #444; }
+    
+    /* Customizações Ajustadas da Barra de Força */
+    .bar-wrapper-full { background: #0a141a; padding: 6px; border: 1.5px solid #ffffff; border-radius: 4px; text-align: center; margin-top: 5px; font-family: monospace; }
+    .force-scale-top { display: flex; justify-content: space-between; font-size: 9px; font-weight: bold; color: #ffffff; margin-bottom: 2px; padding: 0 2px; }
+    .force-scale-bottom { display: flex; justify-content: space-between; font-size: 9px; font-weight: bold; color: #00BFFF; margin-top: 2px; padding: 0 2px; }
+    .force-container-dual { background: #111; height: 12px; width: 100%; border-radius: 2px; position: relative; overflow: hidden; display: flex; border: 1px solid #ffffff; }
     .center-line { position: absolute; left: 50%; top: 0; width: 1px; height: 100%; background: #fff; z-index: 10; }
     .bar-side { width: 50%; height: 100%; position: relative; background: #050a0e; }
     .fill-green { background: #00ff88; float: right; height: 100%; transition: width 0.4s; }
     .fill-red { background: #ff4d4d; float: left; height: 100%; transition: width 0.4s; }
-    .sinal-indicator { font-size: 11px; font-weight: 900; line-height: 1; margin-top: 4px; }
+    .sinal-indicator { font-size: 12px; font-weight: 900; line-height: 1; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    
     .blink { animation: blinker 1.5s linear infinite; }
     @keyframes blinker { 50% { opacity: 0.1; } }
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 1.5px solid #ffffff; border-bottom: 1.5px solid #ffffff; padding: 4px 0; overflow: hidden; white-space: nowrap; margin-top: 8px; }
@@ -101,9 +105,9 @@ if 'div_spreed_mem' not in st.session_state: st.session_state.div_spreed_mem = d
 if 'max_madr_mem' not in st.session_state: st.session_state.max_madr_mem = max_madr_salvo
 if 'min_madr_mem' not in st.session_state: st.session_state.min_madr_mem = min_madr_salvo
 
-# Memória persistente de estado para os alertas de sinal (Histerese)
-if 'sinal_venda_ativo' not in st.session_state: st.session_state.sinal_venda_ativo = False
-if 'sinal_compra_ativo' not in st.session_state: st.session_state.sinal_compra_ativo = False
+# Memória de estado exclusiva da barra de força
+if 'grau_venda_ativo' not in st.session_state: st.session_state.grau_venda_ativo = 0
+if 'grau_compra_ativo' not in st.session_state: st.session_state.grau_compra_ativo = 0
 
 max_init, min_init = carregar_historico_dolfut_diario()
 if 'dolfut_max_auto' not in st.session_state: st.session_state.dolfut_max_auto = max_init
@@ -181,53 +185,73 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         mn_adm = st.session_state.min_madr_mem
         bloco_vol = mx_adm - mn_adm if mx_adm > mn_adm else 0.0
         
-        # Gatilhos do Indicador de Reversão
+        # =====================================================================
+        # 🚨 INDICADOR DE REVERSÃO ORIGINAL RETORNADO INTEGRAMENTE (NÃO MEXER!)
+        # =====================================================================
         gatilho_c = spot_data['mn'] + passo_fixo
         gatilho_v = spot_data['mx'] - passo_fixo
-        
-        # Distância calculada da base corrigida: diferença exata entre a mínima e a base de compra
         distancia_base_calc = abs(spot_data['mn'] - gatilho_c)
         
-        # --- LÓGICA DE SINAL RETIDO POR HISTERESE (0.45% ATÉ 0.50% DA MÉDIA DO DÓLAR) ---
+        if spot_data['at'] >= gatilho_v:
+            ind_val = spot_data['at'] - gatilho_v
+            cor_ind = "#ff4d4d"
+        elif spot_data['at'] <= gatilho_c:
+            ind_val = spot_data['at'] - gatilho_c
+            cor_ind = "#00ff88"
+        else:
+            ind_val = 0.0
+            cor_ind = "#00f2ff"
+        # =====================================================================
+        
+        # --- CÁLCULO DE PREÇOS DADOS PELAS ESCALAS DE VARIAÇÃO + FRP ---
+        p_c3_v = (dolar_medio * (1 - 0.0090)) + spreed_do_dia
+        p_c2_v = (dolar_medio * (1 - 0.0060)) + spreed_do_dia
+        p_c1_v = (dolar_medio * (1 - 0.0030)) + spreed_do_dia
+        p_v1_v = (dolar_medio * (1 + 0.0030)) + spreed_do_dia
+        p_v2_v = (dolar_medio * (1 + 0.0060)) + spreed_do_dia
+        p_v3_v = (dolar_medio * (1 + 0.0090)) + spreed_do_dia
+        
+        # --- LÓGICA DE SINAL RETIDO POR GRAUS DA BARRA DE FORÇA (HISTERESE) ---
         diff_media = spot_data['at'] - dolar_medio
         pct_afastamento = (diff_media / dolar_medio) * 100 if dolar_medio > 0 else 0
         
-        # Verificação do teto de Venda (Afastamento positivo)
-        if pct_afastamento >= 0.45:
-            st.session_state.sinal_venda_ativo = True
-        elif pct_afastamento < 0.45:
-            st.session_state.sinal_venda_ativo = False
-            
-        # Verificação do teto de Compra (Afastamento negativo)
-        if pct_afastamento <= -0.45:
-            st.session_state.sinal_compra_ativo = True
-        elif pct_afastamento > -0.45:
-            st.session_state.sinal_compra_ativo = False
-            
-        # Atribuição visual baseada nos estados salvos em memória
         seta_txt, seta_cor, piscando = "", "#000000", False
         
-        if st.session_state.sinal_venda_ativo:
-            ind_val = spot_data['at'] - gatilho_v
-            cor_ind = "#ff4d4d"
-            seta_txt, seta_cor, piscando = "▼ REGIÃO DE VENDA", "#ff4d4d", True
-        elif st.session_state.sinal_compra_ativo:
-            ind_val = spot_data['at'] - gatilho_c
-            cor_ind = "#00ff88"
-            seta_txt, seta_cor, piscando = "▲ REGIÃO DE COMPRA", "#00ff88", True
-        else:
-            if spot_data['at'] >= dolar_medio:
-                ind_val = spot_data['at'] - gatilho_v
-            else:
-                ind_val = spot_data['at'] - gatilho_c
-            cor_ind = "#00f2ff"
+        # Avaliação de Venda (Afastamento Positivo)
+        if pct_afastamento >= 0.25 and pct_afastamento < 0.35:
+            st.session_state.grau_venda_ativo = 1
+        elif pct_afastamento >= 0.55 and pct_afastamento < 0.65:
+            st.session_state.grau_venda_ativo = 2
+        elif pct_afastamento >= 0.85 and pct_afastamento < 0.95:
+            st.session_state.grau_venda_ativo = 3
+        elif pct_afastamento < 0.25 or (pct_afastamento >= 0.35 and pct_afastamento < 0.55) or (pct_afastamento >= 0.65 and pct_afastamento < 0.85) or pct_afastamento >= 0.95:
+            st.session_state.grau_venda_ativo = 0
+
+        # Avaliação de Compra (Afastamento Negativo)
+        if pct_afastamento <= -0.25 and pct_afastamento > -0.35:
+            st.session_state.grau_compra_ativo = 1
+        elif pct_afastamento <= -0.55 and pct_afastamento > -0.65:
+            st.session_state.grau_compra_ativo = 2
+        elif pct_afastamento <= -0.85 and pct_afastamento > -0.95:
+            st.session_state.grau_compra_ativo = 3
+        elif pct_afastamento > -0.25 or (pct_afastamento <= -0.35 and pct_afastamento > -0.55) or (pct_afastamento <= -0.65 and pct_afastamento > -0.85) or pct_afastamento <= -0.95:
+            st.session_state.grau_compra_ativo = 0
+
+        if st.session_state.grau_venda_ativo > 0:
+            seta_txt = f"▼ REGIÃO DE VENDA - GRAU {st.session_state.grau_venda_ativo}"
+            seta_cor = "#ff4d4d"
+            piscando = True
+        elif st.session_state.grau_compra_ativo > 0:
+            seta_txt = f"▲ REGIÃO DE COMPRA - GRAU {st.session_state.grau_compra_ativo}"
+            seta_cor = "#00ff88"
+            piscando = True
             
-        # Preenchimento da barra de força (Escala de visualização normalizada em até 0.5% máximo)
+        # Preenchimento proporcional da barra
         p_v, p_r = 0, 0
         if diff_media < 0:
-            p_v = min(100.0, (abs(pct_afastamento) / 0.5) * 100)
+            p_v = min(100.0, (abs(pct_afastamento) / 0.90) * 100)
         else:
-            p_r = min(100.0, (pct_afastamento / 0.5) * 100)
+            p_r = min(100.0, (pct_afastamento / 0.90) * 100)
             
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         dolfut_atual_calc = axis_dinamico * (1 + calc_variacoes_pct)
@@ -266,7 +290,8 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             "max_grade": st.session_state.dolfut_max_auto, "min_grade": st.session_state.dolfut_min_auto, 
             "alvo_low": alvo_low, "alvo_high": alvo_high, "spreed_t": spreed_t, "passo_fixo": passo_fixo,
             "gatilho_c": gatilho_c, "gatilho_v": gatilho_v, "ind_val": ind_val, "cor_ind": cor_ind,
-            "bloco_vol": bloco_vol, "mx_adm": mx_adm, "mn_adm": mn_adm, "distancia_base_calc": distancia_base_calc
+            "bloco_vol": bloco_vol, "mx_adm": mx_adm, "mn_adm": mn_adm, "distancia_base_calc": distancia_base_calc,
+            "p_c3_v": p_c3_v, "p_c2_v": p_c2_v, "p_c1_v": p_c1_v, "p_v1_v": p_v1_v, "p_v2_v": p_v2_v, "p_v3_v": p_v3_v
         }
     except: return None
 
@@ -340,8 +365,6 @@ while True:
                 ticker_items = [f"DOLFUT: <span style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")};'>{v_f:+.2f}%</span>"]
                 outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F", "US10Y": "^TNX"}
                 
-                seta_spread, cor_seta_spread = ("▲", "#00ff88") if spot_live and spot_live['at'] > res['medio'] else ("▼", "#ff4d4d")
-                    
                 for lbl, sym in outros.items():
                     d = st.session_state.market_data.get(sym, fetch(sym))
                     if d:
@@ -359,8 +382,44 @@ while True:
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 
-                # Barra de Força: Mantendo as escalas corretas e dinâmicas
-                st.markdown(f'''<div class="bar-wrapper-full"><div class="force-scale"><span>MIN + FRP</span><span>50%</span><span>MÉDIA</span><span>50%</span><span>MAX + FRP</span></div><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: {res["p_v"]}%;"></div></div><div class="bar-side"><div class="fill-red" style="width: {res["p_r"]}%;"></div></div></div><div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; font-family: monospace; color: #AAA; margin-top: 2px; padding: 0 2px;"><span>LOW: {res['alvo_low']:.2f}</span><span style="color:{cor_seta_spread}; font-size: 14px; font-weight: bold;">{seta_spread}</span><span>HIGH: {res['alvo_high']:.2f}</span></div><div class="sinal-indicator {"blink" if res["piscando"] else ""}" style="color:{res["seta_cor"]};">{res["seta"]}</div></div>''', unsafe_allow_html=True)
+                # --- BARRA DE FORÇA (RÉGUA TRIPLA DINÂMICA) ---
+                st.markdown(f'''
+                <div class="bar-wrapper-full">
+                    <div class="force-scale-top">
+                        <span style="color:#00ff88; width:15%; text-align:left;">-0.90%</span>
+                        <span style="color:#00ff88; width:15%; text-align:left;">-0.60%</span>
+                        <span style="color:#00ff88; width:15%; text-align:left;">-0.30%</span>
+                        <span style="color:#ffffff; width:10%; text-align:center;">MÉDIA</span>
+                        <span style="color:#ff4d4d; width:15%; text-align:right;">+0.30%</span>
+                        <span style="color:#ff4d4d; width:15%; text-align:right;">+0.60%</span>
+                        <span style="color:#ff4d4d; width:15%; text-align:right;">+0.90%</span>
+                    </div>
+                    
+                    <div class="force-container-dual">
+                        <div class="center-line"></div>
+                        <div class="bar-side">
+                            <div class="fill-green" style="width: {res["p_v"]}%;"></div>
+                        </div>
+                        <div class="bar-side">
+                            <div class="fill-red" style="width: {res["p_r"]}%;"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="force-scale-bottom">
+                        <span style="width:15%; text-align:left;">{res['p_c3_v']:.1f}</span>
+                        <span style="width:15%; text-align:left;">{res['p_c2_v']:.1f}</span>
+                        <span style="width:15%; text-align:left;">{res['p_c1_v']:.1f}</span>
+                        <span style="color:#ffffff; width:10%; text-align:center;">{res['medio']:.1f}</span>
+                        <span style="width:15%; text-align:right;">{res['p_v1_v']:.1f}</span>
+                        <span style="width:15%; text-align:right;">{res['p_v2_v']:.1f}</span>
+                        <span style="width:15%; text-align:right;">{res['p_v3_v']:.1f}</span>
+                    </div>
+                    
+                    <div class="sinal-indicator {"blink" if res["piscando"] else ""}" style="color:{res["seta_cor"]}; min-height:14px;">
+                        {res["seta"] if res["seta"] else "&nbsp;"}
+                    </div>
+                </div>
+                ''', unsafe_allow_html=True)
             
             with c2:
                 sc1, sc2 = st.columns([1, 1])
@@ -386,17 +445,16 @@ while True:
                         <div class="calc-row txt-white" style="border-bottom: none;"><span>BL. C3</span> <span>{(mn_a - (bv * 3)):.1f}</span></div>
                     </div>''', unsafe_allow_html=True)
                 
-                # Painel de Métricas e Spreads
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{res['vivo']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
                 
-                # Indicador de Reversão com Cálculo Corrigido de Distância (Mínima até a Base)
+                # 🛡️ REVERSÃO TOTALMENTE INTEGRAL (VOLTOU AO ORIGINAL)
                 st.markdown(f'''<div class="calc-panel" style="text-align:center; border: 1.5px solid {res['cor_ind']}; padding-bottom:6px;">
                     <div style="color:#AAA; font-size:10px; font-weight:bold; text-transform:uppercase;">INDICADOR REVERSÃO</div>
                     <div style="color:{res['cor_ind']}; font-size:22px; font-weight:bold; margin-top:2px; margin-bottom:2px;">{res['ind_val']:+.2f}</div>
                     <div style="color:#ffffff; font-size:10px; font-weight:bold; font-family:monospace; margin-bottom:4px;">DIST. BASE (MÍN À BASE): {res['distancia_base_calc']:.2f} pts</div>
                     <div style="display:flex; justify-content:space-between; border-top:1px solid #333; padding-top:4px; font-size:9px; font-weight:bold; padding-left:4px; padding-right:4px;">
                         <span style="color:#00ff88;">GAT. COMPRA: <span style="color:#fff;">{res['gatilho_c']:.2f}</span></span>
-                        <span style="color:#ff4d4d;">GAT. VENDA: <span style="color:#f okff;">{res['gatilho_v']:.2f}</span></span>
+                        <span style="color:#ff4d4d;">GAT. VENDA: <span style="color:#ffffff;">{res['gatilho_v']:.2f}</span></span>
                     </div>
                 </div>''', unsafe_allow_html=True)
             
