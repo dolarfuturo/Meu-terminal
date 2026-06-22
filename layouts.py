@@ -407,7 +407,7 @@ while True:
                 
                 st.markdown(render_barra, unsafe_allow_html=True)
                 
-                # --- NOVO TERMÔMETRO SEGMENTADO COM PONTEIRO ---
+                # --- NOVO TERMÔMETRO SEGMENTADO ---
                 lista_therm = ["DX-Y.NYB", "EWZ", "GC=F", "BZ=F", "^TNX"]
                 soma_var_term = 0
                 qtd_term = 0
@@ -418,32 +418,20 @@ while True:
                         qtd_term += 1
                 media_term = soma_var_term / qtd_term if qtd_term > 0 else 0
                 
-                # Cores dos blocos
                 c_bf, c_b, c_n, c_a, c_af = "", "", "", "", ""
-                if media_term <= -1.00: c_bf = "active-bf"
-                elif media_term < -0.35: c_b = "active-b"
-                elif media_term <= 0.35: c_n = "active-n"
-                elif media_term < 1.00: c_a = "active-a"
+                if media_term < -0.70: c_bf = "active-bf"
+                elif media_term < -0.20: c_b = "active-b"
+                elif media_term <= 0.20: c_n = "active-n"
+                elif media_term <= 0.70: c_a = "active-a"
                 else: c_af = "active-af"
                 
-                # Cálculo do ponteiro (-1.5% a 1.5%)
-                p_min, p_max = -1.5, 1.5
-                pos_percent = ((media_term - p_min) / (p_max - p_min)) * 100
-                pos_percent = max(0, min(100, pos_percent)) 
-                
                 therm_html = f'''
-                <div style="position: relative; width: 100%; margin-top: 5px;">
-                    <div class="therm-container">
-                        <div class="therm-seg {c_bf}">BAIXA<br>FORTE</div>
-                        <div class="therm-seg {c_b}">BAIXA</div>
-                        <div class="therm-seg {c_n}">NEUTRO</div>
-                        <div class="therm-seg {c_a}">ALTA</div>
-                        <div class="therm-seg {c_af}">ALTA<br>FORTE</div>
-                    </div>
-                    <div style="position: absolute; bottom: -8px; left: {pos_percent}%; transform: translateX(-50%); 
-                                width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; 
-                                border-bottom: 12px solid #ffffff; transition: left 0.5s ease-in-out;">
-                    </div>
+                <div class="therm-container">
+                    <div class="therm-seg {c_bf}">BAIXA<br>FORTE</div>
+                    <div class="therm-seg {c_b}">BAIXA</div>
+                    <div class="therm-seg {c_n}">NEUTRO</div>
+                    <div class="therm-seg {c_a}">ALTA</div>
+                    <div class="therm-seg {c_af}">ALTA<br>FORTE</div>
                 </div>
                 '''
                 st.markdown(therm_html, unsafe_allow_html=True)
