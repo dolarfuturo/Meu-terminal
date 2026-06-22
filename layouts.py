@@ -407,7 +407,7 @@ while True:
                 
                 st.markdown(render_barra, unsafe_allow_html=True)
                 
-                # --- NOVO TERMÔMETRO SEGMENTADO ---
+                # --- NOVO TERMÔMETRO SEGMENTADO COM PONTEIRO ---
                 lista_therm = ["DX-Y.NYB", "EWZ", "GC=F", "BZ=F", "^TNX"]
                 soma_var_term = 0
                 qtd_term = 0
@@ -418,20 +418,32 @@ while True:
                         qtd_term += 1
                 media_term = soma_var_term / qtd_term if qtd_term > 0 else 0
                 
+                # Cores dos blocos
                 c_bf, c_b, c_n, c_a, c_af = "", "", "", "", ""
-                if media_term < -0.70: c_bf = "active-bf"
-                elif media_term < -0.20: c_b = "active-b"
-                elif media_term <= 0.20: c_n = "active-n"
-                elif media_term <= 0.70: c_a = "active-a"
+                if media_term <= -0.5: c_bf = "active-bf"
+                elif media_term < -0.1: c_b = "active-b"
+                elif media_term <= 0.1: c_n = "active-n"
+                elif media_term < 0.5: c_a = "active-a"
                 else: c_af = "active-af"
                 
+                # Cálculo do ponteiro (-1.5% a 1.5%)
+                p_min, p_max = -1.5, 1.5
+                pos_percent = ((media_term - p_min) / (p_max - p_min)) * 100
+                pos_percent = max(0, min(100, pos_percent)) 
+                
                 therm_html = f'''
-                <div class="therm-container">
-                    <div class="therm-seg {c_bf}">BAIXA<br>FORTE</div>
-                    <div class="therm-seg {c_b}">BAIXA</div>
-                    <div class="therm-seg {c_n}">NEUTRO</div>
-                    <div class="therm-seg {c_a}">ALTA</div>
-                    <div class="therm-seg {c_af}">ALTA<br>FORTE</div>
+                <div style="position: relative; width: 100%; margin-top: 5px;">
+                    <div class="therm-container">
+                        <div class="therm-seg {c_bf}">BAIXA<br>FORTE</div>
+                        <div class="therm-seg {c_b}">BAIXA</div>
+                        <div class="therm-seg {c_n}">NEUTRO</div>
+                        <div class="therm-seg {c_a}">ALTA</div>
+                        <div class="therm-seg {c_af}">ALTA<br>FORTE</div>
+                    </div>
+                    <div style="position: absolute; bottom: -8px; left: {pos_percent}%; transform: translateX(-50%); 
+                                width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; 
+                                border-bottom: 12px solid #ffffff; transition: left 0.5s ease-in-out;">
+                    </div>
                 </div>
                 '''
                 st.markdown(therm_html, unsafe_allow_html=True)
@@ -461,7 +473,7 @@ while True:
                         <div class="calc-row txt-white" style="border-bottom: none;"><span>BL. C3</span> <span>{(mn_a - (bv * 3)):.1f}</span></div>
                     </div>''', unsafe_allow_html=True)
                 
-                st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{res['white']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
+                st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{res['white']:.2f}</span></div><div class="calc-text-right" style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
                 
                 st.markdown(f'''<div class="calc-panel" style="text-align:center; border: 1.5px solid {res['cor_ind']}; padding-bottom:6px;">
                     <div style="color:#AAA; font-size:10px; font-weight:bold; text-transform:uppercase;">INDICADOR REVERSÃO</div>
