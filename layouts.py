@@ -363,12 +363,7 @@ while True:
                 v3_val = "{:.4f}".format(res['p_v3_v'] / 1000)
                 sinal_txt = res["seta"] if res["seta"] else "&nbsp;"
                 
-                # Afastamento percentual do Spot em relação à Média Dólar
                 var_da_barra_txt = "{:+.2f}%".format(res['pct_afastamento'])
-                
-                # MODIFICAÇÃO TONAL DO INDICADOR INVERSO:
-                # fill-green (Fundo Verde de Compra) -> Texto com tom exato Vermelho (#ff4d4d)
-                # fill-red (Fundo Vermelho de Venda) -> Texto com tom exato Verde (#00ff88)
                 conteudo_verde = f'<span class="txt-interno-tom-vermelho">{var_da_barra_txt}</span>' if res['p_v'] > 0 else "&nbsp;"
                 conteudo_vermelho = f'<span class="txt-interno-tom-verde">{var_da_barra_txt}</span>' if res['p_r'] > 0 else "&nbsp;"
 
@@ -408,6 +403,36 @@ while True:
                 )
                 
                 st.markdown(render_barra, unsafe_allow_html=True)
+                
+                # --- INSERÇÃO DO TERMÔMETRO ---
+                lista_therm = ["DX-Y.NYB", "EWZ", "GC=F", "BZ=F", "^TNX"]
+                soma_var_term = 0
+                qtd_term = 0
+                for sym in lista_therm:
+                    d_t = st.session_state.market_data.get(sym)
+                    if d_t and d_t.get('cl', 0) > 0:
+                        soma_var_term += ((d_t['at'] / d_t['cl']) - 1) * 100
+                        qtd_term += 1
+                media_term = soma_var_term / qtd_term if qtd_term > 0 else 0
+                
+                if media_term >= 0.70:
+                    label, cor_therm = "ALTA FORTE", "#006400"
+                elif media_term >= 0.175:
+                    label, cor_therm = "ALTA", "#00ff88"
+                elif media_term >= -0.175:
+                    label, cor_therm = "NEUTRO", "#808080"
+                elif media_term >= -0.70:
+                    label, cor_therm = "BAIXA", "#FF9999"
+                else:
+                    label, cor_therm = "BAIXA FORTE", "#8B0000"
+                
+                st.markdown(f"""
+                <div style="border: 1px solid #ffffff; padding: 5px; margin-top: 5px; text-align: center; background-color: #0a141a; font-family: monospace;">
+                    <div style="color: #AAA; font-size: 10px; font-weight: bold;">TERMÔMETRO</div>
+                    <div style="color: {cor_therm}; font-size: 16px; font-weight: bold;">{label} ({media_term:+.2f}%)</div>
+                </div>
+                """, unsafe_allow_html=True)
+                # ------------------------------
             
             with c2:
                 sc1, sc2 = st.columns([1, 1])
