@@ -416,7 +416,7 @@ while True:
                     if d_t and d_t.get('cl', 0) > 0:
                         soma_var_term += ((d_t['at'] / d_t['cl']) - 1) * 100
                         qtd_term += 1
-                media_term = soma_var_term  # Removemos a divisão pelo número de ativos
+                media_term = soma_var_term / qtd_term if qtd_term > 0 else 0
 
                 # Cores dos blocos
                 c_bf, c_b, c_n, c_a, c_af = "", "", "", "", ""
