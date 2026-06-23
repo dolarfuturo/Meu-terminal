@@ -408,15 +408,20 @@ while True:
                 st.markdown(render_barra, unsafe_allow_html=True)
                 
                 # --- NOVO TERMÔMETRO SEGMENTADO COM PONTEIRO ---
-                lista_therm = ["DX-Y.NYB", "EWZ", "GC=F", "BZ=F", "^TNX"]
-                soma_var_term = 0
-                qtd_term = 0
-                for sym in lista_therm:
-                    d_t = st.session_state.market_data.get(sym)
-                    if d_t and d_t.get('cl', 0) > 0:
-                        soma_var_term += ((d_t['at'] / d_t['cl']) - 1) * 100
-                        qtd_term += 1
-                media_term = soma_var_term / qtd_term if qtd_term > 0 else 0
+                def get_var(sym):
+                    d = st.session_state.market_data.get(sym)
+                    if d and d.get('cl', 0) > 0:
+                        return ((d['at'] / d['cl']) - 1) * 100
+                    return 0.0
+
+                # Fórmula: (DXY - EWZ - XAU - BRENT + US10Y) / 5
+                v_dxy = get_var("DX-Y.NYB")
+                v_ewz = get_var("EWZ")
+                v_xau = get_var("GC=F")
+                v_brent = get_var("BZ=F")
+                v_us10y = get_var("^TNX")
+                
+                media_term = (v_dxy - v_ewz - v_xau - v_brent + v_us10y) / 5
                 
                 # Cores dos blocos
                 c_bf, c_b, c_n, c_a, c_af = "", "", "", "", ""
