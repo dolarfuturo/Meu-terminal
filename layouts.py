@@ -414,14 +414,13 @@ while True:
                         return ((d['at'] / d['cl']) - 1) * 100
                     return 0.0
 
-                # Fórmula: (DXY - EWZ - XAU - BRENT + US10Y) / 5
+                # Fórmula: (DXY - EWZ - XAU + US10Y) / 4
                 v_dxy = get_var("DX-Y.NYB")
                 v_ewz = get_var("EWZ")
                 v_xau = get_var("GC=F")
-                v_brent = get_var("BZ=F")
                 v_us10y = get_var("^TNX")
                 
-                media_term = (v_dxy - v_ewz - v_xau - v_brent + v_us10y) / 5
+                media_term = (v_dxy - v_ewz - v_xau + v_us10y) / 4
                 
                 # Cores dos blocos
                 c_bf, c_b, c_n, c_a, c_af = "", "", "", "", ""
