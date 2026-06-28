@@ -35,7 +35,7 @@ st.markdown("""
     .price-col { font-weight: bold; color: #ffffff !important; }
     .f-up { background-color: #00ff00aa !important; }
     .f-dn { background-color: #ff0000aa !important; }
-    .calc-panel { border: 1.5px solid #ffffff; border-radius: 4px; padding: 4px; background: #0a141a; font-family: monospace; margin-bottom: 4px; margin-top: 8px; }
+    .calc-panel { border: 1.5px solid #ffffff; border-radius: 4px; padding: 4px; background: #0a141a; font-family: monospace; margin-bottom: 4px; margin-top: 2px; }
     .calc-row { display: flex; justify-content: space-between; padding: 2px 6px; border-bottom: 1px solid #444; font-size: 10px; font-weight: bold; align-items: center; }
     
     /* Customizações da Barra de Força */
@@ -188,8 +188,9 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         mn_adm = st.session_state.min_madr_mem
         bloco_vol = mx_adm - mn_adm if mx_adm > mn_adm else 0.0
         
-        gatilho_c = spot_data['mn'] + passo_fixo
-        gatilho_v = spot_data['mx'] - passo_fixo
+        # Inclusão do FPR nos gatilhos conforme solicitado
+        gatilho_c = (spot_data['mn'] + passo_fixo) + spreed_do_dia
+        gatilho_v = (spot_data['mx'] - passo_fixo) + spreed_do_dia
         distancia_base_calc = abs(spot_data['mn'] - gatilho_c)
         
         if spot_data['at'] >= gatilho_v:
@@ -414,7 +415,6 @@ while True:
                         return ((d['at'] / d['cl']) - 1) * 100
                     return 0.0
 
-                # Fórmula: (DXY - EWZ - XAU + US10Y) / 4
                 v_dxy = get_var("DX-Y.NYB")
                 v_ewz = get_var("EWZ")
                 v_xau = get_var("GC=F")
@@ -422,7 +422,6 @@ while True:
                 
                 media_term = (v_dxy - v_ewz - v_xau + v_us10y) / 4
                 
-                # Cores dos blocos
                 c_bf, c_b, c_n, c_a, c_af = "", "", "", "", ""
                 if media_term <= -1.00: c_bf = "active-bf"
                 elif media_term < -0.35: c_b = "active-b"
@@ -430,7 +429,6 @@ while True:
                 elif media_term < 1.00: c_a = "active-a"
                 else: c_af = "active-af"
                 
-                # Cálculo do ponteiro (-1.5% a 1.5%)
                 p_min, p_max = -1.5, 1.5
                 pos_percent = ((media_term - p_min) / (p_max - p_min)) * 100
                 pos_percent = max(0, min(100, pos_percent)) 
@@ -451,25 +449,23 @@ while True:
                 </div>
                 '''
                 st.markdown(therm_html, unsafe_allow_html=True)
-                # ----------------------------------
             
             with c2:
-                # Painel de Cálculos (Unificado)
+                # Painel de Cálculos
                 st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row txt-green"><span>MX F2</span> <span>{res['max_fut_2_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F2</span> <span>{res['max_fut_2']:.1f}</span></div><div class="calc-row txt-green"><span>MX F1</span> <span>{res['max_fut_1_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F1</span> <span>{res['max_fut_1']:.1f}</span></div><div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 9px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">AXIS: {res['axis_central']:.1f}</div><div class="calc-row txt-yellow"><span>MD F1</span> <span>{res['min_fut_1']:.1f}</span></div><div class="calc-row txt-green"><span>MN F1</span> <span>{res['min_fut_1_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F2</span> <span>{res['min_fut_2']:.1f}</span></div><div class="calc-row txt-green" style="border-bottom: none;"><span>MN F2</span> <span>{res['min_fut_2_b']:.1f}</span></div></div>''', unsafe_allow_html=True)
                 
                 # Painel de Resumo
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{res['white']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
                 
-                # Indicador de Reversão
-                st.markdown(f'''<div class="calc-panel" style="text-align:center; border: 1.5px solid {res['cor_ind']}; padding-bottom:6px;">
-                    <div style="color:#AAA; font-size:10px; font-weight:bold; text-transform:uppercase;">INDICADOR REVERSÃO</div>
-                    <div style="color:{res['cor_ind']}; font-size:22px; font-weight:bold; margin-top:2px; margin-bottom:2px;">{res['ind_val']:+.2f}</div>
-                    <div style="color:#ffffff; font-size:10px; font-weight:bold; font-family:monospace; margin-bottom:4px;">SPREAD DE REVERSÃO: {res['distancia_base_calc']:.2f} pts</div>
-                    <div style="display:flex; justify-content:space-between; border-top:1px solid #333; padding-top:4px; font-size:9px; font-weight:bold; padding-left:4px; padding-right:4px;">
+                # Indicador de Reversão Ajustado (Menor e Sem FPR)
+                st.markdown(f'''<div class="calc-panel" style="text-align:center; border: 1.5px solid {res['cor_ind']}; padding: 2px;">
+                    <div style="color:#AAA; font-size:9px; font-weight:bold; text-transform:uppercase;">INDICADOR REVERSÃO</div>
+                    <div style="color:{res['cor_ind']}; font-size:18px; font-weight:bold; margin-top:0px; margin-bottom:0px;">{res['ind_val']:+.2f}</div>
+                    <div style="color:#ffffff; font-size:9px; font-weight:bold; font-family:monospace; margin-bottom:2px;">SPREAD DE REVERSÃO: {res['distancia_base_calc']:.2f} pts</div>
+                    <div style="display:flex; justify-content:space-between; border-top:1px solid #333; padding-top:2px; font-size:8px; font-weight:bold; padding-left:4px; padding-right:4px;">
                         <span style="color:#00ff88;">GAT. COMPRA: <span style="color:#fff;">{res['gatilho_c']:.2f}</span></span>
                         <span style="color:#ff4d4d;">GAT. VENDA: <span style="color:#ffffff;">{res['gatilho_v']:.2f}</span></span>
-                        <span style="color:#00f2ff;">FPR: {div_s:.2f}</span>
                     </div>
                 </div>''', unsafe_allow_html=True)
             
