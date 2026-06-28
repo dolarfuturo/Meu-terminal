@@ -188,6 +188,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         mn_adm = st.session_state.min_madr_mem
         bloco_vol = mx_adm - mn_adm if mx_adm > mn_adm else 0.0
         
+        # Inclusão do FPR nos gatilhos conforme solicitado
         gatilho_c = (spot_data['mn'] + passo_fixo) + spreed_do_dia
         gatilho_v = (spot_data['mx'] - passo_fixo) + spreed_do_dia
         distancia_base_calc = abs(spot_data['mn'] - gatilho_c)
@@ -327,8 +328,6 @@ while True:
         res = calcular_k97_total(div_s, spot_live, ewz_live)
         if res:
             c1, c2 = st.columns([2.8, 1.2])
-            
-            # C1: GRADE E CÁLCULOS
             with c1:
                 st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
                 html = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
@@ -357,27 +356,7 @@ while True:
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 
-                st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
-                st.markdown(f'''<div class="calc-panel"><div class="calc-row txt-green"><span>MX F2</span> <span>{res['max_fut_2_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F2</span> <span>{res['max_fut_2']:.1f}</span></div><div class="calc-row txt-green"><span>MX F1</span> <span>{res['max_fut_1_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F1</span> <span>{res['max_fut_1']:.1f}</span></div><div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 9px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">AXIS: {res['axis_central']:.1f}</div><div class="calc-row txt-yellow"><span>MD F1</span> <span>{res['min_fut_1']:.1f}</span></div><div class="calc-row txt-green"><span>MN F1</span> <span>{res['min_fut_1_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F2</span> <span>{res['min_fut_2']:.1f}</span></div><div class="calc-row txt-green" style="border-bottom: none;"><span>MN F2</span> <span>{res['min_fut_2_b']:.1f}</span></div></div>''', unsafe_allow_html=True)
-                
-                st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{res['white']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
-            
-            # C2: INDICADORES
-            with c2:
-                st.markdown('<div class="section-title">INDICADORES DE FLUXO</div>', unsafe_allow_html=True)
-                
-                # Indicador de Reversão
-                st.markdown(f'''<div class="calc-panel" style="text-align:center; border: 1.5px solid {res['cor_ind']}; padding: 2px;">
-                    <div style="color:#AAA; font-size:9px; font-weight:bold; text-transform:uppercase;">INDICADOR REVERSÃO</div>
-                    <div style="color:{res['cor_ind']}; font-size:18px; font-weight:bold; margin-top:0px; margin-bottom:0px;">{res['ind_val']:+.2f}</div>
-                    <div style="color:#ffffff; font-size:9px; font-weight:bold; font-family:monospace; margin-bottom:2px;">SPREAD DE REVERSÃO: {res['distancia_base_calc']:.2f} pts</div>
-                    <div style="display:flex; justify-content:space-between; border-top:1px solid #333; padding-top:2px; font-size:8px; font-weight:bold; padding-left:4px; padding-right:4px;">
-                        <span style="color:#00ff88;">GAT. COMPRA: <span style="color:#fff;">{res['gatilho_c']:.2f}</span></span>
-                        <span style="color:#ff4d4d;">GAT. VENDA: <span style="color:#ffffff;">{res['gatilho_v']:.2f}</span></span>
-                    </div>
-                </div>''', unsafe_allow_html=True)
-
-                # Barra de Força
+                # --- PROCESSAMENTO DOS VALORES INTERNOS DA BARRA DE FORÇA ---
                 p_v_val = "{:.1f}".format(res['p_v'])
                 p_r_val = "{:.1f}".format(res['p_r'])
                 c3_val = "{:.4f}".format(res['p_c3_v'] / 1000)
@@ -426,9 +405,10 @@ while True:
                     '    </div>'
                     '</div>'
                 )
+                
                 st.markdown(render_barra, unsafe_allow_html=True)
                 
-                # Termômetro
+                # --- NOVO TERMÔMETRO SEGMENTADO COM PONTEIRO ---
                 def get_var(sym):
                     d = st.session_state.market_data.get(sym)
                     if d and d.get('cl', 0) > 0:
@@ -469,6 +449,25 @@ while True:
                 </div>
                 '''
                 st.markdown(therm_html, unsafe_allow_html=True)
+            
+            with c2:
+                # Painel de Cálculos
+                st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
+                st.markdown(f'''<div class="calc-panel"><div class="calc-row txt-green"><span>MX F2</span> <span>{res['max_fut_2_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F2</span> <span>{res['max_fut_2']:.1f}</span></div><div class="calc-row txt-green"><span>MX F1</span> <span>{res['max_fut_1_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F1</span> <span>{res['max_fut_1']:.1f}</span></div><div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 9px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">AXIS: {res['axis_central']:.1f}</div><div class="calc-row txt-yellow"><span>MD F1</span> <span>{res['min_fut_1']:.1f}</span></div><div class="calc-row txt-green"><span>MN F1</span> <span>{res['min_fut_1_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F2</span> <span>{res['min_fut_2']:.1f}</span></div><div class="calc-row txt-green" style="border-bottom: none;"><span>MN F2</span> <span>{res['min_fut_2_b']:.1f}</span></div></div>''', unsafe_allow_html=True)
+                
+                # Painel de Resumo
+                st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{res['white']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
+                
+                # Indicador de Reversão Ajustado (Menor e Sem FPR)
+                st.markdown(f'''<div class="calc-panel" style="text-align:center; border: 1.5px solid {res['cor_ind']}; padding: 2px;">
+                    <div style="color:#AAA; font-size:9px; font-weight:bold; text-transform:uppercase;">INDICADOR REVERSÃO</div>
+                    <div style="color:{res['cor_ind']}; font-size:18px; font-weight:bold; margin-top:0px; margin-bottom:0px;">{res['ind_val']:+.2f}</div>
+                    <div style="color:#ffffff; font-size:9px; font-weight:bold; font-family:monospace; margin-bottom:2px;">SPREAD DE REVERSÃO: {res['distancia_base_calc']:.2f} pts</div>
+                    <div style="display:flex; justify-content:space-between; border-top:1px solid #333; padding-top:2px; font-size:8px; font-weight:bold; padding-left:4px; padding-right:4px;">
+                        <span style="color:#00ff88;">GAT. COMPRA: <span style="color:#fff;">{res['gatilho_c']:.2f}</span></span>
+                        <span style="color:#ff4d4d;">GAT. VENDA: <span style="color:#ffffff;">{res['gatilho_v']:.2f}</span></span>
+                    </div>
+                </div>''', unsafe_allow_html=True)
             
             st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
             
