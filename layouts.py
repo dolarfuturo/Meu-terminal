@@ -74,7 +74,6 @@ st.markdown("""
 # =============================================================================
 # # BLOCO 2: MEMÓRIA DA SESSÃO E PERSISTÊNCIA DE DADOS (ARQUIVOS)
 # =============================================================================
-# ... (Funções inalteradas)
 def salvar_eixos(div_spreed, max_madr=0.0, min_madr=0.0):
     with open("config_axis.txt", "w") as f:
         f.write(f"{div_spreed},{max_madr},{min_madr}")
@@ -272,7 +271,6 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
 # =============================================================================
 # # BLOCO 5: CONTROLES OPERACIONAIS FINANCEIROS (SIDEBAR / ADM)
 # =============================================================================
-# ... (Sidebar inalterada)
 with st.sidebar:
     st.markdown("### 🧮 CALCULADORA DE JUROS (FRP)")
     with st.expander("CALCULAR SPREED", expanded=False):
@@ -331,13 +329,15 @@ while True:
             c1, c2 = st.columns([2.8, 1.2])
             with c1:
                 st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
-                # ... (Código da Tabela inalterado)
                 html = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
+                
                 v_f, d_c = res['v_v'], res['dolfut_calc']
                 l_df = st.session_state.last_p.get('DF', d_c/1000); cl_df = "f-up" if (d_c/1000) > l_df else "f-dn" if (d_c/1000) < l_df else ""; st.session_state.last_p['DF'] = d_c/1000
                 html += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col {cl_df}' style='background-color:rgba({('0,255,0' if v_f >= 0 else '255,0,0')}, 0.1);'>{(d_c/1000):.4f}</td><td>{(res['axis_central']/1000):.4f}</td><td>{(res['axis_central']/1000):.4f}</td><td>{(res['max_grade']/1000):.4f}</td><td>{(res['min_grade']/1000):.4f}</td><td style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_f:+.2f}%</td></tr>"
+                
                 ticker_items = [f"DOLFUT: <span style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")};'>{v_f:+.2f}%</span>"]
                 outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F", "US10Y": "^TNX"}
+                
                 for lbl, sym in outros.items():
                     d = st.session_state.market_data.get(sym, fetch(sym))
                     if d:
@@ -345,51 +345,151 @@ while True:
                         p_v = d['at']/1000 if lbl == "DOLSPOT" else d['at']
                         l_a = st.session_state.last_p.get(lbl, p_v); cl_a = "f-up" if p_v > l_a else "f-dn" if p_v < l_a else ""; st.session_state.last_p[lbl] = p_v
                         var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
+                        
                         cl_max = "f-up" if lbl == "DOLSPOT" and st.session_state.last_spot_max > 0 and d['mx'] > st.session_state.last_spot_max else ""
                         cl_min = "f-dn" if lbl == "DOLSPOT" and st.session_state.last_spot_min < float('inf') and d['mn'] < st.session_state.last_spot_min else ""
-                        if lbl == "DOLSPOT": st.session_state.last_spot_max, st.session_state.last_spot_min = d['mx'], d['mn']
+                        if lbl == "DOLSPOT":
+                            st.session_state.last_spot_max, st.session_state.last_spot_min = d['mx'], d['mn']
+                            
                         html += f"<tr><td class='asset-name'>{lbl}</td><td class='price-col {cl_a}'>{p_v:{f}}</td><td>{(d['cl']/1000 if lbl=='DOLSPOT' else d['cl']):{f}}</td><td>{(d['op']/1000 if lbl=='DOLSPOT' else d['op']):{f}}</td><td class='{cl_max}'>{(d['mx']/1000 if lbl=='DOLSPOT' else d['mx']):{f}}</td><td class='{cl_min}'>{(d['mn']/1000 if lbl=='DOLSPOT' else d['mn']):{f}}</td><td style='color:{("#00ff00" if var >= 0 else "#ff4d4d")}; font-weight:bold;'>{var:+.2f}%</td></tr>"
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 
-                # Barra de Força
+                # --- PROCESSAMENTO DOS VALORES INTERNOS DA BARRA DE FORÇA ---
                 p_v_val = "{:.1f}".format(res['p_v'])
                 p_r_val = "{:.1f}".format(res['p_r'])
-                # ... (HTML da Barra de Força inalterado)
-                render_barra = ('<div class="bar-wrapper-full"><div class="force-scale-top"><span style="color:#00ff88; width:15%; text-align:left;">-1.05%</span><span style="color:#00ff88; width:15%; text-align:left;">-0.70%</span><span style="color:#00ff88; width:15%; text-align:left;">-0.35%</span><span style="color:#ffffff; width:10%; text-align:center;">0</span><span style="color:#ff4d4d; width:15%; text-align:right;">+0.35%</span><span style="color:#ff4d4d; width:15%; text-align:right;">+0.70%</span><span style="color:#ff4d4d; width:15%; text-align:right;">+1.05%</span></div><div class="force-container-dual"><div class="center-line"></div><div class="bar-side"><div class="fill-green" style="width: ' + p_v_val + '%;"></div></div><div class="bar-side"><div class="fill-red" style="width: ' + p_r_val + '%;"></div></div></div></div>')
+                c3_val = "{:.4f}".format(res['p_c3_v'] / 1000)
+                c2_val = "{:.4f}".format(res['p_c2_v'] / 1000)
+                c1_val = "{:.4f}".format(res['p_c1_v'] / 1000)
+                v1_val = "{:.4f}".format(res['p_v1_v'] / 1000)
+                v2_val = "{:.4f}".format(res['p_v2_v'] / 1000)
+                v3_val = "{:.4f}".format(res['p_v3_v'] / 1000)
+                sinal_txt = res["seta"] if res["seta"] else "&nbsp;"
+                
+                var_da_barra_txt = "{:+.2f}%".format(res['pct_afastamento'])
+                conteudo_verde = f'<span class="txt-interno-tom-vermelho">{var_da_barra_txt}</span>' if res['p_v'] > 0 else "&nbsp;"
+                conteudo_vermelho = f'<span class="txt-interno-tom-verde">{var_da_barra_txt}</span>' if res['p_r'] > 0 else "&nbsp;"
+
+                render_barra = (
+                    '<div class="bar-wrapper-full">'
+                    '    <div class="force-scale-top">'
+                    '        <span style="color:#00ff88; width:15%; text-align:left;">-1.05%</span>'
+                    '        <span style="color:#00ff88; width:15%; text-align:left;">-0.70%</span>'
+                    '        <span style="color:#00ff88; width:15%; text-align:left;">-0.35%</span>'
+                    '        <span style="color:#ffffff; width:10%; text-align:center;">0</span>'
+                    '        <span style="color:#ff4d4d; width:15%; text-align:right;">+0.35%</span>'
+                    '        <span style="color:#ff4d4d; width:15%; text-align:right;">+0.70%</span>'
+                    '        <span style="color:#ff4d4d; width:15%; text-align:right;">+1.05%</span>'
+                    '    </div>'
+                    '    <div class="force-container-dual">'
+                    '        <div class="center-line"></div>'
+                    '        <div class="bar-side">'
+                    '            <div class="fill-green" style="width: ' + p_v_val + '%;">' + conteudo_verde + '</div>'
+                    '        </div>'
+                    '        <div class="bar-side">'
+                    '            <div class="fill-red" style="width: ' + p_r_val + '%;">' + conteudo_vermelho + '</div>'
+                    '        </div>'
+                    '    </div>'
+                    '    <div class="force-scale-bottom">'
+                    '        <span style="width:15%; text-align:left;">' + c3_val + '</span>'
+                    '        <span style="width:15%; text-align:left;">' + c2_val + '</span>'
+                    '        <span style="width:15%; text-align:left;">' + c1_val + '</span>'
+                    '        <span style="color:#ffffff; width:10%; text-align:center;">&nbsp;</span>'
+                    '        <span style="width:15%; text-align:right;">' + v1_val + '</span>'
+                    '        <span style="width:15%; text-align:right;">' + v2_val + '</span>'
+                    '        <span style="width:15%; text-align:right;">' + v3_val + '</span>'
+                    '    </div>'
+                    '    <div class="sinal-indicator" style="color:' + res["seta_cor"] + '; min-height:18px;">'
+                    '        ' + sinal_txt + ''
+                    '    </div>'
+                    '</div>'
+                )
+                
                 st.markdown(render_barra, unsafe_allow_html=True)
                 
-                # Termômetro
-                # ... (HTML do Termômetro inalterado)
+                # --- NOVO TERMÔMETRO SEGMENTADO COM PONTEIRO ---
+                def get_var(sym):
+                    d = st.session_state.market_data.get(sym)
+                    if d and d.get('cl', 0) > 0:
+                        return ((d['at'] / d['cl']) - 1) * 100
+                    return 0.0
+
+                # Fórmula: (DXY - EWZ - XAU + US10Y) / 4
+                v_dxy = get_var("DX-Y.NYB")
+                v_ewz = get_var("EWZ")
+                v_xau = get_var("GC=F")
+                v_us10y = get_var("^TNX")
+                
+                media_term = (v_dxy - v_ewz - v_xau + v_us10y) / 4
+                
+                # Cores dos blocos
+                c_bf, c_b, c_n, c_a, c_af = "", "", "", "", ""
+                if media_term <= -1.00: c_bf = "active-bf"
+                elif media_term < -0.35: c_b = "active-b"
+                elif media_term <= 0.35: c_n = "active-n"
+                elif media_term < 1.00: c_a = "active-a"
+                else: c_af = "active-af"
+                
                 # Cálculo do ponteiro (-1.5% a 1.5%)
-                media_term = ((fetch("DX-Y.NYB")['at']/fetch("DX-Y.NYB")['cl']-1) - (fetch("EWZ")['at']/fetch("EWZ")['cl']-1) - (fetch("GC=F")['at']/fetch("GC=F")['cl']-1) + (fetch("^TNX")['at']/fetch("^TNX")['cl']-1)) / 4
-                c_bf = "active-bf" if media_term <= -1.0 else ""
-                c_b = "active-b" if -1.0 < media_term < -0.35 else ""
-                c_n = "active-n" if -0.35 <= media_term <= 0.35 else ""
-                c_a = "active-a" if 0.35 < media_term < 1.0 else ""
-                c_af = "active-af" if media_term >= 1.0 else ""
-                pos_percent = max(0, min(100, ((media_term - (-1.5)) / (1.5 - (-1.5))) * 100))
-                therm_html = f'''<div style="position: relative; width: 100%; margin-top: 5px;"><div class="therm-container"><div class="therm-seg {c_bf}">BAIXA<br>FORTE</div><div class="therm-seg {c_b}">BAIXA</div><div class="therm-seg {c_n}">NEUTRO</div><div class="therm-seg {c_a}">ALTA</div><div class="therm-seg {c_af}">ALTA<br>FORTE</div></div><div style="position: absolute; bottom: -8px; left: {pos_percent}%; transform: translateX(-50%); width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 12px solid #ffffff; transition: left 0.5s ease-in-out;"></div></div>'''
+                p_min, p_max = -1.5, 1.5
+                pos_percent = ((media_term - p_min) / (p_max - p_min)) * 100
+                pos_percent = max(0, min(100, pos_percent)) 
+                
+                therm_html = f'''
+                <div style="position: relative; width: 100%; margin-top: 5px;">
+                    <div class="therm-container">
+                        <div class="therm-seg {c_bf}">BAIXA<br>FORTE</div>
+                        <div class="therm-seg {c_b}">BAIXA</div>
+                        <div class="therm-seg {c_n}">NEUTRO</div>
+                        <div class="therm-seg {c_a}">ALTA</div>
+                        <div class="therm-seg {c_af}">ALTA<br>FORTE</div>
+                    </div>
+                    <div style="position: absolute; bottom: -8px; left: {pos_percent}%; transform: translateX(-50%); 
+                                width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; 
+                                border-bottom: 12px solid #ffffff; transition: left 0.5s ease-in-out;">
+                    </div>
+                </div>
+                '''
                 st.markdown(therm_html, unsafe_allow_html=True)
                 
-                # **NOVO LOCAL: INDICADOR DE REVERSÃO**
-                st.markdown(f'''<div class="calc-panel" style="text-align:center; border: 1.5px solid {res['cor_ind']}; padding: 6px; margin-top:8px;">
+                # --- INDICADOR DE REVERSÃO (MOVIDO PARA C1) ---
+                st.markdown(f'''<div class="calc-panel" style="text-align:center; border: 1.5px solid {res['cor_ind']}; padding-bottom:6px;">
                     <div style="color:#AAA; font-size:10px; font-weight:bold; text-transform:uppercase;">INDICADOR REVERSÃO</div>
-                    <div style="color:{res['cor_ind']}; font-size:20px; font-weight:bold;">{res['ind_val']:+.2f}</div>
-                    <div style="color:#ffffff; font-size:9px; font-weight:bold; font-family:monospace; margin-bottom:4px;">SPREAD: {res['distancia_base_calc']:.2f} pts</div>
-                    <div style="display:flex; justify-content:space-evenly; border-top:1px solid #333; padding-top:4px; font-size:9px; font-weight:bold;">
-                        <span style="color:#00ff88;">COMPRA: {res['gatilho_c']:.2f}</span>
-                        <span style="color:#ff4d4d;">VENDA: {res['gatilho_v']:.2f}</span>
+                    <div style="color:{res['cor_ind']}; font-size:22px; font-weight:bold; margin-top:2px; margin-bottom:2px;">{res['ind_val']:+.2f}</div>
+                    <div style="color:#ffffff; font-size:10px; font-weight:bold; font-family:monospace; margin-bottom:4px;">DIST. BASE (MÍN À BASE): {res['distancia_base_calc']:.2f} pts</div>
+                    <div style="display:flex; justify-content:space-between; border-top:1px solid #333; padding-top:4px; font-size:9px; font-weight:bold; padding-left:4px; padding-right:4px;">
+                        <span style="color:#00ff88;">GAT. COMPRA: <span style="color:#fff;">{res['gatilho_c']:.2f}</span></span>
+                        <span style="color:#ff4d4d;">GAT. VENDA: <span style="color:#ffffff;">{res['gatilho_v']:.2f}</span></span>
                     </div>
                 </div>''', unsafe_allow_html=True)
-
+                # ----------------------------------
+            
             with c2:
-                # Cálculos
-                st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
-                st.markdown(f'''<div class="calc-panel"><div class="calc-row txt-green"><span>MX F2</span> <span>{res['max_fut_2_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F2</span> <span>{res['max_fut_2']:.1f}</span></div><div class="calc-row txt-green"><span>MX F1</span> <span>{res['max_fut_1_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F1</span> <span>{res['max_fut_1']:.1f}</span></div><div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 9px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">AXIS: {res['axis_central']:.1f}</div><div class="calc-row txt-yellow"><span>MD F1</span> <span>{res['min_fut_1']:.1f}</span></div><div class="calc-row txt-green"><span>MN F1</span> <span>{res['min_fut_1_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F2</span> <span>{res['min_fut_2']:.1f}</span></div><div class="calc-row txt-green" style="border-bottom: none;"><span>MN F2</span> <span>{res['min_fut_2_b']:.1f}</span></div></div>''', unsafe_allow_html=True)
-                
-                # Resumo/Valores
+                # --- PAINEL DE MÉDIAS (MOVIDO PARA O TOPO DE C2) ---
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{res['white']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
+                
+                sc1, sc2 = st.columns([1, 1])
+                
+                with sc1:
+                    st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
+                    st.markdown(f'''<div class="calc-panel"><div class="calc-row txt-green"><span>MX F2</span> <span>{res['max_fut_2_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F2</span> <span>{res['max_fut_2']:.1f}</span></div><div class="calc-row txt-green"><span>MX F1</span> <span>{res['max_fut_1_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F1</span> <span>{res['max_fut_1']:.1f}</span></div><div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 9px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">AXIS: {res['axis_central']:.1f}</div><div class="calc-row txt-yellow"><span>MD F1</span> <span>{res['min_fut_1']:.1f}</span></div><div class="calc-row txt-green"><span>MN F1</span> <span>{res['min_fut_1_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F2</span> <span>{res['min_fut_2']:.1f}</span></div><div class="calc-row txt-green" style="border-bottom: none;"><span>MN F2</span> <span>{res['min_fut_2_b']:.1f}</span></div></div>''', unsafe_allow_html=True)
+                
+                with sc2:
+                    st.markdown('<div class="section-title">VOLATILIDADE</div>', unsafe_allow_html=True)
+                    bv = res['bloco_vol']
+                    mx_a = res['mx_adm']
+                    mn_a = res['mn_adm']
+                    st.markdown(f'''<div class="calc-panel">
+                        <div class="calc-row txt-white"><span>BL. V3</span> <span>{(mx_a + (bv * 3)):.1f}</span></div>
+                        <div class="calc-row txt-white"><span>BL. V2</span> <span>{(mx_a + (bv * 2)):.1f}</span></div>
+                        <div class="calc-row txt-white"><span>BL. V1</span> <span>{(mx_a + bv):.1f}</span></div>
+                        <div class="calc-row txt-cyan" style="background: #091a24;"><span>MAX MAD</span> <span>{mx_a:.1f}</span></div>
+                        <div style="text-align:center; padding: 3px; color: #00f2ff; font-size: 9px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444; background: #050a0e;">BLOCO: {bv:.1f}</div>
+                        <div class="calc-row txt-cyan" style="background: #091a24;"><span>MIN MAD</span> <span>{mn_a:.1f}</span></div>
+                        <div class="calc-row txt-white"><span>BL. C1</span> <span>{(mn_a - bv):.1f}</span></div>
+                        <div class="calc-row txt-white"><span>BL. C2</span> <span>{(mn_a - (bv * 2)):.1f}</span></div>
+                        <div class="calc-row txt-white" style="border-bottom: none;"><span>BL. C3</span> <span>{(mn_a - (bv * 3)):.1f}</span></div>
+                    </div>''', unsafe_allow_html=True)
             
             st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
             
