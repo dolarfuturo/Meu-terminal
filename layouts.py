@@ -451,45 +451,27 @@ while True:
                 </div>
                 '''
                 st.markdown(therm_html, unsafe_allow_html=True)
-                
-                # --- INDICADOR DE REVERSÃO (MOVIDO PARA C1) ---
-                st.markdown(f'''<div class="calc-panel" style="text-align:center; border: 1.5px solid {res['cor_ind']}; padding-bottom:6px;">
-                    <div style="color:#AAA; font-size:10px; font-weight:bold; text-transform:uppercase;">INDICADOR REVERSÃO</div>
-                    <div style="color:{res['cor_ind']}; font-size:22px; font-weight:bold; margin-top:2px; margin-bottom:2px;">{res['ind_val']:+.2f}</div>
-                    <div style="color:#ffffff; font-size:10px; font-weight:bold; font-family:monospace; margin-bottom:4px;">DIST. BASE (MÍN À BASE): {res['distancia_base_calc']:.2f} pts</div>
-                    <div style="display:flex; justify-content:space-between; border-top:1px solid #333; padding-top:4px; font-size:9px; font-weight:bold; padding-left:4px; padding-right:4px;">
-                        <span style="color:#00ff88;">GAT. COMPRA: <span style="color:#fff;">{res['gatilho_c']:.2f}</span></span>
-                        <span style="color:#ff4d4d;">GAT. VENDA: <span style="color:#ffffff;">{res['gatilho_v']:.2f}</span></span>
-                    </div>
-                </div>''', unsafe_allow_html=True)
                 # ----------------------------------
             
             with c2:
-                # --- PAINEL DE MÉDIAS (MOVIDO PARA O TOPO DE C2) ---
+                # Painel de Cálculos (Unificado)
+                st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
+                st.markdown(f'''<div class="calc-panel"><div class="calc-row txt-green"><span>MX F2</span> <span>{res['max_fut_2_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F2</span> <span>{res['max_fut_2']:.1f}</span></div><div class="calc-row txt-green"><span>MX F1</span> <span>{res['max_fut_1_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F1</span> <span>{res['max_fut_1']:.1f}</span></div><div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 9px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">AXIS: {res['axis_central']:.1f}</div><div class="calc-row txt-yellow"><span>MD F1</span> <span>{res['min_fut_1']:.1f}</span></div><div class="calc-row txt-green"><span>MN F1</span> <span>{res['min_fut_1_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F2</span> <span>{res['min_fut_2']:.1f}</span></div><div class="calc-row txt-green" style="border-bottom: none;"><span>MN F2</span> <span>{res['min_fut_2_b']:.1f}</span></div></div>''', unsafe_allow_html=True)
+                
+                # Painel de Resumo
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{res['white']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
                 
-                sc1, sc2 = st.columns([1, 1])
-                
-                with sc1:
-                    st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
-                    st.markdown(f'''<div class="calc-panel"><div class="calc-row txt-green"><span>MX F2</span> <span>{res['max_fut_2_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F2</span> <span>{res['max_fut_2']:.1f}</span></div><div class="calc-row txt-green"><span>MX F1</span> <span>{res['max_fut_1_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F1</span> <span>{res['max_fut_1']:.1f}</span></div><div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 9px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">AXIS: {res['axis_central']:.1f}</div><div class="calc-row txt-yellow"><span>MD F1</span> <span>{res['min_fut_1']:.1f}</span></div><div class="calc-row txt-green"><span>MN F1</span> <span>{res['min_fut_1_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F2</span> <span>{res['min_fut_2']:.1f}</span></div><div class="calc-row txt-green" style="border-bottom: none;"><span>MN F2</span> <span>{res['min_fut_2_b']:.1f}</span></div></div>''', unsafe_allow_html=True)
-                
-                with sc2:
-                    st.markdown('<div class="section-title">VOLATILIDADE</div>', unsafe_allow_html=True)
-                    bv = res['bloco_vol']
-                    mx_a = res['mx_adm']
-                    mn_a = res['mn_adm']
-                    st.markdown(f'''<div class="calc-panel">
-                        <div class="calc-row txt-white"><span>BL. V3</span> <span>{(mx_a + (bv * 3)):.1f}</span></div>
-                        <div class="calc-row txt-white"><span>BL. V2</span> <span>{(mx_a + (bv * 2)):.1f}</span></div>
-                        <div class="calc-row txt-white"><span>BL. V1</span> <span>{(mx_a + bv):.1f}</span></div>
-                        <div class="calc-row txt-cyan" style="background: #091a24;"><span>MAX MAD</span> <span>{mx_a:.1f}</span></div>
-                        <div style="text-align:center; padding: 3px; color: #00f2ff; font-size: 9px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444; background: #050a0e;">BLOCO: {bv:.1f}</div>
-                        <div class="calc-row txt-cyan" style="background: #091a24;"><span>MIN MAD</span> <span>{mn_a:.1f}</span></div>
-                        <div class="calc-row txt-white"><span>BL. C1</span> <span>{(mn_a - bv):.1f}</span></div>
-                        <div class="calc-row txt-white"><span>BL. C2</span> <span>{(mn_a - (bv * 2)):.1f}</span></div>
-                        <div class="calc-row txt-white" style="border-bottom: none;"><span>BL. C3</span> <span>{(mn_a - (bv * 3)):.1f}</span></div>
-                    </div>''', unsafe_allow_html=True)
+                # Indicador de Reversão
+                st.markdown(f'''<div class="calc-panel" style="text-align:center; border: 1.5px solid {res['cor_ind']}; padding-bottom:6px;">
+                    <div style="color:#AAA; font-size:10px; font-weight:bold; text-transform:uppercase;">INDICADOR REVERSÃO</div>
+                    <div style="color:{res['cor_ind']}; font-size:22px; font-weight:bold; margin-top:2px; margin-bottom:2px;">{res['ind_val']:+.2f}</div>
+                    <div style="color:#ffffff; font-size:10px; font-weight:bold; font-family:monospace; margin-bottom:4px;">SPREAD DE REVERSÃO: {res['distancia_base_calc']:.2f} pts</div>
+                    <div style="display:flex; justify-content:space-between; border-top:1px solid #333; padding-top:4px; font-size:9px; font-weight:bold; padding-left:4px; padding-right:4px;">
+                        <span style="color:#00ff88;">GAT. COMPRA: <span style="color:#fff;">{res['gatilho_c']:.2f}</span></span>
+                        <span style="color:#ff4d4d;">GAT. VENDA: <span style="color:#ffffff;">{res['gatilho_v']:.2f}</span></span>
+                        <span style="color:#00f2ff;">FPR: {div_s:.2f}</span>
+                    </div>
+                </div>''', unsafe_allow_html=True)
             
             st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
             
