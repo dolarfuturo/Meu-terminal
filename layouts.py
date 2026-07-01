@@ -35,30 +35,27 @@ st.markdown("""
     .price-col { font-weight: bold; color: #ffffff !important; }
     .f-up { background-color: #00ff00aa !important; }
     .f-dn { background-color: #ff0000aa !important; }
-    .calc-panel { border: 1.5px solid #ffffff; border-radius: 4px; padding: 4px; background: #0a141a; font-family: monospace; margin-bottom: 4px; margin-top: 2px; }
+    .calc-panel { border: 1.5px solid #ffffff; border-radius: 4px; padding: 4px; background: #0a141a; font-family: monospace; margin-bottom: 4px; margin-top: 8px; }
     .calc-row { display: flex; justify-content: space-between; padding: 2px 6px; border-bottom: 1px solid #444; font-size: 10px; font-weight: bold; align-items: center; }
     
     /* Customizações da Barra de Força */
     .bar-wrapper-full { background: #0a141a; padding: 6px; border: 1.5px solid #ffffff; border-radius: 4px; text-align: center; margin-top: 5px; font-family: monospace; }
     .force-scale-top { display: flex; justify-content: space-between; font-size: 9px; font-weight: bold; color: #ffffff; margin-bottom: 2px; padding: 0 2px; }
     .force-scale-bottom { display: flex; justify-content: space-between; font-size: 9px; font-weight: bold; color: #00BFFF; margin-top: 2px; padding: 0 2px; }
+    
     .force-container-dual { background: #111; height: 16px; width: 100%; border-radius: 2px; position: relative; overflow: hidden; display: flex; border: 1px solid #ffffff; }
     .center-line { position: absolute; left: 50%; top: 0; width: 1px; height: 100%; background: #fff; z-index: 10; }
     .bar-side { width: 50%; height: 100%; position: relative; background: #050a0e; }
+    
+    /* Tons originais do Terminal para o preenchimento da Barra */
     .fill-green { background: #00ff88; float: right; height: 100%; transition: width 0.4s; display: flex; align-items: center; justify-content: flex-start; padding-left: 5px; font-size: 10px; font-weight: bold; white-space: nowrap; }
     .fill-red { background: #ff4d4d; float: left; height: 100%; transition: width 0.4s; display: flex; align-items: center; justify-content: flex-end; padding-right: 5px; font-size: 10px; font-weight: bold; white-space: nowrap; }
-    .txt-interno-tom-vermelho { color: #ff4d4d !important; } 
-    .txt-interno-tom-verde { color: #00ff88 !important; }
-    .sinal-indicator { font-size: 18px; font-weight: bold; line-height: 1; margin-top: 4px; }
     
-    /* Novo Termômetro Segmentado */
-    .therm-container { display: flex; width: 100%; height: 40px; margin-top: 5px; border: 1px solid #ffffff; background: #000; }
-    .therm-seg { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: bold; background: #1a1a1a; color: #555; border-right: 1px solid #333; transition: all 0.2s; text-align: center; }
-    .active-bf { background: #8B0000 !important; color: #fff !important; box-shadow: 0 0 15px #FF0000; border: 1px solid #ff4d4d; z-index: 1; }
-    .active-b { background: #CC4D00 !important; color: #fff !important; box-shadow: 0 0 15px #FF8C00; border: 1px solid #ff8c00; z-index: 1; }
-    .active-n { background: #404040 !important; color: #fff !important; box-shadow: 0 0 15px #ffffff; border: 1px solid #fff; z-index: 1; }
-    .active-a { background: #006600 !important; color: #fff !important; box-shadow: 0 0 15px #00FF00; border: 1px solid #00ff88; z-index: 1; }
-    .active-af { background: #004d00 !important; color: #fff !important; box-shadow: 0 0 15px #008000; border: 1px solid #00ff00; z-index: 1; }
+    /* Cores de Texto Interno Inversas (Mesmos tons do seu Terminal) */
+    .txt-interno-tom-vermelho { color: #ff4d4d !important; } /* Texto vermelho idêntico à barra de venda */
+    .txt-interno-tom-verde { color: #00ff88 !important; }    /* Texto verde idêntico à barra de compra */
+    
+    .sinal-indicator { font-size: 18px; font-weight: bold; line-height: 1; margin-top: 4px; }
     
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 1.5px solid #ffffff; border-bottom: 1.5px solid #ffffff; padding: 4px 0; overflow: hidden; white-space: nowrap; margin-top: 8px; }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 12px; font-weight: bold; color: #fff; }
@@ -188,9 +185,8 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         mn_adm = st.session_state.min_madr_mem
         bloco_vol = mx_adm - mn_adm if mx_adm > mn_adm else 0.0
         
-        # Inclusão do FPR nos gatilhos conforme solicitado
-        gatilho_c = (spot_data['mn'] + passo_fixo) + spreed_do_dia
-        gatilho_v = (spot_data['mx'] - passo_fixo) + spreed_do_dia
+        gatilho_c = spot_data['mn'] + passo_fixo
+        gatilho_v = spot_data['mx'] - passo_fixo
         distancia_base_calc = abs(spot_data['mn'] - gatilho_c)
         
         if spot_data['at'] >= gatilho_v:
@@ -367,7 +363,12 @@ while True:
                 v3_val = "{:.4f}".format(res['p_v3_v'] / 1000)
                 sinal_txt = res["seta"] if res["seta"] else "&nbsp;"
                 
+                # Afastamento percentual do Spot em relação à Média Dólar
                 var_da_barra_txt = "{:+.2f}%".format(res['pct_afastamento'])
+                
+                # MODIFICAÇÃO TONAL DO INDICADOR INVERSO:
+                # fill-green (Fundo Verde de Compra) -> Texto com tom exato Vermelho (#ff4d4d)
+                # fill-red (Fundo Vermelho de Venda) -> Texto com tom exato Verde (#00ff88)
                 conteudo_verde = f'<span class="txt-interno-tom-vermelho">{var_da_barra_txt}</span>' if res['p_v'] > 0 else "&nbsp;"
                 conteudo_vermelho = f'<span class="txt-interno-tom-verde">{var_da_barra_txt}</span>' if res['p_r'] > 0 else "&nbsp;"
 
@@ -407,63 +408,38 @@ while True:
                 )
                 
                 st.markdown(render_barra, unsafe_allow_html=True)
-                
-                # --- NOVO TERMÔMETRO SEGMENTADO COM PONTEIRO ---
-                def get_var(sym):
-                    d = st.session_state.market_data.get(sym)
-                    if d and d.get('cl', 0) > 0:
-                        return ((d['at'] / d['cl']) - 1) * 100
-                    return 0.0
-
-                v_dxy = get_var("DX-Y.NYB")
-                v_ewz = get_var("EWZ")
-                v_xau = get_var("GC=F")
-                v_us10y = get_var("^TNX")
-                
-                media_term = (v_dxy - v_ewz - v_xau + v_us10y) / 4
-                
-                c_bf, c_b, c_n, c_a, c_af = "", "", "", "", ""
-                if media_term <= -1.00: c_bf = "active-bf"
-                elif media_term < -0.35: c_b = "active-b"
-                elif media_term <= 0.35: c_n = "active-n"
-                elif media_term < 1.00: c_a = "active-a"
-                else: c_af = "active-af"
-                
-                p_min, p_max = -1.5, 1.5
-                pos_percent = ((media_term - p_min) / (p_max - p_min)) * 100
-                pos_percent = max(0, min(100, pos_percent)) 
-                
-                therm_html = f'''
-                <div style="position: relative; width: 100%; margin-top: 5px;">
-                    <div class="therm-container">
-                        <div class="therm-seg {c_bf}">BAIXA<br>FORTE</div>
-                        <div class="therm-seg {c_b}">BAIXA</div>
-                        <div class="therm-seg {c_n}">NEUTRO</div>
-                        <div class="therm-seg {c_a}">ALTA</div>
-                        <div class="therm-seg {c_af}">ALTA<br>FORTE</div>
-                    </div>
-                    <div style="position: absolute; bottom: -8px; left: {pos_percent}%; transform: translateX(-50%); 
-                                width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; 
-                                border-bottom: 12px solid #ffffff; transition: left 0.5s ease-in-out;">
-                    </div>
-                </div>
-                '''
-                st.markdown(therm_html, unsafe_allow_html=True)
             
             with c2:
-                # Painel de Cálculos
-                st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
-                st.markdown(f'''<div class="calc-panel"><div class="calc-row txt-green"><span>MX F2</span> <span>{res['max_fut_2_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F2</span> <span>{res['max_fut_2']:.1f}</span></div><div class="calc-row txt-green"><span>MX F1</span> <span>{res['max_fut_1_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F1</span> <span>{res['max_fut_1']:.1f}</span></div><div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 9px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">AXIS: {res['axis_central']:.1f}</div><div class="calc-row txt-yellow"><span>MD F1</span> <span>{res['min_fut_1']:.1f}</span></div><div class="calc-row txt-green"><span>MN F1</span> <span>{res['min_fut_1_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F2</span> <span>{res['min_fut_2']:.1f}</span></div><div class="calc-row txt-green" style="border-bottom: none;"><span>MN F2</span> <span>{res['min_fut_2_b']:.1f}</span></div></div>''', unsafe_allow_html=True)
+                sc1, sc2 = st.columns([1, 1])
                 
-                # Painel de Resumo
+                with sc1:
+                    st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
+                    st.markdown(f'''<div class="calc-panel"><div class="calc-row txt-green"><span>MX F2</span> <span>{res['max_fut_2_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F2</span> <span>{res['max_fut_2']:.1f}</span></div><div class="calc-row txt-green"><span>MX F1</span> <span>{res['max_fut_1_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F1</span> <span>{res['max_fut_1']:.1f}</span></div><div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 9px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">AXIS: {res['axis_central']:.1f}</div><div class="calc-row txt-yellow"><span>MD F1</span> <span>{res['min_fut_1']:.1f}</span></div><div class="calc-row txt-green"><span>MN F1</span> <span>{res['min_fut_1_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F2</span> <span>{res['min_fut_2']:.1f}</span></div><div class="calc-row txt-green" style="border-bottom: none;"><span>MN F2</span> <span>{res['min_fut_2_b']:.1f}</span></div></div>''', unsafe_allow_html=True)
+                
+                with sc2:
+                    st.markdown('<div class="section-title">VOLATILIDADE</div>', unsafe_allow_html=True)
+                    bv = res['bloco_vol']
+                    mx_a = res['mx_adm']
+                    mn_a = res['mn_adm']
+                    st.markdown(f'''<div class="calc-panel">
+                        <div class="calc-row txt-white"><span>BL. V3</span> <span>{(mx_a + (bv * 3)):.1f}</span></div>
+                        <div class="calc-row txt-white"><span>BL. V2</span> <span>{(mx_a + (bv * 2)):.1f}</span></div>
+                        <div class="calc-row txt-white"><span>BL. V1</span> <span>{(mx_a + bv):.1f}</span></div>
+                        <div class="calc-row txt-cyan" style="background: #091a24;"><span>MAX MAD</span> <span>{mx_a:.1f}</span></div>
+                        <div style="text-align:center; padding: 3px; color: #00f2ff; font-size: 9px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444; background: #050a0e;">BLOCO: {bv:.1f}</div>
+                        <div class="calc-row txt-cyan" style="background: #091a24;"><span>MIN MAD</span> <span>{mn_a:.1f}</span></div>
+                        <div class="calc-row txt-white"><span>BL. C1</span> <span>{(mn_a - bv):.1f}</span></div>
+                        <div class="calc-row txt-white"><span>BL. C2</span> <span>{(mn_a - (bv * 2)):.1f}</span></div>
+                        <div class="calc-row txt-white" style="border-bottom: none;"><span>BL. C3</span> <span>{(mn_a - (bv * 3)):.1f}</span></div>
+                    </div>''', unsafe_allow_html=True)
+                
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{res['white']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
                 
-                # Indicador de Reversão Ajustado (Menor e Sem FPR)
-                st.markdown(f'''<div class="calc-panel" style="text-align:center; border: 1.5px solid {res['cor_ind']}; padding: 2px;">
-                    <div style="color:#AAA; font-size:9px; font-weight:bold; text-transform:uppercase;">INDICADOR REVERSÃO</div>
-                    <div style="color:{res['cor_ind']}; font-size:18px; font-weight:bold; margin-top:0px; margin-bottom:0px;">{res['ind_val']:+.2f}</div>
-                    <div style="color:#ffffff; font-size:9px; font-weight:bold; font-family:monospace; margin-bottom:2px;">SPREAD DE REVERSÃO: {res['distancia_base_calc']:.2f} pts</div>
-                    <div style="display:flex; justify-content:space-between; border-top:1px solid #333; padding-top:2px; font-size:8px; font-weight:bold; padding-left:4px; padding-right:4px;">
+                st.markdown(f'''<div class="calc-panel" style="text-align:center; border: 1.5px solid {res['cor_ind']}; padding-bottom:6px;">
+                    <div style="color:#AAA; font-size:10px; font-weight:bold; text-transform:uppercase;">INDICADOR REVERSÃO</div>
+                    <div style="color:{res['cor_ind']}; font-size:22px; font-weight:bold; margin-top:2px; margin-bottom:2px;">{res['ind_val']:+.2f}</div>
+                    <div style="color:#ffffff; font-size:10px; font-weight:bold; font-family:monospace; margin-bottom:4px;">DIST. BASE (MÍN À BASE): {res['distancia_base_calc']:.2f} pts</div>
+                    <div style="display:flex; justify-content:space-between; border-top:1px solid #333; padding-top:4px; font-size:9px; font-weight:bold; padding-left:4px; padding-right:4px;">
                         <span style="color:#00ff88;">GAT. COMPRA: <span style="color:#fff;">{res['gatilho_c']:.2f}</span></span>
                         <span style="color:#ff4d4d;">GAT. VENDA: <span style="color:#ffffff;">{res['gatilho_v']:.2f}</span></span>
                     </div>
