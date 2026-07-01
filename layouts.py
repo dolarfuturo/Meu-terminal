@@ -6,7 +6,7 @@ from datetime import datetime
 import pytz
 
 # =============================================================================
-# # BLOCO 1: CONFIGURAÇÃO DE AMBIENTE E ESTILIZAÇÃO VISUAL (CSS)
+# BLOCO 1: CONFIGURAÇÃO DE AMBIENTE E ESTILIZAÇÃO VISUAL (CSS)
 # =============================================================================
 st.set_page_config(layout="wide", page_title="BAIR - TERMINAL DOLLAR", initial_sidebar_state="collapsed")
 
@@ -179,11 +179,9 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         axis_dinamico = dolar_medio + spreed_do_dia
         passo_fixo = spreed_50 / 4
         
-        # APLICAÇÃO DO FRP NOS GATILHOS (Conforme solicitado)
         gatilho_c = spot_data['mn'] + passo_fixo + spreed_do_dia
         gatilho_v = spot_data['mx'] - passo_fixo + spreed_do_dia
         
-        # Lógica original mantida para outros cálculos
         alvo_low = spot_data['mn'] + spreed_do_dia
         alvo_high = spot_data['mx'] + spreed_do_dia
         
@@ -337,7 +335,9 @@ while True:
                 html += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col {cl_df}' style='background-color:rgba({('0,255,0' if v_f >= 0 else '255,0,0')}, 0.1);'>{(d_c/1000):.4f}</td><td>{(res['axis_central']/1000):.4f}</td><td>{(res['axis_central']/1000):.4f}</td><td>{(res['max_grade']/1000):.4f}</td><td>{(res['min_grade']/1000):.4f}</td><td style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_f:+.2f}%</td></tr>"
                 
                 ticker_items = [f"DOLFUT: <span style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")};'>{v_f:+.2f}%</span>"]
-                outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "US10Y": "^TNX"}
+                
+                # ADICIONADO XAUUSD=X AQUI
+                outros = {"DOLSPOT": "USDBRL=X", "GOLD": "XAUUSD=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "US10Y": "^TNX"}
                 
                 for lbl, sym in outros.items():
                     d = st.session_state.market_data.get(sym, fetch(sym))
@@ -418,7 +418,6 @@ while True:
                 v_ewz = get_var("EWZ")
                 v_us10y = get_var("^TNX")
                 
-                # FÓRMULA SOLICITADA: (VAR dxy) - (VAR EWZ) + (VAR US10Y)
                 media_term = v_dxy - v_ewz + v_us10y
                 
                 c_bf, c_b, c_n, c_a, c_af = "", "", "", "", ""
@@ -450,7 +449,6 @@ while True:
                 st.markdown(therm_html, unsafe_allow_html=True)
             
             with c2:
-                # Seção única de Cálculos (Volatilidade removida)
                 st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row txt-green"><span>MX F2</span> <span>{res['max_fut_2_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F2</span> <span>{res['max_fut_2']:.1f}</span></div><div class="calc-row txt-green"><span>MX F1</span> <span>{res['max_fut_1_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F1</span> <span>{res['max_fut_1']:.1f}</span></div><div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 9px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">AXIS: {res['axis_central']:.1f}</div><div class="calc-row txt-yellow"><span>MD F1</span> <span>{res['min_fut_1']:.1f}</span></div><div class="calc-row txt-green"><span>MN F1</span> <span>{res['min_fut_1_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F2</span> <span>{res['min_fut_2']:.1f}</span></div><div class="calc-row txt-green" style="border-bottom: none;"><span>MN F2</span> <span>{res['min_fut_2_b']:.1f}</span></div></div>''', unsafe_allow_html=True)
                 
