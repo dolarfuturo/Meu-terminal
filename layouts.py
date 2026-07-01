@@ -429,8 +429,8 @@ while True:
                 elif media_term < 1.00: c_a = "active-a"
                 else: c_af = "active-af"
                 
-                # Cálculo do ponteiro (-2.0% a 2.0%)
-                p_min, p_max = -2.0, 2.0
+                # Cálculo do ponteiro (-3.5% a 3.5%)
+                p_min, p_max = -3.5, 3.5
                 pos_percent = ((media_term - p_min) / (p_max - p_min)) * 100
                 pos_percent = max(0, min(100, pos_percent)) 
                 
