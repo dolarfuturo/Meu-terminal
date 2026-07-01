@@ -42,20 +42,23 @@ st.markdown("""
     .bar-wrapper-full { background: #0a141a; padding: 6px; border: 1.5px solid #ffffff; border-radius: 4px; text-align: center; margin-top: 5px; font-family: monospace; }
     .force-scale-top { display: flex; justify-content: space-between; font-size: 9px; font-weight: bold; color: #ffffff; margin-bottom: 2px; padding: 0 2px; }
     .force-scale-bottom { display: flex; justify-content: space-between; font-size: 9px; font-weight: bold; color: #00BFFF; margin-top: 2px; padding: 0 2px; }
-    
     .force-container-dual { background: #111; height: 16px; width: 100%; border-radius: 2px; position: relative; overflow: hidden; display: flex; border: 1px solid #ffffff; }
     .center-line { position: absolute; left: 50%; top: 0; width: 1px; height: 100%; background: #fff; z-index: 10; }
     .bar-side { width: 50%; height: 100%; position: relative; background: #050a0e; }
-    
-    /* Tons originais do Terminal para o preenchimento da Barra */
     .fill-green { background: #00ff88; float: right; height: 100%; transition: width 0.4s; display: flex; align-items: center; justify-content: flex-start; padding-left: 5px; font-size: 10px; font-weight: bold; white-space: nowrap; }
     .fill-red { background: #ff4d4d; float: left; height: 100%; transition: width 0.4s; display: flex; align-items: center; justify-content: flex-end; padding-right: 5px; font-size: 10px; font-weight: bold; white-space: nowrap; }
-    
-    /* Cores de Texto Interno Inversas (Mesmos tons do seu Terminal) */
-    .txt-interno-tom-vermelho { color: #ff4d4d !important; } /* Texto vermelho idêntico à barra de venda */
-    .txt-interno-tom-verde { color: #00ff88 !important; }    /* Texto verde idêntico à barra de compra */
-    
+    .txt-interno-tom-vermelho { color: #ff4d4d !important; } 
+    .txt-interno-tom-verde { color: #00ff88 !important; }
     .sinal-indicator { font-size: 18px; font-weight: bold; line-height: 1; margin-top: 4px; }
+    
+    /* Novo Termômetro Segmentado */
+    .therm-container { display: flex; width: 100%; height: 40px; margin-top: 5px; border: 1px solid #ffffff; background: #000; }
+    .therm-seg { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: bold; background: #1a1a1a; color: #555; border-right: 1px solid #333; transition: all 0.2s; text-align: center; }
+    .active-bf { background: #8B0000 !important; color: #fff !important; box-shadow: 0 0 15px #FF0000; border: 1px solid #ff4d4d; z-index: 1; }
+    .active-b { background: #CC4D00 !important; color: #fff !important; box-shadow: 0 0 15px #FF8C00; border: 1px solid #ff8c00; z-index: 1; }
+    .active-n { background: #404040 !important; color: #fff !important; box-shadow: 0 0 15px #ffffff; border: 1px solid #fff; z-index: 1; }
+    .active-a { background: #006600 !important; color: #fff !important; box-shadow: 0 0 15px #00FF00; border: 1px solid #00ff88; z-index: 1; }
+    .active-af { background: #004d00 !important; color: #fff !important; box-shadow: 0 0 15px #008000; border: 1px solid #00ff00; z-index: 1; }
     
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 1.5px solid #ffffff; border-bottom: 1.5px solid #ffffff; padding: 4px 0; overflow: hidden; white-space: nowrap; margin-top: 8px; }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 12px; font-weight: bold; color: #fff; }
@@ -363,12 +366,7 @@ while True:
                 v3_val = "{:.4f}".format(res['p_v3_v'] / 1000)
                 sinal_txt = res["seta"] if res["seta"] else "&nbsp;"
                 
-                # Afastamento percentual do Spot em relação à Média Dólar
                 var_da_barra_txt = "{:+.2f}%".format(res['pct_afastamento'])
-                
-                # MODIFICAÇÃO TONAL DO INDICADOR INVERSO:
-                # fill-green (Fundo Verde de Compra) -> Texto com tom exato Vermelho (#ff4d4d)
-                # fill-red (Fundo Vermelho de Venda) -> Texto com tom exato Verde (#00ff88)
                 conteudo_verde = f'<span class="txt-interno-tom-vermelho">{var_da_barra_txt}</span>' if res['p_v'] > 0 else "&nbsp;"
                 conteudo_vermelho = f'<span class="txt-interno-tom-verde">{var_da_barra_txt}</span>' if res['p_r'] > 0 else "&nbsp;"
 
@@ -408,6 +406,36 @@ while True:
                 )
                 
                 st.markdown(render_barra, unsafe_allow_html=True)
+                
+                # --- NOVO TERMÔMETRO SEGMENTADO ---
+                lista_therm = ["DX-Y.NYB", "EWZ", "GC=F", "BZ=F", "^TNX"]
+                soma_var_term = 0
+                qtd_term = 0
+                for sym in lista_therm:
+                    d_t = st.session_state.market_data.get(sym)
+                    if d_t and d_t.get('cl', 0) > 0:
+                        soma_var_term += ((d_t['at'] / d_t['cl']) - 1) * 100
+                        qtd_term += 1
+                media_term = soma_var_term / qtd_term if qtd_term > 0 else 0
+                
+                c_bf, c_b, c_n, c_a, c_af = "", "", "", "", ""
+                if media_term < -0.70: c_bf = "active-bf"
+                elif media_term < -0.20: c_b = "active-b"
+                elif media_term <= 0.20: c_n = "active-n"
+                elif media_term <= 0.70: c_a = "active-a"
+                else: c_af = "active-af"
+                
+                therm_html = f'''
+                <div class="therm-container">
+                    <div class="therm-seg {c_bf}">BAIXA<br>FORTE</div>
+                    <div class="therm-seg {c_b}">BAIXA</div>
+                    <div class="therm-seg {c_n}">NEUTRO</div>
+                    <div class="therm-seg {c_a}">ALTA</div>
+                    <div class="therm-seg {c_af}">ALTA<br>FORTE</div>
+                </div>
+                '''
+                st.markdown(therm_html, unsafe_allow_html=True)
+                # ----------------------------------
             
             with c2:
                 sc1, sc2 = st.columns([1, 1])
