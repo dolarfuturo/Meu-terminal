@@ -346,6 +346,11 @@ while True:
                         l_a = st.session_state.last_p.get(lbl, p_v); cl_a = "f-up" if p_v > l_a else "f-dn" if p_v < l_a else ""; st.session_state.last_p[lbl] = p_v
                         var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
                         
+                        # --- INVERSÃO DO SINAL DO EWZ APENAS NA GRADE ---
+                        if lbl == "EWZ":
+                            var = var * -1
+                        # ------------------------------------------------
+                        
                         cl_max = "f-up" if lbl == "DOLSPOT" and st.session_state.last_spot_max > 0 and d['mx'] > st.session_state.last_spot_max else ""
                         cl_min = "f-dn" if lbl == "DOLSPOT" and st.session_state.last_spot_min < float('inf') and d['mn'] < st.session_state.last_spot_min else ""
                         if lbl == "DOLSPOT":
