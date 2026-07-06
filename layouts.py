@@ -424,8 +424,8 @@ while True:
                 # Cores dos blocos
                 c_bf, c_b, c_n, c_a, c_af = "", "", "", "", ""
                 if media_term <= -1.00: c_bf = "active-bf"
-                elif media_term < -0.35: c_b = "active-b"
-                elif media_term <= 0.35: c_n = "active-n"
+                elif media_term < -0.25: c_b = "active-b"
+                elif media_term <= 0.25: c_n = "active-n"
                 elif media_term < 1.00: c_a = "active-a"
                 else: c_af = "active-af"
                 
