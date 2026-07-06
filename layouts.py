@@ -425,7 +425,7 @@ while True:
                 v_ewz = -get_var("EWZ") # Inversão aplicada na fonte
                 v_us10y = get_var("^TNX")
                 
-                media_term = (v_dxy + v_ewz + v_us10y) / 3
+                media_term = (v_dxy - v_ewz + v_us10y) / 3
                 
                 # Cores dos blocos com novos limites
                 c_bf, c_b, c_n, c_a, c_af = "", "", "", "", ""
