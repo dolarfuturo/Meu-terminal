@@ -423,10 +423,10 @@ while True:
                 
                 # Cores dos blocos
                 c_bf, c_b, c_n, c_a, c_af = "", "", "", "", ""
-                if media_term <= -1.00: c_bf = "active-bf"
-                elif media_term < -0.20: c_b = "active-b"
-                elif media_term <= 0.20: c_n = "active-n"
-                elif media_term < 1.00: c_a = "active-a"
+                if media_term <= -0.70: c_bf = "active-bf"
+                elif media_term < -0.25: c_b = "active-b"
+                elif media_term <= 0.25: c_n = "active-n"
+                elif media_term < 0.70: c_a = "active-a"
                 else: c_af = "active-af"
                 
                 # Cálculo do ponteiro (-1.5% a 1.5%)
