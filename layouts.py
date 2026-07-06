@@ -203,10 +203,10 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             cor_ind = "#00f2ff"
         
         p_c3_v = (dolar_medio * (1 - 0.0105)) + spreed_do_dia
-        p_c2_v = (dolar_medio * (1 - 0.0070)) + spreed_do_dia
-        p_c1_v = (dolar_medio * (1 - 0.0035)) + spreed_do_dia
-        p_v1_v = (dolar_medio * (1 + 0.0035)) + spreed_do_dia
-        p_v2_v = (dolar_medio * (1 + 0.0070)) + spreed_do_dia
+        p_c2_v = (dolar_medio * (1 - 0.0050)) + spreed_do_dia
+        p_c1_v = (dolar_medio * (1 - 0.0025)) + spreed_do_dia
+        p_v1_v = (dolar_medio * (1 + 0.0025)) + spreed_do_dia
+        p_v2_v = (dolar_medio * (1 + 0.0050)) + spreed_do_dia
         p_v3_v = (dolar_medio * (1 + 0.0105)) + spreed_do_dia
         
         diff_media = spot_data['at'] - dolar_medio
@@ -424,8 +424,8 @@ while True:
                 # Cores dos blocos
                 c_bf, c_b, c_n, c_a, c_af = "", "", "", "", ""
                 if media_term <= -1.00: c_bf = "active-bf"
-                elif media_term < -0.35: c_b = "active-b"
-                elif media_term <= 0.35: c_n = "active-n"
+                elif media_term < -0.25: c_b = "active-b"
+                elif media_term <= 0.25: c_n = "active-n"
                 elif media_term < 1.00: c_a = "active-a"
                 else: c_af = "active-af"
                 
