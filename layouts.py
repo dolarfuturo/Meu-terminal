@@ -429,10 +429,10 @@ while True:
                 
                 # Cores dos blocos com novos limites
                 c_bf, c_b, c_n, c_a, c_af = "", "", "", "", ""
-                if media_term <= -0.50: c_bf = "active-bf"       # Baixa Forte
-                elif media_term < -0.25: c_b = "active-b"        # Baixa
-                elif media_term <= 0.25: c_n = "active-n"        # Neutro
-                elif media_term < 0.50: c_a = "active-a"         # Alta
+                if media_term <= -0.60: c_bf = "active-bf"       # Baixa Forte
+                elif media_term < -0.30: c_b = "active-b"        # Baixa
+                elif media_term <= 0.30: c_n = "active-n"        # Neutro
+                elif media_term < 0.60: c_a = "active-a"         # Alta
                 else: c_af = "active-af"                         # Alta Forte
                 
                 # Cálculo do ponteiro (Range fixo em -1.0 a 1.0 para sensibilidade)
