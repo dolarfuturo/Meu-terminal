@@ -469,7 +469,7 @@ while True:
                 
                 st.markdown(f'''<div class="calc-panel">
                     <div class="calc-row" style="border-bottom:none; padding-bottom:0px;">
-                        <span style="color:#ffffff;">AXIS + TERM</span> <span style="color:#00f2ff;">{axis_plus_term:.2f}</span>
+                        <span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{axis_plus_term:.2f}</span>
                     </div>
                     <div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if media_term_c2 >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">
                         {media_term_c2:+.2f}%
