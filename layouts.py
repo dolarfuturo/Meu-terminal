@@ -203,10 +203,10 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             cor_ind = "#00f2ff"
         
         p_c3_v = (dolar_medio * (1 - 0.0105)) + spreed_do_dia
-        p_c2_v = (dolar_medio * (1 - 0.0050)) + spreed_do_dia
-        p_c1_v = (dolar_medio * (1 - 0.0025)) + spreed_do_dia
-        p_v1_v = (dolar_medio * (1 + 0.0025)) + spreed_do_dia
-        p_v2_v = (dolar_medio * (1 + 0.0050)) + spreed_do_dia
+        p_c2_v = (dolar_medio * (1 - 0.0070)) + spreed_do_dia
+        p_c1_v = (dolar_medio * (1 - 0.0035)) + spreed_do_dia
+        p_v1_v = (dolar_medio * (1 + 0.0035)) + spreed_do_dia
+        p_v2_v = (dolar_medio * (1 + 0.0070)) + spreed_do_dia
         p_v3_v = (dolar_medio * (1 + 0.0105)) + spreed_do_dia
         
         diff_media = spot_data['at'] - dolar_medio
