@@ -436,7 +436,7 @@ while True:
                 else: c_af = "active-af"                         # Alta Forte
                 
                 # Cálculo do ponteiro (Range fixo em -1.0 a 1.0 para sensibilidade)
-                p_min, p_max = -1.7, 1.7
+                p_min, p_max = -1.0, 1.0
                 pos_percent = ((media_term - p_min) / (p_max - p_min)) * 100
                 pos_percent = max(0, min(100, pos_percent)) 
                 
