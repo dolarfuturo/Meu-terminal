@@ -347,7 +347,7 @@ while True:
                         var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
                         
                         if lbl == "EWZ":
-                            var = -var
+                            var = var
                             
                         cl_max = "f-up" if lbl == "DOLSPOT" and st.session_state.last_spot_max > 0 and d['mx'] > st.session_state.last_spot_max else ""
                         cl_min = "f-dn" if lbl == "DOLSPOT" and st.session_state.last_spot_min < float('inf') and d['mn'] < st.session_state.last_spot_min else ""
@@ -419,7 +419,7 @@ while True:
                     return 0.0
 
                 v_dxy = get_var("DX-Y.NYB")
-                v_ewz = get_var("EWZ") 
+                v_ewz = -get_var("EWZ") 
                 v_us10y = get_var("^TNX")
                 
                 media_term = (v_dxy + v_ewz + v_us10y) / 3
