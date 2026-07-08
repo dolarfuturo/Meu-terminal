@@ -346,6 +346,9 @@ while True:
                         l_a = st.session_state.last_p.get(lbl, p_v); cl_a = "f-up" if p_v > l_a else "f-dn" if p_v < l_a else ""; st.session_state.last_p[lbl] = p_v
                         var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
                         
+                        if lbl == "EWZ":
+                            var = -var
+                            
                         cl_max = "f-up" if lbl == "DOLSPOT" and st.session_state.last_spot_max > 0 and d['mx'] > st.session_state.last_spot_max else ""
                         cl_min = "f-dn" if lbl == "DOLSPOT" and st.session_state.last_spot_min < float('inf') and d['mn'] < st.session_state.last_spot_min else ""
                         if lbl == "DOLSPOT":
@@ -411,25 +414,23 @@ while True:
                 def get_var(sym):
                     d = st.session_state.market_data.get(sym)
                     if d and d.get('cl', 0) > 0:
-                        return ((d['at'] / d['cl']) - 1) * 100
+                        v = ((d['at'] / d['cl']) - 1) * 100
+                        return v
                     return 0.0
 
-                # Fórmula SOLICITADA: (DXY - EWZ + US10Y) / 3
                 v_dxy = get_var("DX-Y.NYB")
-                v_ewz = get_var("EWZ")
+                v_ewz = -get_var("EWZ") 
                 v_us10y = get_var("^TNX")
                 
-                media_term = (v_dxy - v_ewz + v_us10y) / 3
+                media_term = (v_dxy + v_ewz + v_us10y) / 3
                 
-                # Cores dos blocos
                 c_bf, c_b, c_n, c_a, c_af = "", "", "", "", ""
-                if media_term <= -1.00: c_bf = "active-bf"
-                elif media_term < -0.35: c_b = "active-b"
-                elif media_term <= 0.35: c_n = "active-n"
-                elif media_term < 1.00: c_a = "active-a"
+                if media_term <= -0.60: c_bf = "active-bf"
+                elif media_term < -0.30: c_b = "active-b"
+                elif media_term <= 0.30: c_n = "active-n"
+                elif media_term < 0.60: c_a = "active-a"
                 else: c_af = "active-af"
                 
-                # Cálculo do ponteiro (-1.0% a 1.0%)
                 p_min, p_max = -1.0, 1.0
                 pos_percent = ((media_term - p_min) / (p_max - p_min)) * 100
                 pos_percent = max(0, min(100, pos_percent)) 
@@ -450,14 +451,33 @@ while True:
                 </div>
                 '''
                 st.markdown(therm_html, unsafe_allow_html=True)
-                # ----------------------------------
             
             with c2:
-                # Coluna de cálculos (Removida a Volatilidade)
+                # Função auxiliar para recalcular variação aqui (escopo c2)
+                def get_var_local(sym):
+                    d = st.session_state.market_data.get(sym)
+                    if d and d.get('cl', 0) > 0:
+                        v = ((d['at'] / d['cl']) - 1) * 100
+                        return v
+                    return 0.0
+
+                media_term_c2 = (get_var_local("DX-Y.NYB") + (-get_var_local("EWZ")) + get_var_local("^TNX")) / 3
+                axis_plus_term = res['axis_central'] * (1 + (media_term_c2 / 100))
+
                 st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
                 st.markdown(f'''<div class="calc-panel"><div class="calc-row txt-green"><span>MX F2</span> <span>{res['max_fut_2_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F2</span> <span>{res['max_fut_2']:.1f}</span></div><div class="calc-row txt-green"><span>MX F1</span> <span>{res['max_fut_1_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F1</span> <span>{res['max_fut_1']:.1f}</span></div><div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 9px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">AXIS: {res['axis_central']:.1f}</div><div class="calc-row txt-yellow"><span>MD F1</span> <span>{res['min_fut_1']:.1f}</span></div><div class="calc-row txt-green"><span>MN F1</span> <span>{res['min_fut_1_b']:.1f}</span></div><div class="calc-row txt-yellow"><span>MD F2</span> <span>{res['min_fut_2']:.1f}</span></div><div class="calc-row txt-green" style="border-bottom: none;"><span>MN F2</span> <span>{res['min_fut_2_b']:.1f}</span></div></div>''', unsafe_allow_html=True)
                 
-                st.markdown(f'''<div class="calc-panel"><div class="calc-row" style="border-bottom:none; padding-bottom:0px;"><span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{res['white']:.2f}</span></div><div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if res['vivo_pct'] >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">{res['vivo_pct']:+.2f}%</div><div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div><div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div><div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div><div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
+                st.markdown(f'''<div class="calc-panel">
+                    <div class="calc-row" style="border-bottom:none; padding-bottom:0px;">
+                        <span style="color:#ffffff;">PREÇO JUSTO</span> <span style="color:#00f2ff;">{axis_plus_term:.2f}</span>
+                    </div>
+                    <div style="text-align:right; font-size:9px; padding-right:6px; color:{("#00ff00" if media_term_c2 >= 0 else "#ff4d4d")}; font-weight:bold; margin-bottom:4px;">
+                        {media_term_c2:+.2f}%
+                    </div>
+                    <div class="calc-row"><span style="color:#ffff00;">MÉDIA DOLAR</span> <span style="color:#00f2ff;">{res['medio']:.2f}</span></div>
+                    <div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div>
+                    <div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div>
+                    <div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
                 
                 st.markdown(f'''<div class="calc-panel" style="text-align:center; border: 1.5px solid {res['cor_ind']}; padding-bottom:6px;">
                     <div style="color:#AAA; font-size:10px; font-weight:bold; text-transform:uppercase;">INDICADOR REVERSÃO</div>
@@ -471,4 +491,4 @@ while True:
             
             st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
             
-    time.sleep(5)
+    time.sleep(2)
