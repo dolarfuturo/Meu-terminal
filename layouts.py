@@ -421,9 +421,9 @@ while True:
                 v_dxy = get_var("DX-Y.NYB")
                 v_ewz = get_var("EWZ") 
                 v_us10y = get_var("^TNX")
-                v_zn=f = get_var("ZN=F")
+                v_zn_f = get_var("ZN=F")
                 
-                media_term = (v_dxy) + (v_zn:f) - (v_ewz) / 3
+                media_term = (v_dxy) + (v_zn_f) - (v_ewz) / 3
                 
                 c_bf, c_b, c_n, c_a, c_af = "", "", "", "", ""
                 if media_term <= -0.60: c_bf = "active-bf"
