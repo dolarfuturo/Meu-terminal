@@ -421,6 +421,7 @@ while True:
                 v_dxy = get_var("DX-Y.NYB")
                 v_ewz = get_var("EWZ") 
                 v_us10y = get_var("^TNX")
+                v_zn=f = get_var("ZN=F")
                 
                 media_term = (v_dxy) + (v_us10y) - (v_ewz) / 3
                 
