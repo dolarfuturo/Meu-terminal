@@ -421,8 +421,9 @@ while True:
                 v_dxy = get_var("DX-Y.NYB")
                 v_ewz = get_var("EWZ") 
                 v_us10y = get_var("^TNX")
+                v_zn_f = get_var("ZN=F")
                 
-                media_term = (v_dxy) + (v_us10y) - (v_ewz) / 3
+                media_term = (v_dxy - v_zn_f - v_ewz) / 3
                 
                 c_bf, c_b, c_n, c_a, c_af = "", "", "", "", ""
                 if media_term <= -0.60: c_bf = "active-bf"
@@ -461,7 +462,7 @@ while True:
                         return v
                     return 0.0
 
-                media_term_c2 = get_var_local("DX-Y.NYB") + get_var_local("^TNX") - (get_var_local("EWZ")) / 3
+                media_term_c2 = (get_var_local("DX-Y.NYB") - get_var_local("ZN=F") - (get_var_local("EWZ")) / 3
                 axis_plus_term = res['axis_central'] * (1 + (media_term_c2 / 100))
 
                 st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
