@@ -463,7 +463,7 @@ while True:
                         return v
                     return 0.0
 
-                media_term_c2 = (get_var_local("DX-Y.NYB") + get_var_local("ZN=F") - get_var_local("EWZ")) * 0.3 
+                media_term_c2 = (get_var_local("DX-Y.NYB") + get_var_local("ZN=F") - get_var_local("EWZ")) * 0.35 
 
                 axis_plus_term = res['axis_central'] * (1 + (media_term_c2 / 100))
 
