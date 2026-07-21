@@ -423,7 +423,7 @@ while True:
                 v_us10y = get_var("^TNX")
                 v_zn_f = get_var("ZN=F")
                 
-                media_term = (v_dxy + v_zn_f - v_ewz) * 0.5
+                media_term = (v_dxy - v_ewz) * 0.5
 
                 
                 c_bf, c_b, c_n, c_a, c_af = "", "", "", "", ""
@@ -463,7 +463,7 @@ while True:
                         return v
                     return 0.0
 
-                media_term_c2 = (get_var_local("DX-Y.NYB") + get_var_local("ZN=F") - get_var_local("EWZ")) * 0.5 
+                media_term_c2 = (get_var_local("DX-Y.NYB") - get_var_local("EWZ") * 0.5 
 
                 axis_plus_term = res['axis_central'] * (1 + (media_term_c2 / 100))
 
