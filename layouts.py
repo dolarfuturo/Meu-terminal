@@ -423,8 +423,7 @@ while True:
                 v_us10y = get_var("^TNX")
                 v_zn_f = get_var("ZN=F")
                 
-                media_term = (v_dxy - v_ewz) * 0.2
-
+                media_term = (v_dxy - v_ewz) 
                 
                 c_bf, c_b, c_n, c_a, c_af = "", "", "", "", ""
                 if media_term <= -0.60: c_bf = "active-bf"
@@ -433,7 +432,7 @@ while True:
                 elif media_term < 0.60: c_a = "active-a"
                 else: c_af = "active-af"
                 
-                p_min, p_max = -2.5, 2.5
+                p_min, p_max = -1.5, 1.5
                 pos_percent = ((media_term - p_min) / (p_max - p_min)) * 100
                 pos_percent = max(0, min(100, pos_percent)) 
                 
