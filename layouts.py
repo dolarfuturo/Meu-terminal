@@ -423,7 +423,7 @@ while True:
                 v_us10y = get_var("^TNX")
                 v_zn_f = get_var("ZN=F")
                 
-                media_term = (v_dxy - v_ewz) 
+                media_term = (v_dxy) - v_ewz) * 0.2
                 
                 c_bf, c_b, c_n, c_a, c_af = "", "", "", "", ""
                 if media_term <= -0.60: c_bf = "active-bf"
