@@ -223,7 +223,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         if diff_media < 0:
             p_v = min(100.0, (abs(pct_afastamento) / 1.00) * 100)
         else:
-            p_r = min(100.0, (pct_afastamento / 1.00 * 100 )
+            p_r = min(100.0, (pct_afastamento / 1.00) * 100)  # CORRIGIDO AQUI
             
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         dolfut_atual_calc = axis_dinamico * (1 + calc_variacoes_pct)
@@ -346,9 +346,6 @@ while True:
                         l_a = st.session_state.last_p.get(lbl, p_v); cl_a = "f-up" if p_v > l_a else "f-dn" if p_v < l_a else ""; st.session_state.last_p[lbl] = p_v
                         var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
                         
-                        if lbl == "EWZ":
-                            var = var
-                            
                         cl_max = "f-up" if lbl == "DOLSPOT" and st.session_state.last_spot_max > 0 and d['mx'] > st.session_state.last_spot_max else ""
                         cl_min = "f-dn" if lbl == "DOLSPOT" and st.session_state.last_spot_min < float('inf') and d['mn'] < st.session_state.last_spot_min else ""
                         if lbl == "DOLSPOT":
@@ -410,7 +407,6 @@ while True:
                 
                 st.markdown(render_barra, unsafe_allow_html=True)
                 
-                # --- NOVO TERMÔMETRO SEGMENTADO COM PONTEIRO ---
                 def get_var(sym):
                     d = st.session_state.market_data.get(sym)
                     if d and d.get('cl', 0) > 0:
