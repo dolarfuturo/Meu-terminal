@@ -221,9 +221,9 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             
         p_v, p_r = 0, 0
         if diff_media < 0:
-            p_v = min(100.0, (abs(pct_afastamento) / 1.00) 
+            p_v = min(100.0, (abs(pct_afastamento) / 1.00) * 100)
         else:
-            p_r = min(100.0, (pct_afastamento / 1.00 )
+            p_r = min(100.0, (pct_afastamento / 1.00 * 100 )
             
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         dolfut_atual_calc = axis_dinamico * (1 + calc_variacoes_pct)
