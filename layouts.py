@@ -202,12 +202,12 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             ind_val = 0.0
             cor_ind = "#00f2ff"
         
-        p_c3_v = (dolar_medio * (1 - 0.0105)) * spreed_do_dia
-        p_c2_v = (dolar_medio * (1 - 0.0070)) * spreed_do_dia
-        p_c1_v = (dolar_medio * (1 - 0.0035)) * spreed_do_dia
-        p_v1_v = (dolar_medio * (1 + 0.0035)) * spreed_do_dia
-        p_v2_v = (dolar_medio * (1 + 0.0070)) * spreed_do_dia
-        p_v3_v = (dolar_medio * (1 + 0.0105)) * spreed_do_dia
+        p_c3_v = (dolar_medio * (1 - 0.0100)) * spreed_do_dia
+        p_c2_v = (dolar_medio * (1 - 0.0066)) * spreed_do_dia
+        p_c1_v = (dolar_medio * (1 - 0.0033)) * spreed_do_dia
+        p_v1_v = (dolar_medio * (1 + 0.0033)) * spreed_do_dia
+        p_v2_v = (dolar_medio * (1 + 0.0066)) * spreed_do_dia
+        p_v3_v = (dolar_medio * (1 + 0.0100)) * spreed_do_dia
         
         diff_media = spot_data['at'] - dolar_medio
         pct_afastamento = (diff_media / dolar_medio) * 100 if dolar_medio > 0 else 0
@@ -221,9 +221,9 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             
         p_v, p_r = 0, 0
         if diff_media < 0:
-            p_v = min(100.0, (abs(pct_afastamento) / 1.05) * 100)
+            p_v = min(100.0, (abs(pct_afastamento) / 1.00) * 100)
         else:
-            p_r = min(100.0, (pct_afastamento / 1.05) * 100)  # CORRIGIDO AQUI
+            p_r = min(100.0, (pct_afastamento / 1.00) * 100)  # CORRIGIDO AQUI
             
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         dolfut_atual_calc = axis_dinamico * (1 + calc_variacoes_pct)
@@ -373,13 +373,13 @@ while True:
                 render_barra = (
                     '<div class="bar-wrapper-full">'
                     '    <div class="force-scale-top">'
-                    '        <span style="color:#00ff88; width:15%; text-align:left;">-1.05%</span>'
-                    '        <span style="color:#00ff88; width:15%; text-align:left;">-0.70%</span>'
-                    '        <span style="color:#00ff88; width:15%; text-align:left;">-0.35%</span>'
+                    '        <span style="color:#00ff88; width:15%; text-align:left;">-1.00%</span>'
+                    '        <span style="color:#00ff88; width:15%; text-align:left;">-0.66%</span>'
+                    '        <span style="color:#00ff88; width:15%; text-align:left;">-0.33%</span>'
                     '        <span style="color:#ffffff; width:10%; text-align:center;">0</span>'
-                    '        <span style="color:#ff4d4d; width:15%; text-align:right;">+0.35%</span>'
-                    '        <span style="color:#ff4d4d; width:15%; text-align:right;">+0.70%</span>'
-                    '        <span style="color:#ff4d4d; width:15%; text-align:right;">+1.05%</span>'
+                    '        <span style="color:#ff4d4d; width:15%; text-align:right;">+0.33%</span>'
+                    '        <span style="color:#ff4d4d; width:15%; text-align:right;">+0.66%</span>'
+                    '        <span style="color:#ff4d4d; width:15%; text-align:right;">+1.00%</span>'
                     '    </div>'
                     '    <div class="force-container-dual">'
                     '        <div class="center-line"></div>'
