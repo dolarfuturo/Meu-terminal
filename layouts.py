@@ -222,7 +222,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         p_v, p_r = 0, 0
         if diff_media < 0:
             p_v = min(100.0, (abs(pct_afastamento) / 1.00) 
-        else:
+            else:
             p_r = min(100.0, (pct_afastamento / 1.00 )
             
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
