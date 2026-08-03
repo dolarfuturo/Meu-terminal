@@ -202,12 +202,12 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             ind_val = 0.0
             cor_ind = "#00f2ff"
         
-        p_c3_v = (dolar_medio * (1 - 0.0105)) * spreed_do_dia
-        p_c2_v = (dolar_medio * (1 - 0.0070)) * spreed_do_dia
-        p_c1_v = (dolar_medio * (1 - 0.0035)) * spreed_do_dia
-        p_v1_v = (dolar_medio * (1 + 0.0035)) * spreed_do_dia
-        p_v2_v = (dolar_medio * (1 + 0.0070)) * spreed_do_dia
-        p_v3_v = (dolar_medio * (1 + 0.0105)) * spreed_do_dia
+        p_c3_v = (dolar_medio * (1 - 0.0100)) * spreed_do_dia
+        p_c2_v = (dolar_medio * (1 - 0.0066)) * spreed_do_dia
+        p_c1_v = (dolar_medio * (1 - 0.0033)) * spreed_do_dia
+        p_v1_v = (dolar_medio * (1 + 0.0033)) * spreed_do_dia
+        p_v2_v = (dolar_medio * (1 + 0.0066)) * spreed_do_dia
+        p_v3_v = (dolar_medio * (1 + 0.0100)) * spreed_do_dia
         
         diff_media = spot_data['at'] - dolar_medio
         pct_afastamento = (diff_media / dolar_medio) * 100 if dolar_medio > 0 else 0
@@ -221,9 +221,9 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             
         p_v, p_r = 0, 0
         if diff_media < 0:
-            p_v = min(100.0, (abs(pct_afastamento) / 1.05) * 100)
+            p_v = min(100.0, (abs(pct_afastamento) / 1.00) * 100)
         else:
-            p_r = min(100.0, (pct_afastamento / 1.05) * 100)
+            p_r = min(100.0, (pct_afastamento / 1.00 * 100)
             
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         dolfut_atual_calc = axis_dinamico * (1 + calc_variacoes_pct)
