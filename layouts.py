@@ -243,8 +243,16 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         if f_min != float('inf'): st.session_state.dolfut_min_auto = min(st.session_state.dolfut_min_auto, f_min)
         if f_close_salvo > 0: st.session_state.dolfut_close_auto = f_close_salvo
 
-        # Garante que a mínima do DOLFUT inclua o FRP aplicado ao mínimo do spot
+        # Máxima e Mínima do DOLFUT baseadas na Máxima e Mínima do SPOT * FRP
+        spot_max_val = spot_data['mx'] * spreed_do_dia
         spot_min_val = spot_data['mn'] * spreed_do_dia
+
+        if spot_max_val > 0:
+            if st.session_state.dolfut_max_auto == float('-inf'):
+                st.session_state.dolfut_max_auto = spot_max_val
+            else:
+                st.session_state.dolfut_max_auto = max(st.session_state.dolfut_max_auto, spot_max_val, df_price)
+
         if spot_min_val > 0:
             if st.session_state.dolfut_min_auto == float('inf'):
                 st.session_state.dolfut_min_auto = spot_min_val
@@ -252,7 +260,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
                 st.session_state.dolfut_min_auto = min(st.session_state.dolfut_min_auto, spot_min_val, df_price)
 
         market_open = (now_br.hour > 9 or (now_br.hour == 9 and now_br.minute >= 0))
-        market_active = market_open and (now_br.hour < 18 or (now_br.hour == 18 and now_br.minute <= 30))
+        market_active = market_open and (now_br.hour < 18 or (now_br.hour == 18 and now_br.minute <= 0))
 
         if market_active:
             mudou = False
@@ -265,8 +273,8 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             if mudou:
                 salvar_historico_dolfut_diario(st.session_state.dolfut_max_auto, st.session_state.dolfut_min_auto, st.session_state.dolfut_close_auto)
         
-        # Gravação do Close exatamente às 18:30 (ou após)
-        if now_br.hour > 18 or (now_br.hour == 18 and now_br.minute >= 30):
+        # Gravação do Close exatamente às 18:00 (ou após)
+        if now_br.hour > 18 or (now_br.hour == 18 and now_br.minute >= 0):
             if st.session_state.dolfut_close_auto == 0.0:
                 st.session_state.dolfut_close_auto = df_price
                 salvar_historico_dolfut_diario(st.session_state.dolfut_max_auto, st.session_state.dolfut_min_auto, st.session_state.dolfut_close_auto)
