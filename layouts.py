@@ -38,7 +38,6 @@ st.markdown("""
     .calc-panel { border: 1.5px solid #ffffff; border-radius: 4px; padding: 4px; background: #0a141a; font-family: monospace; margin-bottom: 4px; margin-top: 8px; }
     .calc-row { display: flex; justify-content: space-between; padding: 2px 6px; border-bottom: 1px solid #444; font-size: 10px; font-weight: bold; align-items: center; }
     
-    /* Customizações da Barra de Força */
     .bar-wrapper-full { background: #0a141a; padding: 6px; border: 1.5px solid #ffffff; border-radius: 4px; text-align: center; margin-top: 5px; font-family: monospace; }
     .force-scale-top { display: flex; justify-content: space-between; font-size: 9px; font-weight: bold; color: #ffffff; margin-bottom: 2px; padding: 0 2px; }
     .force-scale-bottom { display: flex; justify-content: space-between; font-size: 9px; font-weight: bold; color: #00BFFF; margin-top: 2px; padding: 0 2px; }
@@ -51,7 +50,6 @@ st.markdown("""
     .txt-interno-tom-verde { color: #00ff88 !important; }
     .sinal-indicator { font-size: 18px; font-weight: bold; line-height: 1; margin-top: 4px; }
     
-    /* Novo Termômetro Segmentado */
     .therm-container { display: flex; width: 100%; height: 40px; margin-top: 5px; border: 1px solid #ffffff; background: #000; }
     .therm-seg { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: bold; background: #1a1a1a; color: #555; border-right: 1px solid #333; transition: all 0.2s; text-align: center; }
     .active-bf { background: #8B0000 !important; color: #fff !important; box-shadow: 0 0 15px #FF0000; border: 1px solid #ff4d4d; z-index: 1; }
@@ -231,53 +229,29 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         
-        # Configuração DOLFUT baseada no Spot * FRP
+        # Configuração DOLFUT baseada estritamente no Spot * FRP
         df_price = spot_data['at'] * spreed_do_dia
         df_open = spot_data['op'] * spreed_do_dia
         
         tz_sp = pytz.timezone('America/Sao_Paulo')
         now_br = datetime.now(tz_sp)
         
-        f_max, f_min, f_close_salvo = carregar_historico_dolfut_diario()
-        if f_max != float('-inf'): st.session_state.dolfut_max_auto = max(st.session_state.dolfut_max_auto, f_max)
-        if f_min != float('inf'): st.session_state.dolfut_min_auto = min(st.session_state.dolfut_min_auto, f_min)
+        _, _, f_close_salvo = carregar_historico_dolfut_diario()
         if f_close_salvo > 0: st.session_state.dolfut_close_auto = f_close_salvo
 
-        # Máxima e Mínima do DOLFUT baseadas na Máxima e Mínima do SPOT * FRP
+        # FORÇANDO A MÁXIMA E MÍNIMA DO DOLFUT A SEREM EXATAMENTE A MÁXIMA E MÍNIMA DO SPOT * FRP
         spot_max_val = spot_data['mx'] * spreed_do_dia
         spot_min_val = spot_data['mn'] * spreed_do_dia
 
-        if spot_max_val > 0:
-            if st.session_state.dolfut_max_auto == float('-inf'):
-                st.session_state.dolfut_max_auto = spot_max_val
-            else:
-                st.session_state.dolfut_max_auto = max(st.session_state.dolfut_max_auto, spot_max_val, df_price)
-
-        if spot_min_val > 0:
-            if st.session_state.dolfut_min_auto == float('inf'):
-                st.session_state.dolfut_min_auto = spot_min_val
-            else:
-                st.session_state.dolfut_min_auto = min(st.session_state.dolfut_min_auto, spot_min_val, df_price)
-
-        market_open = (now_br.hour > 9 or (now_br.hour == 9 and now_br.minute >= 0))
-        market_active = market_open and (now_br.hour < 18 or (now_br.hour == 18 and now_br.minute <= 30))
-
-        if market_active:
-            mudou = False
-            if df_price > st.session_state.dolfut_max_auto:
-                st.session_state.dolfut_max_auto = df_price
-                mudou = True
-            if df_price < st.session_state.dolfut_min_auto:
-                st.session_state.dolfut_min_auto = df_price
-                mudou = True
-            if mudou:
-                salvar_historico_dolfut_diario(st.session_state.dolfut_max_auto, st.session_state.dolfut_min_auto, st.session_state.dolfut_close_auto)
+        st.session_state.dolfut_max_auto = spot_max_val
+        st.session_state.dolfut_min_auto = spot_min_val
+        salvar_historico_dolfut_diario(spot_max_val, spot_min_val, st.session_state.dolfut_close_auto)
         
         # Gravação do Close exatamente às 18:30 (ou após)
         if now_br.hour > 18 or (now_br.hour == 18 and now_br.minute >= 30):
             if st.session_state.dolfut_close_auto == 0.0:
                 st.session_state.dolfut_close_auto = df_price
-                salvar_historico_dolfut_diario(st.session_state.dolfut_max_auto, st.session_state.dolfut_min_auto, st.session_state.dolfut_close_auto)
+                salvar_historico_dolfut_diario(spot_max_val, spot_min_val, st.session_state.dolfut_close_auto)
 
         df_close = st.session_state.dolfut_close_auto if st.session_state.dolfut_close_auto > 0 else (spot_data['cl'] * spreed_do_dia)
         df_var = ((df_price / df_close) - 1) * 100 if df_close > 0 else (v_spot_pct * 100)
@@ -397,7 +371,6 @@ while True:
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 
-                # --- PROCESSAMENTO DOS VALORES INTERNOS DA BARRA DE FORÇA ---
                 p_v_val = "{:.1f}".format(res['p_v'])
                 p_r_val = "{:.1f}".format(res['p_r'])
                 c3_val = "{:.4f}".format(res['p_c3_v'] / 1000)
