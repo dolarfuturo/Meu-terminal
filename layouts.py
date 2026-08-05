@@ -260,7 +260,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
                 st.session_state.dolfut_min_auto = min(st.session_state.dolfut_min_auto, spot_min_val, df_price)
 
         market_open = (now_br.hour > 9 or (now_br.hour == 9 and now_br.minute >= 0))
-        market_active = market_open and (now_br.hour < 18 or (now_br.hour == 18 and now_br.minute <= 0))
+        market_active = market_open and (now_br.hour < 18 or (now_br.hour == 18 and now_br.minute <= 30))
 
         if market_active:
             mudou = False
@@ -273,8 +273,8 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             if mudou:
                 salvar_historico_dolfut_diario(st.session_state.dolfut_max_auto, st.session_state.dolfut_min_auto, st.session_state.dolfut_close_auto)
         
-        # Gravação do Close exatamente às 18:00 (ou após)
-        if now_br.hour > 18 or (now_br.hour == 18 and now_br.minute >= 0):
+        # Gravação do Close exatamente às 18:30 (ou após)
+        if now_br.hour > 18 or (now_br.hour == 18 and now_br.minute >= 30):
             if st.session_state.dolfut_close_auto == 0.0:
                 st.session_state.dolfut_close_auto = df_price
                 salvar_historico_dolfut_diario(st.session_state.dolfut_max_auto, st.session_state.dolfut_min_auto, st.session_state.dolfut_close_auto)
