@@ -223,15 +223,10 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         if diff_media < 0:
             p_v = min(100.0, (abs(pct_afastamento) / 1.00) * 100)
         else:
-            p_r = min(100.0, (pct_afastamento / 1.00) * 100)
+            p_r = min(100.0, (pct_afastamento / 1.00) * 100)  # CORRIGIDO AQUI
             
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
-        
-        # Configuração DOLFUT baseada no Spot * FRP
-        df_price = spot_data['at'] * spreed_do_dia
-        df_close = spot_data['cl'] * spreed_do_dia
-        df_open = spot_data['op'] * spreed_do_dia
-        df_var = v_spot_pct * 100
+        dolfut_atual_calc = axis_dinamico * (1 + calc_variacoes_pct)
         
         tz_sp = pytz.timezone('America/Sao_Paulo')
         now_br = datetime.now(tz_sp)
@@ -242,28 +237,27 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         
         if (now_br.hour > 9 or (now_br.hour == 9 and now_br.minute >= 0)) and (now_br.hour < 18 or (now_br.hour == 18 and now_br.minute <= 30)):
             mudou = False
-            if df_price > st.session_state.dolfut_max_auto:
-                st.session_state.dolfut_max_auto = df_price
+            if dolfut_atual_calc > st.session_state.dolfut_max_auto:
+                st.session_state.dolfut_max_auto = dolfut_atual_calc
                 mudou = True
-            if df_price < st.session_state.dolfut_min_auto:
-                st.session_state.dolfut_min_auto = df_price
+            if dolfut_atual_calc < st.session_state.dolfut_min_auto:
+                st.session_state.dolfut_min_auto = dolfut_atual_calc
                 mudou = True
             if mudou: salvar_historico_dolfut_diario(st.session_state.dolfut_max_auto, st.session_state.dolfut_min_auto)
         else:
             if st.session_state.dolfut_max_auto == float('-inf') or st.session_state.dolfut_min_auto == float('inf'):
-                st.session_state.dolfut_max_auto = df_price
-                st.session_state.dolfut_min_auto = df_price
-                salvar_historico_dolfut_diario(df_price, df_price)
+                st.session_state.dolfut_max_auto = dolfut_atual_calc
+                st.session_state.dolfut_min_auto = dolfut_atual_calc
+                salvar_historico_dolfut_diario(dolfut_atual_calc, dolfut_atual_calc)
 
         return {
-            "df_price": df_price, "df_close": df_close, "df_open": df_open, "df_var": df_var,
-            "white": vivo_val, "vivo_pct": calc_variacoes_pct * 100, "dolfut_calc": df_price, "fraja": fraja_val, 
+            "white": vivo_val, "vivo_pct": calc_variacoes_pct * 100, "dolfut_calc": dolfut_atual_calc, "fraja": fraja_val, 
             "medio": dolar_medio, "axis_central": axis_dinamico,
             "max_fut_1": axis_dinamico + passo_fixo, "max_fut_1_b": axis_dinamico + (passo_fixo * 2),
             "max_fut_2": axis_dinamico + (passo_fixo * 3), "max_fut_2_b": axis_dinamico + (passo_fixo * 4),
             "min_fut_1": axis_dinamico - passo_fixo, "min_fut_1_b": axis_dinamico - (passo_fixo * 2),
             "min_fut_2": axis_dinamico - (passo_fixo * 3), "min_fut_2_b": axis_dinamico - (passo_fixo * 4),
-            "v_v": df_var, "v_spot": v_spot_pct * 100, "spreed": spreed_50, 
+            "v_v": calc_variacoes_pct * 100, "v_spot": v_spot_pct * 100, "spreed": spreed_50, 
             "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor, 
             "max_grade": st.session_state.dolfut_max_auto, "min_grade": st.session_state.dolfut_min_auto, 
             "alvo_low": alvo_low, "alvo_high": alvo_high, "spreed_t": spreed_t, "passo_fixo": passo_fixo,
@@ -337,18 +331,9 @@ while True:
                 st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
                 html = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
                 
-                v_f = res['df_var']
-                df_p = res['df_price'] / 1000
-                df_c = res['df_close'] / 1000
-                df_o = res['df_open'] / 1000
-                df_mx = res['max_grade'] / 1000
-                df_mn = res['min_grade'] / 1000
-
-                l_df = st.session_state.last_p.get('DF', df_p)
-                cl_df = "f-up" if df_p > l_df else "f-dn" if df_p < l_df else ""
-                st.session_state.last_p['DF'] = df_p
-
-                html += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col {cl_df}' style='background-color:rgba({('0,255,0' if v_f >= 0 else '255,0,0')}, 0.1);'>{df_p:.4f}</td><td>{df_c:.4f}</td><td>{df_o:.4f}</td><td>{df_mx:.4f}</td><td>{df_mn:.4f}</td><td style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_f:+.2f}%</td></tr>"
+                v_f, d_c = res['v_v'], res['dolfut_calc']
+                l_df = st.session_state.last_p.get('DF', d_c/1000); cl_df = "f-up" if (d_c/1000) > l_df else "f-dn" if (d_c/1000) < l_df else ""; st.session_state.last_p['DF'] = d_c/1000
+                html += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col {cl_df}' style='background-color:rgba({('0,255,0' if v_f >= 0 else '255,0,0')}, 0.1);'>{(d_c/1000):.4f}</td><td>{(res['axis_central']/1000):.4f}</td><td>{(res['axis_central']/1000):.4f}</td><td>{(res['max_grade']/1000):.4f}</td><td>{(res['min_grade']/1000):.4f}</td><td style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_f:+.2f}%</td></tr>"
                 
                 ticker_items = [f"DOLFUT: <span style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")};'>{v_f:+.2f}%</span>"]
                 outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F", "US10Y": "^TNX", "ZN=F": "ZN=F"}
