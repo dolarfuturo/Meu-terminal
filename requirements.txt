@@ -6,3 +6,4 @@ pytz
 st-gsheets-connection
 streamlit-autorefresh
 cryptography==42.0.5
+starlette<0.38
