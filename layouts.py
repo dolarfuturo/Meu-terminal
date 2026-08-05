@@ -94,15 +94,18 @@ def carregar_historico_dolfut_diario():
             with open("dolfut_history.txt", "r") as f:
                 conteudo = f.read().split(",")
                 if conteudo[0] == data_hoje:
-                    return float(conteudo[1]), float(conteudo[2])
+                    mx = float(conteudo[1])
+                    mn = float(conteudo[2])
+                    cl = float(conteudo[3]) if len(conteudo) > 3 else 0.0
+                    return mx, mn, cl
         except: pass
-    return float('-inf'), float('inf')
+    return float('-inf'), float('inf'), 0.0
 
-def salvar_historico_dolfut_diario(mx, mn):
+def salvar_historico_dolfut_diario(mx, mn, cl):
     data_hoje = datetime.now(pytz.timezone('America/Sao_Paulo')).strftime("%Y-%m-%d")
     try:
         with open("dolfut_history.txt", "w") as f:
-            f.write(f"{data_hoje},{mx},{mn}")
+            f.write(f"{data_hoje},{mx},{mn},{cl}")
     except: pass
 
 div_spreed_salvo, max_madr_salvo, min_madr_salvo = carregar_eixos()
@@ -113,9 +116,10 @@ if 'div_spreed_mem' not in st.session_state: st.session_state.div_spreed_mem = d
 if 'max_madr_mem' not in st.session_state: st.session_state.max_madr_mem = max_madr_salvo
 if 'min_madr_mem' not in st.session_state: st.session_state.min_madr_mem = min_madr_salvo
 
-max_init, min_init = carregar_historico_dolfut_diario()
+max_init, min_init, close_init = carregar_historico_dolfut_diario()
 if 'dolfut_max_auto' not in st.session_state: st.session_state.dolfut_max_auto = max_init
 if 'dolfut_min_auto' not in st.session_state: st.session_state.dolfut_min_auto = min_init
+if 'dolfut_close_auto' not in st.session_state: st.session_state.dolfut_close_auto = close_init
 
 if 'last_spot_max' not in st.session_state: st.session_state.last_spot_max = 0.0
 if 'last_spot_min' not in st.session_state: st.session_state.last_spot_min = float('inf')
@@ -229,18 +233,28 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         
         # Configuração DOLFUT baseada no Spot * FRP
         df_price = spot_data['at'] * spreed_do_dia
-        df_close = spot_data['cl'] * spreed_do_dia
         df_open = spot_data['op'] * spreed_do_dia
-        df_var = v_spot_pct * 100
         
         tz_sp = pytz.timezone('America/Sao_Paulo')
         now_br = datetime.now(tz_sp)
         
-        f_max, f_min = carregar_historico_dolfut_diario()
+        f_max, f_min, f_close_salvo = carregar_historico_dolfut_diario()
         if f_max != float('-inf'): st.session_state.dolfut_max_auto = max(st.session_state.dolfut_max_auto, f_max)
         if f_min != float('inf'): st.session_state.dolfut_min_auto = min(st.session_state.dolfut_min_auto, f_min)
-        
-        if (now_br.hour > 9 or (now_br.hour == 9 and now_br.minute >= 0)) and (now_br.hour < 18 or (now_br.hour == 18 and now_br.minute <= 30)):
+        if f_close_salvo > 0: st.session_state.dolfut_close_auto = f_close_salvo
+
+        # Garante que a mínima do DOLFUT inclua o FRP aplicado ao mínimo do spot
+        spot_min_val = spot_data['mn'] * spreed_do_dia
+        if spot_min_val > 0:
+            if st.session_state.dolfut_min_auto == float('inf'):
+                st.session_state.dolfut_min_auto = spot_min_val
+            else:
+                st.session_state.dolfut_min_auto = min(st.session_state.dolfut_min_auto, spot_min_val, df_price)
+
+        market_open = (now_br.hour > 9 or (now_br.hour == 9 and now_br.minute >= 0))
+        market_active = market_open and (now_br.hour < 18 or (now_br.hour == 18 and now_br.minute <= 30))
+
+        if market_active:
             mudou = False
             if df_price > st.session_state.dolfut_max_auto:
                 st.session_state.dolfut_max_auto = df_price
@@ -248,12 +262,17 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             if df_price < st.session_state.dolfut_min_auto:
                 st.session_state.dolfut_min_auto = df_price
                 mudou = True
-            if mudou: salvar_historico_dolfut_diario(st.session_state.dolfut_max_auto, st.session_state.dolfut_min_auto)
-        else:
-            if st.session_state.dolfut_max_auto == float('-inf') or st.session_state.dolfut_min_auto == float('inf'):
-                st.session_state.dolfut_max_auto = df_price
-                st.session_state.dolfut_min_auto = df_price
-                salvar_historico_dolfut_diario(df_price, df_price)
+            if mudou:
+                salvar_historico_dolfut_diario(st.session_state.dolfut_max_auto, st.session_state.dolfut_min_auto, st.session_state.dolfut_close_auto)
+        
+        # Gravação do Close exatamente às 18:30 (ou após)
+        if now_br.hour > 18 or (now_br.hour == 18 and now_br.minute >= 30):
+            if st.session_state.dolfut_close_auto == 0.0:
+                st.session_state.dolfut_close_auto = df_price
+                salvar_historico_dolfut_diario(st.session_state.dolfut_max_auto, st.session_state.dolfut_min_auto, st.session_state.dolfut_close_auto)
+
+        df_close = st.session_state.dolfut_close_auto if st.session_state.dolfut_close_auto > 0 else (spot_data['cl'] * spreed_do_dia)
+        df_var = ((df_price / df_close) - 1) * 100 if df_close > 0 else (v_spot_pct * 100)
 
         return {
             "df_price": df_price, "df_close": df_close, "df_open": df_open, "df_var": df_var,
