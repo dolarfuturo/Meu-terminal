@@ -38,6 +38,7 @@ st.markdown("""
     .calc-panel { border: 1.5px solid #ffffff; border-radius: 4px; padding: 4px; background: #0a141a; font-family: monospace; margin-bottom: 4px; margin-top: 8px; }
     .calc-row { display: flex; justify-content: space-between; padding: 2px 6px; border-bottom: 1px solid #444; font-size: 10px; font-weight: bold; align-items: center; }
     
+    /* Customizações da Barra de Força */
     .bar-wrapper-full { background: #0a141a; padding: 6px; border: 1.5px solid #ffffff; border-radius: 4px; text-align: center; margin-top: 5px; font-family: monospace; }
     .force-scale-top { display: flex; justify-content: space-between; font-size: 9px; font-weight: bold; color: #ffffff; margin-bottom: 2px; padding: 0 2px; }
     .force-scale-bottom { display: flex; justify-content: space-between; font-size: 9px; font-weight: bold; color: #00BFFF; margin-top: 2px; padding: 0 2px; }
@@ -50,6 +51,7 @@ st.markdown("""
     .txt-interno-tom-verde { color: #00ff88 !important; }
     .sinal-indicator { font-size: 18px; font-weight: bold; line-height: 1; margin-top: 4px; }
     
+    /* Novo Termômetro Segmentado */
     .therm-container { display: flex; width: 100%; height: 40px; margin-top: 5px; border: 1px solid #ffffff; background: #000; }
     .therm-seg { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: bold; background: #1a1a1a; color: #555; border-right: 1px solid #333; transition: all 0.2s; text-align: center; }
     .active-bf { background: #8B0000 !important; color: #fff !important; box-shadow: 0 0 15px #FF0000; border: 1px solid #ff4d4d; z-index: 1; }
@@ -61,6 +63,11 @@ st.markdown("""
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 1.5px solid #ffffff; border-bottom: 1.5px solid #ffffff; padding: 4px 0; overflow: hidden; white-space: nowrap; margin-top: 8px; }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 12px; font-weight: bold; color: #fff; }
     @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
+    .txt-green { color: #00ff88 !important; }
+    .txt-yellow { color: #ffff00 !important; }
+    .txt-red { color: #ff4d4d !important; }
+    .txt-cyan { color: #00f2ff !important; }
+    .txt-white { color: #ffffff !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -87,18 +94,15 @@ def carregar_historico_dolfut_diario():
             with open("dolfut_history.txt", "r") as f:
                 conteudo = f.read().split(",")
                 if conteudo[0] == data_hoje:
-                    mx = float(conteudo[1])
-                    mn = float(conteudo[2])
-                    cl = float(conteudo[3]) if len(conteudo) > 3 else 0.0
-                    return mx, mn, cl
+                    return float(conteudo[1]), float(conteudo[2])
         except: pass
-    return float('-inf'), float('inf'), 0.0
+    return float('-inf'), float('inf')
 
-def salvar_historico_dolfut_diario(mx, mn, cl):
+def salvar_historico_dolfut_diario(mx, mn):
     data_hoje = datetime.now(pytz.timezone('America/Sao_Paulo')).strftime("%Y-%m-%d")
     try:
         with open("dolfut_history.txt", "w") as f:
-            f.write(f"{data_hoje},{mx},{mn},{cl}")
+            f.write(f"{data_hoje},{mx},{mn}")
     except: pass
 
 div_spreed_salvo, max_madr_salvo, min_madr_salvo = carregar_eixos()
@@ -109,10 +113,9 @@ if 'div_spreed_mem' not in st.session_state: st.session_state.div_spreed_mem = d
 if 'max_madr_mem' not in st.session_state: st.session_state.max_madr_mem = max_madr_salvo
 if 'min_madr_mem' not in st.session_state: st.session_state.min_madr_mem = min_madr_salvo
 
-max_init, min_init, close_init = carregar_historico_dolfut_diario()
+max_init, min_init = carregar_historico_dolfut_diario()
 if 'dolfut_max_auto' not in st.session_state: st.session_state.dolfut_max_auto = max_init
 if 'dolfut_min_auto' not in st.session_state: st.session_state.dolfut_min_auto = min_init
-if 'dolfut_close_auto' not in st.session_state: st.session_state.dolfut_close_auto = close_init
 
 if 'last_spot_max' not in st.session_state: st.session_state.last_spot_max = 0.0
 if 'last_spot_min' not in st.session_state: st.session_state.last_spot_min = float('inf')
@@ -226,28 +229,18 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         
         # Configuração DOLFUT baseada no Spot * FRP
         df_price = spot_data['at'] * spreed_do_dia
+        df_close = spot_data['cl'] * spreed_do_dia
         df_open = spot_data['op'] * spreed_do_dia
+        df_var = v_spot_pct * 100
         
         tz_sp = pytz.timezone('America/Sao_Paulo')
         now_br = datetime.now(tz_sp)
         
-        f_max, f_min, f_close_salvo = carregar_historico_dolfut_diario()
+        f_max, f_min = carregar_historico_dolfut_diario()
         if f_max != float('-inf'): st.session_state.dolfut_max_auto = max(st.session_state.dolfut_max_auto, f_max)
         if f_min != float('inf'): st.session_state.dolfut_min_auto = min(st.session_state.dolfut_min_auto, f_min)
-        if f_close_salvo > 0: st.session_state.dolfut_close_auto = f_close_salvo
-
-        # CORREÇÃO DA MÍNIMA DO DOLFUT: Pegando estritamente a Mínima do Spot x FRP
-        spot_min_val = spot_data['mn'] * spreed_do_dia
-        if spot_min_val > 0:
-            if st.session_state.dolfut_min_auto == float('inf'):
-                st.session_state.dolfut_min_auto = spot_min_val
-            else:
-                st.session_state.dolfut_min_auto = min(st.session_state.dolfut_min_auto, spot_min_val, df_price)
-
-        market_open = (now_br.hour > 9 or (now_br.hour == 9 and now_br.minute >= 0))
-        market_active = market_open and (now_br.hour < 18 or (now_br.hour == 18 and now_br.minute <= 30))
-
-        if market_active:
+        
+        if (now_br.hour > 9 or (now_br.hour == 9 and now_br.minute >= 0)) and (now_br.hour < 18 or (now_br.hour == 18 and now_br.minute <= 30)):
             mudou = False
             if df_price > st.session_state.dolfut_max_auto:
                 st.session_state.dolfut_max_auto = df_price
@@ -255,17 +248,12 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             if df_price < st.session_state.dolfut_min_auto:
                 st.session_state.dolfut_min_auto = df_price
                 mudou = True
-            if mudou:
-                salvar_historico_dolfut_diario(st.session_state.dolfut_max_auto, st.session_state.dolfut_min_auto, st.session_state.dolfut_close_auto)
-        
-        # CORREÇÃO DO FECHAMENTO (CLOSE) ÀS 18:30: Fixa o preço atual no close para que alterações posteriores do FRP não alterem o fechamento do dia
-        if now_br.hour > 18 or (now_br.hour == 18 and now_br.minute >= 30):
-            if st.session_state.dolfut_close_auto == 0.0:
-                st.session_state.dolfut_close_auto = df_price
-                salvar_historico_dolfut_diario(st.session_state.dolfut_max_auto, st.session_state.dolfut_min_auto, st.session_state.dolfut_close_auto)
-
-        df_close = st.session_state.dolfut_close_auto if st.session_state.dolfut_close_auto > 0 else (spot_data['cl'] * spreed_do_dia)
-        df_var = ((df_price / df_close) - 1) * 100 if df_close > 0 else (v_spot_pct * 100)
+            if mudou: salvar_historico_dolfut_diario(st.session_state.dolfut_max_auto, st.session_state.dolfut_min_auto)
+        else:
+            if st.session_state.dolfut_max_auto == float('-inf') or st.session_state.dolfut_min_auto == float('inf'):
+                st.session_state.dolfut_max_auto = df_price
+                st.session_state.dolfut_min_auto = df_price
+                salvar_historico_dolfut_diario(df_price, df_price)
 
         return {
             "df_price": df_price, "df_close": df_close, "df_open": df_open, "df_var": df_var,
@@ -382,6 +370,7 @@ while True:
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 
+                # --- PROCESSAMENTO DOS VALORES INTERNOS DA BARRA DE FORÇA ---
                 p_v_val = "{:.1f}".format(res['p_v'])
                 p_r_val = "{:.1f}".format(res['p_r'])
                 c3_val = "{:.4f}".format(res['p_c3_v'] / 1000)
@@ -484,6 +473,7 @@ while True:
                     return 0.0
 
                 media_term_c2 = get_var_local("DX-Y.NYB") - get_var_local("EWZ") * 0.15 
+
                 axis_plus_term = res['axis_central'] * (1 + (media_term_c2 / 100))
 
                 st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
