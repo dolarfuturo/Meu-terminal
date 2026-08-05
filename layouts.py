@@ -38,7 +38,6 @@ st.markdown("""
     .calc-panel { border: 1.5px solid #ffffff; border-radius: 4px; padding: 4px; background: #0a141a; font-family: monospace; margin-bottom: 4px; margin-top: 8px; }
     .calc-row { display: flex; justify-content: space-between; padding: 2px 6px; border-bottom: 1px solid #444; font-size: 10px; font-weight: bold; align-items: center; }
     
-    /* Customizações da Barra de Força */
     .bar-wrapper-full { background: #0a141a; padding: 6px; border: 1.5px solid #ffffff; border-radius: 4px; text-align: center; margin-top: 5px; font-family: monospace; }
     .force-scale-top { display: flex; justify-content: space-between; font-size: 9px; font-weight: bold; color: #ffffff; margin-bottom: 2px; padding: 0 2px; }
     .force-scale-bottom { display: flex; justify-content: space-between; font-size: 9px; font-weight: bold; color: #00BFFF; margin-top: 2px; padding: 0 2px; }
@@ -51,7 +50,6 @@ st.markdown("""
     .txt-interno-tom-verde { color: #00ff88 !important; }
     .sinal-indicator { font-size: 18px; font-weight: bold; line-height: 1; margin-top: 4px; }
     
-    /* Novo Termômetro Segmentado */
     .therm-container { display: flex; width: 100%; height: 40px; margin-top: 5px; border: 1px solid #ffffff; background: #000; }
     .therm-seg { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: bold; background: #1a1a1a; color: #555; border-right: 1px solid #333; transition: all 0.2s; text-align: center; }
     .active-bf { background: #8B0000 !important; color: #fff !important; box-shadow: 0 0 15px #FF0000; border: 1px solid #ff4d4d; z-index: 1; }
@@ -63,11 +61,6 @@ st.markdown("""
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 1.5px solid #ffffff; border-bottom: 1.5px solid #ffffff; padding: 4px 0; overflow: hidden; white-space: nowrap; margin-top: 8px; }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 12px; font-weight: bold; color: #fff; }
     @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
-    .txt-green { color: #00ff88 !important; }
-    .txt-yellow { color: #ffff00 !important; }
-    .txt-red { color: #ff4d4d !important; }
-    .txt-cyan { color: #00f2ff !important; }
-    .txt-white { color: #ffffff !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -243,7 +236,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         if f_min != float('inf'): st.session_state.dolfut_min_auto = min(st.session_state.dolfut_min_auto, f_min)
         if f_close_salvo > 0: st.session_state.dolfut_close_auto = f_close_salvo
 
-        # Garante que a mínima do DOLFUT inclua o FRP aplicado ao mínimo do spot
+        # CORREÇÃO DA MÍNIMA DO DOLFUT: Pegando estritamente a Mínima do Spot x FRP
         spot_min_val = spot_data['mn'] * spreed_do_dia
         if spot_min_val > 0:
             if st.session_state.dolfut_min_auto == float('inf'):
@@ -265,7 +258,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             if mudou:
                 salvar_historico_dolfut_diario(st.session_state.dolfut_max_auto, st.session_state.dolfut_min_auto, st.session_state.dolfut_close_auto)
         
-        # Gravação do Close exatamente às 18:30 (ou após)
+        # CORREÇÃO DO FECHAMENTO (CLOSE) ÀS 18:30: Fixa o preço atual no close para que alterações posteriores do FRP não alterem o fechamento do dia
         if now_br.hour > 18 or (now_br.hour == 18 and now_br.minute >= 30):
             if st.session_state.dolfut_close_auto == 0.0:
                 st.session_state.dolfut_close_auto = df_price
@@ -389,7 +382,6 @@ while True:
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 
-                # --- PROCESSAMENTO DOS VALORES INTERNOS DA BARRA DE FORÇA ---
                 p_v_val = "{:.1f}".format(res['p_v'])
                 p_r_val = "{:.1f}".format(res['p_r'])
                 c3_val = "{:.4f}".format(res['p_c3_v'] / 1000)
@@ -492,7 +484,6 @@ while True:
                     return 0.0
 
                 media_term_c2 = get_var_local("DX-Y.NYB") - get_var_local("EWZ") * 0.15 
-
                 axis_plus_term = res['axis_central'] * (1 + (media_term_c2 / 100))
 
                 st.markdown('<div class="section-title">CÁLCULOS</div>', unsafe_allow_html=True)
