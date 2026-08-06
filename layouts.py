@@ -61,11 +61,6 @@ st.markdown("""
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 1.5px solid #ffffff; border-bottom: 1.5px solid #ffffff; padding: 4px 0; overflow: hidden; white-space: nowrap; margin-top: 8px; }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 12px; font-weight: bold; color: #fff; }
     @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
-    .txt-green { color: #00ff88 !important; }
-    .txt-yellow { color: #ffff00 !important; }
-    .txt-red { color: #ff4d4d !important; }
-    .txt-cyan { color: #00f2ff !important; }
-    .txt-white { color: #ffffff !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -124,27 +119,29 @@ if 'last_spot_min' not in st.session_state: st.session_state.last_spot_min = flo
 
 if 'c_spot_fech_val' not in st.session_state: st.session_state.c_spot_fech_val = 0.0
 if 'c_du_val' not in st.session_state: st.session_state.c_du_val = 22
-if 't_br_val' not in st.session_state: st.session_state.t_br_val = 14.00
+if 't_br_val' not in st.session_state: st.session_state.t_br_val = 14.25
 if 't_us_val' not in st.session_state: st.session_state.t_us_val = 3.75
 
 # =============================================================================
-# # BLOCO 3: CONEXÃO COM API E MOTOR DE CAPTURA DE DADOS
+# # BLOCO 3: CONEXÃO COM API E MOTOR DE CAPTURA DE DADOS (BLINDADO CONTRA ERROS)
 # =============================================================================
 def fetch(s):
-    fallback = {"at": 0.0, "cl": 1.0, "op": 0.0, "mx": 0.0, "mn": 0.0}
+    current_stored = st.session_state.market_data.get(s, {"at": 0.0, "cl": 0.0, "op": 0.0, "mx": 0.0, "mn": 0.0})
     try:
         t = yf.Ticker(s)
         tz_sp = pytz.timezone('America/Sao_Paulo')
         if s == "^TNX":
             info = t.fast_info
             d = t.history(period="1d", interval="1m")
-            if d.empty: return st.session_state.market_data.get(s, fallback)
-            data = {"at": float(info.last_price), "cl": float(info.previous_close if info.previous_close else d['Open'].iloc[0]), "op": float(d['Open'].iloc[0]), "mx": float(d['High'].max()), "mn": float(d['Low'].min())}
+            if d.empty: return current_stored
+            last_p = float(info.last_price) if hasattr(info, 'last_price') and info.last_price else float(d['Close'].iloc[-1])
+            prev_cl = float(info.previous_close if hasattr(info, 'previous_close') and info.previous_close else d['Open'].iloc[0])
+            data = {"at": last_p, "cl": prev_cl, "op": float(d['Open'].iloc[0]), "mx": float(d['High'].max()), "mn": float(d['Low'].min())}
         else:
             d = t.history(period="1d", interval="1m", prepost=True)
-            if d.empty: return st.session_state.market_data.get(s, fallback)
+            if d.empty: return current_stored
             ref_close = t.info.get('previousClose')
-            if not ref_close: ref_close = d['Open'].iloc[0]
+            if not ref_close or ref_close == 0: ref_close = d['Open'].iloc[0]
             if s == "EWZ":
                 d_hist = t.history(period="3d", interval="1m", prepost=True)
                 if not d_hist.empty:
@@ -157,14 +154,15 @@ def fetch(s):
             data = {"at": float(d['Close'].iloc[-1] * m), "cl": float(ref_close * m), "op": float(d['Open'].iloc[0] * m), "mx": float(d['High'].max() * m), "mn": float(d['Low'].min() * m)}
         st.session_state.market_data[s] = data
         return data
-    except: return st.session_state.market_data.get(s, fallback)
+    except:
+        return current_stored
 
 # =============================================================================
 # # BLOCO 4: NÚCLEO MATEMÁTICO CENTRAL E CÁLCULOS DO K97
 # =============================================================================
 def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
     try:
-        if not spot_data or not ewz_data: return None
+        if not spot_data or not ewz_data or spot_data['cl'] == 0: return None
         
         dolar_medio = (spot_data['mx'] + spot_data['mn']) / 2
         spreed_t = spot_data['mx'] - spot_data['mn']
@@ -229,7 +227,6 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         
-        # Configuração DOLFUT baseada estritamente no Spot * FRP
         df_price = spot_data['at'] * spreed_do_dia
         df_open = spot_data['op'] * spreed_do_dia
         
@@ -239,19 +236,28 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         _, _, f_close_salvo = carregar_historico_dolfut_diario()
         if f_close_salvo > 0: st.session_state.dolfut_close_auto = f_close_salvo
 
-        # FORÇANDO A MÁXIMA E MÍNIMA DO DOLFUT A SEREM EXATAMENTE A MÁXIMA E MÍNIMA DO SPOT * FRP
+        # =====================================================================
+        # MÁXIMA E MÍNIMA TOTALMENTE DINÂMICAS (SPOT * FRP + EXPANSÃO EM TEMPO REAL)
+        # =====================================================================
         spot_max_val = spot_data['mx'] * spreed_do_dia
         spot_min_val = spot_data['mn'] * spreed_do_dia
 
-        st.session_state.dolfut_max_auto = spot_max_val
-        st.session_state.dolfut_min_auto = spot_min_val
-        salvar_historico_dolfut_diario(spot_max_val, spot_min_val, st.session_state.dolfut_close_auto)
+        if st.session_state.dolfut_max_auto == float('-inf') or st.session_state.dolfut_max_auto == 0.0:
+            st.session_state.dolfut_max_auto = max(spot_max_val, df_price)
+        else:
+            st.session_state.dolfut_max_auto = max(st.session_state.dolfut_max_auto, spot_max_val, df_price)
+
+        if st.session_state.dolfut_min_auto == float('inf') or st.session_state.dolfut_min_auto == 0.0:
+            st.session_state.dolfut_min_auto = min(spot_min_val, df_price)
+        else:
+            st.session_state.dolfut_min_auto = min(st.session_state.dolfut_min_auto, spot_min_val, df_price)
+
+        salvar_historico_dolfut_diario(st.session_state.dolfut_max_auto, st.session_state.dolfut_min_auto, st.session_state.dolfut_close_auto)
         
-        # Gravação do Close exatamente às 18:30 (ou após)
         if now_br.hour > 18 or (now_br.hour == 18 and now_br.minute >= 30):
             if st.session_state.dolfut_close_auto == 0.0:
                 st.session_state.dolfut_close_auto = df_price
-                salvar_historico_dolfut_diario(spot_max_val, spot_min_val, st.session_state.dolfut_close_auto)
+                salvar_historico_dolfut_diario(st.session_state.dolfut_max_auto, st.session_state.dolfut_min_auto, st.session_state.dolfut_close_auto)
 
         df_close = st.session_state.dolfut_close_auto if st.session_state.dolfut_close_auto > 0 else (spot_data['cl'] * spreed_do_dia)
         df_var = ((df_price / df_close) - 1) * 100 if df_close > 0 else (v_spot_pct * 100)
