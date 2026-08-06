@@ -38,6 +38,7 @@ st.markdown("""
     .calc-panel { border: 1.5px solid #ffffff; border-radius: 4px; padding: 4px; background: #0a141a; font-family: monospace; margin-bottom: 4px; margin-top: 8px; }
     .calc-row { display: flex; justify-content: space-between; padding: 2px 6px; border-bottom: 1px solid #444; font-size: 10px; font-weight: bold; align-items: center; }
     
+    /* Customizações da Barra de Força */
     .bar-wrapper-full { background: #0a141a; padding: 6px; border: 1.5px solid #ffffff; border-radius: 4px; text-align: center; margin-top: 5px; font-family: monospace; }
     .force-scale-top { display: flex; justify-content: space-between; font-size: 9px; font-weight: bold; color: #ffffff; margin-bottom: 2px; padding: 0 2px; }
     .force-scale-bottom { display: flex; justify-content: space-between; font-size: 9px; font-weight: bold; color: #00BFFF; margin-top: 2px; padding: 0 2px; }
@@ -50,6 +51,7 @@ st.markdown("""
     .txt-interno-tom-verde { color: #00ff88 !important; }
     .sinal-indicator { font-size: 18px; font-weight: bold; line-height: 1; margin-top: 4px; }
     
+    /* Novo Termômetro Segmentado */
     .therm-container { display: flex; width: 100%; height: 40px; margin-top: 5px; border: 1px solid #ffffff; background: #000; }
     .therm-seg { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: bold; background: #1a1a1a; color: #555; border-right: 1px solid #333; transition: all 0.2s; text-align: center; }
     .active-bf { background: #8B0000 !important; color: #fff !important; box-shadow: 0 0 15px #FF0000; border: 1px solid #ff4d4d; z-index: 1; }
@@ -83,7 +85,7 @@ def carregar_eixos():
                 parts = f.read().split(",")
                 return float(parts[0]), float(parts[1]) if len(parts) > 1 else 0.0, float(parts[2]) if len(parts) > 2 else 0.0
         except: pass
-    return 1.0000, 0.0, 0.0
+    return 8.0, 0.0, 0.0
 
 def carregar_historico_dolfut_diario():
     data_hoje = datetime.now(pytz.timezone('America/Sao_Paulo')).strftime("%Y-%m-%d")
@@ -92,18 +94,15 @@ def carregar_historico_dolfut_diario():
             with open("dolfut_history.txt", "r") as f:
                 conteudo = f.read().split(",")
                 if conteudo[0] == data_hoje:
-                    mx = float(conteudo[1])
-                    mn = float(conteudo[2])
-                    cl = float(conteudo[3]) if len(conteudo) > 3 else 0.0
-                    return mx, mn, cl
+                    return float(conteudo[1]), float(conteudo[2])
         except: pass
-    return float('-inf'), float('inf'), 0.0
+    return float('-inf'), float('inf')
 
-def salvar_historico_dolfut_diario(mx, mn, cl):
+def salvar_historico_dolfut_diario(mx, mn):
     data_hoje = datetime.now(pytz.timezone('America/Sao_Paulo')).strftime("%Y-%m-%d")
     try:
         with open("dolfut_history.txt", "w") as f:
-            f.write(f"{data_hoje},{mx},{mn},{cl}")
+            f.write(f"{data_hoje},{mx},{mn}")
     except: pass
 
 div_spreed_salvo, max_madr_salvo, min_madr_salvo = carregar_eixos()
@@ -114,17 +113,16 @@ if 'div_spreed_mem' not in st.session_state: st.session_state.div_spreed_mem = d
 if 'max_madr_mem' not in st.session_state: st.session_state.max_madr_mem = max_madr_salvo
 if 'min_madr_mem' not in st.session_state: st.session_state.min_madr_mem = min_madr_salvo
 
-max_init, min_init, close_init = carregar_historico_dolfut_diario()
+max_init, min_init = carregar_historico_dolfut_diario()
 if 'dolfut_max_auto' not in st.session_state: st.session_state.dolfut_max_auto = max_init
 if 'dolfut_min_auto' not in st.session_state: st.session_state.dolfut_min_auto = min_init
-if 'dolfut_close_auto' not in st.session_state: st.session_state.dolfut_close_auto = close_init
 
 if 'last_spot_max' not in st.session_state: st.session_state.last_spot_max = 0.0
 if 'last_spot_min' not in st.session_state: st.session_state.last_spot_min = float('inf')
 
 if 'c_spot_fech_val' not in st.session_state: st.session_state.c_spot_fech_val = 0.0
 if 'c_du_val' not in st.session_state: st.session_state.c_du_val = 22
-if 't_br_val' not in st.session_state: st.session_state.t_br_val = 14.00
+if 't_br_val' not in st.session_state: st.session_state.t_br_val = 14.25
 if 't_us_val' not in st.session_state: st.session_state.t_us_val = 3.75
 
 # =============================================================================
@@ -164,51 +162,27 @@ def fetch(s):
 # =============================================================================
 def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
     try:
-        if not spot_data:
-            spot_data = st.session_state.market_data.get("USDBRL=X", {"at": 0.0, "cl": 1.0, "op": 0.0, "mx": 0.0, "mn": 0.0})
-        if spot_data.get('at', 0) == 0:
-            last_spot = st.session_state.market_data.get("USDBRL=X")
-            if last_spot and last_spot.get('at', 0) > 0:
-                spot_data = last_spot
-
-        if not ewz_data:
-            ewz_data = st.session_state.market_data.get("EWZ", {"at": 0.0, "cl": 1.0, "op": 0.0, "mx": 0.0, "mn": 0.0})
-        if ewz_data.get('at', 0) == 0:
-            last_ewz = st.session_state.market_data.get("EWZ")
-            if last_ewz and last_ewz.get('at', 0) > 0:
-                ewz_data = last_ewz
-
-        if spot_data.get('cl', 0) == 0:
-            spot_data['cl'] = 1.0
-        if spot_data.get('at', 0) == 0:
-            spot_data['at'] = spot_data.get('cl', 1.0)
-        if spot_data.get('mx', 0) == 0:
-            spot_data['mx'] = spot_data['at']
-        if spot_data.get('mn', 0) == 0:
-            spot_data['mn'] = spot_data['at']
-
+        if not spot_data or not ewz_data: return None
+        
         dolar_medio = (spot_data['mx'] + spot_data['mn']) / 2
         spreed_t = spot_data['mx'] - spot_data['mn']
         spreed_50 = spreed_t / 2
         
-        fraja_val = spot_data['at'] * spreed_do_dia
+        fraja_val = spot_data['at'] + spreed_do_dia
         
         dxy_data = fetch("DX-Y.NYB")
-        if not dxy_data or dxy_data.get('at', 0) == 0:
-            dxy_data = st.session_state.market_data.get("DX-Y.NYB", {"at": 100.0, "cl": 100.0, "op": 100.0, "mx": 100.0, "mn": 100.0})
-
-        v_dxy = ((dxy_data['at'] / dxy_data['cl']) - 1) if dxy_data.get('cl', 0) > 0 else 0
-        ewz_ref = ewz_data.get('cl', 1) if ewz_data.get('cl', 0) > 0 else 1
+        v_dxy = ((dxy_data['at'] / dxy_data['cl']) - 1) if dxy_data['cl'] > 0 else 0
+        ewz_ref = st.session_state.market_data.get("EWZ", {}).get('cl', 1)
         v_ewz = ((ewz_data['at'] / ewz_ref) - 1) if ewz_ref > 0 else 0
         
         calc_variacoes_pct = (v_dxy) - (v_ewz)
         
         vivo_val = spot_data['cl'] * (1 + calc_variacoes_pct) 
-        axis_dinamico = dolar_medio * spreed_do_dia
-        passo_fixo = spreed_50 / 4 if spreed_50 > 0 else 1.0
+        axis_dinamico = dolar_medio + spreed_do_dia
+        passo_fixo = spreed_50 / 4
         
-        alvo_low = spot_data['mn'] * spreed_do_dia
-        alvo_high = spot_data['mx'] * spreed_do_dia
+        alvo_low = spot_data['mn'] + spreed_do_dia
+        alvo_high = spot_data['mx'] + spreed_do_dia
         
         mx_adm = st.session_state.max_madr_mem
         mn_adm = st.session_state.min_madr_mem
@@ -228,12 +202,12 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             ind_val = 0.0
             cor_ind = "#00f2ff"
         
-        p_c3_v = (dolar_medio * (1 - 0.0100)) * spreed_do_dia
-        p_c2_v = (dolar_medio * (1 - 0.0066)) * spreed_do_dia
-        p_c1_v = (dolar_medio * (1 - 0.0033)) * spreed_do_dia
-        p_v1_v = (dolar_medio * (1 + 0.0033)) * spreed_do_dia
-        p_v2_v = (dolar_medio * (1 + 0.0066)) * spreed_do_dia
-        p_v3_v = (dolar_medio * (1 + 0.0100)) * spreed_do_dia
+        p_c3_v = (dolar_medio * (1 - 0.0105)) + spreed_do_dia
+        p_c2_v = (dolar_medio * (1 - 0.0070)) + spreed_do_dia
+        p_c1_v = (dolar_medio * (1 - 0.0035)) + spreed_do_dia
+        p_v1_v = (dolar_medio * (1 + 0.0035)) + spreed_do_dia
+        p_v2_v = (dolar_medio * (1 + 0.0070)) + spreed_do_dia
+        p_v3_v = (dolar_medio * (1 + 0.0105)) + spreed_do_dia
         
         diff_media = spot_data['at'] - dolar_medio
         pct_afastamento = (diff_media / dolar_medio) * 100 if dolar_medio > 0 else 0
@@ -247,48 +221,43 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             
         p_v, p_r = 0, 0
         if diff_media < 0:
-            p_v = min(100.0, (abs(pct_afastamento) / 1.00) * 100)
+            p_v = min(100.0, (abs(pct_afastamento) / 1.05) * 100)
         else:
-            p_r = min(100.0, (pct_afastamento / 1.00) * 100)
+            p_r = min(100.0, (pct_afastamento / 1.05) * 100)
             
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
-        
-        # Configuração DOLFUT baseada estritamente no Spot * FRP
-        df_price = spot_data['at'] * spreed_do_dia
-        df_open = spot_data['op'] * spreed_do_dia
+        dolfut_atual_calc = axis_dinamico * (1 + calc_variacoes_pct)
         
         tz_sp = pytz.timezone('America/Sao_Paulo')
         now_br = datetime.now(tz_sp)
         
-        _, _, f_close_salvo = carregar_historico_dolfut_diario()
-        if f_close_salvo > 0: st.session_state.dolfut_close_auto = f_close_salvo
-
-        # FORÇANDO A MÁXIMA E MÍNIMA DO DOLFUT A SEREM EXATAMENTE A MÁXIMA E MÍNIMA DO SPOT * FRP
-        spot_max_val = spot_data['mx'] * spreed_do_dia
-        spot_min_val = spot_data['mn'] * spreed_do_dia
-
-        st.session_state.dolfut_max_auto = spot_max_val
-        st.session_state.dolfut_min_auto = spot_min_val
-        salvar_historico_dolfut_diario(spot_max_val, spot_min_val, st.session_state.dolfut_close_auto)
+        f_max, f_min = carregar_historico_dolfut_diario()
+        if f_max != float('-inf'): st.session_state.dolfut_max_auto = max(st.session_state.dolfut_max_auto, f_max)
+        if f_min != float('inf'): st.session_state.dolfut_min_auto = min(st.session_state.dolfut_min_auto, f_min)
         
-        # Gravação do Close exatamente às 18:30 (ou após)
-        if now_br.hour > 18 or (now_br.hour == 18 and now_br.minute >= 30):
-            if st.session_state.dolfut_close_auto == 0.0:
-                st.session_state.dolfut_close_auto = df_price
-                salvar_historico_dolfut_diario(spot_max_val, spot_min_val, st.session_state.dolfut_close_auto)
-
-        df_close = st.session_state.dolfut_close_auto if st.session_state.dolfut_close_auto > 0 else (spot_data['cl'] * spreed_do_dia)
-        df_var = ((df_price / df_close) - 1) * 100 if df_close > 0 else (v_spot_pct * 100)
+        if (now_br.hour > 9 or (now_br.hour == 9 and now_br.minute >= 0)) and (now_br.hour < 18 or (now_br.hour == 18 and now_br.minute <= 30)):
+            mudou = False
+            if dolfut_atual_calc > st.session_state.dolfut_max_auto:
+                st.session_state.dolfut_max_auto = dolfut_atual_calc
+                mudou = True
+            if dolfut_atual_calc < st.session_state.dolfut_min_auto:
+                st.session_state.dolfut_min_auto = dolfut_atual_calc
+                mudou = True
+            if mudou: salvar_historico_dolfut_diario(st.session_state.dolfut_max_auto, st.session_state.dolfut_min_auto)
+        else:
+            if st.session_state.dolfut_max_auto == float('-inf') or st.session_state.dolfut_min_auto == float('inf'):
+                st.session_state.dolfut_max_auto = dolfut_atual_calc
+                st.session_state.dolfut_min_auto = dolfut_atual_calc
+                salvar_historico_dolfut_diario(dolfut_atual_calc, dolfut_atual_calc)
 
         return {
-            "df_price": df_price, "df_close": df_close, "df_open": df_open, "df_var": df_var,
-            "white": vivo_val, "vivo_pct": calc_variacoes_pct * 100, "dolfut_calc": df_price, "fraja": fraja_val, 
+            "white": vivo_val, "vivo_pct": calc_variacoes_pct * 100, "dolfut_calc": dolfut_atual_calc, "fraja": fraja_val, 
             "medio": dolar_medio, "axis_central": axis_dinamico,
             "max_fut_1": axis_dinamico + passo_fixo, "max_fut_1_b": axis_dinamico + (passo_fixo * 2),
             "max_fut_2": axis_dinamico + (passo_fixo * 3), "max_fut_2_b": axis_dinamico + (passo_fixo * 4),
             "min_fut_1": axis_dinamico - passo_fixo, "min_fut_1_b": axis_dinamico - (passo_fixo * 2),
             "min_fut_2": axis_dinamico - (passo_fixo * 3), "min_fut_2_b": axis_dinamico - (passo_fixo * 4),
-            "v_v": df_var, "v_spot": v_spot_pct * 100, "spreed": spreed_50, 
+            "v_v": calc_variacoes_pct * 100, "v_spot": v_spot_pct * 100, "spreed": spreed_50, 
             "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor, 
             "max_grade": st.session_state.dolfut_max_auto, "min_grade": st.session_state.dolfut_min_auto, 
             "alvo_low": alvo_low, "alvo_high": alvo_high, "spreed_t": spreed_t, "passo_fixo": passo_fixo,
@@ -297,31 +266,14 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             "p_c3_v": p_c3_v, "p_c2_v": p_c2_v, "p_c1_v": p_c1_v, "p_v1_v": p_v1_v, "p_v2_v": p_v2_v, "p_v3_v": p_v3_v,
             "pct_afastamento": pct_afastamento
         }
-    except Exception as e: 
-        return {
-            "df_price": 0.0, "df_close": 1.0, "df_open": 0.0, "df_var": 0.0,
-            "white": 0.0, "vivo_pct": 0.0, "dolfut_calc": 0.0, "fraja": 0.0, 
-            "medio": 0.0, "axis_central": 0.0,
-            "max_fut_1": 0.0, "max_fut_1_b": 0.0,
-            "max_fut_2": 0.0, "max_fut_2_b": 0.0,
-            "min_fut_1": 0.0, "min_fut_1_b": 0.0,
-            "min_fut_2": 0.0, "min_fut_2_b": 0.0,
-            "v_v": 0.0, "v_spot": 0.0, "spreed": 0.0, 
-            "p_v": 0.0, "p_r": 0.0, "seta": "-", "seta_cor": "#fff", 
-            "max_grade": 0.0, "min_grade": 0.0, 
-            "alvo_low": 0.0, "alvo_high": 0.0, "spreed_t": 0.0, "passo_fixo": 1.0,
-            "gatilho_c": 0.0, "gatilho_v": 0.0, "ind_val": 0.0, "cor_ind": "#00f2ff",
-            "bloco_vol": 0.0, "mx_adm": 0.0, "mn_adm": 0.0, "distancia_base_calc": 0.0,
-            "p_c3_v": 0.0, "p_c2_v": 0.0, "p_c1_v": 0.0, "p_v1_v": 0.0, "p_v2_v": 0.0, "p_v3_v": 0.0,
-            "pct_afastamento": 0.0
-        }
+    except: return None
 
 # =============================================================================
 # # BLOCO 5: CONTROLES OPERACIONAIS FINANCEIROS (SIDEBAR / ADM)
 # =============================================================================
 with st.sidebar:
     st.markdown("### 🧮 CALCULADORA DE JUROS (FRP)")
-    with st.expander("CALCULAR FATOR", expanded=False):
+    with st.expander("CALCULAR SPREED", expanded=False):
         c_spot_fech = st.number_input("FECH SPOT:", value=st.session_state.c_spot_fech_val, format="%.3f")
         c_du = st.number_input("DIAS ÚTEIS (DU):", value=st.session_state.c_du_val, step=1)
         t_br = st.number_input("JUROS BRL (%):", value=st.session_state.t_br_val, format="%.2f")
@@ -333,20 +285,20 @@ with st.sidebar:
         st.session_state.t_us_val = t_us
         
         if c_spot_fech > 0:
-            fator_calc = 1.0 + (((t_br / 100) - (t_us / 100)) * (c_du / 252))
+            spreed_calc = c_spot_fech * ((t_br / 100) - (t_us / 100)) * (c_du / 252)
             st.markdown(f"""
             <div style="background:#0d1b22; padding:8px; border:1px solid #FFD700; font-family:monospace; text-align:center;">
-                <span style="color:#AAA; font-size:10px;">FATOR SPREED (MULTIPLICADOR)</span><br>
-                <span style="color:#00ff88; font-size:18px; font-weight:bold;">{fator_calc:.4f}</span>
+                <span style="color:#AAA; font-size:10px;">SPREED (REGRA DE BOLSO)</span><br>
+                <span style="color:#00ff88; font-size:18px; font-weight:bold;">{spreed_calc:.2f}</span>
             </div>
             """, unsafe_allow_html=True)
-            if st.button("USAR ESTE FATOR NO ADM"):
-                st.session_state.div_spreed_mem = fator_calc
+            if st.button("USAR ESTE SPREED NO ADM"):
+                st.session_state.div_spreed_mem = spreed_calc
                 st.rerun()
 
     st.markdown("---")
     st.markdown("### ⚙️ PAINEL ADM")
-    i_div = st.number_input("FRP (FATOR MULTIPLICADOR):", value=st.session_state.div_spreed_mem, format="%.4f")
+    i_div = st.number_input("FRP (PARA JUSTO):", value=st.session_state.div_spreed_mem, format="%.2f")
     
     i_max_madr = st.number_input("MAX MADRUGADA:", value=st.session_state.max_madr_mem, format="%.2f")
     i_min_madr = st.number_input("MIN MADRUGADA:", value=st.session_state.min_madr_mem, format="%.2f")
@@ -379,18 +331,9 @@ while True:
                 st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
                 html = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
                 
-                v_f = res['df_var']
-                df_p = res['df_price'] / 1000
-                df_c = res['df_close'] / 1000
-                df_o = res['df_open'] / 1000
-                df_mx = res['max_grade'] / 1000
-                df_mn = res['min_grade'] / 1000
-
-                l_df = st.session_state.last_p.get('DF', df_p)
-                cl_df = "f-up" if df_p > l_df else "f-dn" if df_p < l_df else ""
-                st.session_state.last_p['DF'] = df_p
-
-                html += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col {cl_df}' style='background-color:rgba({('0,255,0' if v_f >= 0 else '255,0,0')}, 0.1);'>{df_p:.4f}</td><td>{df_c:.4f}</td><td>{df_o:.4f}</td><td>{df_mx:.4f}</td><td>{df_mn:.4f}</td><td style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_f:+.2f}%</td></tr>"
+                v_f, d_c = res['v_v'], res['dolfut_calc']
+                l_df = st.session_state.last_p.get('DF', d_c/1000); cl_df = "f-up" if (d_c/1000) > l_df else "f-dn" if (d_c/1000) < l_df else ""; st.session_state.last_p['DF'] = d_c/1000
+                html += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col {cl_df}' style='background-color:rgba({('0,255,0' if v_f >= 0 else '255,0,0')}, 0.1);'>{(d_c/1000):.4f}</td><td>{(res['axis_central']/1000):.4f}</td><td>{(res['axis_central']/1000):.4f}</td><td>{(res['max_grade']/1000):.4f}</td><td>{(res['min_grade']/1000):.4f}</td><td style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_f:+.2f}%</td></tr>"
                 
                 ticker_items = [f"DOLFUT: <span style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")};'>{v_f:+.2f}%</span>"]
                 outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F", "US10Y": "^TNX", "ZN=F": "ZN=F"}
@@ -403,6 +346,9 @@ while True:
                         l_a = st.session_state.last_p.get(lbl, p_v); cl_a = "f-up" if p_v > l_a else "f-dn" if p_v < l_a else ""; st.session_state.last_p[lbl] = p_v
                         var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
                         
+                        if lbl == "EWZ":
+                            var = var
+                            
                         cl_max = "f-up" if lbl == "DOLSPOT" and st.session_state.last_spot_max > 0 and d['mx'] > st.session_state.last_spot_max else ""
                         cl_min = "f-dn" if lbl == "DOLSPOT" and st.session_state.last_spot_min < float('inf') and d['mn'] < st.session_state.last_spot_min else ""
                         if lbl == "DOLSPOT":
@@ -412,6 +358,7 @@ while True:
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 
+                # --- PROCESSAMENTO DOS VALORES INTERNOS DA BARRA DE FORÇA ---
                 p_v_val = "{:.1f}".format(res['p_v'])
                 p_r_val = "{:.1f}".format(res['p_r'])
                 c3_val = "{:.4f}".format(res['p_c3_v'] / 1000)
@@ -429,13 +376,13 @@ while True:
                 render_barra = (
                     '<div class="bar-wrapper-full">'
                     '    <div class="force-scale-top">'
-                    '        <span style="color:#00ff88; width:15%; text-align:left;">-1.00%</span>'
-                    '        <span style="color:#00ff88; width:15%; text-align:left;">-0.66%</span>'
-                    '        <span style="color:#00ff88; width:15%; text-align:left;">-0.33%</span>'
+                    '        <span style="color:#00ff88; width:15%; text-align:left;">-1.05%</span>'
+                    '        <span style="color:#00ff88; width:15%; text-align:left;">-0.70%</span>'
+                    '        <span style="color:#00ff88; width:15%; text-align:left;">-0.35%</span>'
                     '        <span style="color:#ffffff; width:10%; text-align:center;">0</span>'
-                    '        <span style="color:#ff4d4d; width:15%; text-align:right;">+0.33%</span>'
-                    '        <span style="color:#ff4d4d; width:15%; text-align:right;">+0.66%</span>'
-                    '        <span style="color:#ff4d4d; width:15%; text-align:right;">+1.00%</span>'
+                    '        <span style="color:#ff4d4d; width:15%; text-align:right;">+0.35%</span>'
+                    '        <span style="color:#ff4d4d; width:15%; text-align:right;">+0.70%</span>'
+                    '        <span style="color:#ff4d4d; width:15%; text-align:right;">+1.05%</span>'
                     '    </div>'
                     '    <div class="force-container-dual">'
                     '        <div class="center-line"></div>'
@@ -463,6 +410,7 @@ while True:
                 
                 st.markdown(render_barra, unsafe_allow_html=True)
                 
+                # --- NOVO TERMÔMETRO SEGMENTADO COM PONTEIRO ---
                 def get_var(sym):
                     d = st.session_state.market_data.get(sym)
                     if d and d.get('cl', 0) > 0:
@@ -475,16 +423,17 @@ while True:
                 v_us10y = get_var("^TNX")
                 v_zn_f = get_var("ZN=F")
                 
-                media_term = (v_dxy) - (v_ewz) * 0.15
+                media_term = (v_dxy + v_zn_f - v_ewz)
+
                 
                 c_bf, c_b, c_n, c_a, c_af = "", "", "", "", ""
-                if media_term <= -0.50: c_bf = "active-bf"
-                elif media_term < -0.20: c_b = "active-b"
-                elif media_term <= 0.20: c_n = "active-n"
-                elif media_term < 0.50: c_a = "active-a"
+                if media_term <= -0.60: c_bf = "active-bf"
+                elif media_term < -0.30: c_b = "active-b"
+                elif media_term <= 0.30: c_n = "active-n"
+                elif media_term < 0.60: c_a = "active-a"
                 else: c_af = "active-af"
-        
-                p_min, p_max = -1.0, 1.0
+                
+                p_min, p_max = -1.5, 1.5
                 pos_percent = ((media_term - p_min) / (p_max - p_min)) * 100
                 pos_percent = max(0, min(100, pos_percent)) 
                 
@@ -506,6 +455,7 @@ while True:
                 st.markdown(therm_html, unsafe_allow_html=True)
             
             with c2:
+                # Função auxiliar para recalcular variação aqui (escopo c2)
                 def get_var_local(sym):
                     d = st.session_state.market_data.get(sym)
                     if d and d.get('cl', 0) > 0:
@@ -513,7 +463,7 @@ while True:
                         return v
                     return 0.0
 
-                media_term_c2 = get_var_local("DX-Y.NYB") - get_var_local("EWZ") * 0.15 
+                media_term_c2 = get_var_local("DX-Y.NYB") + get_var_local("ZN=F") - get_var_local("EWZ") 
 
                 axis_plus_term = res['axis_central'] * (1 + (media_term_c2 / 100))
 
@@ -544,4 +494,4 @@ while True:
             
             st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
             
-    time.sleep(2)
+    time.sleep(5)
