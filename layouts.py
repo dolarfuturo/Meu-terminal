@@ -85,7 +85,7 @@ def carregar_eixos():
                 parts = f.read().split(",")
                 return float(parts[0]), float(parts[1]) if len(parts) > 1 else 0.0, float(parts[2]) if len(parts) > 2 else 0.0
         except: pass
-    return 1.0000, 0.0, 0.0
+    return 8.0, 0.0, 0.0
 
 def carregar_historico_dolfut_diario():
     data_hoje = datetime.now(pytz.timezone('America/Sao_Paulo')).strftime("%Y-%m-%d")
@@ -168,7 +168,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         spreed_t = spot_data['mx'] - spot_data['mn']
         spreed_50 = spreed_t / 2
         
-        fraja_val = spot_data['at'] * spreed_do_dia
+        fraja_val = spot_data['at'] + spreed_do_dia
         
         dxy_data = fetch("DX-Y.NYB")
         v_dxy = ((dxy_data['at'] / dxy_data['cl']) - 1) if dxy_data['cl'] > 0 else 0
@@ -178,11 +178,11 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         calc_variacoes_pct = (v_dxy) - (v_ewz)
         
         vivo_val = spot_data['cl'] * (1 + calc_variacoes_pct) 
-        axis_dinamico = dolar_medio * spreed_do_dia
+        axis_dinamico = dolar_medio + spreed_do_dia
         passo_fixo = spreed_50 / 4
         
-        alvo_low = spot_data['mn'] * spreed_do_dia
-        alvo_high = spot_data['mx'] * spreed_do_dia
+        alvo_low = spot_data['mn'] + spreed_do_dia
+        alvo_high = spot_data['mx'] + spreed_do_dia
         
         mx_adm = st.session_state.max_madr_mem
         mn_adm = st.session_state.min_madr_mem
@@ -202,12 +202,12 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             ind_val = 0.0
             cor_ind = "#00f2ff"
         
-        p_c3_v = (dolar_medio * (1 - 0.0100)) * spreed_do_dia
-        p_c2_v = (dolar_medio * (1 - 0.0066)) * spreed_do_dia
-        p_c1_v = (dolar_medio * (1 - 0.0033)) * spreed_do_dia
-        p_v1_v = (dolar_medio * (1 + 0.0033)) * spreed_do_dia
-        p_v2_v = (dolar_medio * (1 + 0.0066)) * spreed_do_dia
-        p_v3_v = (dolar_medio * (1 + 0.0100)) * spreed_do_dia
+        p_c3_v = (dolar_medio * (1 - 0.0105)) + spreed_do_dia
+        p_c2_v = (dolar_medio * (1 - 0.0070)) + spreed_do_dia
+        p_c1_v = (dolar_medio * (1 - 0.0035)) + spreed_do_dia
+        p_v1_v = (dolar_medio * (1 + 0.0035)) + spreed_do_dia
+        p_v2_v = (dolar_medio * (1 + 0.0070)) + spreed_do_dia
+        p_v3_v = (dolar_medio * (1 + 0.0105)) + spreed_do_dia
         
         diff_media = spot_data['at'] - dolar_medio
         pct_afastamento = (diff_media / dolar_medio) * 100 if dolar_medio > 0 else 0
@@ -221,9 +221,9 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             
         p_v, p_r = 0, 0
         if diff_media < 0:
-            p_v = min(100.0, (abs(pct_afastamento) / 1.00) * 100)
+            p_v = min(100.0, (abs(pct_afastamento) / 1.05) * 100)
         else:
-            p_r = min(100.0, (pct_afastamento / 1.00) * 100)  # CORRIGIDO AQUI
+            p_r = min(100.0, (pct_afastamento / 1.05) * 100)
             
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         dolfut_atual_calc = axis_dinamico * (1 + calc_variacoes_pct)
@@ -273,7 +273,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
 # =============================================================================
 with st.sidebar:
     st.markdown("### 🧮 CALCULADORA DE JUROS (FRP)")
-    with st.expander("CALCULAR FATOR", expanded=False):
+    with st.expander("CALCULAR SPREED", expanded=False):
         c_spot_fech = st.number_input("FECH SPOT:", value=st.session_state.c_spot_fech_val, format="%.3f")
         c_du = st.number_input("DIAS ÚTEIS (DU):", value=st.session_state.c_du_val, step=1)
         t_br = st.number_input("JUROS BRL (%):", value=st.session_state.t_br_val, format="%.2f")
@@ -285,20 +285,20 @@ with st.sidebar:
         st.session_state.t_us_val = t_us
         
         if c_spot_fech > 0:
-            fator_calc = 1.0 + (((t_br / 100) - (t_us / 100)) * (c_du / 252))
+            spreed_calc = c_spot_fech * ((t_br / 100) - (t_us / 100)) * (c_du / 252)
             st.markdown(f"""
             <div style="background:#0d1b22; padding:8px; border:1px solid #FFD700; font-family:monospace; text-align:center;">
-                <span style="color:#AAA; font-size:10px;">FATOR SPREED (MULTIPLICADOR)</span><br>
-                <span style="color:#00ff88; font-size:18px; font-weight:bold;">{fator_calc:.4f}</span>
+                <span style="color:#AAA; font-size:10px;">SPREED (REGRA DE BOLSO)</span><br>
+                <span style="color:#00ff88; font-size:18px; font-weight:bold;">{spreed_calc:.2f}</span>
             </div>
             """, unsafe_allow_html=True)
-            if st.button("USAR ESTE FATOR NO ADM"):
-                st.session_state.div_spreed_mem = fator_calc
+            if st.button("USAR ESTE SPREED NO ADM"):
+                st.session_state.div_spreed_mem = spreed_calc
                 st.rerun()
 
     st.markdown("---")
     st.markdown("### ⚙️ PAINEL ADM")
-    i_div = st.number_input("FRP (FATOR MULTIPLICADOR):", value=st.session_state.div_spreed_mem, format="%.4f")
+    i_div = st.number_input("FRP (PARA JUSTO):", value=st.session_state.div_spreed_mem, format="%.2f")
     
     i_max_madr = st.number_input("MAX MADRUGADA:", value=st.session_state.max_madr_mem, format="%.2f")
     i_min_madr = st.number_input("MIN MADRUGADA:", value=st.session_state.min_madr_mem, format="%.2f")
@@ -346,6 +346,9 @@ while True:
                         l_a = st.session_state.last_p.get(lbl, p_v); cl_a = "f-up" if p_v > l_a else "f-dn" if p_v < l_a else ""; st.session_state.last_p[lbl] = p_v
                         var = ((d['at'] / d['cl']) - 1) * 100 if d['cl'] > 0 else 0
                         
+                        if lbl == "EWZ":
+                            var = var
+                            
                         cl_max = "f-up" if lbl == "DOLSPOT" and st.session_state.last_spot_max > 0 and d['mx'] > st.session_state.last_spot_max else ""
                         cl_min = "f-dn" if lbl == "DOLSPOT" and st.session_state.last_spot_min < float('inf') and d['mn'] < st.session_state.last_spot_min else ""
                         if lbl == "DOLSPOT":
@@ -407,6 +410,7 @@ while True:
                 
                 st.markdown(render_barra, unsafe_allow_html=True)
                 
+                # --- NOVO TERMÔMETRO SEGMENTADO COM PONTEIRO ---
                 def get_var(sym):
                     d = st.session_state.market_data.get(sym)
                     if d and d.get('cl', 0) > 0:
@@ -419,16 +423,17 @@ while True:
                 v_us10y = get_var("^TNX")
                 v_zn_f = get_var("ZN=F")
                 
-                media_term = (v_dxy) - (v_ewz) * 0.15
+                media_term = (v_dxy + v_zn_f - v_ewz)
+
                 
                 c_bf, c_b, c_n, c_a, c_af = "", "", "", "", ""
-                if media_term <= -0.50: c_bf = "active-bf"
-                elif media_term < -0.20: c_b = "active-b"
-                elif media_term <= 0.20: c_n = "active-n"
-                elif media_term < 0.50: c_a = "active-a"
+                if media_term <= -0.60: c_bf = "active-bf"
+                elif media_term < -0.30: c_b = "active-b"
+                elif media_term <= 0.30: c_n = "active-n"
+                elif media_term < 0.60: c_a = "active-a"
                 else: c_af = "active-af"
-        
-                p_min, p_max = -1.0, 1.0
+                
+                p_min, p_max = -1.5, 1.5
                 pos_percent = ((media_term - p_min) / (p_max - p_min)) * 100
                 pos_percent = max(0, min(100, pos_percent)) 
                 
@@ -450,6 +455,7 @@ while True:
                 st.markdown(therm_html, unsafe_allow_html=True)
             
             with c2:
+                # Função auxiliar para recalcular variação aqui (escopo c2)
                 def get_var_local(sym):
                     d = st.session_state.market_data.get(sym)
                     if d and d.get('cl', 0) > 0:
@@ -457,7 +463,7 @@ while True:
                         return v
                     return 0.0
 
-                media_term_c2 = get_var_local("DX-Y.NYB") - get_var_local("EWZ") * 0.15 
+                media_term_c2 = get_var_local("DX-Y.NYB") + get_var_local("ZN=F") - get_var_local("EWZ") 
 
                 axis_plus_term = res['axis_central'] * (1 + (media_term_c2 / 100))
 
