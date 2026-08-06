@@ -164,8 +164,29 @@ def fetch(s):
 # =============================================================================
 def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
     try:
-        if not spot_data or not ewz_data: return None
-        
+        if not spot_data:
+            spot_data = st.session_state.market_data.get("USDBRL=X", {"at": 0.0, "cl": 1.0, "op": 0.0, "mx": 0.0, "mn": 0.0})
+        if spot_data.get('at', 0) == 0:
+            last_spot = st.session_state.market_data.get("USDBRL=X")
+            if last_spot and last_spot.get('at', 0) > 0:
+                spot_data = last_spot
+
+        if not ewz_data:
+            ewz_data = st.session_state.market_data.get("EWZ", {"at": 0.0, "cl": 1.0, "op": 0.0, "mx": 0.0, "mn": 0.0})
+        if ewz_data.get('at', 0) == 0:
+            last_ewz = st.session_state.market_data.get("EWZ")
+            if last_ewz and last_ewz.get('at', 0) > 0:
+                ewz_data = last_ewz
+
+        if spot_data.get('cl', 0) == 0:
+            spot_data['cl'] = 1.0
+        if spot_data.get('at', 0) == 0:
+            spot_data['at'] = spot_data.get('cl', 1.0)
+        if spot_data.get('mx', 0) == 0:
+            spot_data['mx'] = spot_data['at']
+        if spot_data.get('mn', 0) == 0:
+            spot_data['mn'] = spot_data['at']
+
         dolar_medio = (spot_data['mx'] + spot_data['mn']) / 2
         spreed_t = spot_data['mx'] - spot_data['mn']
         spreed_50 = spreed_t / 2
@@ -173,15 +194,18 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         fraja_val = spot_data['at'] * spreed_do_dia
         
         dxy_data = fetch("DX-Y.NYB")
-        v_dxy = ((dxy_data['at'] / dxy_data['cl']) - 1) if dxy_data['cl'] > 0 else 0
-        ewz_ref = st.session_state.market_data.get("EWZ", {}).get('cl', 1)
+        if not dxy_data or dxy_data.get('at', 0) == 0:
+            dxy_data = st.session_state.market_data.get("DX-Y.NYB", {"at": 100.0, "cl": 100.0, "op": 100.0, "mx": 100.0, "mn": 100.0})
+
+        v_dxy = ((dxy_data['at'] / dxy_data['cl']) - 1) if dxy_data.get('cl', 0) > 0 else 0
+        ewz_ref = ewz_data.get('cl', 1) if ewz_data.get('cl', 0) > 0 else 1
         v_ewz = ((ewz_data['at'] / ewz_ref) - 1) if ewz_ref > 0 else 0
         
         calc_variacoes_pct = (v_dxy) - (v_ewz)
         
         vivo_val = spot_data['cl'] * (1 + calc_variacoes_pct) 
         axis_dinamico = dolar_medio * spreed_do_dia
-        passo_fixo = spreed_50 / 4
+        passo_fixo = spreed_50 / 4 if spreed_50 > 0 else 1.0
         
         alvo_low = spot_data['mn'] * spreed_do_dia
         alvo_high = spot_data['mx'] * spreed_do_dia
@@ -273,7 +297,24 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             "p_c3_v": p_c3_v, "p_c2_v": p_c2_v, "p_c1_v": p_c1_v, "p_v1_v": p_v1_v, "p_v2_v": p_v2_v, "p_v3_v": p_v3_v,
             "pct_afastamento": pct_afastamento
         }
-    except: return None
+    except Exception as e: 
+        return {
+            "df_price": 0.0, "df_close": 1.0, "df_open": 0.0, "df_var": 0.0,
+            "white": 0.0, "vivo_pct": 0.0, "dolfut_calc": 0.0, "fraja": 0.0, 
+            "medio": 0.0, "axis_central": 0.0,
+            "max_fut_1": 0.0, "max_fut_1_b": 0.0,
+            "max_fut_2": 0.0, "max_fut_2_b": 0.0,
+            "min_fut_1": 0.0, "min_fut_1_b": 0.0,
+            "min_fut_2": 0.0, "min_fut_2_b": 0.0,
+            "v_v": 0.0, "v_spot": 0.0, "spreed": 0.0, 
+            "p_v": 0.0, "p_r": 0.0, "seta": "-", "seta_cor": "#fff", 
+            "max_grade": 0.0, "min_grade": 0.0, 
+            "alvo_low": 0.0, "alvo_high": 0.0, "spreed_t": 0.0, "passo_fixo": 1.0,
+            "gatilho_c": 0.0, "gatilho_v": 0.0, "ind_val": 0.0, "cor_ind": "#00f2ff",
+            "bloco_vol": 0.0, "mx_adm": 0.0, "mn_adm": 0.0, "distancia_base_calc": 0.0,
+            "p_c3_v": 0.0, "p_c2_v": 0.0, "p_c1_v": 0.0, "p_v1_v": 0.0, "p_v2_v": 0.0, "p_v3_v": 0.0,
+            "pct_afastamento": 0.0
+        }
 
 # =============================================================================
 # # BLOCO 5: CONTROLES OPERACIONAIS FINANCEIROS (SIDEBAR / ADM)
