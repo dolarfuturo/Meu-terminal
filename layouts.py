@@ -38,6 +38,7 @@ st.markdown("""
     .calc-panel { border: 1.5px solid #ffffff; border-radius: 4px; padding: 4px; background: #0a141a; font-family: monospace; margin-bottom: 4px; margin-top: 8px; }
     .calc-row { display: flex; justify-content: space-between; padding: 2px 6px; border-bottom: 1px solid #444; font-size: 10px; font-weight: bold; align-items: center; }
     
+    /* Customizações da Barra de Força */
     .bar-wrapper-full { background: #0a141a; padding: 6px; border: 1.5px solid #ffffff; border-radius: 4px; text-align: center; margin-top: 5px; font-family: monospace; }
     .force-scale-top { display: flex; justify-content: space-between; font-size: 9px; font-weight: bold; color: #ffffff; margin-bottom: 2px; padding: 0 2px; }
     .force-scale-bottom { display: flex; justify-content: space-between; font-size: 9px; font-weight: bold; color: #00BFFF; margin-top: 2px; padding: 0 2px; }
@@ -50,6 +51,7 @@ st.markdown("""
     .txt-interno-tom-verde { color: #00ff88 !important; }
     .sinal-indicator { font-size: 18px; font-weight: bold; line-height: 1; margin-top: 4px; }
     
+    /* Novo Termômetro Segmentado */
     .therm-container { display: flex; width: 100%; height: 40px; margin-top: 5px; border: 1px solid #ffffff; background: #000; }
     .therm-seg { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: bold; background: #1a1a1a; color: #555; border-right: 1px solid #333; transition: all 0.2s; text-align: center; }
     .active-bf { background: #8B0000 !important; color: #fff !important; box-shadow: 0 0 15px #FF0000; border: 1px solid #ff4d4d; z-index: 1; }
@@ -92,18 +94,15 @@ def carregar_historico_dolfut_diario():
             with open("dolfut_history.txt", "r") as f:
                 conteudo = f.read().split(",")
                 if conteudo[0] == data_hoje:
-                    mx = float(conteudo[1])
-                    mn = float(conteudo[2])
-                    cl = float(conteudo[3]) if len(conteudo) > 3 else 0.0
-                    return mx, mn, cl
+                    return float(conteudo[1]), float(conteudo[2])
         except: pass
-    return float('-inf'), float('inf'), 0.0
+    return float('-inf'), float('inf')
 
-def salvar_historico_dolfut_diario(mx, mn, cl):
+def salvar_historico_dolfut_diario(mx, mn):
     data_hoje = datetime.now(pytz.timezone('America/Sao_Paulo')).strftime("%Y-%m-%d")
     try:
         with open("dolfut_history.txt", "w") as f:
-            f.write(f"{data_hoje},{mx},{mn},{cl}")
+            f.write(f"{data_hoje},{mx},{mn}")
     except: pass
 
 div_spreed_salvo, max_madr_salvo, min_madr_salvo = carregar_eixos()
@@ -114,17 +113,16 @@ if 'div_spreed_mem' not in st.session_state: st.session_state.div_spreed_mem = d
 if 'max_madr_mem' not in st.session_state: st.session_state.max_madr_mem = max_madr_salvo
 if 'min_madr_mem' not in st.session_state: st.session_state.min_madr_mem = min_madr_salvo
 
-max_init, min_init, close_init = carregar_historico_dolfut_diario()
+max_init, min_init = carregar_historico_dolfut_diario()
 if 'dolfut_max_auto' not in st.session_state: st.session_state.dolfut_max_auto = max_init
 if 'dolfut_min_auto' not in st.session_state: st.session_state.dolfut_min_auto = min_init
-if 'dolfut_close_auto' not in st.session_state: st.session_state.dolfut_close_auto = close_init
 
 if 'last_spot_max' not in st.session_state: st.session_state.last_spot_max = 0.0
 if 'last_spot_min' not in st.session_state: st.session_state.last_spot_min = float('inf')
 
 if 'c_spot_fech_val' not in st.session_state: st.session_state.c_spot_fech_val = 0.0
 if 'c_du_val' not in st.session_state: st.session_state.c_du_val = 22
-if 't_br_val' not in st.session_state: st.session_state.t_br_val = 14.00
+if 't_br_val' not in st.session_state: st.session_state.t_br_val = 14.25
 if 't_us_val' not in st.session_state: st.session_state.t_us_val = 3.75
 
 # =============================================================================
@@ -225,46 +223,41 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         if diff_media < 0:
             p_v = min(100.0, (abs(pct_afastamento) / 1.00) * 100)
         else:
-            p_r = min(100.0, (pct_afastamento / 1.00) * 100)
+            p_r = min(100.0, (pct_afastamento / 1.00) * 100)  # CORRIGIDO AQUI
             
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
-        
-        # Configuração DOLFUT baseada estritamente no Spot * FRP
-        df_price = spot_data['at'] * spreed_do_dia
-        df_open = spot_data['op'] * spreed_do_dia
+        dolfut_atual_calc = axis_dinamico * (1 + calc_variacoes_pct)
         
         tz_sp = pytz.timezone('America/Sao_Paulo')
         now_br = datetime.now(tz_sp)
         
-        _, _, f_close_salvo = carregar_historico_dolfut_diario()
-        if f_close_salvo > 0: st.session_state.dolfut_close_auto = f_close_salvo
-
-        # FORÇANDO A MÁXIMA E MÍNIMA DO DOLFUT A SEREM EXATAMENTE A MÁXIMA E MÍNIMA DO SPOT * FRP
-        spot_max_val = spot_data['mx'] * spreed_do_dia
-        spot_min_val = spot_data['mn'] * spreed_do_dia
-
-        st.session_state.dolfut_max_auto = spot_max_val
-        st.session_state.dolfut_min_auto = spot_min_val
-        salvar_historico_dolfut_diario(spot_max_val, spot_min_val, st.session_state.dolfut_close_auto)
+        f_max, f_min = carregar_historico_dolfut_diario()
+        if f_max != float('-inf'): st.session_state.dolfut_max_auto = max(st.session_state.dolfut_max_auto, f_max)
+        if f_min != float('inf'): st.session_state.dolfut_min_auto = min(st.session_state.dolfut_min_auto, f_min)
         
-        # Gravação do Close exatamente às 18:30 (ou após)
-        if now_br.hour > 18 or (now_br.hour == 18 and now_br.minute >= 30):
-            if st.session_state.dolfut_close_auto == 0.0:
-                st.session_state.dolfut_close_auto = df_price
-                salvar_historico_dolfut_diario(spot_max_val, spot_min_val, st.session_state.dolfut_close_auto)
-
-        df_close = st.session_state.dolfut_close_auto if st.session_state.dolfut_close_auto > 0 else (spot_data['cl'] * spreed_do_dia)
-        df_var = ((df_price / df_close) - 1) * 100 if df_close > 0 else (v_spot_pct * 100)
+        if (now_br.hour > 9 or (now_br.hour == 9 and now_br.minute >= 0)) and (now_br.hour < 18 or (now_br.hour == 18 and now_br.minute <= 30)):
+            mudou = False
+            if dolfut_atual_calc > st.session_state.dolfut_max_auto:
+                st.session_state.dolfut_max_auto = dolfut_atual_calc
+                mudou = True
+            if dolfut_atual_calc < st.session_state.dolfut_min_auto:
+                st.session_state.dolfut_min_auto = dolfut_atual_calc
+                mudou = True
+            if mudou: salvar_historico_dolfut_diario(st.session_state.dolfut_max_auto, st.session_state.dolfut_min_auto)
+        else:
+            if st.session_state.dolfut_max_auto == float('-inf') or st.session_state.dolfut_min_auto == float('inf'):
+                st.session_state.dolfut_max_auto = dolfut_atual_calc
+                st.session_state.dolfut_min_auto = dolfut_atual_calc
+                salvar_historico_dolfut_diario(dolfut_atual_calc, dolfut_atual_calc)
 
         return {
-            "df_price": df_price, "df_close": df_close, "df_open": df_open, "df_var": df_var,
-            "white": vivo_val, "vivo_pct": calc_variacoes_pct * 100, "dolfut_calc": df_price, "fraja": fraja_val, 
+            "white": vivo_val, "vivo_pct": calc_variacoes_pct * 100, "dolfut_calc": dolfut_atual_calc, "fraja": fraja_val, 
             "medio": dolar_medio, "axis_central": axis_dinamico,
             "max_fut_1": axis_dinamico + passo_fixo, "max_fut_1_b": axis_dinamico + (passo_fixo * 2),
             "max_fut_2": axis_dinamico + (passo_fixo * 3), "max_fut_2_b": axis_dinamico + (passo_fixo * 4),
             "min_fut_1": axis_dinamico - passo_fixo, "min_fut_1_b": axis_dinamico - (passo_fixo * 2),
             "min_fut_2": axis_dinamico - (passo_fixo * 3), "min_fut_2_b": axis_dinamico - (passo_fixo * 4),
-            "v_v": df_var, "v_spot": v_spot_pct * 100, "spreed": spreed_50, 
+            "v_v": calc_variacoes_pct * 100, "v_spot": v_spot_pct * 100, "spreed": spreed_50, 
             "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor, 
             "max_grade": st.session_state.dolfut_max_auto, "min_grade": st.session_state.dolfut_min_auto, 
             "alvo_low": alvo_low, "alvo_high": alvo_high, "spreed_t": spreed_t, "passo_fixo": passo_fixo,
@@ -338,18 +331,9 @@ while True:
                 st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
                 html = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
                 
-                v_f = res['df_var']
-                df_p = res['df_price'] / 1000
-                df_c = res['df_close'] / 1000
-                df_o = res['df_open'] / 1000
-                df_mx = res['max_grade'] / 1000
-                df_mn = res['min_grade'] / 1000
-
-                l_df = st.session_state.last_p.get('DF', df_p)
-                cl_df = "f-up" if df_p > l_df else "f-dn" if df_p < l_df else ""
-                st.session_state.last_p['DF'] = df_p
-
-                html += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col {cl_df}' style='background-color:rgba({('0,255,0' if v_f >= 0 else '255,0,0')}, 0.1);'>{df_p:.4f}</td><td>{df_c:.4f}</td><td>{df_o:.4f}</td><td>{df_mx:.4f}</td><td>{df_mn:.4f}</td><td style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_f:+.2f}%</td></tr>"
+                v_f, d_c = res['v_v'], res['dolfut_calc']
+                l_df = st.session_state.last_p.get('DF', d_c/1000); cl_df = "f-up" if (d_c/1000) > l_df else "f-dn" if (d_c/1000) < l_df else ""; st.session_state.last_p['DF'] = d_c/1000
+                html += f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col {cl_df}' style='background-color:rgba({('0,255,0' if v_f >= 0 else '255,0,0')}, 0.1);'>{(d_c/1000):.4f}</td><td>{(res['axis_central']/1000):.4f}</td><td>{(res['axis_central']/1000):.4f}</td><td>{(res['max_grade']/1000):.4f}</td><td>{(res['min_grade']/1000):.4f}</td><td style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")}; font-weight:bold;'>{v_f:+.2f}%</td></tr>"
                 
                 ticker_items = [f"DOLFUT: <span style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")};'>{v_f:+.2f}%</span>"]
                 outros = {"DOLSPOT": "USDBRL=X", "DXY": "DX-Y.NYB", "EWZ": "EWZ", "GBP/USD": "GBPUSD=X", "JPY/USD": "JPYUSD=X", "EUR/USD": "EURUSD=X", "XAU/USD": "GC=F", "PETROLEO BRENT": "BZ=F", "US10Y": "^TNX", "ZN=F": "ZN=F"}
@@ -371,6 +355,7 @@ while True:
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 
+                # --- PROCESSAMENTO DOS VALORES INTERNOS DA BARRA DE FORÇA ---
                 p_v_val = "{:.1f}".format(res['p_v'])
                 p_r_val = "{:.1f}".format(res['p_r'])
                 c3_val = "{:.4f}".format(res['p_c3_v'] / 1000)
@@ -388,13 +373,13 @@ while True:
                 render_barra = (
                     '<div class="bar-wrapper-full">'
                     '    <div class="force-scale-top">'
-                    '        <span style="color:#00ff88; width:15%; text-align:left;">-1.00%</span>'
-                    '        <span style="color:#00ff88; width:15%; text-align:left;">-0.66%</span>'
-                    '        <span style="color:#00ff88; width:15%; text-align:left;">-0.33%</span>'
+                    '        <span style="color:#00ff88; width:15%; text-align:left;">-1.05%</span>'
+                    '        <span style="color:#00ff88; width:15%; text-align:left;">-0.70%</span>'
+                    '        <span style="color:#00ff88; width:15%; text-align:left;">-0.35%</span>'
                     '        <span style="color:#ffffff; width:10%; text-align:center;">0</span>'
-                    '        <span style="color:#ff4d4d; width:15%; text-align:right;">+0.33%</span>'
-                    '        <span style="color:#ff4d4d; width:15%; text-align:right;">+0.66%</span>'
-                    '        <span style="color:#ff4d4d; width:15%; text-align:right;">+1.00%</span>'
+                    '        <span style="color:#ff4d4d; width:15%; text-align:right;">+0.35%</span>'
+                    '        <span style="color:#ff4d4d; width:15%; text-align:right;">+0.70%</span>'
+                    '        <span style="color:#ff4d4d; width:15%; text-align:right;">+1.05%</span>'
                     '    </div>'
                     '    <div class="force-container-dual">'
                     '        <div class="center-line"></div>'
