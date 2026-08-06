@@ -165,7 +165,7 @@ if "t_us_val" not in st.session_state:
   st.session_state.t_us_val = 3.75
 
 # =============================================================================
-# # BLOCO 3: CONEXÃO COM API E MOTOR DE CAPTURA DE DADOS (BLINDADO / ATUALIZAÇÃO REAL)
+# # BLOCO 3: CONEXÃO COM API E MOTOR DE CAPTURA DE DADOS (BLINDADO)
 # =============================================================================
 
 
@@ -175,7 +175,6 @@ def fetch(s):
     t = yf.Ticker(s)
     at, cl, op, mx, mn = 0.0, 0.0, 0.0, 0.0, 0.0
 
-    # 1. Tenta extrair instantaneamente via fast_info (muito mais rápido e imune a bloqueios)
     try:
       fi = t.fast_info
       at = float(fi.get("lastPrice", 0) or fi.get("last_price", 0))
@@ -186,7 +185,6 @@ def fetch(s):
     except:
       pass
 
-    # 2. Se o fast_info vier incompleto, usa history diário (interval="1d") em vez de 1m para evitar bloqueio do Yahoo
     if at == 0.0 or cl == 0.0:
       d = t.history(period="2d", interval="1d", prepost=True)
       if not d.empty:
@@ -307,7 +305,6 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         else 0
     )
 
-    # Configuração DOLFUT baseada estritamente no Spot * FRP
     df_price = spot_data["at"] * spreed_do_dia
     df_open = spot_data["op"] * spreed_do_dia
 
@@ -318,7 +315,6 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
     if f_close_salvo > 0:
       st.session_state.dolfut_close_auto = f_close_salvo
 
-    # FORÇANDO A MÁXIMA E MÍNIMA DO DOLFUT A SEREM EXATAMENTE A MÁXIMA E MÍNIMA DO SPOT * FRP
     spot_max_val = spot_data["mx"] * spreed_do_dia
     spot_min_val = spot_data["mn"] * spreed_do_dia
 
@@ -328,7 +324,6 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         spot_max_val, spot_min_val, st.session_state.dolfut_close_auto
     )
 
-    # Gravação do Close exatamente às 18:30 (ou após)
     if now_br.hour > 18 or (now_br.hour == 18 and now_br.minute >= 30):
       if st.session_state.dolfut_close_auto == 0.0:
         st.session_state.dolfut_close_auto = df_price
@@ -509,17 +504,18 @@ while True:
         cl_df = "f-up" if df_p > l_df else "f-dn" if df_p < l_df else ""
         st.session_state.last_p["DF"] = df_p
 
+        v_f_color_str = "#00ff00" if v_f >= 0 else "#ff4d4d"
+        rgba_bg = "0,255,0" if v_f >= 0 else "255,0,0"
+
         html += (
             f"<tr><td class='asset-name'>DOLFUT</td><td class='price-col"
-            f" {cl_df}'"
-            f" style='background-color:rgba({("0,255,0" if v_f >= 0 else "255,0,0")},"
+            f" {cl_df}' style='background-color:rgba({rgba_bg},"
             f" 0.1);'>{df_p:.4f}</td><td>{df_c:.4f}</td><td>{df_o:.4f}</td><td>{df_mx:.4f}</td><td>{df_mn:.4f}</td><td"
-            f" style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")};"
-            f" font-weight:bold;'>{v_f:+.2f}%</td></tr>"
+            f" style='color:{v_f_color_str}; font-weight:bold;'>{v_f:+.2f}%</td></tr>"
         )
 
         ticker_items = [
-            f"DOLFUT: <span style='color:{("#00ff00" if v_f >= 0 else "#ff4d4d")};'>{v_f:+.2f}%</span>"
+            f"DOLFUT: <span style='color:{v_f_color_str};'>{v_f:+.2f}%</span>"
         ]
         outros = {
             "DOLSPOT": "USDBRL=X",
@@ -537,7 +533,7 @@ while True:
         for lbl, sym in outros.items():
           d = st.session_state.market_data.get(sym, fetch(sym))
           if d:
-            f = (
+            fmt = (
                 ".4f"
                 if lbl in ["DOLSPOT", "GBP/USD", "JPY/USD", "EUR/USD"]
                 else (".3f" if lbl == "US10Y" else ".2f")
@@ -570,20 +566,31 @@ while True:
                   d["mn"],
               )
 
+            val_fmt = format(p_v, fmt)
+            cl_fmt = format(
+                d["cl"] / 1000 if lbl == "DOLSPOT" else d["cl"], fmt
+            )
+            op_fmt = format(
+                d["op"] / 1000 if lbl == "DOLSPOT" else d["op"], fmt
+            )
+            mx_fmt = format(
+                d["mx"] / 1000 if lbl == "DOLSPOT" else d["mx"], fmt
+            )
+            mn_fmt = format(
+                d["mn"] / 1000 if lbl == "DOLSPOT" else d["mn"], fmt
+            )
+            color_hex = "#00ff00" if var >= 0 else "#ff4d4d"
+
             html += (
                 f"<tr><td class='asset-name'>{lbl}</td><td"
-                f" class='price-col {cl_a}'>{p_v:{f}}</td><td>{(d['cl']/1000 if"
-                f" lbl=='DOLSPOT' else d['cl']):{f}}</td><td>{(d['op']/1000 if"
-                f" lbl=='DOLSPOT' else d['op']):{f}}</td><td"
-                f" class='{cl_max}'>{(d['mx']/1000 if lbl=='DOLSPOT' else"
-                f" d['mx']):{f}}</td><td class='{cl_min}'>{(d['mn']/1000 if"
-                f" lbl=='DOLSPOT' else"
-                f" d['mn']):{f}}</td><td"
-                f" style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};"
+                f" class='price-col {cl_a}'>{val_fmt}</td><td>{cl_fmt}</td><td>{op_fmt}</td><td"
+                f" class='{cl_max}'>{mx_fmt}</td><td"
+                f" class='{cl_min}'>{mn_fmt}</td><td"
+                f" style='color:{color_hex};"
                 f" font-weight:bold;'>{var:+.2f}%</td></tr>"
             )
             ticker_items.append(
-                f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>"
+                f"{lbl}: <span style='color:{color_hex};'>{var:+.2f}%</span>"
             )
         st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
 
