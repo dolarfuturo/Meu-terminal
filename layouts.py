@@ -1,5 +1,6 @@
 from datetime import datetime
 import os
+import time
 import pytz
 import streamlit as st
 import yfinance as yf
