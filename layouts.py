@@ -443,7 +443,7 @@ while True:
                 elif media_term < 0.60: c_a = "active-a"
                 else: c_af = "active-af"
         
-                p_min, p_max = -2.0, 2.0
+                p_min, p_max = -1.5, 1.5
                 pos_percent = ((media_term - p_min) / (p_max - p_min)) * 100
                 pos_percent = max(0, min(100, pos_percent)) 
                 
