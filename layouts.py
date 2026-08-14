@@ -430,7 +430,7 @@ while True:
                     return 0.0
 
                 v_dxy = get_var("DX-Y.NYB")
-                v_ewz = get_var("EWZ") 
+                -v_ewz = get_var("EWZ") 
                 v_us10y = get_var("^TNX")
                 v_zn_f = get_var("ZN=F")
                 
