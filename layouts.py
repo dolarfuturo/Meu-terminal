@@ -434,7 +434,7 @@ while True:
                 v_us10y = get_var("^TNX")
                 v_zn_f = get_var("ZN=F")
                 
-                media_term = -v_ewz * 0.6
+                media_term = -v_ewz * 0.8
                 
                 c_bf, c_b, c_n, c_a, c_af = "", "", "", "", ""
                 if media_term <= -0.60: c_bf = "active-bf"
@@ -472,7 +472,7 @@ while True:
                         return v
                     return 0.0
 
-                media_term_c2 = -get_var_local("EWZ") * 0.6
+                media_term_c2 = -get_var_local("EWZ") * 0.8
 
                 base_pj = spot_live['cl'] * div_s
                 axis_plus_term = base_pj * (1 + (media_term_c2 / 100))
