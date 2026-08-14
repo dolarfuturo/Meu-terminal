@@ -472,7 +472,7 @@ while True:
                         return v
                     return 0.0
 
-                media_term_c2 = -get_var_local("EWZ") 
+                media_term_c2 = -get_var_local("EWZ") * 0.8
 
                 base_pj = spot_live['cl'] * div_s
                 axis_plus_term = base_pj * (1 + (media_term_c2 / 100))
