@@ -430,7 +430,7 @@ while True:
                     return 0.0
 
                 v_dxy = get_var("DX-Y.NYB")
-                v_ewz - = get_var("EWZ") 
+                v_ewz = get_var("EWZ") 
                 v_us10y = get_var("^TNX")
                 v_zn_f = get_var("ZN=F")
                 
@@ -472,7 +472,7 @@ while True:
                         return v
                     return 0.0
 
-                media_term_c2 = get_var_local("EWZ") 
+                media_term_c2 = get_var_local("EWZ") -
 
                 base_pj = spot_live['cl'] * div_s
                 axis_plus_term = base_pj * (1 + (media_term_c2 / 100))
