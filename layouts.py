@@ -106,6 +106,24 @@ def salvar_historico_dolfut_diario(mx, mn, cl):
             f.write(f"{data_hoje},{mx},{mn},{cl}")
     except: pass
 
+def carregar_historico_spot_diario():
+    data_hoje = datetime.now(pytz.timezone('America/Sao_Paulo')).strftime("%Y-%m-%d")
+    if os.path.exists("spot_history.txt"):
+        try:
+            with open("spot_history.txt", "r") as f:
+                conteudo = f.read().split(",")
+                if conteudo[0] == data_hoje:
+                    return float(conteudo[1])
+        except: pass
+    return 0.0
+
+def salvar_historico_spot_diario(cl):
+    data_hoje = datetime.now(pytz.timezone('America/Sao_Paulo')).strftime("%Y-%m-%d")
+    try:
+        with open("spot_history.txt", "w") as f:
+            f.write(f"{data_hoje},{cl}")
+    except: pass
+
 div_spreed_salvo, max_madr_salvo, min_madr_salvo = carregar_eixos()
 
 if 'market_data' not in st.session_state: st.session_state.market_data = {}
@@ -118,6 +136,9 @@ max_init, min_init, close_init = carregar_historico_dolfut_diario()
 if 'dolfut_max_auto' not in st.session_state: st.session_state.dolfut_max_auto = max_init
 if 'dolfut_min_auto' not in st.session_state: st.session_state.dolfut_min_auto = min_init
 if 'dolfut_close_auto' not in st.session_state: st.session_state.dolfut_close_auto = close_init
+
+spot_close_init = carregar_historico_spot_diario()
+if 'spot_close_auto' not in st.session_state: st.session_state.spot_close_auto = spot_close_init
 
 if 'last_spot_max' not in st.session_state: st.session_state.last_spot_max = 0.0
 if 'last_spot_min' not in st.session_state: st.session_state.last_spot_min = float('inf')
@@ -154,7 +175,23 @@ def fetch(s):
                     f_21h = d_hist.between_time('05:00', '21:00').loc[d_hist.index.date == data_anterior]
                     if not f_21h.empty: ref_close = f_21h['Close'].iloc[-1]
             m = 1000 if s == "USDBRL=X" else 1
-            data = {"at": float(d['Close'].iloc[-1] * m), "cl": float(ref_close * m), "op": float(d['Open'].iloc[0] * m), "mx": float(d['High'].max() * m), "mn": float(d['Low'].min() * m)}
+            at_val = float(d['Close'].iloc[-1] * m)
+            cl_val = float(ref_close * m)
+
+            if s == "USDBRL=X":
+                now_br = datetime.now(tz_sp)
+                s_close_salvo = carregar_historico_spot_diario()
+                if s_close_salvo > 0: st.session_state.spot_close_auto = s_close_salvo
+
+                if now_br.hour > 18 or (now_br.hour == 18 and now_br.minute >= 30):
+                    if st.session_state.spot_close_auto == 0.0:
+                        st.session_state.spot_close_auto = at_val
+                        salvar_historico_spot_diario(st.session_state.spot_close_auto)
+
+                if st.session_state.spot_close_auto > 0:
+                    cl_val = st.session_state.spot_close_auto
+
+            data = {"at": at_val, "cl": cl_val, "op": float(d['Open'].iloc[0] * m), "mx": float(d['High'].max() * m), "mn": float(d['Low'].min() * m)}
         st.session_state.market_data[s] = data
         return data
     except: return st.session_state.market_data.get(s, fallback)
