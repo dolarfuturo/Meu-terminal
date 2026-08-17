@@ -2,7 +2,7 @@ import streamlit as st
 import yfinance as yf
 import time
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 
 # =============================================================================
@@ -85,13 +85,22 @@ def carregar_eixos():
         except: pass
     return 1.0000, 0.0, 0.0
 
+def obter_data_pregao_atual():
+    tz_sp = pytz.timezone('America/Sao_Paulo')
+    now_br = datetime.now(tz_sp)
+    if now_br.hour > 18 or (now_br.hour == 18 and now_br.minute >= 30):
+        data_ref = now_br + timedelta(days=1)
+    else:
+        data_ref = now_br
+    return data_ref.strftime("%Y-%m-%d")
+
 def carregar_historico_dolfut_diario():
-    data_hoje = datetime.now(pytz.timezone('America/Sao_Paulo')).strftime("%Y-%m-%d")
+    data_pregao = obter_data_pregao_atual()
     if os.path.exists("dolfut_history.txt"):
         try:
             with open("dolfut_history.txt", "r") as f:
                 conteudo = f.read().split(",")
-                if conteudo[0] == data_hoje:
+                if conteudo[0] == data_pregao:
                     mx = float(conteudo[1])
                     mn = float(conteudo[2])
                     cl = float(conteudo[3]) if len(conteudo) > 3 else 0.0
@@ -100,28 +109,28 @@ def carregar_historico_dolfut_diario():
     return float('-inf'), float('inf'), 0.0
 
 def salvar_historico_dolfut_diario(mx, mn, cl):
-    data_hoje = datetime.now(pytz.timezone('America/Sao_Paulo')).strftime("%Y-%m-%d")
+    data_pregao = obter_data_pregao_atual()
     try:
         with open("dolfut_history.txt", "w") as f:
-            f.write(f"{data_hoje},{mx},{mn},{cl}")
+            f.write(f"{data_pregao},{mx},{mn},{cl}")
     except: pass
 
 def carregar_historico_spot_diario():
-    data_hoje = datetime.now(pytz.timezone('America/Sao_Paulo')).strftime("%Y-%m-%d")
+    data_pregao = obter_data_pregao_atual()
     if os.path.exists("spot_history.txt"):
         try:
             with open("spot_history.txt", "r") as f:
                 conteudo = f.read().split(",")
-                if conteudo[0] == data_hoje:
+                if conteudo[0] == data_pregao:
                     return float(conteudo[1])
         except: pass
     return 0.0
 
 def salvar_historico_spot_diario(cl):
-    data_hoje = datetime.now(pytz.timezone('America/Sao_Paulo')).strftime("%Y-%m-%d")
+    data_pregao = obter_data_pregao_atual()
     try:
         with open("spot_history.txt", "w") as f:
-            f.write(f"{data_hoje},{cl}")
+            f.write(f"{data_pregao},{cl}")
     except: pass
 
 div_spreed_salvo, max_madr_salvo, min_madr_salvo = carregar_eixos()
@@ -266,7 +275,6 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         
-        # Configuração DOLFUT baseada estritamente no Spot * FRP
         df_price = spot_data['at'] * spreed_do_dia
         df_open = spot_data['op'] * spreed_do_dia
         
@@ -276,7 +284,6 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         _, _, f_close_salvo = carregar_historico_dolfut_diario()
         if f_close_salvo > 0: st.session_state.dolfut_close_auto = f_close_salvo
 
-        # FORÇANDO A MÁXIMA E MÍNIMA DO DOLFUT A SEREM EXATAMENTE A MÁXIMA E MÍNIMA DO SPOT * FRP
         spot_max_val = spot_data['mx'] * spreed_do_dia
         spot_min_val = spot_data['mn'] * spreed_do_dia
 
@@ -284,7 +291,6 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         st.session_state.dolfut_min_auto = spot_min_val
         salvar_historico_dolfut_diario(spot_max_val, spot_min_val, st.session_state.dolfut_close_auto)
         
-        # Gravação do Close exatamente às 18:30 (ou após)
         if now_br.hour > 18 or (now_br.hour == 18 and now_br.minute >= 30):
             if st.session_state.dolfut_close_auto == 0.0:
                 st.session_state.dolfut_close_auto = df_price
