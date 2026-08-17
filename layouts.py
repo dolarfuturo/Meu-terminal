@@ -474,7 +474,7 @@ while True:
                 media_term = -v_ewz * 0.6
                 
                 c_bf, c_b, c_n, c_a, c_af = "", "", "", "", ""
-                if media_term <= -060: c_bf = "active-bf"
+                if media_term <= -0.60: c_bf = "active-bf"
                 elif media_term < -0.30: c_b = "active-b"
                 elif media_term <= 0.30: c_n = "active-n"
                 elif media_term < 0.60: c_a = "active-a"
