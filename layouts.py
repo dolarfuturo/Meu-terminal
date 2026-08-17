@@ -474,13 +474,13 @@ while True:
                 media_term = -v_ewz * 0.6
                 
                 c_bf, c_b, c_n, c_a, c_af = "", "", "", "", ""
-                if media_term <= -0.60: c_bf = "active-bf"
-                elif media_term < -0.30: c_b = "active-b"
-                elif media_term <= 0.30: c_n = "active-n"
-                elif media_term < 0.60: c_a = "active-a"
+                if media_term <= -0.30: c_bf = "active-bf"
+                elif media_term < -0.15: c_b = "active-b"
+                elif media_term <= 0.15: c_n = "active-n"
+                elif media_term < 0.30: c_a = "active-a"
                 else: c_af = "active-af"
         
-                p_min, p_max = -1.5, 1.5
+                p_min, p_max = -1.0, 1.0
                 pos_percent = ((media_term - p_min) / (p_max - p_min)) * 100
                 pos_percent = max(0, min(100, pos_percent)) 
                 
