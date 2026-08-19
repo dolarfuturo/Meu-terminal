@@ -567,5 +567,5 @@ if res:
     st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
 
 # Atualização automática a cada 5 segundos sem travar a thread principal
-time.sleep(5)
+time.sleep(4)
 st.rerun()
