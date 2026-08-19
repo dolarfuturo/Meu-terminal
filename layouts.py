@@ -72,18 +72,21 @@ st.markdown("""
 # =============================================================================
 # # BLOCO 2: MEMÓRIA DA SESSÃO E PERSISTÊNCIA DE DADOS (ARQUIVOS)
 # =============================================================================
-def salvar_eixos(div_spreed, taxa_juros=1.00854):
+def salvar_eixos(div_spreed, taxa_juros=1.00854, spot_manual=0.0):
     with open("config_axis.txt", "w") as f:
-        f.write(f"{div_spreed},{taxa_juros}")
+        f.write(f"{div_spreed},{taxa_juros},{spot_manual}")
 
 def carregar_eixos():
     if os.path.exists("config_axis.txt"):
         try:
             with open("config_axis.txt", "r") as f:
                 parts = f.read().split(",")
-                return float(parts[0]), float(parts[1]) if len(parts) > 1 else 1.00854
+                d_spr = float(parts[0])
+                t_jur = float(parts[1]) if len(parts) > 1 else 1.00854
+                s_man = float(parts[2]) if len(parts) > 2 else 0.0
+                return d_spr, t_jur, s_man
         except: pass
-    return 1.0000, 1.00854
+    return 1.0000, 1.00854, 0.0
 
 def obter_data_pregao_atual():
     tz_sp = pytz.timezone('America/Sao_Paulo')
@@ -133,12 +136,13 @@ def salvar_historico_spot_diario(cl):
             f.write(f"{data_pregao},{cl}")
     except: pass
 
-div_spreed_salvo, taxa_juros_salvo = carregar_eixos()
+div_spreed_salvo, taxa_juros_salvo, spot_manual_salvo = carregar_eixos()
 
 if 'market_data' not in st.session_state: st.session_state.market_data = {}
 if 'last_p' not in st.session_state: st.session_state.last_p = {}
 if 'div_spreed_mem' not in st.session_state: st.session_state.div_spreed_mem = div_spreed_salvo
 if 'taxa_juros_mem' not in st.session_state: st.session_state.taxa_juros_mem = taxa_juros_salvo
+if 'spot_close_manual_mem' not in st.session_state: st.session_state.spot_close_manual_mem = spot_manual_salvo
 
 max_init, min_init, close_init = carregar_historico_dolfut_diario()
 if 'dolfut_max_auto' not in st.session_state: st.session_state.dolfut_max_auto = max_init
@@ -187,17 +191,20 @@ def fetch(s):
             cl_val = float(ref_close * m)
 
             if s == "USDBRL=X":
-                now_br = datetime.now(tz_sp)
-                s_close_salvo = carregar_historico_spot_diario()
-                if s_close_salvo > 0: st.session_state.spot_close_auto = s_close_salvo
+                if st.session_state.spot_close_manual_mem > 0:
+                    cl_val = st.session_state.spot_close_manual_mem
+                else:
+                    now_br = datetime.now(tz_sp)
+                    s_close_salvo = carregar_historico_spot_diario()
+                    if s_close_salvo > 0: st.session_state.spot_close_auto = s_close_salvo
 
-                if now_br.hour > 18 or (now_br.hour == 18 and now_br.minute >= 30):
-                    if st.session_state.spot_close_auto == 0.0:
-                        st.session_state.spot_close_auto = at_val
-                        salvar_historico_spot_diario(st.session_state.spot_close_auto)
+                    if now_br.hour > 18 or (now_br.hour == 18 and now_br.minute >= 30):
+                        if st.session_state.spot_close_auto == 0.0:
+                            st.session_state.spot_close_auto = at_val
+                            salvar_historico_spot_diario(st.session_state.spot_close_auto)
 
-                if st.session_state.spot_close_auto > 0:
-                    cl_val = st.session_state.spot_close_auto
+                    if st.session_state.spot_close_auto > 0:
+                        cl_val = st.session_state.spot_close_auto
 
             data = {"at": at_val, "cl": cl_val, "op": float(d['Open'].iloc[0] * m), "mx": float(d['High'].max() * m), "mn": float(d['Low'].min() * m)}
         st.session_state.market_data[s] = data
@@ -233,7 +240,6 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         
         taxa_juros = st.session_state.taxa_juros_mem
         
-        # Fracionamento da taxa em 4 partes simétricas
         t_delta = taxa_juros - 1.0
         frac_1 = 1.0 + (t_delta * 0.25)
         frac_2 = 1.0 + (t_delta * 0.50)
@@ -242,13 +248,11 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
 
         spot_close_val = spot_data['cl']
         
-        # Alvos para cima (multiplicação)
         ref_max_tx = spot_close_val * frac_4
         ref_max_3 = spot_close_val * frac_3
         ref_max_1 = spot_close_val * frac_2
         ref_max_2 = spot_close_val * frac_1
 
-        # Alvos para baixo (divisão)
         ref_min_2 = spot_close_val / frac_1
         ref_min_1 = spot_close_val / frac_2
         ref_min_3 = spot_close_val / frac_3
@@ -371,11 +375,13 @@ with st.sidebar:
     st.markdown("### ⚙️ PAINEL ADM")
     i_div = st.number_input("FRP (FATOR MULTIPLICADOR):", value=st.session_state.div_spreed_mem, format="%.4f")
     i_taxa_juros = st.number_input("TAXA DE JUROS:", value=st.session_state.taxa_juros_mem, format="%.5f")
+    i_spot_manual = st.number_input("CLOSE DO SPOT (MANUAL):", value=st.session_state.spot_close_manual_mem, format="%.4f", help="Deixe 0 para usar o valor automático do sistema.")
     
     if st.button("SALVAR CONFIGURAÇÕES"):
         st.session_state.div_spreed_mem = i_div
         st.session_state.taxa_juros_mem = i_taxa_juros
-        salvar_eixos(i_div, i_taxa_juros)
+        st.session_state.spot_close_manual_mem = i_spot_manual
+        salvar_eixos(i_div, i_taxa_juros, i_spot_manual)
         st.success("Salvo!"); time.sleep(0.5); st.rerun()
 
 div_s = st.session_state.div_spreed_mem
