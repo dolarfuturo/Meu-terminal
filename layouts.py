@@ -15,7 +15,7 @@ st.markdown("""
     .block-container { padding-top: 3.5rem !important; padding-bottom: 0rem !important; max-width: 98% !important; }
     .stApp { background-color: #050a0e !important; }
     [data-testid="column"] { display: flex; flex-direction: column; justify-content: flex-start; gap: 0px !important; }
-    [data-testid="stHorizontalBlock"] { gap: 12px !important; margin-bottom: 0px !important; }
+    [data-testid="stHorizontalBlock"] { gap: 8px !important; margin-bottom: 0px !important; }
     .header-container { text-align: center; padding: 10px 0px; border-bottom: 2px solid #FFD700; background-color: #050a0e; margin-bottom: 8px; position: relative; }
     .main-title { margin: 0px; line-height: 1.2; font-size: 28px; font-family: monospace; padding-bottom: 5px; }
     .bair-blue { color: #00BFFF; font-weight: bold; }
@@ -72,18 +72,18 @@ st.markdown("""
 # =============================================================================
 # # BLOCO 2: MEMÓRIA DA SESSÃO E PERSISTÊNCIA DE DADOS (ARQUIVOS)
 # =============================================================================
-def salvar_eixos(div_spreed, max_madr=0.0, min_madr=0.0):
+def salvar_eixos(div_spreed, taxa_juros=1.00854):
     with open("config_axis.txt", "w") as f:
-        f.write(f"{div_spreed},{max_madr},{min_madr}")
+        f.write(f"{div_spreed},{taxa_juros}")
 
 def carregar_eixos():
     if os.path.exists("config_axis.txt"):
         try:
             with open("config_axis.txt", "r") as f:
                 parts = f.read().split(",")
-                return float(parts[0]), float(parts[1]) if len(parts) > 1 else 0.0, float(parts[2]) if len(parts) > 2 else 0.0
+                return float(parts[0]), float(parts[1]) if len(parts) > 1 else 1.00854
         except: pass
-    return 1.0000, 0.0, 0.0
+    return 1.0000, 1.00854
 
 def obter_data_pregao_atual():
     tz_sp = pytz.timezone('America/Sao_Paulo')
@@ -133,13 +133,12 @@ def salvar_historico_spot_diario(cl):
             f.write(f"{data_pregao},{cl}")
     except: pass
 
-div_spreed_salvo, max_madr_salvo, min_madr_salvo = carregar_eixos()
+div_spreed_salvo, taxa_juros_salvo = carregar_eixos()
 
 if 'market_data' not in st.session_state: st.session_state.market_data = {}
 if 'last_p' not in st.session_state: st.session_state.last_p = {}
 if 'div_spreed_mem' not in st.session_state: st.session_state.div_spreed_mem = div_spreed_salvo
-if 'max_madr_mem' not in st.session_state: st.session_state.max_madr_mem = max_madr_salvo
-if 'min_madr_mem' not in st.session_state: st.session_state.min_madr_mem = min_madr_salvo
+if 'taxa_juros_mem' not in st.session_state: st.session_state.taxa_juros_mem = taxa_juros_salvo
 
 max_init, min_init, close_init = carregar_historico_dolfut_diario()
 if 'dolfut_max_auto' not in st.session_state: st.session_state.dolfut_max_auto = max_init
@@ -232,10 +231,29 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         alvo_low = spot_data['mn'] * spreed_do_dia
         alvo_high = spot_data['mx'] * spreed_do_dia
         
-        mx_adm = st.session_state.max_madr_mem
-        mn_adm = st.session_state.min_madr_mem
-        bloco_vol = mx_adm - mn_adm if mx_adm > mn_adm else 0.0
+        taxa_juros = st.session_state.taxa_juros_mem
         
+        # Fracionamento da taxa em 4 partes simétricas
+        t_delta = taxa_juros - 1.0
+        frac_1 = 1.0 + (t_delta * 0.25)
+        frac_2 = 1.0 + (t_delta * 0.50)
+        frac_3 = 1.0 + (t_delta * 0.75)
+        frac_4 = taxa_juros
+
+        spot_close_val = spot_data['cl']
+        
+        # Alvos para cima (multiplicação)
+        ref_max_tx = spot_close_val * frac_4
+        ref_max_3 = spot_close_val * frac_3
+        ref_max_1 = spot_close_val * frac_2
+        ref_max_2 = spot_close_val * frac_1
+
+        # Alvos para baixo (divisão)
+        ref_min_2 = spot_close_val / frac_1
+        ref_min_1 = spot_close_val / frac_2
+        ref_min_3 = spot_close_val / frac_3
+        ref_min_tx = spot_close_val / frac_4
+
         gatilho_c = spot_data['mn'] + passo_fixo
         gatilho_v = spot_data['mx'] - passo_fixo
         distancia_base_calc = abs(spot_data['mn'] - gatilho_c)
@@ -307,12 +325,15 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             "max_fut_2": axis_dinamico + (passo_fixo * 3), "max_fut_2_b": axis_dinamico + (passo_fixo * 4),
             "min_fut_1": axis_dinamico - passo_fixo, "min_fut_1_b": axis_dinamico - (passo_fixo * 2),
             "min_fut_2": axis_dinamico - (passo_fixo * 3), "min_fut_2_b": axis_dinamico - (passo_fixo * 4),
+            "ref_max_tx": ref_max_tx, "ref_max_3": ref_max_3, "ref_max_1": ref_max_1, "ref_max_2": ref_max_2,
+            "ref_min_2": ref_min_2, "ref_min_1": ref_min_1, "ref_min_3": ref_min_3, "ref_min_tx": ref_min_tx,
+            "frac_4": frac_4, "frac_3": frac_3, "frac_2": frac_2, "frac_1": frac_1,
             "v_v": df_var, "v_spot": v_spot_pct * 100, "spreed": spreed_50, 
             "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor, 
             "max_grade": st.session_state.dolfut_max_auto, "min_grade": st.session_state.dolfut_min_auto, 
             "alvo_low": alvo_low, "alvo_high": alvo_high, "spreed_t": spreed_t, "passo_fixo": passo_fixo,
             "gatilho_c": gatilho_c, "gatilho_v": gatilho_v, "ind_val": ind_val, "cor_ind": cor_ind,
-            "bloco_vol": bloco_vol, "mx_adm": mx_adm, "mn_adm": mn_adm, "distancia_base_calc": distancia_base_calc,
+            "distancia_base_calc": distancia_base_calc,
             "p_c3_v": p_c3_v, "p_c2_v": p_c2_v, "p_c1_v": p_c1_v, "p_v1_v": p_v1_v, "p_v2_v": p_v2_v, "p_v3_v": p_v3_v,
             "pct_afastamento": pct_afastamento
         }
@@ -349,15 +370,12 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### ⚙️ PAINEL ADM")
     i_div = st.number_input("FRP (FATOR MULTIPLICADOR):", value=st.session_state.div_spreed_mem, format="%.4f")
-    
-    i_max_madr = st.number_input("MAX MADRUGADA:", value=st.session_state.max_madr_mem, format="%.2f")
-    i_min_madr = st.number_input("MIN MADRUGADA:", value=st.session_state.min_madr_mem, format="%.2f")
+    i_taxa_juros = st.number_input("TAXA DE JUROS:", value=st.session_state.taxa_juros_mem, format="%.5f")
     
     if st.button("SALVAR CONFIGURAÇÕES"):
         st.session_state.div_spreed_mem = i_div
-        st.session_state.max_madr_mem = i_max_madr
-        st.session_state.min_madr_mem = i_min_madr
-        salvar_eixos(i_div, i_max_madr, i_min_madr)
+        st.session_state.taxa_juros_mem = i_taxa_juros
+        salvar_eixos(i_div, i_taxa_juros)
         st.success("Salvo!"); time.sleep(0.5); st.rerun()
 
 div_s = st.session_state.div_spreed_mem
@@ -376,7 +394,7 @@ while True:
         
         res = calcular_k97_total(div_s, spot_live, ewz_live)
         if res:
-            c1, c2 = st.columns([2.8, 1.2])
+            c1, c2, c3 = st.columns([2.4, 0.9, 0.9])
             with c1:
                 st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
                 html = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
@@ -543,6 +561,20 @@ while True:
                         <span style="color:#00ff88;">GAT. COMPRA: <span style="color:#fff;">{res['gatilho_c']:.2f}</span></span>
                         <span style="color:#ff4d4d;">GAT. VENDA: <span style="color:#ffffff;">{res['gatilho_v']:.2f}</span></span>
                     </div>
+                </div>''', unsafe_allow_html=True)
+
+            with c3:
+                st.markdown('<div class="section-title">REFERENCIA DE ALVOS</div>', unsafe_allow_html=True)
+                st.markdown(f'''<div class="calc-panel">
+                    <div class="calc-row txt-green"><span>{res['frac_4']:.5f} MAXIMA TX</span> <span>{res['ref_max_tx']:.1f}</span></div>
+                    <div class="calc-row txt-yellow"><span>{res['frac_3']:.5f}</span> <span>{res['ref_max_3']:.1f}</span></div>
+                    <div class="calc-row txt-green"><span>{res['frac_2']:.5f} MAX 1</span> <span>{res['ref_max_1']:.1f}</span></div>
+                    <div class="calc-row txt-yellow" style="border-bottom:1px solid #444;"><span>{res['frac_1']:.5f}</span> <span>{res['ref_max_2']:.1f}</span></div>
+                    <div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 9px; font-weight: bold; border-bottom:1px solid #444;">SPOT CLOSE: {spot_live['cl']:.1f}</div>
+                    <div class="calc-row txt-yellow"><span>{res['frac_1']:.5f}</span> <span>{res['ref_min_2']:.1f}</span></div>
+                    <div class="calc-row txt-red"><span>{res['frac_2']:.5f} MIN 1</span> <span>{res['ref_min_1']:.1f}</span></div>
+                    <div class="calc-row txt-yellow"><span>{res['frac_3']:.5f}</span> <span>{res['ref_min_3']:.1f}</span></div>
+                    <div class="calc-row txt-red" style="border-bottom: none;"><span>{res['frac_4']:.5f} MINIMA TX</span> <span>{res['ref_min_tx']:.1f}</span></div>
                 </div>''', unsafe_allow_html=True)
             
             st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
