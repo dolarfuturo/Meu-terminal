@@ -241,9 +241,11 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         taxa_juros = st.session_state.taxa_juros_mem
         
         t_delta = taxa_juros - 1.0
-        frac_1 = 1.0 + (t_delta * 0.25)
-        frac_2 = 1.0 + (t_delta * 0.50)
-        frac_3 = 1.0 + (t_delta * 0.75)
+        
+        # Ajuste das frações com 5 casas decimais nos intermediários e arredondamento na metade (4 casas)
+        frac_1 = round(1.0 + (t_delta * 0.25), 5)
+        frac_2 = round(1.0 + (t_delta * 0.50), 4)
+        frac_3 = round(1.0 + (t_delta * 0.75), 5)
         frac_4 = taxa_juros
 
         spot_close_val = spot_data['cl']
@@ -572,15 +574,15 @@ while True:
             with c3:
                 st.markdown('<div class="section-title">REFERENCIA DE ALVOS</div>', unsafe_allow_html=True)
                 st.markdown(f'''<div class="calc-panel">
-                    <div class="calc-row txt-green"><span>MAXIMA TX</span> <span>{res['ref_max_tx']:.1f}</span></div>
-                    <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ref_max_3']:.1f}</span></div>
-                    <div class="calc-row txt-green"><span>MAX 1</span> <span>{res['ref_max_1']:.1f}</span></div>
-                    <div class="calc-row txt-yellow" style="border-bottom:1px solid #444;"><span>MD</span> <span>{res['ref_max_2']:.1f}</span></div>
-                    <div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 9px; font-weight: bold; border-bottom:1px solid #444;">SPOT CLOSE: {spot_live['cl']:.1f}</div>
-                    <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ref_min_2']:.1f}</span></div>
-                    <div class="calc-row txt-red"><span>MIN 1</span> <span>{res['ref_min_1']:.1f}</span></div>
-                    <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ref_min_3']:.1f}</span></div>
-                    <div class="calc-row txt-red" style="border-bottom: none;"><span>MINIMA TX</span> <span>{res['ref_min_tx']:.1f}</span></div>
+                    <div class="calc-row txt-green"><span>MAXIMA TX</span> <span>{res['ref_max_tx']:.2f}</span></div>
+                    <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ref_max_3']:.2f}</span></div>
+                    <div class="calc-row txt-green"><span>MAX 1</span> <span>{res['ref_max_1']:.2f}</span></div>
+                    <div class="calc-row txt-yellow" style="border-bottom:1px solid #444;"><span>MD</span> <span>{res['ref_max_2']:.2f}</span></div>
+                    <div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 9px; font-weight: bold; border-bottom:1px solid #444;">SPOT CLOSE: {spot_live['cl']:.2f}</div>
+                    <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ref_min_2']:.2f}</span></div>
+                    <div class="calc-row txt-red"><span>MIN 1</span> <span>{res['ref_min_1']:.2f}</span></div>
+                    <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ref_min_3']:.2f}</span></div>
+                    <div class="calc-row txt-red" style="border-bottom: none;"><span>MINIMA TX</span> <span>{res['ref_min_tx']:.2f}</span></div>
                 </div>''', unsafe_allow_html=True)
             
             st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
