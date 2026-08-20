@@ -418,7 +418,6 @@ while True:
         
         res = calcular_k97_total(div_s, spot_live, ewz_live)
         if res:
-            # Layout principal dividido em duas metades (Esquerda e Direita)
             col_left, col_right_panel = st.columns([2.0, 2.0])
             
             with col_left:
@@ -539,7 +538,6 @@ while True:
                 st.markdown(therm_html, unsafe_allow_html=True)
             
             with col_right_panel:
-                # Subdivisão superior: Cálculos e Referência de Alvos lado a lado
                 col_mid, col_right_alvos = st.columns([1.0, 1.0])
                 
                 with col_mid:
@@ -564,7 +562,7 @@ while True:
 
                 with col_right_alvos:
                     st.markdown('<div class="section-title">REFERENCIA DE ALVOS</div>', unsafe_allow_html=True)
-                    st.markdown(f'''<div class="calc-panel">
+                    st.markdown(f'''<div class="calc-panel" style="padding: 2.5px 4px;">
                         <div class="calc-row txt-green"><span>EXTREMO MAX</span> <span>{res['ext_max_top']:.2f}</span></div>
                         <div class="calc-row txt-green"><span>EXT MAX 1</span> <span>{res['ext_max_1']:.2f}</span></div>
                         <div class="calc-row txt-green"><span>MAXIMA TX</span> <span>{res['ref_max_tx']:.2f}</span></div>
@@ -576,12 +574,12 @@ while True:
                         <div class="calc-row txt-red" style="border-bottom: none;"><span>EXTREMO MIN</span> <span>{res['ext_min_bot']:.2f}</span></div>
                     </div>''', unsafe_allow_html=True)
 
-            # Indicador de Reversão expandido ocupando toda a largura horizontal abaixo do painel duplo
-            st.markdown(f'''<div class="calc-panel" style="text-align:center; border: 1.5px solid {res['cor_ind']}; padding: 6px; margin-top: 4px;">
-                <div style="color:#AAA; font-size:10px; font-weight:bold; text-transform:uppercase;">INDICADOR REVERSÃO</div>
-                <div style="color:{res['cor_ind']}; font-size:24px; font-weight:bold; margin-top:2px; margin-bottom:2px;">{res['ind_val']:+.2f}</div>
-                <div style="color:#ffffff; font-size:10px; font-weight:bold; font-family:monospace;">DIST. BASE (MÍN À BASE): {res['distancia_base_calc']:.2f} pts</div>
-            </div>''', unsafe_allow_html=True)
+                # Indicador de Reversão posicionado inteiro na horizontal DENTRO do painel direito (sem os gatilhos)
+                st.markdown(f'''<div class="calc-panel" style="text-align:center; border: 1.5px solid {res['cor_ind']}; padding: 6px; margin-top: 4px;">
+                    <div style="color:#AAA; font-size:10px; font-weight:bold; text-transform:uppercase;">INDICADOR REVERSÃO</div>
+                    <div style="color:{res['cor_ind']}; font-size:24px; font-weight:bold; margin-top:2px; margin-bottom:2px;">{res['ind_val']:+.2f}</div>
+                    <div style="color:#ffffff; font-size:10px; font-weight:bold; font-family:monospace;">DIST. BASE (MÍN À BASE): {res['distancia_base_calc']:.2f} pts</div>
+                </div>''', unsafe_allow_html=True)
 
             st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
             
