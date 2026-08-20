@@ -413,7 +413,6 @@ while True:
         
         res = calcular_k97_total(div_s, spot_live, ewz_live)
         if res:
-            # Layout estruturado em duas colunas principais para alinhamento perfeito
             col_left, col_right = st.columns([2.2, 1.9])
             
             with col_left:
@@ -504,14 +503,13 @@ while True:
                 
                 st.markdown(render_barra, unsafe_allow_html=True)
                 
-                v_ewz_val = get_var_local_scope("EWZ") if 'get_var_local_scope' in globals() else 0.0
-                def get_local_v(sym):
+                def get_var_local_scope(sym):
                     d = st.session_state.market_data.get(sym)
                     if d and d.get('cl', 0) > 0:
                         return ((d['at'] / d['cl']) - 1) * 100
                     return 0.0
 
-                media_term = -get_local_v("EWZ") * 0.66
+                media_term = -get_var_local_scope("EWZ") * 0.66
                 
                 c_bf, c_b, c_n, c_a, c_af = "", "", "", "", ""
                 if media_term <= -0.60: c_bf = "active-bf"
@@ -572,10 +570,10 @@ while True:
 
                 with inner_c3:
                     st.markdown('<div class="section-title">REFERENCIA DE ALVOS</div>', unsafe_allow_html=True)
-                    st.markdown(f'''<div class="calc-panel">
+                    st.markdown(f'''<div class="calc-panel" style="height: calc(100% - 20px); display: flex; flex-direction: column; box-sizing: border-box;">
                         <div style="text-align:center; padding: 2px; color: #00f2ff; font-size: 9px; font-weight: bold; border-bottom:1px solid #444; margin-bottom: 2px;">SPOT CLOSE: {spot_live['cl']:.2f}</div>
-                        <div style="display: flex; gap: 2px;">
-                            <div style="flex: 1; display: flex; flex-direction: column;">
+                        <div style="display: flex; gap: 2px; flex: 1;">
+                            <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
                                 <div class="calc-row txt-green"><span>EXT MAX</span> <span>{res['ext_max_top']:.2f}</span></div>
                                 <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ext_max_3']:.2f}</span></div>
                                 <div class="calc-row txt-green"><span>EXT 1</span> <span>{res['ext_max_1']:.2f}</span></div>
@@ -585,7 +583,7 @@ while True:
                                 <div class="calc-row txt-green"><span>MAX 1</span> <span>{res['ref_max_1']:.2f}</span></div>
                                 <div class="calc-row txt-yellow" style="border-bottom: none;"><span>MD</span> <span>{res['ref_max_2']:.2f}</span></div>
                             </div>
-                            <div style="flex: 1; display: flex; flex-direction: column;">
+                            <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
                                 <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ref_min_2']:.2f}</span></div>
                                 <div class="calc-row txt-red"><span>MIN 1</span> <span>{res['ref_min_1']:.2f}</span></div>
                                 <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ref_min_3']:.2f}</span></div>
@@ -598,7 +596,6 @@ while True:
                         </div>
                     </div>''', unsafe_allow_html=True)
                 
-                # Indicador de Reversão esticado horizontalmente na parte inferior do bloco direito
                 st.markdown(f'''<div class="calc-panel" style="text-align:center; border: 1.5px solid {res['cor_ind']}; padding-bottom:6px; margin-top: 4px;">
                     <div style="color:#AAA; font-size:10px; font-weight:bold; text-transform:uppercase;">INDICADOR REVERSÃO</div>
                     <div style="color:{res['cor_ind']}; font-size:22px; font-weight:bold; margin-top:2px; margin-bottom:2px;">{res['ind_val']:+.2f}</div>
