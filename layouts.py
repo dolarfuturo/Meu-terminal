@@ -35,7 +35,7 @@ st.markdown("""
     .price-col { font-weight: bold; color: #ffffff !important; }
     .f-up { background-color: #00ff00aa !important; }
     .f-dn { background-color: #ff0000aa !important; }
-    .calc-panel { border: 1.5px solid #ffffff; border-radius: 4px; padding: 4px; background: #0a141a; font-family: monospace; margin-bottom: 4px; margin-top: 8px; }
+    .calc-panel { border: 1.5px solid #ffffff; border-radius: 4px; padding: 4px; background: #0a141a; font-family: monospace; margin-bottom: 4px; margin-top: 0px; }
     .calc-row { display: flex; justify-content: space-between; padding: 2px 6px; border-bottom: 1px solid #444; font-size: 10px; font-weight: bold; align-items: center; }
     
     .bar-wrapper-full { background: #0a141a; padding: 6px; border: 1.5px solid #ffffff; border-radius: 4px; text-align: center; margin-top: 5px; font-family: monospace; }
@@ -413,7 +413,7 @@ while True:
         
         res = calcular_k97_total(div_s, spot_live, ewz_live)
         if res:
-            # Colunas ajustadas e alinhadas harmonicamente
+            # Estrutura principal superior dividida em 3 colunas
             c1, c2, c3 = st.columns([2.0, 1.0, 1.0])
             with c1:
                 st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
@@ -554,7 +554,6 @@ while True:
                     return 0.0
 
                 media_term_c2 = -get_var_local("EWZ") * 0.66
-
                 base_pj = spot_live['cl'] * div_s
                 axis_plus_term = base_pj * (1 + (media_term_c2 / 100))
 
@@ -572,13 +571,6 @@ while True:
                     <div class="calc-row"><span style="color:#d4a017;">DOLB3</span> <span style="color:#ffffff;">{res['fraja']:.2f}</span></div>
                     <div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div>
                     <div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
-                
-                # Indicador de Reversão ajustado (sem os gatilhos de compra e venda)
-                st.markdown(f'''<div class="calc-panel" style="text-align:center; border: 1.5px solid {res['cor_ind']}; padding-bottom:6px;">
-                    <div style="color:#AAA; font-size:10px; font-weight:bold; text-transform:uppercase;">INDICADOR REVERSÃO</div>
-                    <div style="color:{res['cor_ind']}; font-size:22px; font-weight:bold; margin-top:2px; margin-bottom:2px;">{res['ind_val']:+.2f}</div>
-                    <div style="color:#ffffff; font-size:10px; font-weight:bold; font-family:monospace; margin-bottom:2px;">DIST. BASE (MÍN À BASE): {res['distancia_base_calc']:.2f} pts</div>
-                </div>''', unsafe_allow_html=True)
 
             with c3:
                 st.markdown('<div class="section-title">REFERENCIA DE ALVOS</div>', unsafe_allow_html=True)
@@ -602,6 +594,19 @@ while True:
                     <div class="calc-row txt-red" style="border-bottom: none;"><span>EXTREMO MIN</span> <span>{res['ext_min_bot']:.2f}</span></div>
                 </div>''', unsafe_allow_html=True)
             
+            # Bloco inferior alinhado abaixo das colunas 2 e 3 para o Indicador de Reversão expandido
+            _, col_bottom = st.columns([2.0, 2.0])
+            with col_bottom:
+                st.markdown(f'''<div class="calc-panel" style="text-align:center; border: 1.5px solid {res['cor_ind']}; padding: 6px; margin-top: 4px;">
+                    <div style="color:#AAA; font-size:10px; font-weight:bold; text-transform:uppercase;">INDICADOR REVERSÃO</div>
+                    <div style="color:{res['cor_ind']}; font-size:24px; font-weight:bold; margin-top:2px; margin-bottom:2px;">{res['ind_val']:+.2f}</div>
+                    <div style="color:#ffffff; font-size:10px; font-weight:bold; font-family:monospace; margin-bottom:4px;">DIST. BASE (MÍN À BASE): {res['distancia_base_calc']:.2f} pts</div>
+                    <div style="display: flex; justify-content: space-between; padding: 4px 6px; font-size: 10px; font-weight: bold; border-top: 1px solid #444; margin-top: 4px;">
+                        <span style="color: #00ff88;">GAT. COMPRA: {res['gatilho_c']:.2f}</span>
+                        <span style="color: #ff4d4d;">GAT. VENDA: {res['gatilho_v']:.2f}</span>
+                    </div>
+                </div>''', unsafe_allow_html=True)
+
             st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
             
     time.sleep(4)
