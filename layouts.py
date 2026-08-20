@@ -260,6 +260,17 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         ref_min_3 = spot_close_val / frac_3
         ref_min_tx = spot_close_val / frac_4
 
+        # Extensões acima da Máxima TX e abaixo da Mínima TX
+        ext_max_top = ref_max_tx * frac_4
+        ext_max_3 = ref_max_tx * frac_3
+        ext_max_1 = ref_max_tx * frac_2
+        ext_max_2 = ref_max_tx * frac_1
+
+        ext_min_2 = ref_min_tx / frac_1
+        ext_min_1 = ref_min_tx / frac_2
+        ext_min_3 = ref_min_tx / frac_3
+        ext_min_bot = ref_min_tx / frac_4
+
         gatilho_c = spot_data['mn'] + passo_fixo
         gatilho_v = spot_data['mx'] - passo_fixo
         distancia_base_calc = abs(spot_data['mn'] - gatilho_c)
@@ -333,6 +344,8 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             "min_fut_2": axis_dinamico - (passo_fixo * 3), "min_fut_2_b": axis_dinamico - (passo_fixo * 4),
             "ref_max_tx": ref_max_tx, "ref_max_3": ref_max_3, "ref_max_1": ref_max_1, "ref_max_2": ref_max_2,
             "ref_min_2": ref_min_2, "ref_min_1": ref_min_1, "ref_min_3": ref_min_3, "ref_min_tx": ref_min_tx,
+            "ext_max_top": ext_max_top, "ext_max_3": ext_max_3, "ext_max_1": ext_max_1, "ext_max_2": ext_max_2,
+            "ext_min_2": ext_min_2, "ext_min_1": ext_min_1, "ext_min_3": ext_min_3, "ext_min_bot": ext_min_bot,
             "frac_4": frac_4, "frac_3": frac_3, "frac_2": frac_2, "frac_1": frac_1,
             "v_v": df_var, "v_spot": v_spot_pct * 100, "spreed": spreed_50, 
             "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor, 
@@ -402,7 +415,7 @@ while True:
         
         res = calcular_k97_total(div_s, spot_live, ewz_live)
         if res:
-            c1, c2, c3 = st.columns([2.4, 0.9, 0.9])
+            c1, c2, c3, c4 = st.columns([2.1, 0.8, 0.8, 0.8])
             with c1:
                 st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
                 html = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
@@ -583,6 +596,20 @@ while True:
                     <div class="calc-row txt-red"><span>MIN 1</span> <span>{res['ref_min_1']:.2f}</span></div>
                     <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ref_min_3']:.2f}</span></div>
                     <div class="calc-row txt-red" style="border-bottom: none;"><span>MINIMA TX</span> <span>{res['ref_min_tx']:.2f}</span></div>
+                </div>''', unsafe_allow_html=True)
+
+            with c4:
+                st.markdown('<div class="section-title">EXTENSÃO DE ALVOS</div>', unsafe_allow_html=True)
+                st.markdown(f'''<div class="calc-panel">
+                    <div class="calc-row txt-green"><span>EXTREMO MAX</span> <span>{res['ext_max_top']:.2f}</span></div>
+                    <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ext_max_3']:.2f}</span></div>
+                    <div class="calc-row txt-green"><span>EXT MAX 1</span> <span>{res['ext_max_1']:.2f}</span></div>
+                    <div class="calc-row txt-yellow" style="border-bottom:1px solid #444;"><span>MD</span> <span>{res['ext_max_2']:.2f}</span></div>
+                    <div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 9px; font-weight: bold; border-bottom:1px solid #444;">MAX TX: {res['ref_max_tx']:.2f}</div>
+                    <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ext_min_2']:.2f}</span></div>
+                    <div class="calc-row txt-red"><span>EXT MIN 1</span> <span>{res['ext_min_1']:.2f}</span></div>
+                    <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ext_min_3']:.2f}</span></div>
+                    <div class="calc-row txt-red" style="border-bottom: none;"><span>EXTREMO MIN</span> <span>{res['ext_min_bot']:.2f}</span></div>
                 </div>''', unsafe_allow_html=True)
             
             st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
