@@ -242,7 +242,6 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         
         t_delta = taxa_juros - 1.0
         
-        # Ajuste das frações com 5 casas decimais nos intermediários e arredondamento na metade (4 casas)
         frac_1 = round(1.0 + (t_delta * 0.25), 5)
         frac_2 = round(1.0 + (t_delta * 0.50), 4)
         frac_3 = round(1.0 + (t_delta * 0.75), 5)
@@ -260,7 +259,6 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         ref_min_3 = spot_close_val / frac_3
         ref_min_tx = spot_close_val / frac_4
 
-        # Extensões acima da Máxima TX e abaixo da Mínima TX
         ext_max_top = ref_max_tx * frac_4
         ext_max_3 = ref_max_tx * frac_3
         ext_max_1 = ref_max_tx * frac_2
@@ -415,7 +413,8 @@ while True:
         
         res = calcular_k97_total(div_s, spot_live, ewz_live)
         if res:
-            c1, c2, c3, c4 = st.columns([2.1, 0.8, 0.8, 0.8])
+            # Layout ajustado para 3 colunas principais
+            c1, c2, c3 = st.columns([2.2, 0.9, 1.0])
             with c1:
                 st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
                 html = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
@@ -587,6 +586,10 @@ while True:
             with c3:
                 st.markdown('<div class="section-title">REFERENCIA DE ALVOS</div>', unsafe_allow_html=True)
                 st.markdown(f'''<div class="calc-panel">
+                    <div class="calc-row txt-green"><span>EXTREMO MAX</span> <span>{res['ext_max_top']:.2f}</span></div>
+                    <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ext_max_3']:.2f}</span></div>
+                    <div class="calc-row txt-green"><span>EXT MAX 1</span> <span>{res['ext_max_1']:.2f}</span></div>
+                    <div class="calc-row txt-yellow" style="border-bottom:1px solid #444;"><span>MD</span> <span>{res['ext_max_2']:.2f}</span></div>
                     <div class="calc-row txt-green"><span>MAXIMA TX</span> <span>{res['ref_max_tx']:.2f}</span></div>
                     <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ref_max_3']:.2f}</span></div>
                     <div class="calc-row txt-green"><span>MAX 1</span> <span>{res['ref_max_1']:.2f}</span></div>
@@ -595,18 +598,8 @@ while True:
                     <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ref_min_2']:.2f}</span></div>
                     <div class="calc-row txt-red"><span>MIN 1</span> <span>{res['ref_min_1']:.2f}</span></div>
                     <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ref_min_3']:.2f}</span></div>
-                    <div class="calc-row txt-red" style="border-bottom: none;"><span>MINIMA TX</span> <span>{res['ref_min_tx']:.2f}</span></div>
-                </div>''', unsafe_allow_html=True)
-
-            with c4:
-                st.markdown('<div class="section-title">EXTENSÃO DE ALVOS</div>', unsafe_allow_html=True)
-                st.markdown(f'''<div class="calc-panel">
-                    <div class="calc-row txt-green"><span>EXTREMO MAX</span> <span>{res['ext_max_top']:.2f}</span></div>
-                    <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ext_max_3']:.2f}</span></div>
-                    <div class="calc-row txt-green"><span>EXT MAX 1</span> <span>{res['ext_max_1']:.2f}</span></div>
-                    <div class="calc-row txt-yellow" style="border-bottom:1px solid #444;"><span>MD</span> <span>{res['ext_max_2']:.2f}</span></div>
-                    <div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 9px; font-weight: bold; border-bottom:1px solid #444;">MAX TX: {res['ref_max_tx']:.2f}</div>
-                    <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ext_min_2']:.2f}</span></div>
+                    <div class="calc-row txt-red"><span>MINIMA TX</span> <span>{res['ref_min_tx']:.2f}</span></div>
+                    <div class="calc-row txt-yellow" style="border-top:1px solid #444;"><span>MD</span> <span>{res['ext_min_2']:.2f}</span></div>
                     <div class="calc-row txt-red"><span>EXT MIN 1</span> <span>{res['ext_min_1']:.2f}</span></div>
                     <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ext_min_3']:.2f}</span></div>
                     <div class="calc-row txt-red" style="border-bottom: none;"><span>EXTREMO MIN</span> <span>{res['ext_min_bot']:.2f}</span></div>
