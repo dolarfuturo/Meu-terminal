@@ -574,23 +574,29 @@ while True:
                 with inner_c3:
                     st.markdown('<div class="section-title">REFERENCIA DE ALVOS</div>', unsafe_allow_html=True)
                     st.markdown(f'''<div class="calc-panel alvos-panel-full">
-                        <div style="text-align:center; padding: 2px; color: #00f2ff; font-size: 9px; font-weight: bold; border-bottom:1px solid #444; margin-bottom: 2px;">SPOT CLOSE: {spot_live['cl']:.2f}</div>
                         <div style="display: flex; gap: 2px; flex: 1;">
                             <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
                                 <div class="calc-row txt-green"><span>EXT MAX</span> <span>{res['ext_max_top']:.2f}</span></div>
                                 <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ext_max_3']:.2f}</span></div>
                                 <div class="calc-row txt-green"><span>EXT 1</span> <span>{res['ext_max_1']:.2f}</span></div>
                                 <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ext_max_2']:.2f}</span></div>
-                                <div class="calc-row txt-green"><span>MAX TX</span> <span>{res['ref_max_tx']:.2f}</span></div>
-                                <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ref_max_3']:.2f}</span></div>
-                                <div class="calc-row txt-green"><span>MAX 1</span> <span>{res['ref_max_1']:.2f}</span></div>
-                                <div class="calc-row txt-yellow" style="border-bottom: none;"><span>MD</span> <span>{res['ref_max_2']:.2f}</span></div>
                             </div>
                             <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
                                 <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ref_min_2']:.2f}</span></div>
                                 <div class="calc-row txt-red"><span>MIN 1</span> <span>{res['ref_min_1']:.2f}</span></div>
                                 <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ref_min_3']:.2f}</span></div>
                                 <div class="calc-row txt-red"><span>MIN TX</span> <span>{res['ref_min_tx']:.2f}</span></div>
+                            </div>
+                        </div>
+                        <div style="text-align:center; padding: 2px; color: #00f2ff; font-size: 9px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444; margin: 2px 0; background: #050a0e;">SPOT CLOSE: {spot_live['cl']:.2f}</div>
+                        <div style="display: flex; gap: 2px; flex: 1;">
+                            <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+                                <div class="calc-row txt-green"><span>MAX TX</span> <span>{res['ref_max_tx']:.2f}</span></div>
+                                <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ref_max_3']:.2f}</span></div>
+                                <div class="calc-row txt-green"><span>MAX 1</span> <span>{res['ref_max_1']:.2f}</span></div>
+                                <div class="calc-row txt-yellow" style="border-bottom: none;"><span>MD</span> <span>{res['ref_max_2']:.2f}</span></div>
+                            </div>
+                            <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
                                 <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ext_min_2']:.2f}</span></div>
                                 <div class="calc-row txt-red"><span>EXT 1</span> <span>{res['ext_min_1']:.2f}</span></div>
                                 <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ext_min_3']:.2f}</span></div>
