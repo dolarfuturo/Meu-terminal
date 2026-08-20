@@ -35,9 +35,12 @@ st.markdown("""
     .price-col { font-weight: bold; color: #ffffff !important; }
     .f-up { background-color: #00ff00aa !important; }
     .f-dn { background-color: #ff0000aa !important; }
-    .calc-panel { border: 1.5px solid #ffffff; border-radius: 4px; padding: 4px; background: #0a141a; font-family: monospace; margin-bottom: 4px; margin-top: 0px; }
+    .calc-panel { border: 1.5px solid #ffffff; border-radius: 4px; padding: 4px; background: #0a141a; font-family: monospace; margin-bottom: 4px; margin-top: 0px; box-sizing: border-box; }
     .calc-row { display: flex; justify-content: space-between; padding: 2px 6px; border-bottom: 1px solid #444; font-size: 10px; font-weight: bold; align-items: center; }
     
+    .alvos-panel-full { height: 100%; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; margin-bottom: 0px !important; }
+    .rev-panel-matched { height: 116px; display: flex; flex-direction: column; justify-content: center; box-sizing: border-box; margin-top: 4px; margin-bottom: 0px !important; text-align: center; }
+
     .bar-wrapper-full { background: #0a141a; padding: 6px; border: 1.5px solid #ffffff; border-radius: 4px; text-align: center; margin-top: 5px; font-family: monospace; }
     .force-scale-top { display: flex; justify-content: space-between; font-size: 9px; font-weight: bold; color: #ffffff; margin-bottom: 2px; padding: 0 2px; }
     .force-scale-bottom { display: flex; justify-content: space-between; font-size: 9px; font-weight: bold; color: #00BFFF; margin-top: 2px; padding: 0 2px; }
@@ -570,7 +573,7 @@ while True:
 
                 with inner_c3:
                     st.markdown('<div class="section-title">REFERENCIA DE ALVOS</div>', unsafe_allow_html=True)
-                    st.markdown(f'''<div class="calc-panel" style="height: calc(100% - 20px); display: flex; flex-direction: column; box-sizing: border-box;">
+                    st.markdown(f'''<div class="calc-panel alvos-panel-full">
                         <div style="text-align:center; padding: 2px; color: #00f2ff; font-size: 9px; font-weight: bold; border-bottom:1px solid #444; margin-bottom: 2px;">SPOT CLOSE: {spot_live['cl']:.2f}</div>
                         <div style="display: flex; gap: 2px; flex: 1;">
                             <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
@@ -596,7 +599,7 @@ while True:
                         </div>
                     </div>''', unsafe_allow_html=True)
                 
-                st.markdown(f'''<div class="calc-panel" style="text-align:center; border: 1.5px solid {res['cor_ind']}; padding-bottom:6px; margin-top: 4px;">
+                st.markdown(f'''<div class="calc-panel rev-panel-matched" style="border: 1.5px solid {res['cor_ind']};">
                     <div style="color:#AAA; font-size:10px; font-weight:bold; text-transform:uppercase;">INDICADOR REVERSÃO</div>
                     <div style="color:{res['cor_ind']}; font-size:22px; font-weight:bold; margin-top:2px; margin-bottom:2px;">{res['ind_val']:+.2f}</div>
                     <div style="color:#ffffff; font-size:10px; font-weight:bold; font-family:monospace;">DIST. BASE (MÍN À BASE): {res['distancia_base_calc']:.2f} pts</div>
