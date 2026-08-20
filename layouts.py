@@ -15,7 +15,7 @@ st.markdown("""
     .block-container { padding-top: 3.5rem !important; padding-bottom: 0rem !important; max-width: 98% !important; }
     .stApp { background-color: #050a0e !important; }
     [data-testid="column"] { display: flex; flex-direction: column; justify-content: flex-start; gap: 0px !important; }
-    [data-testid="stHorizontalBlock"] { gap: 8px !important; margin-bottom: 0px !important; }
+    [data-testid="stHorizontalBlock"] { gap: 8px !important; margin-bottom: 0px !important; align-items: stretch !important; }
     .header-container { text-align: center; padding: 10px 0px; border-bottom: 2px solid #FFD700; background-color: #050a0e; margin-bottom: 8px; position: relative; }
     .main-title { margin: 0px; line-height: 1.2; font-size: 28px; font-family: monospace; padding-bottom: 5px; }
     .bair-blue { color: #00BFFF; font-weight: bold; }
@@ -413,8 +413,8 @@ while True:
         
         res = calcular_k97_total(div_s, spot_live, ewz_live)
         if res:
-            # Layout ajustado para 3 colunas principais
-            c1, c2, c3 = st.columns([2.2, 0.9, 1.0])
+            # Colunas ajustadas e alinhadas harmonicamente
+            c1, c2, c3 = st.columns([2.0, 1.0, 1.0])
             with c1:
                 st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
                 html = """<div class="main-grid"><table class="terminal-table"><thead><tr><th>Ativo</th><th>Price</th><th>Close</th><th>Open</th><th>Max</th><th>Min</th><th>Var</th></tr></thead><tbody>"""
@@ -573,14 +573,11 @@ while True:
                     <div class="calc-row"><span style="color:#ff4d4d;">SPREAD M</span> <span style="color:#00f2ff;">{res['spreed']:.2f}</span></div>
                     <div class="calc-row" style="border-bottom: none;"><span style="color:#00BFFF;">SPREAD T</span> <span style="color:#ffffff;">{res['spreed_t']:.2f}</span></div></div>''', unsafe_allow_html=True)
                 
+                # Indicador de Reversão ajustado (sem os gatilhos de compra e venda)
                 st.markdown(f'''<div class="calc-panel" style="text-align:center; border: 1.5px solid {res['cor_ind']}; padding-bottom:6px;">
                     <div style="color:#AAA; font-size:10px; font-weight:bold; text-transform:uppercase;">INDICADOR REVERSÃO</div>
                     <div style="color:{res['cor_ind']}; font-size:22px; font-weight:bold; margin-top:2px; margin-bottom:2px;">{res['ind_val']:+.2f}</div>
-                    <div style="color:#ffffff; font-size:10px; font-weight:bold; font-family:monospace; margin-bottom:4px;">DIST. BASE (MÍN À BASE): {res['distancia_base_calc']:.2f} pts</div>
-                    <div style="display:flex; justify-content:space-between; border-top:1px solid #333; padding-top:4px; font-size:9px; font-weight:bold; padding-left:4px; padding-right:4px;">
-                        <span style="color:#00ff88;">GAT. COMPRA: <span style="color:#fff;">{res['gatilho_c']:.2f}</span></span>
-                        <span style="color:#ff4d4d;">GAT. VENDA: <span style="color:#ffffff;">{res['gatilho_v']:.2f}</span></span>
-                    </div>
+                    <div style="color:#ffffff; font-size:10px; font-weight:bold; font-family:monospace; margin-bottom:2px;">DIST. BASE (MÍN À BASE): {res['distancia_base_calc']:.2f} pts</div>
                 </div>''', unsafe_allow_html=True)
 
             with c3:
