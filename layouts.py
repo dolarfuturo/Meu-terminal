@@ -566,34 +566,22 @@ while True:
                     st.markdown('<div class="section-title">REFERENCIA DE ALVOS</div>', unsafe_allow_html=True)
                     st.markdown(f'''<div class="calc-panel">
                         <div class="calc-row txt-green"><span>EXTREMO MAX</span> <span>{res['ext_max_top']:.2f}</span></div>
-                        <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ext_max_3']:.2f}</span></div>
                         <div class="calc-row txt-green"><span>EXT MAX 1</span> <span>{res['ext_max_1']:.2f}</span></div>
-                        <div class="calc-row txt-yellow" style="border-bottom:1px solid #444;"><span>MD</span> <span>{res['ext_max_2']:.2f}</span></div>
                         <div class="calc-row txt-green"><span>MAXIMA TX</span> <span>{res['ref_max_tx']:.2f}</span></div>
-                        <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ref_max_3']:.2f}</span></div>
                         <div class="calc-row txt-green"><span>MAX 1</span> <span>{res['ref_max_1']:.2f}</span></div>
-                        <div class="calc-row txt-yellow" style="border-bottom:1px solid #444;"><span>MD</span> <span>{res['ref_max_2']:.2f}</span></div>
-                        <div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 9px; font-weight: bold; border-bottom:1px solid #444;">SPOT CLOSE: {spot_live['cl']:.2f}</div>
-                        <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ref_min_2']:.2f}</span></div>
+                        <div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 9px; font-weight: bold; border-top:1px solid #444; border-bottom:1px solid #444;">SPOT CLOSE: {spot_live['cl']:.2f}</div>
                         <div class="calc-row txt-red"><span>MIN 1</span> <span>{res['ref_min_1']:.2f}</span></div>
-                        <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ref_min_3']:.2f}</span></div>
                         <div class="calc-row txt-red"><span>MINIMA TX</span> <span>{res['ref_min_tx']:.2f}</span></div>
-                        <div class="calc-row txt-yellow" style="border-top:1px solid #444;"><span>MD</span> <span>{res['ext_min_2']:.2f}</span></div>
                         <div class="calc-row txt-red"><span>EXT MIN 1</span> <span>{res['ext_min_1']:.2f}</span></div>
-                        <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ext_min_3']:.2f}</span></div>
                         <div class="calc-row txt-red" style="border-bottom: none;"><span>EXTREMO MIN</span> <span>{res['ext_min_bot']:.2f}</span></div>
                     </div>''', unsafe_allow_html=True)
-                
-                # Indicador de Reversão expandido abaixo de ambos os blocos na coluna direita
-                st.markdown(f'''<div class="calc-panel" style="text-align:center; border: 1.5px solid {res['cor_ind']}; padding: 8px; margin-top: 4px;">
-                    <div style="color:#AAA; font-size:10px; font-weight:bold; text-transform:uppercase;">INDICADOR REVERSÃO</div>
-                    <div style="color:{res['cor_ind']}; font-size:26px; font-weight:bold; margin-top:2px; margin-bottom:2px;">{res['ind_val']:+.2f}</div>
-                    <div style="color:#ffffff; font-size:10px; font-weight:bold; font-family:monospace; margin-bottom:6px;">DIST. BASE (MÍN À BASE): {res['distancia_base_calc']:.2f} pts</div>
-                    <div style="display: flex; justify-content: space-between; padding: 4px 6px; font-size: 10px; font-weight: bold; border-top: 1px solid #444; margin-top: 4px;">
-                        <span style="color: #00ff88;">GAT. COMPRA: {res['gatilho_c']:.2f}</span>
-                        <span style="color: #ff4d4d;">GAT. VENDA: {res['gatilho_v']:.2f}</span>
-                    </div>
-                </div>''', unsafe_allow_html=True)
+
+            # Indicador de Reversão expandido ocupando toda a largura horizontal abaixo do painel duplo
+            st.markdown(f'''<div class="calc-panel" style="text-align:center; border: 1.5px solid {res['cor_ind']}; padding: 6px; margin-top: 4px;">
+                <div style="color:#AAA; font-size:10px; font-weight:bold; text-transform:uppercase;">INDICADOR REVERSÃO</div>
+                <div style="color:{res['cor_ind']}; font-size:24px; font-weight:bold; margin-top:2px; margin-bottom:2px;">{res['ind_val']:+.2f}</div>
+                <div style="color:#ffffff; font-size:10px; font-weight:bold; font-family:monospace;">DIST. BASE (MÍN À BASE): {res['distancia_base_calc']:.2f} pts</div>
+            </div>''', unsafe_allow_html=True)
 
             st.markdown(f'<div class="ticker-wrapper"><div class="ticker-text">{" • ".join(ticker_items)}</div></div>', unsafe_allow_html=True)
             
