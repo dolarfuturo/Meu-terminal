@@ -565,19 +565,19 @@ while True:
                     st.markdown(f'''<div class="calc-panel">
                         <div class="calc-row txt-green"><span>EXTREMO MAX</span> <span>{res['ext_max_top']:.2f}</span></div>
                         <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ext_max_3']:.2f}</span></div>
-                        <div class="calc-row txt-green"><span>MEDIA TX 2</span> <span>{res['ext_max_1']:.2f}</span></div>
+                        <div class="calc-row txt-green"><span>Media Tx 2</span> <span>{res['ext_max_1']:.2f}</span></div>
                         <div class="calc-row txt-yellow" style="border-bottom:1px solid #444;"><span>MD</span> <span>{res['ext_max_2']:.2f}</span></div>
                         <div class="calc-row txt-green"><span>MAXIMA TX</span> <span>{res['ref_max_tx']:.2f}</span></div>
                         <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ref_max_3']:.2f}</span></div>
-                        <div class="calc-row txt-green"><span>MEDIA TX 1</span> <span>{res['ref_max_1']:.2f}</span></div>
+                        <div class="calc-row txt-green"><span>Media Tx 1</span> <span>{res['ref_max_1']:.2f}</span></div>
                         <div class="calc-row txt-yellow" style="border-bottom:1px solid #444;"><span>MD</span> <span>{res['ref_max_2']:.2f}</span></div>
                         <div style="text-align:center; padding: 4px; color: #00f2ff; font-size: 9px; font-weight: bold; border-bottom:1px solid #444;">BASE: {spot_live['cl']:.2f}</div>
                         <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ref_min_2']:.2f}</span></div>
-                        <div class="calc-row txt-red"><span>MEDIA TX 1</span> <span>{res['ref_min_1']:.2f}</span></div>
+                        <div class="calc-row txt-red"><span>Media Tx 1</span> <span>{res['ref_min_1']:.2f}</span></div>
                         <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ref_min_3']:.2f}</span></div>
                         <div class="calc-row txt-red"><span>MINIMA TX</span> <span>{res['ref_min_tx']:.2f}</span></div>
                         <div class="calc-row txt-yellow" style="border-top:1px solid #444;"><span>MD</span> <span>{res['ext_min_2']:.2f}</span></div>
-                        <div class="calc-row txt-red"><span>MEDIA TX 2</span> <span>{res['ext_min_1']:.2f}</span></div>
+                        <div class="calc-row txt-red"><span>Media Tx 2</span> <span>{res['ext_min_1']:.2f}</span></div>
                         <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ext_min_3']:.2f}</span></div>
                         <div class="calc-row txt-red" style="border-bottom: none;"><span>EXTREMO MIN</span> <span>{res['ext_min_bot']:.2f}</span></div>
                     </div>''', unsafe_allow_html=True)
