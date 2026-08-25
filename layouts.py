@@ -510,10 +510,10 @@ while True:
                 v_ewz = get_var_local_safe("EWZ")
                 media_term = -v_ewz * 0.66
                 c_bf, c_b, c_n, c_a, c_af = "", "", "", "", ""
-                if media_term <= -0.60: c_bf = "active-bf"
-                elif media_term < -0.30: c_b = "active-b"
-                elif media_term <= 0.30: c_n = "active-n"
-                elif media_term < 0.60: c_a = "active-a"
+                if media_term <= 1.00: c_bf = "active-bf"
+                elif media_term < -0.50: c_b = "active-b"
+                elif media_term <= 0.50: c_n = "active-n"
+                elif media_term < 1.00: c_a = "active-a"
                 else: c_af = "active-af"
         
                 p_min, p_max = -1.0, 1.0
