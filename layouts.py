@@ -508,7 +508,7 @@ while True:
                 st.markdown(render_barra, unsafe_allow_html=True)
                 
                 v_ewz = get_var_local_safe("EWZ")
-                media_term = -v_ewz * 0.66
+                media_term = -v_ewz * 0.3
                 c_bf, c_b, c_n, c_a, c_af = "", "", "", "", ""
                 if media_term <= 0.60: c_bf = "active-bf"
                 elif media_term < -0.30: c_b = "active-b"
@@ -541,7 +541,7 @@ while True:
                 col_mid, col_right_alvos = st.columns([1.0, 1.0])
                 
                 with col_mid:
-                    media_term_c2 = -get_var_local_safe("EWZ") * 0.66
+                    media_term_c2 = -get_var_local_safe("EWZ") * 0.3
                     base_pj = spot_live['cl'] * div_s
                     axis_plus_term = base_pj * (1 + (media_term_c2 / 100))
 
