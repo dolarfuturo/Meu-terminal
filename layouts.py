@@ -58,15 +58,14 @@ st.markdown("""
     .active-a { background: #006600 !important; color: #fff !important; box-shadow: 0 0 15px #00FF00; border: 1px solid #00ff88; z-index: 1; }
     .active-af { background: #004d00 !important; color: #fff !important; box-shadow: 0 0 15px #008000; border: 1px solid #00ff00; z-index: 1; }
     
-    /* ESTILOS DA NOVA BARRA DE PRESSÃO DINÂMICA (BASEADA EM VOLATILIDADE) */
+    /* ESTILOS DA BARRA DE PRESSÃO COM DOIS PONTOS (BASE E ATUAL) */
     .pressure-box { border: 1.5px solid #ffffff; border-radius: 4px; padding: 6px; background: #0a141a; font-family: monospace; margin-top: 5px; }
-    .pressure-title { text-align: center; font-size: 10px; font-weight: bold; color: #00f2ff; margin-bottom: 4px; text-transform: uppercase; }
-    .pressure-track { background: #050a0e; height: 16px; width: 100%; border-radius: 2px; position: relative; overflow: hidden; display: flex; border: 1px solid #444; }
-    .pressure-center { position: absolute; left: 50%; top: 0; width: 1px; height: 100%; background: #ffffff; z-index: 10; }
-    .pressure-side { width: 50%; height: 100%; position: relative; background: #050a0e; }
-    .pressure-fill-red { background: #ff4d4d; float: left; height: 100%; transition: width 0.3s ease; }
-    .pressure-fill-yellow { background: #ffff00; float: right; height: 100%; transition: width 0.3s ease; }
-    .pressure-fill-green { background: #00ff88; float: right; height: 100%; transition: width 0.3s ease; }
+    .pressure-title { text-align: center; font-size: 10px; font-weight: bold; color: #00f2ff; margin-bottom: 6px; text-transform: uppercase; }
+    .pressure-track { background: linear-gradient(to right, #ff4d4d 0%, #ff4d4d 35%, #ffff00 35%, #ffff00 65%, #00ff88 65%, #00ff88 100%); height: 16px; width: 100%; border-radius: 2px; position: relative; border: 1px solid #ffffff; }
+    .marker-base { position: absolute; top: -4px; bottom: -4px; width: 3px; background-color: #ffffff; z-index: 5; }
+    .label-base-txt { position: absolute; top: -16px; transform: translateX(-50%); font-size: 9px; font-weight: bold; color: #ffffff; background: #050a0e; padding: 0 2px; border: 1px solid #fff; }
+    .marker-atual { position: absolute; top: -6px; bottom: -6px; width: 4px; background-color: #00ffff; z-index: 6; box-shadow: 0 0 8px #00ffff; }
+    .label-atual-txt { position: absolute; bottom: -16px; transform: translateX(-50%); font-size: 9px; font-weight: bold; color: #00ffff; background: #050a0e; padding: 0 2px; border: 1px solid #00ffff; }
     
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 1.5px solid #ffffff; border-bottom: 1.5px solid #ffffff; padding: 4px 0; overflow: hidden; white-space: nowrap; margin-top: 8px; }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 12px; font-weight: bold; color: #fff; }
@@ -342,26 +341,18 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         df_close = st.session_state.dolfut_close_auto if st.session_state.dolfut_close_auto > 0 else (spot_data['cl'] * spreed_do_dia)
         df_var = ((df_price / df_close) - 1) * 100 if df_close > 0 else (v_spot_pct * 100)
 
-        # CÁLCULO DA BARRA DE PRESSÃO DINÂMICA (BASEADA NA VOLATILIDADE / DISTÂNCIA DO FECHAMENTO DO SPOT)
-        spot_at = spot_data['at']
-        spot_cl = spot_data['cl']
-        distancia_spot = spot_at - spot_cl
-        amplitude_dia = spreed_t if spreed_t > 0 else 1.0
+        # CÁLCULO DOS PONTOS PROPORCIONAIS NA BARRA (MÍNIMA A MÁXIMA DO SPOT)
+        s_min = spot_data['mn']
+        s_max = spot_data['mx']
+        s_at = spot_data['at']
+        s_cl = spot_data['cl'] # Preço Base / Fechamento
         
-        # Normalização com base na amplitude do dia (volatilidade)
-        fator_pressao = (distancia_spot / amplitude_dia) * 100 if amplitude_dia > 0 else 0.0
-        fator_pressao = max(-100.0, min(100.0, fator_pressao))
+        amplitude = s_max - s_min if (s_max - s_min) > 0 else 1.0
+        pct_base = ((s_cl - s_min) / amplitude) * 100
+        pct_atual = ((s_at - s_min) / amplitude) * 100
         
-        p_red = 0.0
-        p_green_yellow = 0.0
-        cor_barra_pressao = "#ffff00"
-        
-        if fator_pressao < 0:
-            p_red = min(100.0, abs(fator_pressao))
-            cor_barra_pressao = "#ff4d4d" # Vermelho abaixo do fechamento
-        else:
-            p_green_yellow = min(100.0, fator_pressao)
-            cor_barra_pressao = "#00ff88" if p_green_yellow > 50 else "#ffff00" # Amarelo intermediário, Verde acima
+        pct_base = max(0.0, min(100.0, pct_base))
+        pct_atual = max(0.0, min(100.0, pct_atual))
 
         return {
             "df_price": df_price, "df_close": df_close, "df_open": df_open, "df_var": df_var,
@@ -384,7 +375,8 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             "distancia_base_calc": distancia_base_calc,
             "p_c3_v": p_c3_v, "p_c2_v": p_c2_v, "p_c1_v": p_c1_v, "p_v1_v": p_v1_v, "p_v2_v": p_v2_v, "p_v3_v": p_v3_v,
             "pct_afastamento": pct_afastamento,
-            "fator_pressao": fator_pressao, "p_red": p_red, "p_green_yellow": p_green_yellow, "cor_barra_pressao": cor_barra_pressao
+            "spot_min": s_min, "spot_max": s_max, "spot_cl": s_cl, "spot_at": s_at,
+            "pct_base": pct_base, "pct_atual": pct_atual
         }
     except: return None
 
@@ -576,27 +568,31 @@ while True:
                 '''
                 st.markdown(therm_html, unsafe_allow_html=True)
                 
-                # RENDERIZAÇÃO DA NOVA BARRA DE PRESSÃO DINÂMICA (CARREGAMENTO PROPORCIONAL À VOLATILIDADE DO SPOT)
-                p_red_val = "{:.1f}".format(res['p_red'])
-                p_gy_val = "{:.1f}".format(res['p_green_yellow'])
-                cor_fill_dir = "#00ff88" if res['fator_pressao'] > 50 else "#ffff00"
+                # RENDERIZAÇÃO DA BARRA DE PRESSÃO COM OS 2 PONTOS (BASE E ATUAL)
+                p_base_pos = "{:.1f}".format(res['pct_base'])
+                p_atual_pos = "{:.1f}".format(res['pct_atual'])
+                val_base_str = "{:.3f}".format(res['spot_cl'])
+                val_atual_str = "{:.3f}".format(res['spot_at'])
+                min_str = "{:.3f}".format(res['spot_min'])
+                max_str = "{:.3f}".format(res['spot_max'])
                 
                 pressure_bar_html = f'''
                 <div class="pressure-box">
                     <div class="pressure-title">TERMÔMETRO DE PRESSÃO (SPOT)</div>
-                    <div class="pressure-track">
-                        <div class="pressure-center"></div>
-                        <div class="pressure-side">
-                            <div class="pressure-fill-red" style="width: {p_red_val}%;"></div>
-                        </div>
-                        <div class="pressure-side">
-                            <div class="pressure-fill-green" style="width: {p_gy_val}%; background-color: {cor_fill_dir};"></div>
+                    <div style="position: relative; margin: 18px 0 12px 0;">
+                        <div class="pressure-track">
+                            <div class="marker-base" style="left: {p_base_pos}%;">
+                                <div class="label-base-txt">Base: {val_base_str}</div>
+                            </div>
+                            <div class="marker-atual" style="left: {p_atual_pos}%;">
+                                <div class="label-atual-txt">Atual: {val_atual_str}</div>
+                            </div>
                         </div>
                     </div>
-                    <div style="display:flex; justify-content:space-between; font-size:9px; font-weight:bold; color:#AAA; margin-top:3px;">
-                        <span style="color:#ff4d4d;">PRESSÃO VENDA</span>
-                        <span style="color:#00f2ff;">FATOR: {res['fator_pressao']:+.1f}%</span>
-                        <span style="color:#00ff88;">PRESSÃO COMPRA</span>
+                    <div style="display:flex; justify-content:space-between; font-size:9px; font-weight:bold; color:#AAA; margin-top:2px;">
+                        <span style="color:#ff4d4d;">MÍN: {min_str}</span>
+                        <span style="color:#00f2ff;">AMPLITUDE DO DIA</span>
+                        <span style="color:#00ff88;">MÁX: {max_str}</span>
                     </div>
                 </div>
                 '''
