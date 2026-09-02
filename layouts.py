@@ -58,7 +58,7 @@ st.markdown("""
     .active-a { background: #006600 !important; color: #fff !important; box-shadow: 0 0 15px #00FF00; border: 1px solid #00ff88; z-index: 1; }
     .active-af { background: #004d00 !important; color: #fff !important; box-shadow: 0 0 15px #008000; border: 1px solid #00ff00; z-index: 1; }
     
-    /* ESTILOS DA BARRA DE PRESSÃO COM DUAS BASES DINÂMICAS (INF/SUP) E ATUAL */
+    /* ESTILOS DA BARRA DE PRESSÃO COM BASES FIXAS E ESTRUTURAIS */
     .pressure-box { border: 1.5px solid #ffffff; border-radius: 4px; padding: 6px; background: #0a141a; font-family: monospace; margin-top: 5px; }
     .pressure-title { text-align: center; font-size: 10px; font-weight: bold; color: #00f2ff; margin-bottom: 6px; text-transform: uppercase; }
     .pressure-track { background: linear-gradient(to right, #ff4d4d 0%, #ff4d4d 35%, #ffff00 35%, #ffff00 65%, #00ff88 65%, #00ff88 100%); height: 16px; width: 100%; border-radius: 2px; position: relative; border: 1.5px solid #ffffff; }
@@ -346,23 +346,21 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         df_close = st.session_state.dolfut_close_auto if st.session_state.dolfut_close_auto > 0 else (spot_data['cl'] * spreed_do_dia)
         df_var = ((df_price / df_close) - 1) * 100 if df_close > 0 else (v_spot_pct * 100)
 
-        # CÁLCULO DAS DUAS BASES DINÂMICAS E DO PREÇO ATUAL NA BARRA DE PRESSÃO
+        # =====================================================================
+        # BASES FIXAS E ESTRUTURAIS (TRAVADAS NAS EXTREMIDADES DO DIA)
+        # =====================================================================
         s_min = spot_data['mn']
         s_max = spot_data['mx']
         s_at = spot_data['at']
         
         amplitude = s_max - s_min if (s_max - s_min) > 0 else 1.0
         
-        # Base Inferior: Fica na transição entre o vermelho e o amarelo (35% da amplitude)
-        base_inferior = s_min + (amplitude * 0.35)
-        # Base Superior: Fica na transição entre o amarelo e o verde (65% da amplitude)
-        base_superior = s_min + (amplitude * 0.65)
+        # A Base Inferior fica fixa a 30% acima da mínima absoluta do dia. 
+        # Quando o preço faz repique e sobe, a base NÃO sobe junto; ela fica travada.
+        base_inferior = s_min + (amplitude * 0.30)
         
-        # Ajuste dinâmico conforme o preço atual rompe ou se desloca nas zonas
-        if s_at < base_inferior:
-            base_inferior = s_at + (amplitude * 0.05)
-        if s_at > base_superior:
-            base_superior = s_at - (amplitude * 0.05)
+        # A Base Superior fica fixa a 30% abaixo da máxima absoluta do dia.
+        base_superior = s_max - (amplitude * 0.30)
 
         pct_base_inf = ((base_inferior - s_min) / amplitude) * 100
         pct_base_sup = ((base_superior - s_min) / amplitude) * 100
@@ -587,7 +585,7 @@ while True:
                 '''
                 st.markdown(therm_html, unsafe_allow_html=True)
                 
-                # RENDERIZAÇÃO DA BARRA DE PRESSÃO COM DUAS BASES DINÂMICAS E ATUAL
+                # RENDERIZAÇÃO DA BARRA DE PRESSÃO COM BASES FIXAS E ESTRUTURAIS
                 p_inf_pos = "{:.1f}".format(res['pct_base_inf'])
                 p_sup_pos = "{:.1f}".format(res['pct_base_sup'])
                 p_atual_pos = "{:.1f}".format(res['pct_atual'])
@@ -600,7 +598,7 @@ while True:
                 
                 pressure_bar_html = f'''
                 <div class="pressure-box">
-                    <div class="pressure-title">TERMÔMETRO DE PRESSÃO (SPOT - DUAS BASES DINÂMICAS)</div>
+                    <div class="pressure-title">TERMÔMETRO DE PRESSÃO (SPOT - BASES FIXAS)</div>
                     <div style="position: relative; margin: 18px 0 16px 0;">
                         <div class="pressure-track">
                             <div class="marker-base-inf" style="left: {p_inf_pos}%;">
@@ -616,7 +614,7 @@ while True:
                     </div>
                     <div style="display:flex; justify-content:space-between; font-size:9px; font-weight:bold; color:#AAA; margin-top:4px;">
                         <span style="color:#ff4d4d;">MÍN: {min_str}</span>
-                        <span style="color:#00f2ff;">DINÂMICO (ROMPIMENTOS)</span>
+                        <span style="color:#00f2ff;">ESTRUTURAL FIXO</span>
                         <span style="color:#00ff88;">MÁX: {max_str}</span>
                     </div>
                 </div>
