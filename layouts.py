@@ -354,7 +354,6 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         pct_dev_base = (diff_base / base_movel) * 100 if base_movel > 0 else 0
 
         pct_v_bar, pct_r_bar = 0.0, 0.0
-        # Fator de escala da barra (ex: 0.25% de afastamento da base enche 100% da metade da barra)
         max_escala_barra = 0.25 
         if diff_base >= 0:
             pct_v_bar = min(100.0, (abs(pct_dev_base) / max_escala_barra) * 100)
@@ -580,19 +579,17 @@ while True:
                 '''
                 st.markdown(therm_html, unsafe_allow_html=True)
                 
-                # RENDERIZAÇÃO DA BARRA DE PRESSÃO COM BASE MÓVEL 1MIN
+                # RENDERIZAÇÃO DA BARRA DE PRESSÃO COM VALOR DA MÉDIA 1MIN ACIMA
                 pct_v_str = "{:.1f}".format(res['pct_v_bar'])
                 pct_r_str = "{:.1f}".format(res['pct_r_bar'])
                 base_mov_str = "{:.3f}".format(res['base_movel'])
-                at_str = "{:.3f}".format(res['spot_at'])
                 dev_base_str = "{:+.2f}%".format(res['pct_dev_base'])
                 
                 pressure_bar_html = f'''
                 <div class="pressure-box">
                     <div class="pressure-title">TERMÔMETRO DE PRESSÃO (BASE 1MIN)</div>
                     <div style="display:flex; justify-content:space-between; font-size:9px; font-weight:bold; color:#00f2ff; margin-bottom:4px; padding:0 2px;">
-                        <span>BASE 1M: {base_mov_str}</span>
-                        <span style="color:#ffffff;">ATUAL: {at_str}</span>
+                        <span>MÉDIA 1M: {base_mov_str}</span>
                         <span style="color:{("#00ff88" if res['pct_dev_base'] >= 0 else "#ff4d4d")};">DEV: {dev_base_str}</span>
                     </div>
                     <div class="force-container-dual">
@@ -609,9 +606,9 @@ while True:
                         </div>
                     </div>
                     <div style="display:flex; justify-content:space-between; font-size:9px; font-weight:bold; color:#AAA; margin-top:4px;">
-                        <span style="color:#ff4d4d;">ABAIXO DA BASE</span>
-                        <span style="color:#00f2ff;">MÉDIA RECURSIVA 1M</span>
-                        <span style="color:#00ff88;">ACIMA DA BASE</span>
+                        <span style="color:#ff4d4d;">ABAIXO DA MÉDIA</span>
+                        <span style="color:#00f2ff;">CENTRO (MÉDIA 1M)</span>
+                        <span style="color:#00ff88;">ACIMA DA MÉDIA</span>
                     </div>
                 </div>
                 '''
