@@ -58,19 +58,9 @@ st.markdown("""
     .active-a { background: #006600 !important; color: #fff !important; box-shadow: 0 0 15px #00FF00; border: 1px solid #00ff88; z-index: 1; }
     .active-af { background: #004d00 !important; color: #fff !important; box-shadow: 0 0 15px #008000; border: 1px solid #00ff00; z-index: 1; }
     
-    /* ESTILOS DA BARRA DE PRESSÃO COM BASES FIXAS E ESTRUTURAIS */
+    /* ESTILOS DA BARRA DE PRESSÃO COM BASE MÓVEL DE 1MIN */
     .pressure-box { border: 1.5px solid #ffffff; border-radius: 4px; padding: 6px; background: #0a141a; font-family: monospace; margin-top: 5px; }
-    .pressure-title { text-align: center; font-size: 10px; font-weight: bold; color: #00f2ff; margin-bottom: 6px; text-transform: uppercase; }
-    .pressure-track { background: linear-gradient(to right, #ff4d4d 0%, #ff4d4d 35%, #ffff00 35%, #ffff00 65%, #00ff88 65%, #00ff88 100%); height: 16px; width: 100%; border-radius: 2px; position: relative; border: 1.5px solid #ffffff; }
-    
-    .marker-base-inf { position: absolute; top: -4px; bottom: -4px; width: 3px; background-color: #ffa500; z-index: 5; }
-    .label-base-inf-txt { position: absolute; top: -16px; transform: translateX(-50%); font-size: 8px; font-weight: bold; color: #ffa500; background: #050a0e; padding: 0 2px; border: 1px solid #ffa500; white-space: nowrap; }
-    
-    .marker-base-sup { position: absolute; top: -4px; bottom: -4px; width: 3px; background-color: #ffff00; z-index: 5; }
-    .label-base-sup-txt { position: absolute; top: -16px; transform: translateX(-50%); font-size: 8px; font-weight: bold; color: #ffff00; background: #050a0e; padding: 0 2px; border: 1px solid #ffff00; white-space: nowrap; }
-    
-    .marker-atual { position: absolute; top: -6px; bottom: -6px; width: 4px; background-color: #00ffff; z-index: 6; box-shadow: 0 0 8px #00ffff; }
-    .label-atual-txt { position: absolute; bottom: -16px; transform: translateX(-50%); font-size: 9px; font-weight: bold; color: #00ffff; background: #050a0e; padding: 0 2px; border: 1px solid #00ffff; white-space: nowrap; }
+    .pressure-title { text-align: center; font-size: 10px; font-weight: bold; color: #00f2ff; margin-bottom: 4px; text-transform: uppercase; }
     
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 1.5px solid #ffffff; border-bottom: 1.5px solid #ffffff; padding: 4px 0; overflow: hidden; white-space: nowrap; margin-top: 8px; }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 12px; font-weight: bold; color: #fff; }
@@ -178,7 +168,7 @@ if 't_us_val' not in st.session_state: st.session_state.t_us_val = 3.75
 # # BLOCO 3: CONEXÃO COM API E MOTOR DE CAPTURA DE DADOS
 # =============================================================================
 def fetch(s):
-    fallback = {"at": 0.0, "cl": 1.0, "op": 0.0, "mx": 0.0, "mn": 0.0}
+    fallback = {"at": 0.0, "cl": 1.0, "op": 0.0, "mx": 0.0, "mn": 0.0, "closes": []}
     try:
         t = yf.Ticker(s)
         tz_sp = pytz.timezone('America/Sao_Paulo')
@@ -186,7 +176,8 @@ def fetch(s):
             info = t.fast_info
             d = t.history(period="1d", interval="1m")
             if d.empty: return st.session_state.market_data.get(s, fallback)
-            data = {"at": float(info.last_price), "cl": float(info.previous_close if info.previous_close else d['Open'].iloc[0]), "op": float(d['Open'].iloc[0]), "mx": float(d['High'].max()), "mn": float(d['Low'].min())}
+            closes_val = d['Close'].tolist()
+            data = {"at": float(info.last_price), "cl": float(info.previous_close if info.previous_close else d['Open'].iloc[0]), "op": float(d['Open'].iloc[0]), "mx": float(d['High'].max()), "mn": float(d['Low'].min()), "closes": closes_val}
         else:
             d = t.history(period="1d", interval="1m", prepost=True)
             if d.empty: return st.session_state.market_data.get(s, fallback)
@@ -201,6 +192,7 @@ def fetch(s):
                     f_21h = d_hist.between_time('05:00', '21:00').loc[d_hist.index.date == data_anterior]
                     if not f_21h.empty: ref_close = f_21h['Close'].iloc[-1]
             m = 1000 if s == "USDBRL=X" else 1
+            closes_val = (d['Close'] * m).tolist() if not d.empty else []
             at_val = float(d['Close'].iloc[-1] * m)
             cl_val = float(ref_close * m)
 
@@ -220,7 +212,7 @@ def fetch(s):
                     if st.session_state.spot_close_auto > 0:
                         cl_val = st.session_state.spot_close_auto
 
-            data = {"at": at_val, "cl": cl_val, "op": float(d['Open'].iloc[0] * m), "mx": float(d['High'].max() * m), "mn": float(d['Low'].min() * m)}
+            data = {"at": at_val, "cl": cl_val, "op": float(d['Open'].iloc[0] * m), "mx": float(d['High'].max() * m), "mn": float(d['Low'].min() * m), "closes": closes_val}
         st.session_state.market_data[s] = data
         return data
     except: return st.session_state.market_data.get(s, fallback)
@@ -347,28 +339,31 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         df_var = ((df_price / df_close) - 1) * 100 if df_close > 0 else (v_spot_pct * 100)
 
         # =====================================================================
-        # BASES FIXAS E ESTRUTURAIS (TRAVADAS NAS EXTREMIDADES DO DIA)
+        # CÁLCULO DA BASE MÓVEL RECURSIVA (VELAS DE 1 MIN) E BARRA DE PRESSÃO
         # =====================================================================
-        s_min = spot_data['mn']
-        s_max = spot_data['mx']
-        s_at = spot_data['at']
-        
-        amplitude = s_max - s_min if (s_max - s_min) > 0 else 1.0
-        
-        # A Base Inferior fica fixa a 30% acima da mínima absoluta do dia. 
-        # Quando o preço faz repique e sobe, a base NÃO sobe junto; ela fica travada.
-        base_inferior = s_min + (amplitude * 0.30)
-        
-        # A Base Superior fica fixa a 30% abaixo da máxima absoluta do dia.
-        base_superior = s_max - (amplitude * 0.30)
+        closes = spot_data.get('closes', [])
+        if closes:
+            base_movel = closes[0]
+            for c in closes[1:]:
+                base_movel = (base_movel + c) / 2
+        else:
+            base_movel = spot_data['at']
 
-        pct_base_inf = ((base_inferior - s_min) / amplitude) * 100
-        pct_base_sup = ((base_superior - s_min) / amplitude) * 100
-        pct_atual = ((s_at - s_min) / amplitude) * 100
-        
-        pct_base_inf = max(0.0, min(100.0, pct_base_inf))
-        pct_base_sup = max(0.0, min(100.0, pct_base_sup))
-        pct_atual = max(0.0, min(100.0, pct_atual))
+        s_at = spot_data['at']
+        diff_base = s_at - base_movel
+        pct_dev_base = (diff_base / base_movel) * 100 if base_movel > 0 else 0
+
+        pct_v_bar, pct_r_bar = 0.0, 0.0
+        # Fator de escala da barra (ex: 0.25% de afastamento da base enche 100% da metade da barra)
+        max_escala_barra = 0.25 
+        if diff_base >= 0:
+            pct_v_bar = min(100.0, (abs(pct_dev_base) / max_escala_barra) * 100)
+            txt_verde_bar = f"+{pct_dev_base:.2f}%"
+            txt_vermelho_bar = "&nbsp;"
+        else:
+            pct_r_bar = min(100.0, (abs(pct_dev_base) / max_escala_barra) * 100)
+            txt_verde_bar = "&nbsp;"
+            txt_vermelho_bar = f"{pct_dev_base:.2f}%"
 
         return {
             "df_price": df_price, "df_close": df_close, "df_open": df_open, "df_var": df_var,
@@ -391,9 +386,9 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             "distancia_base_calc": distancia_base_calc,
             "p_c3_v": p_c3_v, "p_c2_v": p_c2_v, "p_c1_v": p_c1_v, "p_v1_v": p_v1_v, "p_v2_v": p_v2_v, "p_v3_v": p_v3_v,
             "pct_afastamento": pct_afastamento,
-            "spot_min": s_min, "spot_max": s_max, "spot_at": s_at,
-            "base_inferior": base_inferior, "base_superior": base_superior,
-            "pct_base_inf": pct_base_inf, "pct_base_sup": pct_base_sup, "pct_atual": pct_atual
+            "spot_min": spot_data['mn'], "spot_max": spot_data['mx'], "spot_at": s_at,
+            "base_movel": base_movel, "pct_v_bar": pct_v_bar, "pct_r_bar": pct_r_bar,
+            "txt_verde_bar": txt_verde_bar, "txt_vermelho_bar": txt_vermelho_bar, "pct_dev_base": pct_dev_base
         }
     except: return None
 
@@ -585,37 +580,38 @@ while True:
                 '''
                 st.markdown(therm_html, unsafe_allow_html=True)
                 
-                # RENDERIZAÇÃO DA BARRA DE PRESSÃO COM BASES FIXAS E ESTRUTURAIS
-                p_inf_pos = "{:.1f}".format(res['pct_base_inf'])
-                p_sup_pos = "{:.1f}".format(res['pct_base_sup'])
-                p_atual_pos = "{:.1f}".format(res['pct_atual'])
-                
-                val_inf_str = "{:.3f}".format(res['base_inferior'])
-                val_sup_str = "{:.3f}".format(res['base_superior'])
-                val_atual_str = "{:.3f}".format(res['spot_at'])
-                min_str = "{:.3f}".format(res['spot_min'])
-                max_str = "{:.3f}".format(res['spot_max'])
+                # RENDERIZAÇÃO DA BARRA DE PRESSÃO COM BASE MÓVEL 1MIN
+                pct_v_str = "{:.1f}".format(res['pct_v_bar'])
+                pct_r_str = "{:.1f}".format(res['pct_r_bar'])
+                base_mov_str = "{:.3f}".format(res['base_movel'])
+                at_str = "{:.3f}".format(res['spot_at'])
+                dev_base_str = "{:+.2f}%".format(res['pct_dev_base'])
                 
                 pressure_bar_html = f'''
                 <div class="pressure-box">
-                    <div class="pressure-title">TERMÔMETRO DE PRESSÃO (SPOT - BASES FIXAS)</div>
-                    <div style="position: relative; margin: 18px 0 16px 0;">
-                        <div class="pressure-track">
-                            <div class="marker-base-inf" style="left: {p_inf_pos}%;">
-                                <div class="label-base-inf-txt">B.Inf: {val_inf_str}</div>
+                    <div class="pressure-title">TERMÔMETRO DE PRESSÃO (BASE 1MIN)</div>
+                    <div style="display:flex; justify-content:space-between; font-size:9px; font-weight:bold; color:#00f2ff; margin-bottom:4px; padding:0 2px;">
+                        <span>BASE 1M: {base_mov_str}</span>
+                        <span style="color:#ffffff;">ATUAL: {at_str}</span>
+                        <span style="color:{("#00ff88" if res['pct_dev_base'] >= 0 else "#ff4d4d")};">DEV: {dev_base_str}</span>
+                    </div>
+                    <div class="force-container-dual">
+                        <div class="center-line" title="Centro = Base Móvel 1 Min"></div>
+                        <div class="bar-side">
+                            <div class="fill-green" style="width: {pct_v_str}%;">
+                                {res['txt_verde_bar'] if res['pct_v_bar'] > 0 else ''}
                             </div>
-                            <div class="marker-base-sup" style="left: {p_sup_pos}%;">
-                                <div class="label-base-sup-txt">B.Sup: {val_sup_str}</div>
-                            </div>
-                            <div class="marker-atual" style="left: {p_atual_pos}%;">
-                                <div class="label-atual-txt">Atual: {val_atual_str}</div>
+                        </div>
+                        <div class="bar-side">
+                            <div class="fill-red" style="width: {pct_r_str}%;">
+                                {res['txt_vermelho_bar'] if res['pct_r_bar'] > 0 else ''}
                             </div>
                         </div>
                     </div>
                     <div style="display:flex; justify-content:space-between; font-size:9px; font-weight:bold; color:#AAA; margin-top:4px;">
-                        <span style="color:#ff4d4d;">MÍN: {min_str}</span>
-                        <span style="color:#00f2ff;">ESTRUTURAL FIXO</span>
-                        <span style="color:#00ff88;">MÁX: {max_str}</span>
+                        <span style="color:#ff4d4d;">ABAIXO DA BASE</span>
+                        <span style="color:#00f2ff;">MÉDIA RECURSIVA 1M</span>
+                        <span style="color:#00ff88;">ACIMA DA BASE</span>
                     </div>
                 </div>
                 '''
