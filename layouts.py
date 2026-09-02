@@ -58,6 +58,16 @@ st.markdown("""
     .active-a { background: #006600 !important; color: #fff !important; box-shadow: 0 0 15px #00FF00; border: 1px solid #00ff88; z-index: 1; }
     .active-af { background: #004d00 !important; color: #fff !important; box-shadow: 0 0 15px #008000; border: 1px solid #00ff00; z-index: 1; }
     
+    /* ESTILOS DA NOVA BARRA DE PRESSÃO DINÂMICA (BASEADA EM VOLATILIDADE) */
+    .pressure-box { border: 1.5px solid #ffffff; border-radius: 4px; padding: 6px; background: #0a141a; font-family: monospace; margin-top: 5px; }
+    .pressure-title { text-align: center; font-size: 10px; font-weight: bold; color: #00f2ff; margin-bottom: 4px; text-transform: uppercase; }
+    .pressure-track { background: #050a0e; height: 16px; width: 100%; border-radius: 2px; position: relative; overflow: hidden; display: flex; border: 1px solid #444; }
+    .pressure-center { position: absolute; left: 50%; top: 0; width: 1px; height: 100%; background: #ffffff; z-index: 10; }
+    .pressure-side { width: 50%; height: 100%; position: relative; background: #050a0e; }
+    .pressure-fill-red { background: #ff4d4d; float: left; height: 100%; transition: width 0.3s ease; }
+    .pressure-fill-yellow { background: #ffff00; float: right; height: 100%; transition: width 0.3s ease; }
+    .pressure-fill-green { background: #00ff88; float: right; height: 100%; transition: width 0.3s ease; }
+    
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 1.5px solid #ffffff; border-bottom: 1.5px solid #ffffff; padding: 4px 0; overflow: hidden; white-space: nowrap; margin-top: 8px; }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 12px; font-weight: bold; color: #fff; }
     @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
@@ -332,6 +342,27 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         df_close = st.session_state.dolfut_close_auto if st.session_state.dolfut_close_auto > 0 else (spot_data['cl'] * spreed_do_dia)
         df_var = ((df_price / df_close) - 1) * 100 if df_close > 0 else (v_spot_pct * 100)
 
+        # CÁLCULO DA BARRA DE PRESSÃO DINÂMICA (BASEADA NA VOLATILIDADE / DISTÂNCIA DO FECHAMENTO DO SPOT)
+        spot_at = spot_data['at']
+        spot_cl = spot_data['cl']
+        distancia_spot = spot_at - spot_cl
+        amplitude_dia = spreed_t if spreed_t > 0 else 1.0
+        
+        # Normalização com base na amplitude do dia (volatilidade)
+        fator_pressao = (distancia_spot / amplitude_dia) * 100 if amplitude_dia > 0 else 0.0
+        fator_pressao = max(-100.0, min(100.0, fator_pressao))
+        
+        p_red = 0.0
+        p_green_yellow = 0.0
+        cor_barra_pressao = "#ffff00"
+        
+        if fator_pressao < 0:
+            p_red = min(100.0, abs(fator_pressao))
+            cor_barra_pressao = "#ff4d4d" # Vermelho abaixo do fechamento
+        else:
+            p_green_yellow = min(100.0, fator_pressao)
+            cor_barra_pressao = "#00ff88" if p_green_yellow > 50 else "#ffff00" # Amarelo intermediário, Verde acima
+
         return {
             "df_price": df_price, "df_close": df_close, "df_open": df_open, "df_var": df_var,
             "white": vivo_val, "vivo_pct": calc_variacoes_pct * 100, "dolfut_calc": df_price, "fraja": fraja_val, 
@@ -352,7 +383,8 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             "gatilho_c": gatilho_c, "gatilho_v": gatilho_v, "ind_val": ind_val, "cor_ind": cor_ind,
             "distancia_base_calc": distancia_base_calc,
             "p_c3_v": p_c3_v, "p_c2_v": p_c2_v, "p_c1_v": p_c1_v, "p_v1_v": p_v1_v, "p_v2_v": p_v2_v, "p_v3_v": p_v3_v,
-            "pct_afastamento": pct_afastamento
+            "pct_afastamento": pct_afastamento,
+            "fator_pressao": fator_pressao, "p_red": p_red, "p_green_yellow": p_green_yellow, "cor_barra_pressao": cor_barra_pressao
         }
     except: return None
 
@@ -401,7 +433,7 @@ div_s = st.session_state.div_spreed_mem
 placeholder = st.empty()
 
 # =============================================================================
-# # BLOCO 6: INTERFACE DO TERMINAL E ITERAÇÃO DE MERCADO (LOOP 5S)
+# # BLOCO 6: INTERFACE DO TERMINAL E ITERAÇÃO DE MERCADO (LOOP 4S)
 # =============================================================================
 while True:
     tz_sp, tz_ny, tz_ld, tz_utc = pytz.timezone('America/Sao_Paulo'), pytz.timezone('America/New_York'), pytz.timezone('Europe/London'), pytz.utc
@@ -413,7 +445,6 @@ while True:
         
         res = calcular_k97_total(div_s, spot_live, ewz_live)
         if res:
-            # Layout ajustado para 3 colunas principais
             c1, c2, c3 = st.columns([2.2, 0.9, 1.0])
             with c1:
                 st.markdown('<div class="section-title">MONITORAMENTO DA GRADE PRINCIPAL</div>', unsafe_allow_html=True)
@@ -544,6 +575,32 @@ while True:
                 </div>
                 '''
                 st.markdown(therm_html, unsafe_allow_html=True)
+                
+                # RENDERIZAÇÃO DA NOVA BARRA DE PRESSÃO DINÂMICA (CARREGAMENTO PROPORCIONAL À VOLATILIDADE DO SPOT)
+                p_red_val = "{:.1f}".format(res['p_red'])
+                p_gy_val = "{:.1f}".format(res['p_green_yellow'])
+                cor_fill_dir = "#00ff88" if res['fator_pressao'] > 50 else "#ffff00"
+                
+                pressure_bar_html = f'''
+                <div class="pressure-box">
+                    <div class="pressure-title">TERMÔMETRO DE PRESSÃO (SPOT)</div>
+                    <div class="pressure-track">
+                        <div class="pressure-center"></div>
+                        <div class="pressure-side">
+                            <div class="pressure-fill-red" style="width: {p_red_val}%;"></div>
+                        </div>
+                        <div class="pressure-side">
+                            <div class="pressure-fill-green" style="width: {p_gy_val}%; background-color: {cor_fill_dir};"></div>
+                        </div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; font-size:9px; font-weight:bold; color:#AAA; margin-top:3px;">
+                        <span style="color:#ff4d4d;">PRESSÃO VENDA</span>
+                        <span style="color:#00f2ff;">FATOR: {res['fator_pressao']:+.1f}%</span>
+                        <span style="color:#00ff88;">PRESSÃO COMPRA</span>
+                    </div>
+                </div>
+                '''
+                st.markdown(pressure_bar_html, unsafe_allow_html=True)
             
             with c2:
                 def get_var_local(sym):
