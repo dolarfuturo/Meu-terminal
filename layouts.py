@@ -339,13 +339,18 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         df_var = ((df_price / df_close) - 1) * 100 if df_close > 0 else (v_spot_pct * 100)
 
         # =====================================================================
-        # CÁLCULO DA BASE MÓVEL RECURSIVA (VELAS DE 1 MIN) E BARRA DE PRESSÃO
+        # CÁLCULO DA BASE MÓVEL RECURSIVA (EXCLUSIVAMENTE COM VELAS DE 1 MIN FECHADAS)
         # =====================================================================
         closes = spot_data.get('closes', [])
         if closes:
-            base_movel = closes[0]
-            for c in closes[1:]:
-                base_movel = (base_movel + c) / 2
+            # Descarta a última vela (que está ao vivo / em formação) e usa apenas velas fechadas
+            closes_fechadas = closes[:-1] if len(closes) > 1 else closes
+            if closes_fechadas:
+                base_movel = closes_fechadas[0]
+                for c in closes_fechadas[1:]:
+                    base_movel = (base_movel + c) / 2
+            else:
+                base_movel = closes[0]
         else:
             base_movel = spot_data['at']
 
@@ -579,7 +584,7 @@ while True:
                 '''
                 st.markdown(therm_html, unsafe_allow_html=True)
                 
-                # RENDERIZAÇÃO DA BARRA DE PRESSÃO COM VALOR DA MÉDIA 1MIN ACIMA
+                # RENDERIZAÇÃO DA BARRA DE PRESSÃO COM A BASE FIXA NO FECHAMENTO DO MINUTO
                 pct_v_str = "{:.1f}".format(res['pct_v_bar'])
                 pct_r_str = "{:.1f}".format(res['pct_r_bar'])
                 base_mov_str = "{:.3f}".format(res['base_movel'])
