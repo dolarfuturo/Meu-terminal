@@ -58,10 +58,6 @@ st.markdown("""
     .active-a { background: #006600 !important; color: #fff !important; box-shadow: 0 0 15px #00FF00; border: 1px solid #00ff88; z-index: 1; }
     .active-af { background: #004d00 !important; color: #fff !important; box-shadow: 0 0 15px #008000; border: 1px solid #00ff00; z-index: 1; }
     
-    /* ESTILOS DA BARRA DE PRESSÃO ATUALIZADA */
-    .pressure-box { border: 1.5px solid #ffffff; border-radius: 4px; padding: 6px; background: #0a141a; font-family: monospace; margin-top: 5px; }
-    .pressure-title { text-align: center; font-size: 10px; font-weight: bold; color: #00f2ff; margin-bottom: 4px; text-transform: uppercase; }
-    
     .ticker-wrapper { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; background: #000; border-top: 1.5px solid #ffffff; border-bottom: 1.5px solid #ffffff; padding: 4px 0; overflow: hidden; white-space: nowrap; margin-top: 8px; }
     .ticker-text { display: inline-block; padding-left: 100%; animation: marquee 60s linear infinite; font-family: 'monospace'; font-size: 12px; font-weight: bold; color: #fff; }
     @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
@@ -339,37 +335,38 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         df_var = ((df_price / df_close) - 1) * 100 if df_close > 0 else (v_spot_pct * 100)
 
         # =====================================================================
-        # NOVO CÁLCULO DA BARRA DE PRESSÃO (MÍNIMA E MÁXIMA DO DIA + 0,15%)
+        # CÁLCULO DA BARRA DE PRESSÃO (ESTILO BARRA DE FORÇA - REF: MEIO DOS 0,15%)
         # =====================================================================
         spot_min = spot_data['mn']
         spot_max = spot_data['mx']
         spot_at = spot_data['at']
         
-        span = spot_max - spot_min
-        if span <= 0: span = 0.0001
-        
         lim_red_val = spot_min * 1.0015
         lim_green_val = spot_max * 0.9985
         
-        pct_red_limit = ((lim_red_val - spot_min) / span) * 100
-        pct_green_limit = ((lim_green_val - spot_min) / span) * 100
-        pct_at = ((spot_at - spot_min) / span) * 100
-        pct_at = max(0.0, min(100.0, pct_at))
+        # Referência central: metade entre os limites de 0,15%
+        ref_center = (lim_red_val + lim_green_val) / 2
         
-        w_red_zone = pct_red_limit
-        w_yellow_zone = pct_green_limit - pct_red_limit
-        w_green_zone = 100.0 - pct_green_limit
+        span_up = spot_max - ref_center
+        if span_up <= 0: span_up = 0.0001
         
-        red_fill_pct = 0.0
-        yellow_fill_pct = 0.0
-        green_fill_pct = 0.0
+        span_down = ref_center - spot_min
+        if span_down <= 0: span_down = 0.0001
         
-        if spot_at <= lim_red_val:
-            red_fill_pct = (pct_at / pct_red_limit * 100) if pct_red_limit > 0 else 100.0
-        elif lim_red_val < spot_at <= lim_green_val:
-            yellow_fill_pct = ((pct_at - pct_red_limit) / (pct_green_limit - pct_red_limit) * 100) if w_yellow_zone > 0 else 100.0
-        else:
-            green_fill_pct = ((spot_at - lim_green_val) / (spot_max - lim_green_val) * 100) if (spot_max - lim_green_val) > 0 else 100.0
+        p_pressure_down = 0.0
+        pressure_down_txt = "&nbsp;"
+        p_pressure_up = 0.0
+        pressure_up_txt = "&nbsp;"
+        
+        diff_pressure = spot_at - ref_center
+        pct_pressure_afastamento = (diff_pressure / ref_center) * 100 if ref_center > 0 else 0
+        
+        if spot_at < ref_center:
+            p_pressure_down = min(100.0, ((ref_center - spot_at) / span_down) * 100)
+            pressure_down_txt = f'<span class="txt-interno-tom-vermelho">{pct_pressure_afastamento:+.2f}%</span>'
+        elif spot_at > ref_center:
+            p_pressure_up = min(100.0, ((spot_at - ref_center) / span_up) * 100)
+            pressure_up_txt = f'<span class="txt-interno-tom-verde">{pct_pressure_afastamento:+.2f}%</span>'
 
         return {
             "df_price": df_price, "df_close": df_close, "df_open": df_open, "df_var": df_var,
@@ -394,8 +391,9 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             "pct_afastamento": pct_afastamento,
             "spot_min": spot_min, "spot_max": spot_max, "spot_at": spot_at,
             "lim_red_val": lim_red_val, "lim_green_val": lim_green_val,
-            "w_red_zone": w_red_zone, "w_yellow_zone": w_yellow_zone, "w_green_zone": w_green_zone,
-            "red_fill_pct": red_fill_pct, "yellow_fill_pct": yellow_fill_pct, "green_fill_pct": green_fill_pct
+            "ref_center": ref_center,
+            "p_pressure_down": p_pressure_down, "pressure_down_txt": pressure_down_txt,
+            "p_pressure_up": p_pressure_up, "pressure_up_txt": pressure_up_txt
         }
     except: return None
 
@@ -587,31 +585,31 @@ while True:
                 '''
                 st.markdown(therm_html, unsafe_allow_html=True)
                 
-                # RENDERIZAÇÃO DA NOVA BARRA DE PRESSÃO (MÍN, MÁX E +0,15% / -0,15%)
+                # BARRA DE PRESSÃO ATUALIZADA (ESTILO BARRA DE FORÇA - REF NO MEIO DOS 0,15%)
+                p_press_down_val = "{:.1f}".format(res['p_pressure_down'])
+                p_press_up_val = "{:.1f}".format(res['p_pressure_up'])
+
                 pressure_bar_html = f'''
-                <div class="pressure-box">
-                    <div class="pressure-title">TERMÔMETRO DE PRESSÃO (MÍN / MÁX DO DIA)</div>
-                    <div style="display:flex; justify-content:space-between; font-size:9px; font-weight:bold; color:#AAA; margin-bottom:4px; padding:0 2px;">
-                        <span>MIN: {res['spot_min']:.3f}</span>
-                        <span style="color:#ff4d4d;">+0,15%: {res['lim_red_val']:.3f}</span>
-                        <span style="color:#00ff88;">-0,15%: {res['lim_green_val']:.3f}</span>
-                        <span>MAX: {res['spot_max']:.3f}</span>
+                <div class="bar-wrapper-full" style="margin-top: 5px;">
+                    <div style="text-align: center; font-size: 10px; font-weight: bold; color: #00f2ff; margin-bottom: 2px; text-transform: uppercase;">
+                        TERMÔMETRO DE PRESSÃO (REF: MEIO DOS 0,15%)
                     </div>
-                    <div style="display:flex; width:100%; height:18px; background:#050a0e; border:1px solid #ffffff; border-radius:2px; overflow:hidden; position:relative;">
-                        <div style="width: {res['w_red_zone']}%; height: 100%; background: #1a1a1a; border-right: 1px solid #444; position: relative;">
-                            <div style="width: {res['red_fill_pct']}%; height: 100%; background: #ff4d4d; transition: width 0.3s;"></div>
+                    <div class="force-scale-top">
+                        <span style="color:#00ff88; width:50%; text-align:left;">MIN: {res['spot_min']:.3f}</span>
+                        <span style="color:#ff4d4d; width:50%; text-align:right;">MAX: {res['spot_max']:.3f}</span>
+                    </div>
+                    <div class="force-container-dual">
+                        <div class="center-line"></div>
+                        <div class="bar-side">
+                            <div class="fill-green" style="width: {p_press_down_val}%;">{res['pressure_down_txt']}</div>
                         </div>
-                        <div style="width: {res['w_yellow_zone']}%; height: 100%; background: #1a1a1a; border-right: 1px solid #444; position: relative;">
-                            <div style="width: {res['yellow_fill_pct']}%; height: 100%; background: #ffff00; transition: width 0.3s;"></div>
-                        </div>
-                        <div style="width: {res['w_green_zone']}%; height: 100%; background: #1a1a1a; position: relative;">
-                            <div style="width: {res['green_fill_pct']}%; height: 100%; background: #00ff88; transition: width 0.3s;"></div>
+                        <div class="bar-side">
+                            <div class="fill-red" style="width: {p_press_up_val}%;">{res['pressure_up_txt']}</div>
                         </div>
                     </div>
-                    <div style="display:flex; justify-content:space-between; font-size:9px; font-weight:bold; color:#AAA; margin-top:4px; padding:0 2px;">
-                        <span style="color:#ff4d4d;">VERMELHO (MIN + 0,15%)</span>
-                        <span style="color:#ffff00;">AMARELO (CENTRO)</span>
-                        <span style="color:#00ff88;">VERDE (MAX - 0,15%)</span>
+                    <div class="force-scale-bottom">
+                        <span style="width:50%; text-align:left;">REF CENTRAL: {res['ref_center']:.3f}</span>
+                        <span style="width:50%; text-align:right;">+0,15% / -0,15% LIM</span>
                     </div>
                 </div>
                 '''
