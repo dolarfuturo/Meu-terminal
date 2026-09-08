@@ -58,7 +58,7 @@ st.markdown("""
     .active-a { background: #006600 !important; color: #fff !important; box-shadow: 0 0 15px #00FF00; border: 1px solid #00ff88; z-index: 1; }
     .active-af { background: #004d00 !important; color: #fff !important; box-shadow: 0 0 15px #008000; border: 1px solid #00ff00; z-index: 1; }
     
-    /* ESTILOS DA BARRA DE PRESSÃO COM BASE MÓVEL DE 1MIN */
+    /* ESTILOS DA BARRA DE PRESSÃO ATUALIZADA */
     .pressure-box { border: 1.5px solid #ffffff; border-radius: 4px; padding: 6px; background: #0a141a; font-family: monospace; margin-top: 5px; }
     .pressure-title { text-align: center; font-size: 10px; font-weight: bold; color: #00f2ff; margin-bottom: 4px; text-transform: uppercase; }
     
@@ -339,35 +339,37 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         df_var = ((df_price / df_close) - 1) * 100 if df_close > 0 else (v_spot_pct * 100)
 
         # =====================================================================
-        # CÁLCULO DA BASE MÓVEL RECURSIVA (EXCLUSIVAMENTE COM VELAS DE 1 MIN FECHADAS)
+        # NOVO CÁLCULO DA BARRA DE PRESSÃO (MÍNIMA E MÁXIMA DO DIA + 0,15%)
         # =====================================================================
-        closes = spot_data.get('closes', [])
-        if closes:
-            # Descarta a última vela (que está ao vivo / em formação) e usa apenas velas fechadas
-            closes_fechadas = closes[:-1] if len(closes) > 1 else closes
-            if closes_fechadas:
-                base_movel = closes_fechadas[0]
-                for c in closes_fechadas[1:]:
-                    base_movel = (base_movel + c) / 2
-            else:
-                base_movel = closes[0]
+        spot_min = spot_data['mn']
+        spot_max = spot_data['mx']
+        spot_at = spot_data['at']
+        
+        span = spot_max - spot_min
+        if span <= 0: span = 0.0001
+        
+        lim_red_val = spot_min * 1.0015
+        lim_green_val = spot_max * 0.9985
+        
+        pct_red_limit = ((lim_red_val - spot_min) / span) * 100
+        pct_green_limit = ((lim_green_val - spot_min) / span) * 100
+        pct_at = ((spot_at - spot_min) / span) * 100
+        pct_at = max(0.0, min(100.0, pct_at))
+        
+        w_red_zone = pct_red_limit
+        w_yellow_zone = pct_green_limit - pct_red_limit
+        w_green_zone = 100.0 - pct_green_limit
+        
+        red_fill_pct = 0.0
+        yellow_fill_pct = 0.0
+        green_fill_pct = 0.0
+        
+        if spot_at <= lim_red_val:
+            red_fill_pct = (pct_at / pct_red_limit * 100) if pct_red_limit > 0 else 100.0
+        elif lim_red_val < spot_at <= lim_green_val:
+            yellow_fill_pct = ((pct_at - pct_red_limit) / (pct_green_limit - pct_red_limit) * 100) if w_yellow_zone > 0 else 100.0
         else:
-            base_movel = spot_data['at']
-
-        s_at = spot_data['at']
-        diff_base = s_at - base_movel
-        pct_dev_base = (diff_base / base_movel) * 100 if base_movel > 0 else 0
-
-        pct_v_bar, pct_r_bar = 0.0, 0.0
-        max_escala_barra = 0.25 
-        if diff_base >= 0:
-            pct_v_bar = min(100.0, (abs(pct_dev_base) / max_escala_barra) * 100)
-            txt_verde_bar = f"+{pct_dev_base:.2f}%"
-            txt_vermelho_bar = "&nbsp;"
-        else:
-            pct_r_bar = min(100.0, (abs(pct_dev_base) / max_escala_barra) * 100)
-            txt_verde_bar = "&nbsp;"
-            txt_vermelho_bar = f"{pct_dev_base:.2f}%"
+            green_fill_pct = ((spot_at - lim_green_val) / (spot_max - lim_green_val) * 100) if (spot_max - lim_green_val) > 0 else 100.0
 
         return {
             "df_price": df_price, "df_close": df_close, "df_open": df_open, "df_var": df_var,
@@ -390,9 +392,10 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             "distancia_base_calc": distancia_base_calc,
             "p_c3_v": p_c3_v, "p_c2_v": p_c2_v, "p_c1_v": p_c1_v, "p_v1_v": p_v1_v, "p_v2_v": p_v2_v, "p_v3_v": p_v3_v,
             "pct_afastamento": pct_afastamento,
-            "spot_min": spot_data['mn'], "spot_max": spot_data['mx'], "spot_at": s_at,
-            "base_movel": base_movel, "pct_v_bar": pct_v_bar, "pct_r_bar": pct_r_bar,
-            "txt_verde_bar": txt_verde_bar, "txt_vermelho_bar": txt_vermelho_bar, "pct_dev_base": pct_dev_base
+            "spot_min": spot_min, "spot_max": spot_max, "spot_at": spot_at,
+            "lim_red_val": lim_red_val, "lim_green_val": lim_green_val,
+            "w_red_zone": w_red_zone, "w_yellow_zone": w_yellow_zone, "w_green_zone": w_green_zone,
+            "red_fill_pct": red_fill_pct, "yellow_fill_pct": yellow_fill_pct, "green_fill_pct": green_fill_pct
         }
     except: return None
 
@@ -584,36 +587,31 @@ while True:
                 '''
                 st.markdown(therm_html, unsafe_allow_html=True)
                 
-                # RENDERIZAÇÃO DA BARRA DE PRESSÃO COM A BASE FIXA NO FECHAMENTO DO MINUTO
-                pct_v_str = "{:.1f}".format(res['pct_v_bar'])
-                pct_r_str = "{:.1f}".format(res['pct_r_bar'])
-                base_mov_str = "{:.3f}".format(res['base_movel'])
-                dev_base_str = "{:+.2f}%".format(res['pct_dev_base'])
-                
+                # RENDERIZAÇÃO DA NOVA BARRA DE PRESSÃO (MÍN, MÁX E +0,15% / -0,15%)
                 pressure_bar_html = f'''
                 <div class="pressure-box">
-                    <div class="pressure-title">TERMÔMETRO DE PRESSÃO (BASE 1MIN)</div>
-                    <div style="display:flex; justify-content:space-between; font-size:9px; font-weight:bold; color:#00f2ff; margin-bottom:4px; padding:0 2px;">
-                        <span>MÉDIA 1M: {base_mov_str}</span>
-                        <span style="color:{("#00ff88" if res['pct_dev_base'] >= 0 else "#ff4d4d")};">DEV: {dev_base_str}</span>
+                    <div class="pressure-title">TERMÔMETRO DE PRESSÃO (MÍN / MÁX DO DIA)</div>
+                    <div style="display:flex; justify-content:space-between; font-size:9px; font-weight:bold; color:#AAA; margin-bottom:4px; padding:0 2px;">
+                        <span>MIN: {res['spot_min']:.3f}</span>
+                        <span style="color:#ff4d4d;">+0,15%: {res['lim_red_val']:.3f}</span>
+                        <span style="color:#00ff88;">-0,15%: {res['lim_green_val']:.3f}</span>
+                        <span>MAX: {res['spot_max']:.3f}</span>
                     </div>
-                    <div class="force-container-dual">
-                        <div class="center-line" title="Centro = Base Móvel 1 Min"></div>
-                        <div class="bar-side">
-                            <div class="fill-green" style="width: {pct_v_str}%;">
-                                {res['txt_verde_bar'] if res['pct_v_bar'] > 0 else ''}
-                            </div>
+                    <div style="display:flex; width:100%; height:18px; background:#050a0e; border:1px solid #ffffff; border-radius:2px; overflow:hidden; position:relative;">
+                        <div style="width: {res['w_red_zone']}%; height: 100%; background: #1a1a1a; border-right: 1px solid #444; position: relative;">
+                            <div style="width: {res['red_fill_pct']}%; height: 100%; background: #ff4d4d; transition: width 0.3s;"></div>
                         </div>
-                        <div class="bar-side">
-                            <div class="fill-red" style="width: {pct_r_str}%;">
-                                {res['txt_vermelho_bar'] if res['pct_r_bar'] > 0 else ''}
-                            </div>
+                        <div style="width: {res['w_yellow_zone']}%; height: 100%; background: #1a1a1a; border-right: 1px solid #444; position: relative;">
+                            <div style="width: {res['yellow_fill_pct']}%; height: 100%; background: #ffff00; transition: width 0.3s;"></div>
+                        </div>
+                        <div style="width: {res['w_green_zone']}%; height: 100%; background: #1a1a1a; position: relative;">
+                            <div style="width: {res['green_fill_pct']}%; height: 100%; background: #00ff88; transition: width 0.3s;"></div>
                         </div>
                     </div>
-                    <div style="display:flex; justify-content:space-between; font-size:9px; font-weight:bold; color:#AAA; margin-top:4px;">
-                        <span style="color:#ff4d4d;">ABAIXO DA MÉDIA</span>
-                        <span style="color:#00f2ff;">CENTRO (MÉDIA 1M)</span>
-                        <span style="color:#00ff88;">ACIMA DA MÉDIA</span>
+                    <div style="display:flex; justify-content:space-between; font-size:9px; font-weight:bold; color:#AAA; margin-top:4px; padding:0 2px;">
+                        <span style="color:#ff4d4d;">VERMELHO (MIN + 0,15%)</span>
+                        <span style="color:#ffff00;">AMARELO (CENTRO)</span>
+                        <span style="color:#00ff88;">VERDE (MAX - 0,15%)</span>
                     </div>
                 </div>
                 '''
