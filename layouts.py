@@ -339,7 +339,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         df_var = ((df_price / df_close) - 1) * 100 if df_close > 0 else (v_spot_pct * 100)
 
         # =====================================================================
-        # NOVO CÁLCULO DA BARRA DE PRESSÃO (MÍNIMA E MÁXIMA DO DIA + 0,15%)
+        # CÁLCULO DA BARRA DE PRESSÃO (PARTINDO DO CENTRO / LIMITES DE 0,15%)
         # =====================================================================
         spot_min = spot_data['mn']
         spot_max = spot_data['mx']
@@ -348,28 +348,54 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         span = spot_max - spot_min
         if span <= 0: span = 0.0001
         
+        spot_mid = (spot_min + spot_max) / 2
+        
         lim_red_val = spot_min * 1.0015
         lim_green_val = spot_max * 0.9985
         
-        pct_red_limit = ((lim_red_val - spot_min) / span) * 100
-        pct_green_limit = ((lim_green_val - spot_min) / span) * 100
-        pct_at = ((spot_at - spot_min) / span) * 100
-        pct_at = max(0.0, min(100.0, pct_at))
+        # Trava de segurança para evitar inversão em baixa volatilidade
+        if lim_red_val >= lim_green_val:
+            lim_red_val = spot_min + (span * 0.45)
+            lim_green_val = spot_min + (span * 0.55)
+            
+        dist_mid_min = spot_mid - spot_min
+        if dist_mid_min <= 0: dist_mid_min = 0.0001
         
-        w_red_zone = pct_red_limit
-        w_yellow_zone = pct_green_limit - pct_red_limit
-        w_green_zone = 100.0 - pct_green_limit
+        dist_mid_max = spot_max - spot_mid
+        if dist_mid_max <= 0: dist_mid_max = 0.0001
         
-        red_fill_pct = 0.0
-        yellow_fill_pct = 0.0
-        green_fill_pct = 0.0
+        w_yellow_left = ((spot_mid - lim_red_val) / dist_mid_min) * 100 if lim_red_val < spot_mid else 100.0
+        w_yellow_left = max(0.0, min(100.0, w_yellow_left))
         
-        if spot_at <= lim_red_val:
-            red_fill_pct = (pct_at / pct_red_limit * 100) if pct_red_limit > 0 else 100.0
-        elif lim_red_val < spot_at <= lim_green_val:
-            yellow_fill_pct = ((pct_at - pct_red_limit) / (pct_green_limit - pct_red_limit) * 100) if w_yellow_zone > 0 else 100.0
-        else:
-            green_fill_pct = ((spot_at - lim_green_val) / (spot_max - lim_green_val) * 100) if (spot_max - lim_green_val) > 0 else 100.0
+        w_yellow_right = ((lim_green_val - spot_mid) / dist_mid_max) * 100 if lim_green_val > spot_mid else 100.0
+        w_yellow_right = max(0.0, min(100.0, w_yellow_right))
+        
+        left_fill_yellow_pct = 0.0
+        left_fill_red_pct = 0.0
+        right_fill_yellow_pct = 0.0
+        right_fill_green_pct = 0.0
+        
+        if spot_at < spot_mid:
+            if spot_at >= lim_red_val:
+                left_fill_yellow_pct = ((spot_mid - spot_at) / dist_mid_min) * 100
+                left_fill_red_pct = 0.0
+            else:
+                left_fill_yellow_pct = w_yellow_left
+                red_span = lim_red_val - spot_min
+                if red_span <= 0: red_span = 0.0001
+                left_fill_red_pct = ((lim_red_val - spot_at) / red_span) * (100.0 - w_yellow_left)
+                left_fill_red_pct = max(0.0, min(100.0 - w_yellow_left, left_fill_red_pct))
+                
+        elif spot_at > spot_mid:
+            if spot_at <= lim_green_val:
+                right_fill_yellow_pct = ((spot_at - spot_mid) / dist_mid_max) * 100
+                right_fill_green_pct = 0.0
+            else:
+                right_fill_yellow_pct = w_yellow_right
+                green_span = spot_max - lim_green_val
+                if green_span <= 0: green_span = 0.0001
+                right_fill_green_pct = ((spot_at - lim_green_val) / green_span) * (100.0 - w_yellow_right)
+                right_fill_green_pct = max(0.0, min(100.0 - w_yellow_right, right_fill_green_pct))
 
         return {
             "df_price": df_price, "df_close": df_close, "df_open": df_open, "df_var": df_var,
@@ -394,8 +420,8 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             "pct_afastamento": pct_afastamento,
             "spot_min": spot_min, "spot_max": spot_max, "spot_at": spot_at,
             "lim_red_val": lim_red_val, "lim_green_val": lim_green_val,
-            "w_red_zone": w_red_zone, "w_yellow_zone": w_yellow_zone, "w_green_zone": w_green_zone,
-            "red_fill_pct": red_fill_pct, "yellow_fill_pct": yellow_fill_pct, "green_fill_pct": green_fill_pct
+            "left_fill_yellow_pct": left_fill_yellow_pct, "left_fill_red_pct": left_fill_red_pct,
+            "right_fill_yellow_pct": right_fill_yellow_pct, "right_fill_green_pct": right_fill_green_pct
         }
     except: return None
 
@@ -587,31 +613,31 @@ while True:
                 '''
                 st.markdown(therm_html, unsafe_allow_html=True)
                 
-                # RENDERIZAÇÃO DA NOVA BARRA DE PRESSÃO (MÍN, MÁX E +0,15% / -0,15%)
+                # RENDERIZAÇÃO DA NOVA BARRA DE PRESSÃO (PARTINDO DO CENTRO / 0,15%)
                 pressure_bar_html = f'''
                 <div class="pressure-box">
-                    <div class="pressure-title">TERMÔMETRO DE PRESSÃO (MÍN / MÁX DO DIA)</div>
+                    <div class="pressure-title">TERMÔMETRO DE PRESSÃO (CENTRO / 0,15%)</div>
                     <div style="display:flex; justify-content:space-between; font-size:9px; font-weight:bold; color:#AAA; margin-bottom:4px; padding:0 2px;">
                         <span>MIN: {res['spot_min']:.3f}</span>
                         <span style="color:#ff4d4d;">+0,15%: {res['lim_red_val']:.3f}</span>
                         <span style="color:#00ff88;">-0,15%: {res['lim_green_val']:.3f}</span>
                         <span>MAX: {res['spot_max']:.3f}</span>
                     </div>
-                    <div style="display:flex; width:100%; height:18px; background:#050a0e; border:1px solid #ffffff; border-radius:2px; overflow:hidden; position:relative;">
-                        <div style="width: {res['w_red_zone']}%; height: 100%; background: #1a1a1a; border-right: 1px solid #444; position: relative;">
-                            <div style="width: {res['red_fill_pct']}%; height: 100%; background: #ff4d4d; transition: width 0.3s;"></div>
+                    <div class="force-container-dual">
+                        <div class="center-line"></div>
+                        <div class="bar-side" style="display: flex; justify-content: flex-end; align-items: center; position: relative;">
+                            <div style="width: {res['left_fill_yellow_pct']}%; height: 100%; background: #ffff00; float: right; transition: width 0.3s; z-index: 2;"></div>
+                            <div style="width: {res['left_fill_red_pct']}%; height: 100%; background: #ff4d4d; float: right; transition: width 0.3s; z-index: 3;"></div>
                         </div>
-                        <div style="width: {res['w_yellow_zone']}%; height: 100%; background: #1a1a1a; border-right: 1px solid #444; position: relative;">
-                            <div style="width: {res['yellow_fill_pct']}%; height: 100%; background: #ffff00; transition: width 0.3s;"></div>
-                        </div>
-                        <div style="width: {res['w_green_zone']}%; height: 100%; background: #1a1a1a; position: relative;">
-                            <div style="width: {res['green_fill_pct']}%; height: 100%; background: #00ff88; transition: width 0.3s;"></div>
+                        <div class="bar-side" style="display: flex; justify-content: flex-start; align-items: center; position: relative;">
+                            <div style="width: {res['right_fill_yellow_pct']}%; height: 100%; background: #ffff00; float: left; transition: width 0.3s; z-index: 2;"></div>
+                            <div style="width: {res['right_fill_green_pct']}%; height: 100%; background: #00ff88; float: left; transition: width 0.3s; z-index: 3;"></div>
                         </div>
                     </div>
                     <div style="display:flex; justify-content:space-between; font-size:9px; font-weight:bold; color:#AAA; margin-top:4px; padding:0 2px;">
-                        <span style="color:#ff4d4d;">VERMELHO (MIN + 0,15%)</span>
-                        <span style="color:#ffff00;">AMARELO (CENTRO)</span>
-                        <span style="color:#00ff88;">VERDE (MAX - 0,15%)</span>
+                        <span style="color:#ff4d4d;">VERMELHO (ROMPEU MÍN + 0,15%)</span>
+                        <span style="color:#ffff00;">AMARELO (PARTINDO DO CENTRO)</span>
+                        <span style="color:#00ff88;">VERDE (ROMPEU MÁX - 0,15%)</span>
                     </div>
                 </div>
                 '''
@@ -671,7 +697,7 @@ while True:
                     <div class="calc-row txt-red"><span>MIN 1</span> <span>{res['ref_min_1']:.2f}</span></div>
                     <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ref_min_3']:.2f}</span></div>
                     <div class="calc-row txt-red"><span>MINIMA TX</span> <span>{res['ref_min_tx']:.2f}</span></div>
-                    <div class="calc-row txt-yellow" style="border-top:1px solid #444;"><span>MD</span> <span>{res['ext_min_2']:.2f}</span></div>
+                    <div class="calc-row txt-yellow" style="border-top:1px solid #444;"><span>MD</span> <span>{ext_min_2 if 'ext_min_2' in res else res['ext_min_2']:.2f}</span></div>
                     <div class="calc-row txt-red"><span>EXT MIN 1</span> <span>{res['ext_min_1']:.2f}</span></div>
                     <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ext_min_3']:.2f}</span></div>
                     <div class="calc-row txt-red" style="border-bottom: none;"><span>EXTREMO MIN</span> <span>{res['ext_min_bot']:.2f}</span></div>
