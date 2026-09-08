@@ -179,7 +179,7 @@ def fetch(s):
             closes_val = d['Close'].tolist()
             data = {"at": float(info.last_price), "cl": float(info.previous_close if info.previous_close else d['Open'].iloc[0]), "op": float(d['Open'].iloc[0]), "mx": float(d['High'].max()), "mn": float(d['Low'].min()), "closes": closes_val}
         else:
-            d = t.history(period="1d", interval="2m", prepost=True)
+            d = t.history(period="1d", interval="1m", prepost=True)
             if d.empty: return st.session_state.market_data.get(s, fallback)
             ref_close = t.info.get('previousClose')
             if not ref_close: ref_close = d['Open'].iloc[0]
