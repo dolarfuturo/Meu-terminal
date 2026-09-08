@@ -58,7 +58,6 @@ st.markdown("""
     .active-a { background: #006600 !important; color: #fff !important; box-shadow: 0 0 15px #00FF00; border: 1px solid #00ff88; z-index: 1; }
     .active-af { background: #004d00 !important; color: #fff !important; box-shadow: 0 0 15px #008000; border: 1px solid #00ff00; z-index: 1; }
     
-    /* ESTILOS DA BARRA DE PRESSÃO ATUALIZADA */
     .pressure-box { border: 1.5px solid #ffffff; border-radius: 4px; padding: 6px; background: #0a141a; font-family: monospace; margin-top: 5px; }
     .pressure-title { text-align: center; font-size: 10px; font-weight: bold; color: #00f2ff; margin-bottom: 4px; text-transform: uppercase; }
     
@@ -338,9 +337,6 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         df_close = st.session_state.dolfut_close_auto if st.session_state.dolfut_close_auto > 0 else (spot_data['cl'] * spreed_do_dia)
         df_var = ((df_price / df_close) - 1) * 100 if df_close > 0 else (v_spot_pct * 100)
 
-        # =====================================================================
-        # CÁLCULO DA BARRA DE PRESSÃO (PARTINDO DO CENTRO / LIMITES DE 0,15%)
-        # =====================================================================
         spot_min = spot_data['mn']
         spot_max = spot_data['mx']
         spot_at = spot_data['at']
@@ -353,7 +349,6 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         lim_red_val = spot_min * 1.0015
         lim_green_val = spot_max * 0.9985
         
-        # Trava de segurança para evitar inversão em baixa volatilidade
         if lim_red_val >= lim_green_val:
             lim_red_val = spot_min + (span * 0.45)
             lim_green_val = spot_min + (span * 0.55)
@@ -613,7 +608,6 @@ while True:
                 '''
                 st.markdown(therm_html, unsafe_allow_html=True)
                 
-                # RENDERIZAÇÃO DA NOVA BARRA DE PRESSÃO (PARTINDO DO CENTRO / 0,15%)
                 pressure_bar_html = f'''
                 <div class="pressure-box">
                     <div class="pressure-title">TERMÔMETRO DE PRESSÃO (CENTRO / 0,15%)</div>
@@ -697,7 +691,7 @@ while True:
                     <div class="calc-row txt-red"><span>MIN 1</span> <span>{res['ref_min_1']:.2f}</span></div>
                     <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ref_min_3']:.2f}</span></div>
                     <div class="calc-row txt-red"><span>MINIMA TX</span> <span>{res['ref_min_tx']:.2f}</span></div>
-                    <div class="calc-row txt-yellow" style="border-top:1px solid #444;"><span>MD</span> <span>{ext_min_2 if 'ext_min_2' in res else res['ext_min_2']:.2f}</span></div>
+                    <div class="calc-row txt-yellow" style="border-top:1px solid #444;"><span>MD</span> <span>{res['ext_min_2']:.2f}</span></div>
                     <div class="calc-row txt-red"><span>EXT MIN 1</span> <span>{res['ext_min_1']:.2f}</span></div>
                     <div class="calc-row txt-yellow"><span>MD</span> <span>{res['ext_min_3']:.2f}</span></div>
                     <div class="calc-row txt-red" style="border-bottom: none;"><span>EXTREMO MIN</span> <span>{res['ext_min_bot']:.2f}</span></div>
