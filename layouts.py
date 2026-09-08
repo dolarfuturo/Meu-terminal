@@ -405,7 +405,9 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             "spot_min": spot_min, "spot_max": spot_max, "spot_at": spot_at,
             "lim_red_val": lim_red_val, "lim_green_val": lim_green_val,
             "left_yellow_w": left_yellow_w, "left_red_w": left_red_w,
-            "right_yellow_w": right_yellow_w, "right_green_w": right_green_w
+            "right_yellow_w": right_yellow_w, "right_green_w": right_green_w,
+            "thresh_yellow_left_pct": thresh_yellow_left_pct,
+            "thresh_yellow_right_pct": thresh_yellow_right_pct
         }
     except: return None
 
@@ -611,10 +613,12 @@ while True:
                         <div class="bar-side" style="position: relative;">
                             <div style="position: absolute; right: 0; top: 0; height: 100%; width: {res['left_yellow_w']}%; background: #ffff00; transition: width 0.3s; z-index: 2;"></div>
                             <div style="position: absolute; right: {res['left_yellow_w']}%; top: 0; height: 100%; width: {res['left_red_w']}%; background: #ff4d4d; transition: width 0.3s; z-index: 3;"></div>
+                            <div style="position: absolute; right: {res['thresh_yellow_left_pct']}%; top: 0; width: 2px; height: 100%; background: #ffffff; z-index: 5; box-shadow: 0 0 5px #00ffff;"></div>
                         </div>
                         <div class="bar-side" style="position: relative;">
                             <div style="position: absolute; left: 0; top: 0; height: 100%; width: {res['right_yellow_w']}%; background: #ffff00; transition: width 0.3s; z-index: 2;"></div>
                             <div style="position: absolute; left: {res['right_yellow_w']}%; top: 0; height: 100%; width: {res['right_green_w']}%; background: #00ff88; transition: width 0.3s; z-index: 3;"></div>
+                            <div style="position: absolute; left: {res['thresh_yellow_right_pct']}%; top: 0; width: 2px; height: 100%; background: #ffffff; z-index: 5; box-shadow: 0 0 5px #00ffff;"></div>
                         </div>
                     </div>
                     <div style="display:flex; justify-content:space-between; font-size:9px; font-weight:bold; color:#AAA; margin-top:4px; padding:0 2px;">
