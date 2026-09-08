@@ -355,42 +355,31 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             
         dist_mid_min = spot_mid - spot_min
         if dist_mid_min <= 0: dist_mid_min = 0.0001
-        
         dist_mid_max = spot_max - spot_mid
         if dist_mid_max <= 0: dist_mid_max = 0.0001
-        
-        w_yellow_left = ((spot_mid - lim_red_val) / dist_mid_min) * 100 if lim_red_val < spot_mid else 100.0
-        w_yellow_left = max(0.0, min(100.0, w_yellow_left))
-        
-        w_yellow_right = ((lim_green_val - spot_mid) / dist_mid_max) * 100 if lim_green_val > spot_mid else 100.0
-        w_yellow_right = max(0.0, min(100.0, w_yellow_right))
-        
-        left_fill_yellow_pct = 0.0
-        left_fill_red_pct = 0.0
-        right_fill_yellow_pct = 0.0
-        right_fill_green_pct = 0.0
-        
+
+        thresh_yellow_left_pct = ((spot_mid - lim_red_val) / dist_mid_min) * 100
+        thresh_yellow_right_pct = ((lim_green_val - spot_mid) / dist_mid_max) * 100
+
+        left_yellow_w = 0.0
+        left_red_w = 0.0
+        right_yellow_w = 0.0
+        right_green_w = 0.0
+
         if spot_at < spot_mid:
             if spot_at >= lim_red_val:
-                left_fill_yellow_pct = ((spot_mid - spot_at) / dist_mid_min) * 100
-                left_fill_red_pct = 0.0
+                left_yellow_w = ((spot_mid - spot_at) / dist_mid_min) * 100
+                left_red_w = 0.0
             else:
-                left_fill_yellow_pct = w_yellow_left
-                red_span = lim_red_val - spot_min
-                if red_span <= 0: red_span = 0.0001
-                left_fill_red_pct = ((lim_red_val - spot_at) / red_span) * (100.0 - w_yellow_left)
-                left_fill_red_pct = max(0.0, min(100.0 - w_yellow_left, left_fill_red_pct))
-                
+                left_yellow_w = thresh_yellow_left_pct
+                left_red_w = ((lim_red_val - spot_at) / dist_mid_min) * 100
         elif spot_at > spot_mid:
             if spot_at <= lim_green_val:
-                right_fill_yellow_pct = ((spot_at - spot_mid) / dist_mid_max) * 100
-                right_fill_green_pct = 0.0
+                right_yellow_w = ((spot_at - spot_mid) / dist_mid_max) * 100
+                right_green_w = 0.0
             else:
-                right_fill_yellow_pct = w_yellow_right
-                green_span = spot_max - lim_green_val
-                if green_span <= 0: green_span = 0.0001
-                right_fill_green_pct = ((spot_at - lim_green_val) / green_span) * (100.0 - w_yellow_right)
-                right_fill_green_pct = max(0.0, min(100.0 - w_yellow_right, right_fill_green_pct))
+                right_yellow_w = thresh_yellow_right_pct
+                right_green_w = ((spot_at - lim_green_val) / dist_mid_max) * 100
 
         return {
             "df_price": df_price, "df_close": df_close, "df_open": df_open, "df_var": df_var,
@@ -415,8 +404,8 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             "pct_afastamento": pct_afastamento,
             "spot_min": spot_min, "spot_max": spot_max, "spot_at": spot_at,
             "lim_red_val": lim_red_val, "lim_green_val": lim_green_val,
-            "left_fill_yellow_pct": left_fill_yellow_pct, "left_fill_red_pct": left_fill_red_pct,
-            "right_fill_yellow_pct": right_fill_yellow_pct, "right_fill_green_pct": right_fill_green_pct
+            "left_yellow_w": left_yellow_w, "left_red_w": left_red_w,
+            "right_yellow_w": right_yellow_w, "right_green_w": right_green_w
         }
     except: return None
 
@@ -620,12 +609,12 @@ while True:
                     <div class="force-container-dual">
                         <div class="center-line"></div>
                         <div class="bar-side" style="position: relative;">
-                            <div style="position: absolute; right: 0; top: 0; height: 100%; width: {res['left_fill_yellow_pct']}%; background: #ffff00; transition: width 0.3s; z-index: 2;"></div>
-                            <div style="position: absolute; left: 0; top: 0; height: 100%; width: {res['left_fill_red_pct']}%; background: #ff4d4d; transition: width 0.3s; z-index: 3;"></div>
+                            <div style="position: absolute; right: 0; top: 0; height: 100%; width: {res['left_yellow_w']}%; background: #ffff00; transition: width 0.3s; z-index: 2;"></div>
+                            <div style="position: absolute; right: {res['left_yellow_w']}%; top: 0; height: 100%; width: {res['left_red_w']}%; background: #ff4d4d; transition: width 0.3s; z-index: 3;"></div>
                         </div>
                         <div class="bar-side" style="position: relative;">
-                            <div style="position: absolute; left: 0; top: 0; height: 100%; width: {res['right_fill_yellow_pct']}%; background: #ffff00; transition: width 0.3s; z-index: 2;"></div>
-                            <div style="position: absolute; right: 0; top: 0; height: 100%; width: {res['right_fill_green_pct']}%; background: #00ff88; transition: width 0.3s; z-index: 3;"></div>
+                            <div style="position: absolute; left: 0; top: 0; height: 100%; width: {res['right_yellow_w']}%; background: #ffff00; transition: width 0.3s; z-index: 2;"></div>
+                            <div style="position: absolute; left: {res['right_yellow_w']}%; top: 0; height: 100%; width: {res['right_green_w']}%; background: #00ff88; transition: width 0.3s; z-index: 3;"></div>
                         </div>
                     </div>
                     <div style="display:flex; justify-content:space-between; font-size:9px; font-weight:bold; color:#AAA; margin-top:4px; padding:0 2px;">
