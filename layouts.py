@@ -44,10 +44,6 @@ st.markdown("""
     .force-container-dual { background: #111; height: 16px; width: 100%; border-radius: 2px; position: relative; overflow: hidden; display: flex; border: 1px solid #ffffff; }
     .center-line { position: absolute; left: 50%; top: 0; width: 1px; height: 100%; background: #fff; z-index: 10; }
     .bar-side { width: 50%; height: 100%; position: relative; background: #050a0e; }
-    .fill-green { background: #00ff88; float: right; height: 100%; transition: width 0.4s; display: flex; align-items: center; justify-content: flex-start; padding-left: 5px; font-size: 10px; font-weight: bold; white-space: nowrap; }
-    .fill-red { background: #ff4d4d; float: left; height: 100%; transition: width 0.4s; display: flex; align-items: center; justify-content: flex-end; padding-right: 5px; font-size: 10px; font-weight: bold; white-space: nowrap; }
-    .txt-interno-tom-vermelho { color: #ff4d4d !important; } 
-    .txt-interno-tom-verde { color: #00ff88 !important; }
     .sinal-indicator { font-size: 18px; font-weight: bold; line-height: 1; margin-top: 4px; }
     
     .therm-container { display: flex; width: 100%; height: 40px; margin-top: 5px; border: 1px solid #ffffff; background: #000; }
@@ -241,7 +237,6 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         alvo_high = spot_data['mx'] * spreed_do_dia
         
         taxa_juros = st.session_state.taxa_juros_mem
-        
         t_delta = taxa_juros - 1.0
         
         frac_1 = round(1.0 + (t_delta * 0.25), 5)
@@ -302,12 +297,6 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             seta_txt = "▼"
             seta_cor = "#ff4d4d"
             
-        p_v, p_r = 0, 0
-        if diff_media < 0:
-            p_v = min(100.0, (abs(pct_afastamento) / 1.00) * 100)
-        else:
-            p_r = min(100.0, (pct_afastamento / 1.00) * 100)
-            
         v_spot_pct = ((spot_data['at'] / spot_data['cl']) - 1) if spot_data['cl'] > 0 else 0
         
         df_price = spot_data['at'] * spreed_do_dia
@@ -335,38 +324,43 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         df_var = ((df_price / df_close) - 1) * 100 if df_close > 0 else (v_spot_pct * 100)
 
         # =====================================================================
-        # CÁLCULO DA BARRA DE PRESSÃO (ESTILO BARRA DE FORÇA - REF: MEIO DOS 0,15%)
+        # CÁLCULO DA BARRA DUAL PARTINDO DO MEIO (0,15% AMARELO, PASSOU = VERDE/VERMELHO)
         # =====================================================================
         spot_min = spot_data['mn']
         spot_max = spot_data['mx']
         spot_at = spot_data['at']
         
-        lim_red_val = spot_min * 1.0015
-        lim_green_val = spot_max * 0.9985
+        lim_delta = dolar_medio * 0.0015
         
-        # Referência central: metade entre os limites de 0,15%
-        ref_center = (lim_red_val + lim_green_val) / 2
+        left_span = max(0.0001, dolar_medio - spot_min)
+        right_span = max(0.0001, spot_max - dolar_medio)
         
-        span_up = spot_max - ref_center
-        if span_up <= 0: span_up = 0.0001
+        w_yellow_left = min(100.0, (lim_delta / left_span) * 100) if left_span > 0 else 0.0
+        w_yellow_right = min(100.0, (lim_delta / right_span) * 100) if right_span > 0 else 0.0
         
-        span_down = ref_center - spot_min
-        if span_down <= 0: span_down = 0.0001
+        left_yellow_pct = 0.0
+        left_red_pct = 0.0
+        right_yellow_pct = 0.0
+        right_green_pct = 0.0
         
-        p_pressure_down = 0.0
-        pressure_down_txt = "&nbsp;"
-        p_pressure_up = 0.0
-        pressure_up_txt = "&nbsp;"
-        
-        diff_pressure = spot_at - ref_center
-        pct_pressure_afastamento = (diff_pressure / ref_center) * 100 if ref_center > 0 else 0
-        
-        if spot_at < ref_center:
-            p_pressure_down = min(100.0, ((ref_center - spot_at) / span_down) * 100)
-            pressure_down_txt = f'<span class="txt-interno-tom-vermelho">{pct_pressure_afastamento:+.2f}%</span>'
-        elif spot_at > ref_center:
-            p_pressure_up = min(100.0, ((spot_at - ref_center) / span_up) * 100)
-            pressure_up_txt = f'<span class="txt-interno-tom-verde">{pct_pressure_afastamento:+.2f}%</span>'
+        if spot_at < dolar_medio:
+            dist_down = dolar_medio - spot_at
+            left_fill_pct = min(100.0, (dist_down / left_span) * 100)
+            if dist_down <= lim_delta:
+                left_yellow_pct = left_fill_pct
+                left_red_pct = 0.0
+            else:
+                left_yellow_pct = w_yellow_left
+                left_red_pct = left_fill_pct - w_yellow_left
+        elif spot_at > dolar_medio:
+            dist_up = spot_at - dolar_medio
+            right_fill_pct = min(100.0, (dist_up / right_span) * 100)
+            if dist_up <= lim_delta:
+                right_yellow_pct = right_fill_pct
+                right_green_pct = 0.0
+            else:
+                right_yellow_pct = w_yellow_right
+                right_green_pct = right_fill_pct - w_yellow_right
 
         return {
             "df_price": df_price, "df_close": df_close, "df_open": df_open, "df_var": df_var,
@@ -382,7 +376,7 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             "ext_min_2": ext_min_2, "ext_min_1": ext_min_1, "ext_min_3": ext_min_3, "ext_min_bot": ext_min_bot,
             "frac_4": frac_4, "frac_3": frac_3, "frac_2": frac_2, "frac_1": frac_1,
             "v_v": df_var, "v_spot": v_spot_pct * 100, "spreed": spreed_50, 
-            "p_v": p_v, "p_r": p_r, "seta": seta_txt, "seta_cor": seta_cor, 
+            "seta": seta_txt, "seta_cor": seta_cor, 
             "max_grade": st.session_state.dolfut_max_auto, "min_grade": st.session_state.dolfut_min_auto, 
             "alvo_low": alvo_low, "alvo_high": alvo_high, "spreed_t": spreed_t, "passo_fixo": passo_fixo,
             "gatilho_c": gatilho_c, "gatilho_v": gatilho_v, "ind_val": ind_val, "cor_ind": cor_ind,
@@ -390,10 +384,8 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
             "p_c3_v": p_c3_v, "p_c2_v": p_c2_v, "p_c1_v": p_c1_v, "p_v1_v": p_v1_v, "p_v2_v": p_v2_v, "p_v3_v": p_v3_v,
             "pct_afastamento": pct_afastamento,
             "spot_min": spot_min, "spot_max": spot_max, "spot_at": spot_at,
-            "lim_red_val": lim_red_val, "lim_green_val": lim_green_val,
-            "ref_center": ref_center,
-            "p_pressure_down": p_pressure_down, "pressure_down_txt": pressure_down_txt,
-            "p_pressure_up": p_pressure_up, "pressure_up_txt": pressure_up_txt
+            "left_yellow_pct": left_yellow_pct, "left_red_pct": left_red_pct,
+            "right_yellow_pct": right_yellow_pct, "right_green_pct": right_green_pct
         }
     except: return None
 
@@ -492,8 +484,6 @@ while True:
                         ticker_items.append(f"{lbl}: <span style='color:{("#00ff00" if var >= 0 else "#ff4d4d")};'>{var:+.2f}%</span>")
                 st.markdown(html + "</tbody></table></div>", unsafe_allow_html=True)
                 
-                p_v_val = "{:.1f}".format(res['p_v'])
-                p_r_val = "{:.1f}".format(res['p_r'])
                 c3_val = "{:.4f}".format(res['p_c3_v'] / 1000)
                 c2_val = "{:.4f}".format(res['p_c2_v'] / 1000)
                 c1_val = "{:.4f}".format(res['p_c1_v'] / 1000)
@@ -502,44 +492,43 @@ while True:
                 v3_val = "{:.4f}".format(res['p_v3_v'] / 1000)
                 sinal_txt = res["seta"] if res["seta"] else "&nbsp;"
                 
-                var_da_barra_txt = "{:+.2f}%".format(res['pct_afastamento'])
-                conteudo_verde = f'<span class="txt-interno-tom-vermelho">{var_da_barra_txt}</span>' if res['p_v'] > 0 else "&nbsp;"
-                conteudo_vermelho = f'<span class="txt-interno-tom-verde">{var_da_barra_txt}</span>' if res['p_r'] > 0 else "&nbsp;"
-
-                render_barra = (
-                    '<div class="bar-wrapper-full">'
-                    '    <div class="force-scale-top">'
-                    '        <span style="color:#00ff88; width:15%; text-align:left;">-1.00%</span>'
-                    '        <span style="color:#00ff88; width:15%; text-align:left;">-0.66%</span>'
-                    '        <span style="color:#00ff88; width:15%; text-align:left;">-0.33%</span>'
-                    '        <span style="color:#ffffff; width:10%; text-align:center;">0</span>'
-                    '        <span style="color:#ff4d4d; width:15%; text-align:right;">+0.33%</span>'
-                    '        <span style="color:#ff4d4d; width:15%; text-align:right;">+0.66%</span>'
-                    '        <span style="color:#ff4d4d; width:15%; text-align:right;">+1.00%</span>'
-                    '    </div>'
-                    '    <div class="force-container-dual">'
-                    '        <div class="center-line"></div>'
-                    '        <div class="bar-side">'
-                    '            <div class="fill-green" style="width: ' + p_v_val + '%;">' + conteudo_verde + '</div>'
-                    '        </div>'
-                    '        <div class="bar-side">'
-                    '            <div class="fill-red" style="width: ' + p_r_val + '%;">' + conteudo_vermelho + '</div>'
-                    '        </div>'
-                    '    </div>'
-                    '    <div class="force-scale-bottom">'
-                    '        <span style="width:15%; text-align:left;">' + c3_val + '</span>'
-                    '        <span style="width:15%; text-align:left;">' + c2_val + '</span>'
-                    '        <span style="width:15%; text-align:left;">' + c1_val + '</span>'
-                    '        <span style="color:#ffffff; width:10%; text-align:center;">&nbsp;</span>'
-                    '        <span style="width:15%; text-align:right;">' + v1_val + '</span>'
-                    '        <span style="width:15%; text-align:right;">' + v2_val + '</span>'
-                    '        <span style="width:15%; text-align:right;">' + v3_val + '</span>'
-                    '    </div>'
-                    '    <div class="sinal-indicator" style="color:' + res["seta_cor"] + '; min-height:18px;">'
-                    '        ' + sinal_txt + ''
-                    '    </div>'
-                    '</div>'
-                )
+                # RENDERIZAÇÃO DA BARRA DUAL ATUALIZADA (PARTINDO DO MEIO, ±0,15% AMARELO, PASSOU = VERDE/VERMELHO)
+                render_barra = f'''
+                <div class="bar-wrapper-full">
+                    <div class="force-scale-top">
+                        <span style="color:#00ff88; width:15%; text-align:left;">-1.00%</span>
+                        <span style="color:#00ff88; width:15%; text-align:left;">-0.66%</span>
+                        <span style="color:#00ff88; width:15%; text-align:left;">-0.33%</span>
+                        <span style="color:#ffffff; width:10%; text-align:center;">0</span>
+                        <span style="color:#ff4d4d; width:15%; text-align:right;">+0.33%</span>
+                        <span style="color:#ff4d4d; width:15%; text-align:right;">+0.66%</span>
+                        <span style="color:#ff4d4d; width:15%; text-align:right;">+1.00%</span>
+                    </div>
+                    <div class="force-container-dual">
+                        <div class="center-line"></div>
+                        <div class="bar-side" style="position:relative;">
+                            <div style="position:absolute; right:0; top:0; height:100%; width:{res['left_yellow_pct']}%; background:#ffff00; transition:width 0.3s;"></div>
+                            <div style="position:absolute; right:{res['left_yellow_pct']}%; top:0; height:100%; width:{res['left_red_pct']}%; background:#ff4d4d; transition:width 0.3s;"></div>
+                        </div>
+                        <div class="bar-side" style="position:relative;">
+                            <div style="position:absolute; left:0; top:0; height:100%; width:{res['right_yellow_pct']}%; background:#ffff00; transition:width 0.3s;"></div>
+                            <div style="position:absolute; left:{res['right_yellow_pct']}%; top:0; height:100%; width:{res['right_green_pct']}%; background:#00ff88; transition:width 0.3s;"></div>
+                        </div>
+                    </div>
+                    <div class="force-scale-bottom">
+                        <span style="width:15%; text-align:left;">{c3_val}</span>
+                        <span style="width:15%; text-align:left;">{c2_val}</span>
+                        <span style="width:15%; text-align:left;">{c1_val}</span>
+                        <span style="color:#ffffff; width:10%; text-align:center;">&nbsp;</span>
+                        <span style="width:15%; text-align:right;">{v1_val}</span>
+                        <span style="width:15%; text-align:right;">{v2_val}</span>
+                        <span style="width:15%; text-align:right;">{v3_val}</span>
+                    </div>
+                    <div class="sinal-indicator" style="color:{res["seta_cor"]}; min-height:18px;">
+                        {sinal_txt}
+                    </div>
+                </div>
+                '''
                 
                 st.markdown(render_barra, unsafe_allow_html=True)
                 
@@ -584,36 +573,6 @@ while True:
                 </div>
                 '''
                 st.markdown(therm_html, unsafe_allow_html=True)
-                
-                # BARRA DE PRESSÃO ATUALIZADA (ESTILO BARRA DE FORÇA - REF NO MEIO DOS 0,15%)
-                p_press_down_val = "{:.1f}".format(res['p_pressure_down'])
-                p_press_up_val = "{:.1f}".format(res['p_pressure_up'])
-
-                pressure_bar_html = f'''
-                <div class="bar-wrapper-full" style="margin-top: 5px;">
-                    <div style="text-align: center; font-size: 10px; font-weight: bold; color: #00f2ff; margin-bottom: 2px; text-transform: uppercase;">
-                        TERMÔMETRO DE PRESSÃO (REF: MEIO DOS 0,15%)
-                    </div>
-                    <div class="force-scale-top">
-                        <span style="color:#00ff88; width:50%; text-align:left;">MIN: {res['spot_min']:.3f}</span>
-                        <span style="color:#ff4d4d; width:50%; text-align:right;">MAX: {res['spot_max']:.3f}</span>
-                    </div>
-                    <div class="force-container-dual">
-                        <div class="center-line"></div>
-                        <div class="bar-side">
-                            <div class="fill-green" style="width: {p_press_down_val}%;">{res['pressure_down_txt']}</div>
-                        </div>
-                        <div class="bar-side">
-                            <div class="fill-red" style="width: {p_press_up_val}%;">{res['pressure_up_txt']}</div>
-                        </div>
-                    </div>
-                    <div class="force-scale-bottom">
-                        <span style="width:50%; text-align:left;">REF CENTRAL: {res['ref_center']:.3f}</span>
-                        <span style="width:50%; text-align:right;">+0,15% / -0,15% LIM</span>
-                    </div>
-                </div>
-                '''
-                st.markdown(pressure_bar_html, unsafe_allow_html=True)
             
             with c2:
                 def get_var_local(sym):
