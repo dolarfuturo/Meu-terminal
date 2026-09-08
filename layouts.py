@@ -42,7 +42,7 @@ st.markdown("""
     .force-scale-top { display: flex; justify-content: space-between; font-size: 9px; font-weight: bold; color: #ffffff; margin-bottom: 2px; padding: 0 2px; }
     .force-scale-bottom { display: flex; justify-content: space-between; font-size: 9px; font-weight: bold; color: #00BFFF; margin-top: 2px; padding: 0 2px; }
     .force-container-dual { background: #111; height: 16px; width: 100%; border-radius: 2px; position: relative; overflow: hidden; display: flex; border: 1px solid #ffffff; }
-    .center-line { position: absolute; left: 50%; top: 0; width: 1px; height: 100%; background: #fff; z-index: 10; }
+    .center-line { position: absolute; left: 50%; top: 0; width: 2px; height: 100%; background: #ffff00; z-index: 10; }
     .bar-side { width: 50%; height: 100%; position: relative; background: #050a0e; }
     .fill-green { background: #00ff88; float: right; height: 100%; transition: width 0.4s; display: flex; align-items: center; justify-content: flex-start; padding-left: 5px; font-size: 10px; font-weight: bold; white-space: nowrap; }
     .fill-red { background: #ff4d4d; float: left; height: 100%; transition: width 0.4s; display: flex; align-items: center; justify-content: flex-end; padding-right: 5px; font-size: 10px; font-weight: bold; white-space: nowrap; }
@@ -602,7 +602,7 @@ while True:
                     </div>
                     <div style="position: absolute; bottom: -8px; left: {pos_percent}%; transform: translateX(-50%); 
                                 width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; 
-                                border-bottom: 12px solid #ffffff; transition: left 0.5s ease-in-out;">
+                                border-bottom: 12px solid #ffff00; transition: left 0.5s ease-in-out;">
                     </div>
                 </div>
                 '''
