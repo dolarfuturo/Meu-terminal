@@ -619,19 +619,19 @@ while True:
                     </div>
                     <div class="force-container-dual">
                         <div class="center-line"></div>
-                        <div class="bar-side" style="display: flex; justify-content: flex-end; align-items: center; position: relative;">
-                            <div style="width: {res['left_fill_yellow_pct']}%; height: 100%; background: #ffff00; float: right; transition: width 0.3s; z-index: 2;"></div>
-                            <div style="width: {res['left_fill_red_pct']}%; height: 100%; background: #ff4d4d; float: right; transition: width 0.3s; z-index: 3;"></div>
+                        <div class="bar-side" style="position: relative;">
+                            <div style="position: absolute; right: 0; top: 0; height: 100%; width: {res['left_fill_yellow_pct']}%; background: #ffff00; transition: width 0.3s; z-index: 2;"></div>
+                            <div style="position: absolute; left: 0; top: 0; height: 100%; width: {res['left_fill_red_pct']}%; background: #ff4d4d; transition: width 0.3s; z-index: 3;"></div>
                         </div>
-                        <div class="bar-side" style="display: flex; justify-content: flex-start; align-items: center; position: relative;">
-                            <div style="width: {res['right_fill_yellow_pct']}%; height: 100%; background: #ffff00; float: left; transition: width 0.3s; z-index: 2;"></div>
-                            <div style="width: {res['right_fill_green_pct']}%; height: 100%; background: #00ff88; float: left; transition: width 0.3s; z-index: 3;"></div>
+                        <div class="bar-side" style="position: relative;">
+                            <div style="position: absolute; left: 0; top: 0; height: 100%; width: {res['right_fill_yellow_pct']}%; background: #ffff00; transition: width 0.3s; z-index: 2;"></div>
+                            <div style="position: absolute; right: 0; top: 0; height: 100%; width: {res['right_fill_green_pct']}%; background: #00ff88; transition: width 0.3s; z-index: 3;"></div>
                         </div>
                     </div>
                     <div style="display:flex; justify-content:space-between; font-size:9px; font-weight:bold; color:#AAA; margin-top:4px; padding:0 2px;">
-                        <span style="color:#ff4d4d;">VERMELHO (ROMPEU MÍN + 0,15%)</span>
-                        <span style="color:#ffff00;">AMARELO (PARTINDO DO CENTRO)</span>
-                        <span style="color:#00ff88;">VERDE (ROMPEU MÁX - 0,15%)</span>
+                        <span style="color:#ff4d4d;">VERMELHO (EXTREMO MÍN)</span>
+                        <span style="color:#ffff00;">AMARELO (CENTRO)</span>
+                        <span style="color:#00ff88;">VERDE (EXTREMO MÁX)</span>
                     </div>
                 </div>
                 '''
