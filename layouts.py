@@ -247,9 +247,9 @@ def calcular_k97_total(spreed_do_dia, spot_data, ewz_data):
         
         t_delta = taxa_juros - 1.0
         
-        frac_1 = round(1.0 + (t_delta * 0.15), 5)
-        frac_2 = round(1.0 + (t_delta * 0.45), 4)
-        frac_3 = round(1.0 + (t_delta * 0.60), 5)
+        frac_1 = round(1.0 + (t_delta * 0.25), 5)
+        frac_2 = round(1.0 + (t_delta * 0.50), 4)
+        frac_3 = round(1.0 + (t_delta * 0.70), 5)
         frac_4 = taxa_juros
 
         spot_close_val = spot_data['cl']
@@ -572,8 +572,8 @@ while True:
                 media_term = -v_ewz * 0.45
                 
                 c_bf, c_b, c_n, c_a, c_af = "", "", "", "", ""
-                if media_term <= -0.30: c_bf = "active-bf"
-                elif media_term < -0.60: c_b = "active-b"
+                if media_term <= -0.60: c_bf = "active-bf"
+                elif media_term < -0.30: c_b = "active-b"
                 elif media_term <= 0.30: c_n = "active-n"
                 elif media_term < 0.60: c_a = "active-a"
                 else: c_af = "active-af"
