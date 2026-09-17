@@ -160,7 +160,7 @@ if 'last_spot_min' not in st.session_state: st.session_state.last_spot_min = flo
 
 if 'c_spot_fech_val' not in st.session_state: st.session_state.c_spot_fech_val = 0.0
 if 'c_du_val' not in st.session_state: st.session_state.c_du_val = 21
-if 't_br_val' not in st.session_state: st.session_state.t_br_val = 14.00
+if 't_br_val' not in st.session_state: st.session_state.t_br_val = 13.75
 if 't_us_val' not in st.session_state: st.session_state.t_us_val = 3.75
 
 # =============================================================================
